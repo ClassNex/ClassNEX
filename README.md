@@ -2,7 +2,7 @@
 
 <div align="center">
 
-# <image src="ClassIsland/Assets/AppLogo_AppLogo.svg" height="28" width="28"/> ClassIsland
+# <image src="<测试图片（文件GitHub仓库地址）>" height="28" width="28"/> ClassIsland
 
 <!-- ![软件截图 - 主界面](https://github.com/ClassIsland/ClassIsland/assets/55006226/65e2bdba-be83-444c-b42f-b893aaace9c3) -->
 
