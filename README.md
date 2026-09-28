@@ -1,14 +1,24 @@
-<!-- markdownlint-disable MD001 MD033 MD041 MD051 -->
+> [!WARNING]
+> **ClassNEX 目前仍处于开发阶段。**
+>
+> 项目仍在快速迭代中，部分功能尚未完成，API、配置格式及项目结构可能发生变化。
+> **目前不建议将 ClassNEX 用于生产环境。**
 
 <div align="center">
 
 # ClassNEX
 
-一款功能强大、可定制、跨平台的智慧教室课表信息显示工具，融合 **NEX Intelligence 智能引擎**、自然语言交互、桌面组件与多设备集控，让课表及课堂信息一目了然。
+<!-- 这里放 ClassNEX Logo -->
 
-#### 💬 社区交流 | 🌐 官方网站 | 🚀 软件下载 | 📚 项目文档
+<!-- <img src="docs/images/logo.svg" height="72"/> -->
 
-###### 由 NEX Intelligence 驱动的新一代智慧教室体验 →
+![Banner](docs/images/banner.png)
+
+ClassNEX 是一款功能强大、可定制、跨平台的智慧教室课表信息显示工具，融合 **NEX Intelligence 智能引擎**、自然语言交互、桌面组件与多设备集控，让课表及课堂信息一目了然。
+
+#### 🌐 官方网站 | 🚀 软件下载 | 📚 项目文档 | 💬 社区交流
+
+**Powered by NEX Intelligence**
 
 </div>
 
@@ -16,7 +26,7 @@
 
 ### 课表信息显示
 
-* [ ] 显示当天课表、当前进行课程的信息
+* [ ] 显示当天课表、当前课程信息
 * [ ] 显示上下课倒计时
 * [ ] 在重要时间点发出提醒
 * [ ] 支持提醒音效、强调特效、语音等提醒方式
@@ -51,6 +61,8 @@
 ```
 
 NEX Intelligence 会将自然语言转换为结构化操作，并交由 ClassNEX 的执行系统进行验证和处理。
+
+> **NEX Intelligence 负责理解与编排，ClassNEX 负责验证与执行。**
 
 ### 自定义
 
@@ -109,11 +121,6 @@ ClassNEX 致力于在多个平台提供一致的使用体验。
 
 ## 开始使用
 
-> [!WARNING]
-> ClassNEX 目前仍处于开发阶段，部分功能尚未完成。
-
-详细安装说明请参阅 **ClassNEX 文档**。
-
 ### 桌面端
 
 推荐使用：
@@ -136,11 +143,13 @@ Web 管理端用于：
 * NEX Intelligence 管理
 * 用户及权限管理
 
+详细安装说明请参阅项目文档。
+
 ## 获取帮助＆加入社区
 
-您可以访问以下页面获取帮助：
+您可以通过以下方式获取帮助：
 
-* ClassNEX 文档
+* 项目文档
 * GitHub Issues
 * GitHub Discussions
 
@@ -161,11 +170,7 @@ ClassNEX 使用 C# / .NET 开发。
 * Redis
 * NEX Intelligence
 
-要在本地编译 ClassNEX，请参考开发文档配置开发环境。
-
-如果您有意愿为 ClassNEX 做出贡献，欢迎提交 Pull Request。
-
-## 项目结构
+### 项目结构
 
 ```text
 ClassNEX/
@@ -180,28 +185,26 @@ ClassNEX/
 └── tests/
 ```
 
-其中：
+### 本地运行
 
-```text
-ClassNEX.Core
-    ↓
-核心数据与业务逻辑
+```bash
+git clone https://github.com/<OWNER>/ClassNEX.git
 
-ClassNEX.Intelligence
-    ↓
-NEX Intelligence 智能引擎
+cd ClassNEX
 
-ClassNEX.Widgets
-    ↓
-桌面组件系统
+dotnet restore
+```
 
-ClassNEX.Server
-    ↓
-集控、同步与服务
+运行桌面客户端：
 
-ClassNEX.Desktop / Android / Web
-    ↓
-各平台客户端
+```bash
+dotnet run --project src/ClassNEX.Desktop
+```
+
+运行服务端：
+
+```bash
+dotnet run --project src/ClassNEX.Server
 ```
 
 ## 路线图
