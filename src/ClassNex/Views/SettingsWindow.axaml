@@ -2,87 +2,174 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="720" d:DesignHeight="620"
+        mc:Ignorable="d" d:DesignWidth="880" d:DesignHeight="640"
         x:Class="ClassNex.Views.SettingsWindow"
-        Title="设置"
-        Width="720" Height="620"
-        MinWidth="560" MinHeight="480"
-        WindowStartupLocation="CenterOwner">
+        Title="应用设置"
+        Icon="/Assets/icon.ico"
+        Width="880" Height="640"
+        MinWidth="720" MinHeight="520"
+        WindowStartupLocation="CenterScreen">
 
     <DockPanel Background="{DynamicResource ApplicationPageBackgroundThemeBrush}">
 
-        <!-- 标题栏 -->
-        <Border DockPanel.Dock="Top" Padding="24,18"
+        <Border DockPanel.Dock="Top" Padding="20,14"
                 Background="{DynamicResource LayerFillColorDefaultBrush}"
                 BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
                 BorderThickness="0,0,0,1">
-            <TextBlock Text="设置" FontSize="24" FontWeight="SemiBold"
+            <TextBlock Text="应用设置" FontSize="18" FontWeight="SemiBold"
                        Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
         </Border>
 
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="24" Spacing="28" MaxWidth="680" HorizontalAlignment="Left">
+        <Grid ColumnDefinitions="200,*">
 
-                <!-- 外观 -->
-                <StackPanel Spacing="12">
-                    <TextBlock Text="外观" FontSize="16" FontWeight="SemiBold"
-                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                    <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
-                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                            BorderThickness="1" CornerRadius="8" Padding="20">
-                        <StackPanel Spacing="14">
-                            <TextBlock Text="主题" FontSize="14" FontWeight="SemiBold"
-                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <StackPanel Spacing="10">
-                                <RadioButton x:Name="ThemeSystem" GroupName="Theme" Content="跟随系统"
-                                             IsChecked="True" Checked="OnThemeChecked"/>
-                                <RadioButton x:Name="ThemeLight" GroupName="Theme" Content="浅色"
-                                             Checked="OnThemeChecked"/>
-                                <RadioButton x:Name="ThemeDark" GroupName="Theme" Content="深色"
-                                             Checked="OnThemeChecked"/>
+            <!-- 左侧导航 -->
+            <Border Grid.Column="0"
+                    Background="{DynamicResource LayerFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+                    BorderThickness="0,0,1,0">
+                <ListBox x:Name="NavList" SelectedIndex="0" Padding="8"
+                         Background="Transparent" BorderThickness="0">
+                    <ListBoxItem Content="通用" Padding="12,10"/>
+                    <ListBoxItem Content="界面" Padding="12,10"/>
+                    <ListBoxItem Content="课表" Padding="12,10"/>
+                    <ListBoxItem Content="关于" Padding="12,10"/>
+                </ListBox>
+            </Border>
+
+            <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="28" Spacing="22" MaxWidth="640" HorizontalAlignment="Left">
+
+                    <!-- ============ 通用 ============ -->
+                    <StackPanel x:Name="PageGeneral" Spacing="14">
+                        <TextBlock Text="通用" FontSize="22" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+
+                        <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1" CornerRadius="8" Padding="20">
+                            <StackPanel Spacing="18">
+
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="单周开始日期" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <TextBlock Text="该日期所在周视为单周，用于推算当前是单周还是双周。"
+                                               FontSize="12" TextWrapping="Wrap"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                    <DatePicker x:Name="SingleWeekStartPicker" HorizontalAlignment="Left"/>
+                                </StackPanel>
+
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="点击托盘图标行为" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <ComboBox x:Name="TrayBehaviorCombo" Width="240" HorizontalAlignment="Left">
+                                        <ComboBoxItem Content="显示 / 隐藏主界面"/>
+                                        <ComboBoxItem Content="打开应用设置"/>
+                                        <ComboBoxItem Content="打开档案编辑器"/>
+                                    </ComboBox>
+                                </StackPanel>
+
+                                <CheckBox x:Name="HideOnClassCheck" Content="上课时自动隐藏主界面（预留）"/>
+
                             </StackPanel>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
+                        </Border>
+                    </StackPanel>
 
-                <!-- 课表 -->
-                <StackPanel Spacing="12">
-                    <TextBlock Text="课表" FontSize="16" FontWeight="SemiBold"
-                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                    <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
-                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                            BorderThickness="1" CornerRadius="8" Padding="20">
-                        <StackPanel Spacing="14">
-                            <TextBlock Text="课表文件" FontSize="14" FontWeight="SemiBold"
-                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <TextBlock x:Name="CurrentFileText" Text="使用内置示例课表" TextWrapping="Wrap"
-                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                            <Button x:Name="OpenFileButton" Content="打开课表文件…" Click="OnOpenFile"
-                                    HorizontalAlignment="Left"/>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
+                    <!-- ============ 界面 ============ -->
+                    <StackPanel x:Name="PageInterface" Spacing="14" IsVisible="False">
+                        <TextBlock Text="界面" FontSize="22" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
 
-                <!-- 关于 -->
-                <StackPanel Spacing="12">
-                    <TextBlock Text="关于" FontSize="16" FontWeight="SemiBold"
-                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                    <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
-                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                            BorderThickness="1" CornerRadius="8" Padding="20">
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="ClassNex" FontSize="16" FontWeight="SemiBold"
-                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <TextBlock Text="版本 0.1.0"
-                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                            <TextBlock Text="基于 Avalonia + FluentAvalonia 的课程表应用，采用 CSES 课程表交换格式。"
-                                       TextWrapping="Wrap"
-                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
+                        <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1" CornerRadius="8" Padding="20">
+                            <StackPanel Spacing="18">
 
-            </StackPanel>
-        </ScrollViewer>
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="主题" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <RadioButton x:Name="ThemeSystem" GroupName="Theme" Content="跟随系统"/>
+                                    <RadioButton x:Name="ThemeLight" GroupName="Theme" Content="浅色"/>
+                                    <RadioButton x:Name="ThemeDark" GroupName="Theme" Content="深色"/>
+                                </StackPanel>
+
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="主界面背景不透明度" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <Slider x:Name="OpacitySlider" Minimum="0.1" Maximum="1" Width="280"
+                                                TickFrequency="0.05" IsSnapToTickEnabled="True"/>
+                                        <TextBlock x:Name="OpacityValueText" VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="主界面字号缩放" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <Slider x:Name="FontScaleSlider" Minimum="0.8" Maximum="1.6" Width="280"
+                                                TickFrequency="0.05" IsSnapToTickEnabled="True"/>
+                                        <TextBlock x:Name="FontScaleValueText" VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <CheckBox x:Name="ShowDateCheck" Content="主界面显示日期"/>
+                                <CheckBox x:Name="TopmostCheck" Content="主界面置顶显示"/>
+
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ============ 课表 ============ -->
+                    <StackPanel x:Name="PageSchedule" Spacing="14" IsVisible="False">
+                        <TextBlock Text="课表" FontSize="22" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+
+                        <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1" CornerRadius="8" Padding="20">
+                            <StackPanel Spacing="14">
+                                <TextBlock Text="当前课表文件" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <TextBlock x:Name="TimetableFileText" TextWrapping="Wrap"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <Button x:Name="OpenTimetableButton" Content="打开课表文件…"/>
+                                    <Button x:Name="ReloadTimetableButton" Content="重新加载"/>
+                                </StackPanel>
+                                <TextBlock Text="支持 CSES（Course Schedule Exchange Schema）YAML 格式课表。"
+                                           FontSize="12" TextWrapping="Wrap"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ============ 关于 ============ -->
+                    <StackPanel x:Name="PageAbout" Spacing="14" IsVisible="False">
+                        <TextBlock Text="关于" FontSize="22" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+
+                        <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1" CornerRadius="8" Padding="20">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="ClassNex" FontSize="18" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <TextBlock Text="版本 0.2.0"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                <TextBlock Text="基于 Avalonia + FluentAvalonia 的课程表应用，课表采用 CSES 课程表交换格式。"
+                                           TextWrapping="Wrap"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                <TextBlock Text="主界面（悬浮课表）、应用设置、档案编辑器、系统托盘 —— 参考 ClassIsland 设计。"
+                                           TextWrapping="Wrap"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
     </DockPanel>
 </Window>

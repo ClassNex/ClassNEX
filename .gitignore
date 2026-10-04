@@ -20,3 +20,12 @@ obj/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# 本地参考资料（ClassIsland 发布包，体积大，不入库）
+ClassIsland_app_windows_x64_full_folder*/
+ClassIsland_app_windows_x64_full_folder*.zip
+
+# 运行时数据（便携 data 目录）
+data/
+_debug.log
+

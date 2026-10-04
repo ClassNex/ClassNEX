@@ -2,51 +2,37 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="1120" d:DesignHeight="720"
+        mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="80"
         x:Class="ClassNex.Views.MainWindow"
-        Title="ClassNex · 课程表"
-        Width="1120" Height="720"
-        MinWidth="840" MinHeight="540"
-        WindowStartupLocation="CenterScreen">
+        Title="ClassNex 主界面"
+        Icon="/Assets/icon.ico"
+        SystemDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        CanResize="False"
+        SizeToContent="WidthAndHeight"
+        WindowStartupLocation="Manual"
+        MaxWidth="900">
 
-    <DockPanel Background="{DynamicResource ApplicationPageBackgroundThemeBrush}">
+    <Border x:Name="RootCard" CornerRadius="10" Margin="12" Padding="20,14">
+        <Border.ContextMenu>
+            <ContextMenu>
+                <MenuItem Header="显示 / 隐藏主界面" Click="OnMenuToggleVisible"/>
+                <Separator/>
+                <MenuItem Header="编辑档案…" Click="OnMenuEditProfile"/>
+                <MenuItem Header="应用设置…" Click="OnMenuOpenSettings"/>
+                <Separator/>
+                <MenuItem Header="退出 ClassNex" Click="OnMenuExit"/>
+            </ContextMenu>
+        </Border.ContextMenu>
 
-        <!-- 顶部栏 -->
-        <Border DockPanel.Dock="Top" Padding="20,14"
-                Background="{DynamicResource LayerFillColorDefaultBrush}"
-                BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
-                BorderThickness="0,0,0,1">
-            <Grid ColumnDefinitions="Auto,*,Auto">
-                <StackPanel Grid.Column="0" Orientation="Vertical" Spacing="2" VerticalAlignment="Center">
-                    <TextBlock Text="ClassNex" FontSize="20" FontWeight="SemiBold"
-                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                    <TextBlock Text="{Binding SourceDescription}" FontSize="12"
-                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                </StackPanel>
-
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <ComboBox x:Name="ParityCombo" Width="112"
-                              VerticalAlignment="Center" SelectionChanged="OnParityChanged">
-                        <ComboBoxItem Content="全部"/>
-                        <ComboBoxItem Content="单周"/>
-                        <ComboBoxItem Content="双周"/>
-                    </ComboBox>
-                    <Button x:Name="OpenFileButton" Content="打开课表…" Click="OnOpenFile"/>
-                    <Button x:Name="SettingsButton" Click="OnOpenSettings" Padding="12,8">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="16"
-                                       VerticalAlignment="Center"/>
-                            <TextBlock Text="设置" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
-            </Grid>
-        </Border>
-
-        <!-- 课表区域 -->
-        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-            <Grid x:Name="TimetableGrid" Margin="16"/>
-        </ScrollViewer>
-
-    </DockPanel>
+        <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+            <TextBlock x:Name="DateText" FontSize="22" FontWeight="SemiBold"
+                       Foreground="White" VerticalAlignment="Center"/>
+            <TextBlock x:Name="InfoText" FontSize="20"
+                       Foreground="White" VerticalAlignment="Center"/>
+        </StackPanel>
+    </Border>
 </Window>

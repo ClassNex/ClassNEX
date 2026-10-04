@@ -1,0 +1,133 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1080" d:DesignHeight="680"
+        x:Class="ClassNex.Views.ProfileEditorWindow"
+        Title="档案编辑器"
+        Icon="/Assets/icon.ico"
+        Width="1080" Height="680"
+        MinWidth="820" MinHeight="560"
+        WindowStartupLocation="CenterScreen">
+
+    <DockPanel Background="{DynamicResource ApplicationPageBackgroundThemeBrush}">
+
+        <Border DockPanel.Dock="Top" Padding="20,14"
+                Background="{DynamicResource LayerFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Grid.Column="0" Spacing="2">
+                    <TextBlock Text="档案编辑器" FontSize="18" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    <TextBlock x:Name="ProfileInfoText" FontSize="12"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button x:Name="OpenButton" Content="打开课表…"/>
+                    <Button x:Name="ReloadButton" Content="重新加载"/>
+                    <Button x:Name="SaveButton" Content="保存"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <TabControl x:Name="Tabs" Margin="8">
+
+            <!-- ============ 课表 ============ -->
+            <TabItem Header="课表">
+                <DockPanel Margin="12">
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="4,0,4,12">
+                        <TextBlock Text="周次" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <ComboBox x:Name="ParityCombo" Width="120">
+                            <ComboBoxItem Content="全部"/>
+                            <ComboBoxItem Content="单周"/>
+                            <ComboBoxItem Content="双周"/>
+                        </ComboBox>
+                        <TextBlock Text="（周课表来自当前 CSES 课表文件）" VerticalAlignment="Center" FontSize="12"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                    </StackPanel>
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                        <Grid x:Name="TimetableGrid" Margin="4"/>
+                    </ScrollViewer>
+                </DockPanel>
+            </TabItem>
+
+            <!-- ============ 时间表 ============ -->
+            <TabItem Header="时间表">
+                <DockPanel Margin="16">
+                    <TextBlock DockPanel.Dock="Top" Margin="0,0,0,12"
+                               Text="时间表（由课表中的起止时间自动归纳）"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    <ScrollViewer>
+                        <StackPanel x:Name="TimeLayoutList" Spacing="6"/>
+                    </ScrollViewer>
+                </DockPanel>
+            </TabItem>
+
+            <!-- ============ 科目 ============ -->
+            <TabItem Header="科目">
+                <Grid Margin="16" ColumnDefinitions="280,*">
+
+                    <DockPanel Grid.Column="0">
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
+                            <Button x:Name="AddSubjectButton" Content="新增"/>
+                            <Button x:Name="DeleteSubjectButton" Content="删除"/>
+                        </StackPanel>
+                        <ListBox x:Name="SubjectList" Margin="0,0,12,0">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}"/>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+
+                    <ScrollViewer Grid.Column="1">
+                        <StackPanel x:Name="SubjectEditor" Spacing="14" Margin="12,0,0,0" IsEnabled="False">
+                            <TextBlock Text="科目信息" FontSize="16" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="名称"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                <TextBox x:Name="SubjectNameBox"/>
+                            </StackPanel>
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="简称"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                <TextBox x:Name="SubjectSimplifiedBox"/>
+                            </StackPanel>
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="教师"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                <TextBox x:Name="SubjectTeacherBox"/>
+                            </StackPanel>
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="教室"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                <TextBox x:Name="SubjectRoomBox"/>
+                            </StackPanel>
+                            <TextBlock Text="修改后会自动写回 CSES 课表文件。"
+                                       FontSize="12" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <!-- ============ 调课 ============ -->
+            <TabItem Header="调课">
+                <StackPanel Margin="16" Spacing="12">
+                    <TextBlock Text="调课" FontSize="18" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    <TextBlock Text="临时调课 / 换课功能开发中。你可以在「课表」标签页查看完整周课表，在「科目」标签页编辑科目信息。"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                </StackPanel>
+            </TabItem>
+
+        </TabControl>
+    </DockPanel>
+</Window>

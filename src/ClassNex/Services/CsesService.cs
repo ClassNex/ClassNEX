@@ -13,6 +13,11 @@ public static class CsesService
         .IgnoreUnmatchedProperties()
         .Build();
 
+    private static readonly ISerializer Serializer = new SerializerBuilder()
+        .WithNamingConvention(UnderscoredNamingConvention.Instance)
+        .ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull)
+        .Build();
+
     /// <summary>从文件路径加载 CSES 课表。</summary>
     public static CsesDocument Load(string path)
     {
@@ -23,6 +28,13 @@ public static class CsesService
     /// <summary>解析 CSES YAML 文本。</summary>
     public static CsesDocument Parse(string yaml) =>
         Deserializer.Deserialize<CsesDocument>(yaml) ?? new CsesDocument();
+
+    /// <summary>把课表文档写回 CSES YAML 文件。</summary>
+    public static void Save(CsesDocument document, string path)
+    {
+        var yaml = Serializer.Serialize(document);
+        File.WriteAllText(path, yaml, new UTF8Encoding(false));
+    }
 
     /// <summary>内置示例课表文件的路径（随程序输出目录分发）。</summary>
     public static string DefaultSamplePath =>

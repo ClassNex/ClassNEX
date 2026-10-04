@@ -8,4 +8,29 @@
         <sty:FluentAvaloniaTheme PreferSystemTheme="True" />
     </Application.Styles>
 
+    <!-- 系统托盘图标与菜单 -->
+    <TrayIcon.Icons>
+        <TrayIcons>
+            <TrayIcon Icon="/Assets/icon.ico"
+                      ToolTipText="ClassNex 课表"
+                      Clicked="OnTrayIconClick">
+                <TrayIcon.Menu>
+                    <NativeMenu>
+                        <NativeMenuItem Header="显示 / 隐藏主界面" Click="OnTrayToggleMainWindow"/>
+                        <NativeMenuItemSeparator/>
+                        <NativeMenuItem Header="编辑档案…" Click="OnTrayEditProfile"/>
+                        <NativeMenuItem Header="加载课表…" Click="OnTrayLoadTimetable"/>
+                        <NativeMenuItem Header="换课…" Click="OnTrayChangeClass"/>
+                        <NativeMenuItemSeparator/>
+                        <NativeMenuItem Header="编辑主界面…" Click="OnTrayEditMainWindow"/>
+                        <NativeMenuItem Header="应用设置…" Click="OnTrayOpenSettings"/>
+                        <NativeMenuItemSeparator/>
+                        <NativeMenuItem Header="重启" Click="OnTrayRestart"/>
+                        <NativeMenuItem Header="退出" Click="OnTrayExit"/>
+                    </NativeMenu>
+                </TrayIcon.Menu>
+            </TrayIcon>
+        </TrayIcons>
+    </TrayIcon.Icons>
+
 </Application>

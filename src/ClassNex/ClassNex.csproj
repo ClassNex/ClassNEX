@@ -9,8 +9,13 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <RootNamespace>ClassNex</RootNamespace>
     <AssemblyName>ClassNex</AssemblyName>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
+    <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\icon.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.2.8" />
