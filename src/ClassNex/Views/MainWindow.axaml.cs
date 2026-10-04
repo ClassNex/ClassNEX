@@ -46,14 +46,13 @@ public partial class MainWindow : Window
         // 某些全屏窗口会抢走置顶，失焦后重新声明
         Deactivated += (_, _) => EnsureTopmost();
 
-        RootCard.PointerPressed += OnCardPointerPressed;
-        RootCard.PointerReleased += OnCardPointerReleased;
+        // 主界面固定位置、不可拖动（用户要求「强制置顶不可移动」）
     }
 
-    /// <summary>确保主界面处于置顶状态（CI 的主界面同样是置顶浮层）。</summary>
+    /// <summary>强制置顶：主界面始终浮在其它窗口之上，不受设置与焦点影响。</summary>
     private void EnsureTopmost()
     {
-        if (!IsVisible || !AppServices.Settings.Topmost)
+        if (!IsVisible)
             return;
 
         if (!Topmost)
@@ -66,13 +65,13 @@ public partial class MainWindow : Window
     {
         var s = AppServices.Settings;
 
-        Topmost = s.Topmost;
+        // 强制置顶
+        Topmost = true;
 
         // 外观参数全部取自 CI：黑底 + 50% 不透明度 + 圆角 8
         RootCard.Background = new SolidColorBrush(CiPalette.CardBackground,
             Math.Clamp(s.BackgroundOpacity, 0.05, 1.0));
         RootCard.CornerRadius = new CornerRadius(CiPalette.CardCornerRadius);
-        RootCard.Cursor = new Cursor(StandardCursorType.SizeAll);
 
         WidgetHost.Orientation = s.Orientation == LayoutOrientation.Vertical
             ? Orientation.Vertical
@@ -149,7 +148,7 @@ public partial class MainWindow : Window
         RefreshWidgets();
     });
 
-    // ---------- 拖拽 ----------
+    // ---------- 位置（固定，不可拖动）----------
 
     protected override void OnOpened(EventArgs e)
     {
@@ -157,7 +156,7 @@ public partial class MainWindow : Window
         ClampToScreen();
     }
 
-    /// <summary>确保卡片不会被拖到屏幕外。</summary>
+    /// <summary>确保固定位置落在屏幕可见范围内。</summary>
     private void ClampToScreen()
     {
         var screen = Screens.ScreenFromPoint(Position) ?? Screens.Primary;
@@ -168,26 +167,6 @@ public partial class MainWindow : Window
         var x = Math.Clamp(Position.X, wa.X, Math.Max(wa.X, wa.X + wa.Width - 80));
         var y = Math.Clamp(Position.Y, wa.Y, Math.Max(wa.Y, wa.Y + wa.Height - 60));
         Position = new PixelPoint(x, y);
-        SavePosition();
-    }
-
-    private void OnCardPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
-            return;
-
-        BeginMoveDrag(e);
-        ClampToScreen();
-    }
-
-    private void OnCardPointerReleased(object? sender, PointerReleasedEventArgs e) => ClampToScreen();
-
-    private void SavePosition()
-    {
-        var s = AppServices.Settings;
-        s.MainWindowLeft = Position.X;
-        s.MainWindowTop = Position.Y;
-        AppServices.SaveSettings();
     }
 
     // ---------- 右键菜单 ----------

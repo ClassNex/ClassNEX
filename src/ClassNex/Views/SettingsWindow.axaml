@@ -114,13 +114,6 @@
                             </ComboBox>
                         </ui:SettingsExpander.Items>
                     </ui:SettingsExpander>
-
-                    <ui:SettingsExpander Header="主界面置顶显示"
-                                         Description="让主界面始终浮在其它窗口之上">
-                        <ui:SettingsExpander.Items>
-                            <CheckBox x:Name="TopmostCheck" Content="主界面置顶显示"/>
-                        </ui:SettingsExpander.Items>
-                    </ui:SettingsExpander>
                 </StackPanel>
 
                 <!-- ============ 主界面组件 ============ -->
