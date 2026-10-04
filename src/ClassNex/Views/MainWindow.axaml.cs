@@ -39,12 +39,12 @@ public partial class MainWindow : Window
         _timer.Tick += (_, _) =>
         {
             RefreshWidgets();
-            EnsureTopmost();
+            EnforcePlacement();
         };
         _timer.Start();
 
         // 某些全屏窗口会抢走置顶，失焦后重新声明
-        Deactivated += (_, _) => EnsureTopmost();
+        Deactivated += (_, _) => EnforcePlacement();
 
         // 主界面固定位置、不可拖动（用户要求「强制置顶不可移动」）
     }
@@ -78,7 +78,8 @@ public partial class MainWindow : Window
             : Orientation.Horizontal;
         WidgetHost.Spacing = s.Orientation == LayoutOrientation.Vertical ? 6 : 16;
 
-        Position = new PixelPoint((int)s.MainWindowLeft, (int)s.MainWindowTop);
+        // 位置固定为「屏幕顶端 + 水平居中」（对齐 CI），不再使用设置里的坐标
+        EnforcePlacement();
     }
 
     // ---------- 组件 ----------
@@ -148,25 +149,41 @@ public partial class MainWindow : Window
         RefreshWidgets();
     });
 
-    // ---------- 位置（固定，不可拖动）----------
+    // ---------- 位置：与 CI 一致，停靠屏幕顶端 + 水平居中，且不可拖动 ----------
 
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
-        ClampToScreen();
+        EnforcePlacement();
     }
 
-    /// <summary>确保固定位置落在屏幕可见范围内。</summary>
-    private void ClampToScreen()
+    /// <summary>
+    /// 强制置顶 + 停靠屏幕顶端水平居中（对齐 CI 主界面的停靠方式）。
+    /// 内容宽度会随组件变化，因此每秒校一次。
+    /// </summary>
+    private void EnforcePlacement()
     {
-        var screen = Screens.ScreenFromPoint(Position) ?? Screens.Primary;
+        if (!IsVisible)
+            return;
+
+        if (!Topmost)
+            Topmost = true;
+
+        var screen = Screens.Primary;
         if (screen is null)
             return;
 
         var wa = screen.WorkingArea;
-        var x = Math.Clamp(Position.X, wa.X, Math.Max(wa.X, wa.X + wa.Width - 80));
-        var y = Math.Clamp(Position.Y, wa.Y, Math.Max(wa.Y, wa.Y + wa.Height - 60));
-        Position = new PixelPoint(x, y);
+        var scale = screen.Scaling <= 0 ? 1.0 : screen.Scaling;
+
+        // 逻辑尺寸 → 物理像素
+        var widthPx = (int)Math.Round(Bounds.Width * scale);
+        var x = wa.X + Math.Max(0, (wa.Width - widthPx) / 2);
+        var y = wa.Y;
+
+        var target = new PixelPoint(x, y);
+        if (Position != target)
+            Position = target;
     }
 
     // ---------- 右键菜单 ----------
