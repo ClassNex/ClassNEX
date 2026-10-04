@@ -119,7 +119,7 @@ public static class TimetableGridBuilder
     {
         var border = new Border
         {
-            Background = new SolidColorBrush(CiPalette.SurfaceHeader, 0.55),
+            Background = CiPalette.SurfaceBrush("SolidBackgroundFillColorTertiaryBrush", 0.5),
             Padding = new Thickness(8, 8),
             BorderBrush = new SolidColorBrush(CiPalette.NeutralDark, 0.35),
             BorderThickness = new Thickness(0, 0, 0, 1),
@@ -218,8 +218,8 @@ public static class TimetableGridBuilder
             Text = text,
             FontSize = 13,
             FontWeight = FontWeight.SemiBold,
-            // 选中时用白字压在 CI 强调青上；未选中沿用主题前景色
-            Foreground = isSelected ? Brushes.White : null,
+            // 选中时用「强调色上的文字」色；未选中沿用主题前景色
+            Foreground = isSelected ? CiPalette.OnAccentBrush() : null,
             TextWrapping = TextWrapping.NoWrap,
         });
 
@@ -230,13 +230,13 @@ public static class TimetableGridBuilder
                 Text = string.Join(" · ", detailParts),
                 FontSize = 10.5,
                 Opacity = isSelected ? 0.9 : 0.6,
-                Foreground = isSelected ? Brushes.White : null,
+                Foreground = isSelected ? CiPalette.OnAccentBrush() : null,
             });
         }
 
         var border = new Border
         {
-            // 只有选中项着色 —— CI 强调青
+            // 只有选中项着色 —— 取当前主题的选中强调色（与 CI 一致，跟随系统强调色）
             Background = isSelected ? CiPalette.SelectionBrush() : null,
             CornerRadius = new CornerRadius(4),
             Padding = new Thickness(6, 3),
@@ -257,7 +257,7 @@ public static class TimetableGridBuilder
     {
         var border = new Border
         {
-            Background = new SolidColorBrush(CiPalette.SurfaceHeader, 0.18),
+            Background = CiPalette.SurfaceBrush("SubtleFillColorSecondaryBrush", 0.12),
             CornerRadius = new CornerRadius(4),
             Margin = new Thickness(4, 2),
             MinHeight = 34,

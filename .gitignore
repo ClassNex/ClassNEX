@@ -29,4 +29,5 @@ ClassIsland_app_windows_x64_full_folder*.zip
 data/
 _debug.log
 _ci_verify.log
+_verify.log
 

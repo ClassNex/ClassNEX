@@ -29,34 +29,34 @@ ClassNEX 是一款功能强大、可定制、跨平台的课表信息显示工�
 | **档案编辑器** | 课表 / 时间表 / 科目 / 调课 四个标签页；**课表可增删改**（点空格新增、点卡片编辑），**时间表节次可编辑**（改时间会同步到课表） |
 | **系统托盘** | 显示/隐藏主界面、编辑档案、加载课表、换课、编辑主界面、应用设置、重启、退出 |
 
-### 配色（全部取自 CI / ClassIsland，不自行发明）
+### 配色（以 CI / ClassIsland 为准）
 
-所有颜色集中定义在 `src/ClassNex/Styles/CiPalette.cs`。取值有两条来源：
+**核心结论：CI 的默认主题里没有任何硬编码强调色。** 已核实 CI 源码
+`ClassIsland/XamlThemes/FluentTheme/Styles.axaml` —— 它只使用 FluentAvalonia 的标准资源键
+（`AccentFillColorDefaultBrush`、`TextOnAccentFillColorPrimaryBrush`、`SolidBackgroundFillColorSecondaryBrush` …）。
 
-**来源一 · CI 配置文件**
+因此：
+
+| 项目 | 做法（与 CI 一致） |
+| --- | --- |
+| **强调色** | **不写死**，`CustomAccentColor = null` + `PreferUserAccentColor = true`，跟随 **Windows 系统强调色** |
+| **表面色** | **不覆盖**，使用 FluentAvalonia 深/浅色默认值 |
+| **科目标识** | CI **不给科目上色**；课表单元格与主界面科目都是「中性底 + 文字」，只有**选中项**使用主题强调色 |
+
+> 踩坑记录：曾把 CI 截图的选中色 `#589499` 当成"CI 强调色"、把表面色 `#292D2E` 当成"CI 表面色"。
+> 实际上前者是**你机器的 Windows 强调色**（注册表 `AccentColor` = `#459BAC`）经 Fluent 变体计算的结果，
+> 后者是 Fluent 深色底叠加 **Mica 壁纸透色**（壁纸正好是青绿湖水）。两者都不是 CI 的固有值。
+
+只有 CI **自己在配置里写死**的值才被本应用沿用（定义于 `src/ClassNex/Styles/CiPalette.cs`）：
 
 | 用途 | 取值 | CI 中的出处 |
 | --- | --- | --- |
-| 主界面卡片 | `#000000` + 不透明度 `0.5` + 圆角 `8` | CI `ComponentLayouts/Default.json` |
-| 副色 | `#7FFFD4` | CI `data/Settings.json` → `SecondaryColor` |
-| 中性深色 / 叠加层 / 提醒色 | `#333333` / `#48000000` / `#66000000` / `#F4EF74` | CI `ClassIsland.dll` 内嵌色值 |
+| 主界面卡片 | `#000000` + 不透明度 `0.5` + 圆角 `8` | `ComponentLayouts/Default.json` |
+| 默认科目渐变第二色 | `#7FFFD4` | `data/Settings.json` → `SecondaryColor` |
+| 阴影 / 叠加层 | `#48000000` / `#66000000` | `XamlThemes/FluentTheme/Styles.axaml` 的 `BoxShadow` |
+| 中性深色 / 提醒色 | `#333333` / `#F4EF74` | `ClassIsland.dll` 内嵌色值 |
 
-**来源二 · CI 运行界面截图像素实测**（脚本见 `_tools/analyze_ci_palette.py`）
-
-| 用途 | 取值 | 说明 |
-| --- | --- | --- |
-| **强调色**（选中填充） | **`#589499`** | H=184.6°、**S=0.27**、L=0.47 —— 低饱和青，**不是亮色** |
-| 强调色（深） | `#426E71` | 时间表「上课」时间点 |
-| 强调色（亮） | `#69AAAE` | 时间点块高亮边 |
-| 课间灰 | `#818181` | 时间表「课间」时间点 |
-| 深色表面 | `#1A2225` / `#252829` / `#292D2E` / `#272D2E` / `#35393A` | 深色主题下覆盖 FluentAvalonia 同名键 |
-
-两条重要结论：
-
-1. **CI 的强调色是低饱和青，不是亮色** —— 因此不再使用全饱和的 `#00BFFF`。
-2. **CI 不给科目上色** —— 课表单元格与主界面科目都是「中性底 + 文字」，只有**选中项**与**时间表块**使用强调青。本应用同样不再给科目分配颜色。
-
-强调色通过 `FluentAvaloniaTheme.CustomAccentColor` 下发，全应用的按钮、选中、焦点统一为 CI 色调。
+排查用脚本见 `_tools/`（`find_ci_default_color.py` 扫 CI 程序集取色，`analyze_ci_palette.py` 对截图做色彩直方图统计）。
 
 ### 运行
 

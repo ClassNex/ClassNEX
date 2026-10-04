@@ -61,14 +61,11 @@ public partial class App : Application
             var path = Path.Combine(AppContext.BaseDirectory, "_verify.log");
 
             File.WriteAllText(path,
-                $"CustomAccentColor   = {theme?.CustomAccentColor}\n" +
-                $"PreferUserAccentColor = {theme?.PreferUserAccentColor}\n" +
-                $"CI 强调色(实测)      = {CiPalette.Primary}\n" +
-                $"CI 强调色(深)        = {CiPalette.PrimaryDeep}\n" +
-                $"CI 课间灰            = {CiPalette.BreakNeutral}\n" +
+                $"CustomAccentColor   = {theme?.CustomAccentColor} (CI 不设自定义色)\n" +
+                $"PreferUserAccentColor = {theme?.PreferUserAccentColor} (CI 行为：跟随系统强调色)\n" +
+                $"系统强调色(AccentFillColorDefaultBrush) = {CiPalette.AccentBrush()}\n" +
                 $"卡片不透明度         = {AppServices.Settings.BackgroundOpacity} (CI 0.5)\n" +
                 $"卡片圆角             = {CiPalette.CardCornerRadius} (CI 8)\n" +
-                $"深色表面(CiSurfaceBase) = {Current?.Resources["CiSurfaceBase"]}\n" +
                 $"课表文件             = {AppServices.TimetablePath}\n" +
                 $"科目数 / 课程数      = {AppServices.Schedule.Profile.Subjects.Count} / {AppServices.Schedule.Profile.Schedules.Sum(s => s.Classes.Count)}\n");
         }
@@ -88,29 +85,22 @@ public partial class App : Application
         var theme = FluentTheme;
         if (theme is not null)
         {
-            theme.PreferUserAccentColor = false;
-            // CI 强调色 —— 截图实测的低饱和青 #589499（不是亮色）
-            theme.CustomAccentColor = CiPalette.Primary;
+            // 与 CI 完全一致：**不写死强调色**，跟随 Windows 系统强调色
+            // （CI 的 FluentTheme/Styles.axaml 里没有任何硬编码颜色，只用 FluentAvalonia 标准资源键）
+            theme.CustomAccentColor = null;
+            theme.PreferUserAccentColor = true;
         }
 
         if (Current is null)
             return;
 
-        Current.Resources["CiPrimary"] = CiPalette.Primary;
-        Current.Resources["CiPrimaryDeep"] = CiPalette.PrimaryDeep;
-        Current.Resources["CiPrimarySoft"] = CiPalette.PrimarySoft;
-        Current.Resources["CiBreakNeutral"] = CiPalette.BreakNeutral;
+        Current.Resources["CiCardOpacity"] = CiPalette.CardOpacity;
+        Current.Resources["CiCardCornerRadius"] = CiPalette.CardCornerRadius;
         Current.Resources["CiSecondary"] = CiPalette.Secondary;
-        Current.Resources["CiPrimaryBrush"] = CiPalette.PrimaryBrush;
         Current.Resources["CiNeutralDark"] = CiPalette.NeutralDark;
         Current.Resources["CiOverlaySubtle"] = CiPalette.OverlaySubtle;
         Current.Resources["CiOverlayMedium"] = CiPalette.OverlayMedium;
         Current.Resources["CiHighlight"] = CiPalette.Highlight;
-        Current.Resources["CiSurfaceDeepest"] = CiPalette.SurfaceDeepest;
-        Current.Resources["CiSurfaceDark"] = CiPalette.SurfaceDark;
-        Current.Resources["CiSurfaceBase"] = CiPalette.SurfaceBase;
-        Current.Resources["CiSurfaceWindow"] = CiPalette.SurfaceWindow;
-        Current.Resources["CiSurfaceHeader"] = CiPalette.SurfaceHeader;
     }
 
     private static IClassicDesktopStyleApplicationLifetime? Lifetime =>

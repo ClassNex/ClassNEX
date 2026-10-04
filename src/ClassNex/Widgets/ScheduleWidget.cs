@@ -41,7 +41,7 @@ public sealed class ScheduleWidget : WidgetBase
             Value = 0,
             Height = 3,
             Width = 150,
-            Foreground = CiPalette.PrimaryBrush,
+            Foreground = CiPalette.AccentBrush(),
             VerticalAlignment = VerticalAlignment.Center,
         };
 
