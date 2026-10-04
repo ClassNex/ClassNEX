@@ -1,0 +1,177 @@
+version: 1
+
+subjects:
+  - name: 数学
+    simplified_name: 数
+    teacher: 李梅
+    room: "101"
+  - name: 语文
+    simplified_name: 语
+    teacher: 王芳
+    room: "102"
+  - name: 英语
+    simplified_name: 英
+    teacher: 张伟
+    room: "103"
+  - name: 物理
+    simplified_name: 物
+    teacher: 赵军
+    room: "104"
+  - name: 化学
+    simplified_name: 化
+    teacher: 孙丽
+    room: "105"
+  - name: 生物
+    simplified_name: 生
+    teacher: 周强
+    room: "201"
+  - name: 历史
+    simplified_name: 史
+    teacher: 吴敏
+    room: "202"
+  - name: 地理
+    simplified_name: 地
+    teacher: 郑浩
+    room: "203"
+  - name: 政治
+    simplified_name: 政
+    teacher: 冯雪
+    room: "204"
+  - name: 体育
+    simplified_name: 体
+    teacher: 陈刚
+    room: 操场
+  - name: 自习
+    simplified_name: 习
+
+schedules:
+  - name: 星期一
+    enable_day: 1
+    weeks: all
+    classes:
+      - subject: 语文
+        start_time: "08:00:00"
+        end_time: "08:45:00"
+      - subject: 数学
+        start_time: "08:55:00"
+        end_time: "09:40:00"
+      - subject: 英语
+        start_time: "10:00:00"
+        end_time: "10:45:00"
+      - subject: 物理
+        start_time: "10:55:00"
+        end_time: "11:40:00"
+      - subject: 化学
+        start_time: "14:00:00"
+        end_time: "14:45:00"
+      - subject: 生物
+        start_time: "14:55:00"
+        end_time: "15:40:00"
+
+  - name: 星期二
+    enable_day: 2
+    weeks: all
+    classes:
+      - subject: 数学
+        start_time: "08:00:00"
+        end_time: "08:45:00"
+      - subject: 语文
+        start_time: "08:55:00"
+        end_time: "09:40:00"
+      - subject: 历史
+        start_time: "10:00:00"
+        end_time: "10:45:00"
+      - subject: 地理
+        start_time: "10:55:00"
+        end_time: "11:40:00"
+      - subject: 英语
+        start_time: "14:00:00"
+        end_time: "14:45:00"
+      - subject: 体育
+        start_time: "14:55:00"
+        end_time: "15:40:00"
+
+  - name: 星期三
+    enable_day: 3
+    weeks: all
+    classes:
+      - subject: 英语
+        start_time: "08:00:00"
+        end_time: "08:45:00"
+      - subject: 数学
+        start_time: "08:55:00"
+        end_time: "09:40:00"
+      - subject: 物理
+        start_time: "10:00:00"
+        end_time: "10:45:00"
+      - subject: 化学
+        start_time: "10:55:00"
+        end_time: "11:40:00"
+      - subject: 政治
+        start_time: "14:00:00"
+        end_time: "14:45:00"
+      - subject: 语文
+        start_time: "14:55:00"
+        end_time: "15:40:00"
+
+  - name: 星期四
+    enable_day: 4
+    weeks: all
+    classes:
+      - subject: 语文
+        start_time: "08:00:00"
+        end_time: "08:45:00"
+      - subject: 英语
+        start_time: "08:55:00"
+        end_time: "09:40:00"
+      - subject: 数学
+        start_time: "10:00:00"
+        end_time: "10:45:00"
+      - subject: 生物
+        start_time: "10:55:00"
+        end_time: "11:40:00"
+      - subject: 地理
+        start_time: "14:00:00"
+        end_time: "14:45:00"
+      - subject: 历史
+        start_time: "14:55:00"
+        end_time: "15:40:00"
+
+  - name: 星期五
+    enable_day: 5
+    weeks: all
+    classes:
+      - subject: 数学
+        start_time: "08:00:00"
+        end_time: "08:45:00"
+      - subject: 化学
+        start_time: "08:55:00"
+        end_time: "09:40:00"
+      - subject: 英语
+        start_time: "10:00:00"
+        end_time: "10:45:00"
+      - subject: 物理
+        start_time: "10:55:00"
+        end_time: "11:40:00"
+      - subject: 体育
+        start_time: "14:00:00"
+        end_time: "14:45:00"
+      - subject: 自习
+        start_time: "14:55:00"
+        end_time: "15:40:00"
+
+  - name: 星期六
+    enable_day: 6
+    weeks: all
+    classes:
+      - subject: 自习
+        start_time: "09:00:00"
+        end_time: "11:00:00"
+
+  - name: 星期日
+    enable_day: 7
+    weeks: all
+    classes:
+      - subject: 自习
+        start_time: "15:00:00"
+        end_time: "17:00:00"

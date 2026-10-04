@@ -1,0 +1,88 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="720" d:DesignHeight="620"
+        x:Class="ClassNex.Views.SettingsWindow"
+        Title="设置"
+        Width="720" Height="620"
+        MinWidth="560" MinHeight="480"
+        WindowStartupLocation="CenterOwner">
+
+    <DockPanel Background="{DynamicResource ApplicationPageBackgroundThemeBrush}">
+
+        <!-- 标题栏 -->
+        <Border DockPanel.Dock="Top" Padding="24,18"
+                Background="{DynamicResource LayerFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+                BorderThickness="0,0,0,1">
+            <TextBlock Text="设置" FontSize="24" FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+        </Border>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="24" Spacing="28" MaxWidth="680" HorizontalAlignment="Left">
+
+                <!-- 外观 -->
+                <StackPanel Spacing="12">
+                    <TextBlock Text="外观" FontSize="16" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="20">
+                        <StackPanel Spacing="14">
+                            <TextBlock Text="主题" FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <StackPanel Spacing="10">
+                                <RadioButton x:Name="ThemeSystem" GroupName="Theme" Content="跟随系统"
+                                             IsChecked="True" Checked="OnThemeChecked"/>
+                                <RadioButton x:Name="ThemeLight" GroupName="Theme" Content="浅色"
+                                             Checked="OnThemeChecked"/>
+                                <RadioButton x:Name="ThemeDark" GroupName="Theme" Content="深色"
+                                             Checked="OnThemeChecked"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- 课表 -->
+                <StackPanel Spacing="12">
+                    <TextBlock Text="课表" FontSize="16" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="20">
+                        <StackPanel Spacing="14">
+                            <TextBlock Text="课表文件" FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock x:Name="CurrentFileText" Text="使用内置示例课表" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                            <Button x:Name="OpenFileButton" Content="打开课表文件…" Click="OnOpenFile"
+                                    HorizontalAlignment="Left"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- 关于 -->
+                <StackPanel Spacing="12">
+                    <TextBlock Text="关于" FontSize="16" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="20">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="ClassNex" FontSize="16" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text="版本 0.1.0"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                            <TextBlock Text="基于 Avalonia + FluentAvalonia 的课程表应用，采用 CSES 课程表交换格式。"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>
