@@ -8,6 +8,26 @@
         <sty:FluentAvaloniaTheme PreferSystemTheme="True" />
     </Application.Styles>
 
+    <!--
+      深色主题的表面色对齐 CI（ClassIsland）实测值。
+      FluentAvaloniaTheme.TryGetResource 会优先采用应用级资源，因此这里的同名键可覆盖主题默认值。
+      取值来源：CI 运行界面截图像素统计（_tools/analyze_ci_palette.py）。
+    -->
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="ApplicationPageBackgroundThemeBrush" Color="#272D2E" />
+                    <SolidColorBrush x:Key="SolidBackgroundFillColorBaseBrush" Color="#272D2E" />
+                    <SolidColorBrush x:Key="SolidBackgroundFillColorSecondaryBrush" Color="#252829" />
+                    <SolidColorBrush x:Key="SolidBackgroundFillColorTertiaryBrush" Color="#292D2E" />
+                    <SolidColorBrush x:Key="LayerFillColorDefaultBrush" Color="#1A2225" />
+                    <SolidColorBrush x:Key="CardBackgroundFillColorDefaultBrush" Color="#292D2E" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+
     <!-- 系统托盘图标与菜单 -->
     <TrayIcon.Icons>
         <TrayIcons>

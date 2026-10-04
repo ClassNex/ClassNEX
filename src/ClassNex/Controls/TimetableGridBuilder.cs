@@ -10,8 +10,13 @@ using ClassNex.Styles;
 namespace ClassNex.Controls;
 
 /// <summary>
-/// 周课表网格构建器：渲染「7 天 x 时间段」网格。
-/// 课程卡片可点击选中，空格可点击新增。
+/// 周课表网格构建器。
+///
+/// 用色完全对齐 CI（ClassIsland）：
+///   - 单元格**不给科目上色**，只用统一的中性底 + 文字（CI 课表就是这样）
+///   - 只有**选中项**使用 CI 强调青 <see cref="CiPalette.Primary"/> 填充
+///   - 行之间用细分隔线区分（CI 课表的做法）
+/// 交互：点课程文字选中编辑，点空格新增。
 /// </summary>
 public static class TimetableGridBuilder
 {
@@ -74,13 +79,13 @@ public static class TimetableGridBuilder
 
         grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
         for (var i = 0; i < rows.Count; i++)
-            grid.RowDefinitions.Add(new RowDefinition(new GridLength(1, GridUnitType.Star)));
+            grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
 
         grid.Children.Add(BuildHeader("时间", 0, 0));
         for (var d = 0; d < 7; d++)
             grid.Children.Add(BuildHeader(DayNames[d], 0, d + 1));
 
-        // 4. 每行：左侧节次名 + 7 个格子
+        // 4. 每行：左侧时间 + 7 个格子
         for (var i = 0; i < rows.Count; i++)
         {
             var start = rows[i];
@@ -92,22 +97,15 @@ public static class TimetableGridBuilder
 
             for (var day = 1; day <= 7; day++)
             {
-                var cell = new StackPanel { Spacing = 2, Margin = new Thickness(2, 1) };
-
                 var cellCourses = entries
-                    .Where(e => e.EnableDay == day && TimeSpan.TryParse(e.Course.StartTime, out var s) && s == start)
+                    .Where(e => e.EnableDay == day
+                                && TimeSpan.TryParse(e.Course.StartTime, out var s)
+                                && s == start)
                     .ToList();
 
-                if (cellCourses.Count == 0)
-                {
-                    var target = new CellTarget(day, ClassTime.ToCsesTime(startText), ClassTime.ToCsesTime(endText));
-                    cell.Children.Add(BuildEmptyCell(target, onSelectEmpty));
-                }
-                else
-                {
-                    foreach (var course in cellCourses)
-                        cell.Children.Add(BuildCourseCard(course, selected, onSelectCourse));
-                }
+                var cell = cellCourses.Count == 0
+                    ? BuildEmptyCell(new CellTarget(day, ClassTime.ToCsesTime(startText), ClassTime.ToCsesTime(endText)), onSelectEmpty)
+                    : BuildCourseCell(cellCourses, selected, onSelectCourse);
 
                 Grid.SetRow(cell, i + 1);
                 Grid.SetColumn(cell, day);
@@ -116,18 +114,20 @@ public static class TimetableGridBuilder
         }
     }
 
+    /// <summary>表头：CI 用略亮的表头底色。</summary>
     private static Border BuildHeader(string text, int row, int col)
     {
         var border = new Border
         {
-            Padding = new Thickness(8, 10),
-            BorderBrush = new SolidColorBrush(CiPalette.NeutralDark, 0.18),
+            Background = new SolidColorBrush(CiPalette.SurfaceHeader, 0.55),
+            Padding = new Thickness(8, 8),
+            BorderBrush = new SolidColorBrush(CiPalette.NeutralDark, 0.35),
             BorderThickness = new Thickness(0, 0, 0, 1),
             Child = new TextBlock
             {
                 Text = text,
                 FontWeight = FontWeight.SemiBold,
-                FontSize = 14,
+                FontSize = 13,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
             },
@@ -138,11 +138,14 @@ public static class TimetableGridBuilder
         return border;
     }
 
+    /// <summary>左侧时间列（CI 显示起止时间）。</summary>
     private static Border BuildTimeLabel(string start, string end, int row)
     {
         var border = new Border
         {
-            Padding = new Thickness(0, 4, 8, 0),
+            Padding = new Thickness(0, 5, 10, 5),
+            BorderBrush = new SolidColorBrush(CiPalette.NeutralDark, 0.25),
+            BorderThickness = new Thickness(0, 0, 0, 1),
             Child = new StackPanel
             {
                 Spacing = 0,
@@ -152,14 +155,13 @@ public static class TimetableGridBuilder
                     {
                         Text = start,
                         FontSize = 12,
-                        FontWeight = FontWeight.SemiBold,
                         HorizontalAlignment = HorizontalAlignment.Right,
                     },
                     new TextBlock
                     {
                         Text = end,
                         FontSize = 11,
-                        Opacity = 0.6,
+                        Opacity = 0.55,
                         HorizontalAlignment = HorizontalAlignment.Right,
                     },
                 },
@@ -171,18 +173,101 @@ public static class TimetableGridBuilder
         return border;
     }
 
+    /// <summary>课程单元格：**不加科目底色**（CI 做法），仅文字；选中的课程用 CI 强调青填充。</summary>
+    private static Border BuildCourseCell(
+        List<CourseRef> courses,
+        CourseRef? selected,
+        Action<CourseRef>? onSelect)
+    {
+        var panel = new StackPanel { Spacing = 2 };
+
+        foreach (var courseRef in courses)
+        {
+            var isSelected = selected is not null && ReferenceEquals(selected.Course, courseRef.Course);
+            panel.Children.Add(BuildCourseLine(courseRef, isSelected, onSelect));
+        }
+
+        return new Border
+        {
+            Padding = new Thickness(4, 2),
+            BorderBrush = new SolidColorBrush(CiPalette.NeutralDark, 0.25),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Child = panel,
+        };
+    }
+
+    private static Border BuildCourseLine(CourseRef courseRef, bool isSelected, Action<CourseRef>? onSelect)
+    {
+        var course = courseRef.Course;
+        var subject = AppServices.Schedule.Profile.FindSubject(course.Subject);
+
+        var text = string.IsNullOrWhiteSpace(subject?.SimplifiedName)
+            ? course.Subject
+            : subject!.SimplifiedName!;
+
+        var detailParts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(subject?.Room))
+            detailParts.Add(subject!.Room!);
+        if (courseRef.Weeks != "all")
+            detailParts.Add(courseRef.WeeksText);
+
+        var panel = new StackPanel { Spacing = 0 };
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = text,
+            FontSize = 13,
+            FontWeight = FontWeight.SemiBold,
+            // 选中时用白字压在 CI 强调青上；未选中沿用主题前景色
+            Foreground = isSelected ? Brushes.White : null,
+            TextWrapping = TextWrapping.NoWrap,
+        });
+
+        if (detailParts.Count > 0)
+        {
+            panel.Children.Add(new TextBlock
+            {
+                Text = string.Join(" · ", detailParts),
+                FontSize = 10.5,
+                Opacity = isSelected ? 0.9 : 0.6,
+                Foreground = isSelected ? Brushes.White : null,
+            });
+        }
+
+        var border = new Border
+        {
+            // 只有选中项着色 —— CI 强调青
+            Background = isSelected ? CiPalette.SelectionBrush() : null,
+            CornerRadius = new CornerRadius(4),
+            Padding = new Thickness(6, 3),
+            Child = panel,
+        };
+
+        if (onSelect is not null)
+        {
+            border.Cursor = new Cursor(StandardCursorType.Hand);
+            border.PointerPressed += (_, _) => onSelect(courseRef);
+        }
+
+        return border;
+    }
+
+    /// <summary>空格子：极淡的中性底，点击即可排课。</summary>
     private static Border BuildEmptyCell(CellTarget target, Action<CellTarget>? onSelect)
     {
         var border = new Border
         {
-            Background = new SolidColorBrush(CiPalette.NeutralDark, 0.08),
-            CornerRadius = new CornerRadius(6),
-            MinHeight = 44,
+            Background = new SolidColorBrush(CiPalette.SurfaceHeader, 0.18),
+            CornerRadius = new CornerRadius(4),
+            Margin = new Thickness(4, 2),
+            MinHeight = 34,
+            BorderBrush = new SolidColorBrush(CiPalette.NeutralDark, 0.25),
+            BorderThickness = new Thickness(0, 0, 0, 1),
             Child = new TextBlock
             {
                 Text = "＋",
-                FontSize = 16,
-                Opacity = 0.35,
+                FontSize = 15,
+                Opacity = 0.3,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
             },
@@ -192,63 +277,6 @@ public static class TimetableGridBuilder
         {
             border.Cursor = new Cursor(StandardCursorType.Hand);
             border.PointerPressed += (_, _) => onSelect(target);
-        }
-
-        return border;
-    }
-
-    private static Border BuildCourseCard(CourseRef courseRef, CourseRef? selected, Action<CourseRef>? onSelect)
-    {
-        var course = courseRef.Course;
-        var subject = AppServices.Schedule.Profile.FindSubject(course.Subject);
-
-        var isSelected = selected is not null &&
-                         ReferenceEquals(selected.Course, course);
-
-        var panel = new StackPanel { Spacing = 2 };
-
-        panel.Children.Add(new TextBlock
-        {
-            Text = string.IsNullOrWhiteSpace(subject?.SimplifiedName) ? course.Subject : subject!.SimplifiedName,
-            FontWeight = FontWeight.SemiBold,
-            FontSize = 14,
-            TextWrapping = TextWrapping.Wrap,
-        });
-
-        var detailParts = new List<string>();
-        if (!string.IsNullOrWhiteSpace(subject?.Room))
-            detailParts.Add(subject!.Room!);
-        if (courseRef.Weeks != "all")
-            detailParts.Add(courseRef.WeeksText);
-
-        if (detailParts.Count > 0)
-        {
-            panel.Children.Add(new TextBlock
-            {
-                Text = string.Join(" · ", detailParts),
-                FontSize = 11,
-                Opacity = 0.75,
-                TextWrapping = TextWrapping.Wrap,
-            });
-        }
-
-        // CI 风格：低饱和中性底 + 左侧科目色条，保持整体色调统一（不做整块高饱和填充）
-        var subjectColor = CiPalette.SubjectColor(course.Subject);
-
-        var border = new Border
-        {
-            Background = new SolidColorBrush(subjectColor, isSelected ? 0.38 : 0.18),
-            BorderBrush = new SolidColorBrush(subjectColor, 1.0),
-            BorderThickness = isSelected ? new Thickness(4, 2, 2, 2) : new Thickness(4, 0, 0, 0),
-            CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(8, 5),
-            Child = panel,
-        };
-
-        if (onSelect is not null)
-        {
-            border.Cursor = new Cursor(StandardCursorType.Hand);
-            border.PointerPressed += (_, _) => onSelect(courseRef);
         }
 
         return border;
@@ -264,9 +292,6 @@ public static class TimetableGridBuilder
         Margin = new Thickness(0, 32, 0, 0),
         MaxWidth = 620,
     };
-
-    /// <summary>科目色：统一走 CI 调色板（同饱和度、同明度、只变色相）。</summary>
-    public static Color SubjectColor(string subjectName) => CiPalette.SubjectColor(subjectName);
 
     public static string FormatRange(string startCses, string endCses) =>
         $"{ClassTime.ToShortTime(startCses)}–{ClassTime.ToShortTime(endCses)}";
