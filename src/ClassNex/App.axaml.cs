@@ -40,9 +40,16 @@ public partial class App : Application
             }
 
 #if DEBUG
-            // 调试自检（仅 Debug 构建）：设 CLASSNEX_VERIFY=1 时把关键运行时状态写到输出目录的 _verify.log
+            // 调试自检（仅 Debug 构建）：设 CLASSNEX_VERIFY=1 时写 _verify.log 并打开全部窗口
             if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY") == "1")
-                Dispatcher.UIThread.Post(WriteVerifyReport, DispatcherPriority.Background);
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    WriteVerifyReport();
+                    OpenProfileEditor(0);
+                    OpenSettings("widgets");
+                }, DispatcherPriority.Background);
+            }
 #endif
         }
 

@@ -30,7 +30,8 @@ public static class TimetableGridBuilder
         string parity,
         CourseRef? selected = null,
         Action<CourseRef>? onSelectCourse = null,
-        Action<CellTarget>? onSelectEmpty = null)
+        Action<CellTarget>? onSelectEmpty = null,
+        CellTarget? pending = null)
     {
         grid.Children.Clear();
         grid.RowDefinitions.Clear();
@@ -103,8 +104,13 @@ public static class TimetableGridBuilder
                                 && s == start)
                     .ToList();
 
+                var target = new CellTarget(day, ClassTime.ToCsesTime(startText), ClassTime.ToCsesTime(endText));
+                var isPending = pending is not null
+                                && pending.EnableDay == day
+                                && ClassTime.SameTime(pending.Start, target.Start);
+
                 var cell = cellCourses.Count == 0
-                    ? BuildEmptyCell(new CellTarget(day, ClassTime.ToCsesTime(startText), ClassTime.ToCsesTime(endText)), onSelectEmpty)
+                    ? BuildEmptyCell(target, onSelectEmpty, isPending)
                     : BuildCourseCell(cellCourses, selected, onSelectCourse);
 
                 Grid.SetRow(cell, i + 1);
@@ -252,12 +258,14 @@ public static class TimetableGridBuilder
         return border;
     }
 
-    /// <summary>空格子：极淡的中性底，点击即可排课。</summary>
-    private static Border BuildEmptyCell(CellTarget target, Action<CellTarget>? onSelect)
+    /// <summary>空格子：极淡的中性底，点击即可排课；待排格子用强调色高亮（CI 图3 的选中格）。</summary>
+    private static Border BuildEmptyCell(CellTarget target, Action<CellTarget>? onSelect, bool isPending = false)
     {
         var border = new Border
         {
-            Background = CiPalette.SurfaceBrush("SubtleFillColorSecondaryBrush", 0.12),
+            Background = isPending
+                ? CiPalette.SelectionBrush()
+                : CiPalette.SurfaceBrush("SubtleFillColorSecondaryBrush", 0.12),
             CornerRadius = new CornerRadius(4),
             Margin = new Thickness(4, 2),
             MinHeight = 34,
@@ -267,7 +275,8 @@ public static class TimetableGridBuilder
             {
                 Text = "＋",
                 FontSize = 15,
-                Opacity = 0.3,
+                Opacity = isPending ? 0.9 : 0.3,
+                Foreground = isPending ? CiPalette.OnAccentBrush() : null,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
             },

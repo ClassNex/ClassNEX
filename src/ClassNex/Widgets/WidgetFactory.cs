@@ -13,6 +13,7 @@ public static class WidgetFactory
         "nextclass" => new NextClassWidget { Config = config },
         "countdown" => new CountdownWidget { Config = config },
         "text" => new TextWidget { Config = config },
+        "divider" => new DividerWidget { Config = config },
         _ => null,
     };
 }

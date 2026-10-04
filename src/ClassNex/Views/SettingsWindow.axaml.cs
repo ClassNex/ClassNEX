@@ -1,9 +1,13 @@
 using System.Collections.ObjectModel;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
+using Avalonia.Media;
 using ClassNex.Models;
 using ClassNex.Services;
+using ClassNex.Styles;
 using ClassNex.ViewModels;
 
 namespace ClassNex.Views;
@@ -73,8 +77,6 @@ public partial class SettingsWindow : Window
         };
 
         // ---- 主界面组件 ----
-        WidgetTypeCombo.SelectionChanged += (_, _) => UpdateWidgetTypeHint();
-        AddWidgetButton.Click += (_, _) => AddWidget();
         ResetWidgetButton.Click += (_, _) => ResetWidgets();
         WidgetList.SelectionChanged += (_, _) => SelectWidget();
         RemoveWidgetButton.Click += (_, _) => RemoveWidget();
@@ -132,11 +134,7 @@ public partial class SettingsWindow : Window
         OrientationCombo.SelectedIndex = s.Orientation == LayoutOrientation.Vertical ? 1 : 0;
         TopmostCheck.IsChecked = s.Topmost;
 
-        WidgetTypeCombo.ItemsSource = AppServices.Widgets.AvailableTypes.Select(t => t.DisplayName).ToList();
-        if (WidgetTypeCombo.ItemCount > 0)
-            WidgetTypeCombo.SelectedIndex = 0;
-        UpdateWidgetTypeHint();
-
+        RefreshWidgetLibrary();
         RefreshWidgetList();
         if (_widgets.Count > 0)
             WidgetList.SelectedIndex = 0;
@@ -217,12 +215,51 @@ public partial class SettingsWindow : Window
 
     private void UpdateWidgetTypeHint()
     {
-        var index = WidgetTypeCombo.SelectedIndex;
-        var types = AppServices.Widgets.AvailableTypes;
+        // 组件库改为卡片网格后不再需要类型提示
+    }
 
-        WidgetTypeHintText.Text = index >= 0 && index < types.Count
-            ? types[index].Description
-            : "";
+    /// <summary>组件库（CI 图2）：每个组件类型一张卡片，点击即添加。</summary>
+    private void RefreshWidgetLibrary()
+    {
+        WidgetLibraryPanel.Children.Clear();
+
+        foreach (var type in AppServices.Widgets.AvailableTypes)
+        {
+            var card = new Border
+            {
+                Width = 200,
+                Margin = new Thickness(0, 0, 10, 10),
+                Padding = new Thickness(14, 10),
+                CornerRadius = new CornerRadius(6),
+                Background = CiPalette.SurfaceBrush("CardBackgroundFillColorSecondaryBrush", 0.25),
+                BorderBrush = CiPalette.SurfaceBrush("CardStrokeColorDefaultBrush", 0.4),
+                BorderThickness = new Thickness(1),
+                Cursor = new Cursor(StandardCursorType.Hand),
+                Child = new StackPanel
+                {
+                    Spacing = 3,
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Text = type.DisplayName,
+                            FontSize = 14,
+                            FontWeight = FontWeight.SemiBold,
+                        },
+                        new TextBlock
+                        {
+                            Text = type.Description,
+                            FontSize = 11,
+                            TextWrapping = TextWrapping.Wrap,
+                            Opacity = 0.7,
+                        },
+                    },
+                },
+            };
+
+            card.PointerPressed += (_, _) => AddWidget(type.Type);
+            WidgetLibraryPanel.Children.Add(card);
+        }
     }
 
     private void RefreshWidgetList()
@@ -272,14 +309,9 @@ public partial class SettingsWindow : Window
         AppServices.Widgets.Save();
     }
 
-    private void AddWidget()
+    private void AddWidget(string type)
     {
-        var index = WidgetTypeCombo.SelectedIndex;
-        var types = AppServices.Widgets.AvailableTypes;
-        if (index < 0 || index >= types.Count)
-            return;
-
-        var config = AppServices.Widgets.Add(types[index].Type);
+        var config = AppServices.Widgets.Add(type);
         RefreshWidgetList();
         WidgetList.SelectedItem = _widgets.FirstOrDefault(w => ReferenceEquals(w.Config, config));
     }

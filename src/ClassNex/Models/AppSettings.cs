@@ -55,6 +55,10 @@ public sealed class AppSettings
     /// <summary>点击托盘图标行为：0=显示/隐藏主界面，1=打开应用设置，2=打开档案编辑器。</summary>
     public int TrayClickBehavior { get; set; }
 
+    // ---------- 通用 ----------
+    /// <summary>已播种的内置示例课表版本。低于当前版本时会重新播种 data/timetable.yaml。</summary>
+    public int SampleSeedVersion { get; set; }
+
     /// <summary>首次运行时的默认组件布局。</summary>
     public static List<WidgetConfig> CreateDefaultWidgets() => new()
     {

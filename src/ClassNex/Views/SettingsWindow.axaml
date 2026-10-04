@@ -131,16 +131,16 @@
                         <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
                                 BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                                 BorderThickness="1" CornerRadius="8" Padding="20">
-                            <StackPanel Spacing="8">
-                                <TextBlock Text="添加组件" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <ComboBox x:Name="WidgetTypeCombo" Width="200"/>
-                                    <Button x:Name="AddWidgetButton" Content="添加"/>
-                                    <Button x:Name="ResetWidgetButton" Content="恢复默认"/>
-                                </StackPanel>
-                                <TextBlock x:Name="WidgetTypeHintText" FontSize="12" TextWrapping="Wrap"
+                            <StackPanel Spacing="10">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="组件库" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <Button Grid.Column="1" x:Name="ResetWidgetButton" Content="恢复默认"/>
+                                </Grid>
+                                <TextBlock Text="点击组件卡片即可添加到主界面（对应 CI「设置 → 主界面 → 组件」的组件库）。"
+                                           FontSize="12" TextWrapping="Wrap"
                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                <WrapPanel x:Name="WidgetLibraryPanel"/>
                             </StackPanel>
                         </Border>
 

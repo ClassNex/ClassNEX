@@ -17,6 +17,10 @@ public sealed class Subject
     /// <summary>上课教室（CSES: subject.room）。</summary>
     public string? Room { get; set; }
 
+    /// <summary>是否为户外课程（对齐 CI Subject.IsOutDoor；不写入 CSES）。</summary>
+    [YamlIgnore]
+    public bool IsOutDoor { get; set; }
+
     /// <summary>显示颜色（界面用，不写入 CSES）。</summary>
     [YamlIgnore]
     public string? Color { get; set; }

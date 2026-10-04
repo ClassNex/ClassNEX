@@ -8,12 +8,13 @@ public static class WidgetRegistry
 {
     public static readonly IReadOnlyList<WidgetTypeInfo> Types = new List<WidgetTypeInfo>
     {
-        new("date", "日期", "显示今天的星期与日期"),
-        new("clock", "时钟", "显示当前时间"),
-        new("schedule", "今日课表", "列出今天的全部课程"),
+        new("text", "文本", "显示自定义文本"),
+        new("divider", "分割线", "显示一个分割线，视觉上对组件进行分组"),
+        new("schedule", "课程表", "显示当前的课程表信息"),
+        new("date", "日期", "显示今天的日期和星期"),
+        new("clock", "时钟", "显示现在的时间，支持精确到秒"),
         new("nextclass", "当前 / 下节课", "显示正在上的课或下一节课"),
-        new("countdown", "倒计时", "距上课 / 下课的倒计时"),
-        new("text", "自定义文本", "自由文本，支持 {date} {time} {day} {next} 占位符"),
+        new("countdown", "倒计时", "显示距离某一天的倒计时"),
     };
 
     public static WidgetTypeInfo? Find(string type) =>

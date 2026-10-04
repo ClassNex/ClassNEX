@@ -21,6 +21,9 @@ public static class AppServices
     /// <summary>应用设置发生变化。</summary>
     public static event Action? SettingsChanged;
 
+    /// <summary>内置示例课表版本。改版示例数据时递增，用于让旧安装自动更新。</summary>
+    private const int SampleSeedVersion = 3;
+
     public static void Initialize()
     {
         SettingsService.EnsureDataDirectory();
@@ -32,6 +35,29 @@ public static class AppServices
         // 迁移：旧版本默认 0.55 → 对齐 CI ComponentLayouts.BackgroundOpacity = 0.5
         if (Math.Abs(Settings.BackgroundOpacity - 0.55) < 0.001)
             Settings.BackgroundOpacity = Styles.CiPalette.CardOpacity;
+
+        // 示例课表升级：仅当用户没有指定自定义课表文件时，重新播种并重建时间表
+        if (Settings.SampleSeedVersion < SampleSeedVersion)
+        {
+            if (string.IsNullOrWhiteSpace(Settings.TimetablePath))
+            {
+                try
+                {
+                    var sample = CsesCodec.SamplePath;
+                    if (File.Exists(sample))
+                        File.Copy(sample, SettingsService.TimetableStoragePath, true);
+
+                    Settings.TimeLayout = new TimeLayout();
+                }
+                catch
+                {
+                    // 忽略播种失败
+                }
+            }
+
+            Settings.SampleSeedVersion = SampleSeedVersion;
+            SettingsService.Save(Settings);
+        }
 
         Time = new TimeService(() => Settings);
         Schedule = new ScheduleService(() => Settings);

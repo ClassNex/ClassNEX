@@ -74,14 +74,19 @@ public sealed class ScheduleWidget : WidgetBase
             return;
         }
 
-        // 今日科目简称：统一白字，不给科目配色（与 CI 一致）
+        // 今日全部科目简称：显示**全天**课程
+        // 已上完 → 淡化（对齐 CI 主界面）；正在上 → 加粗；未开始 → 常规白字
+        var now = ctx.Now.TimeOfDay;
+
         foreach (var slot in ctx.Today.Slots)
         {
-            var isCurrent = slot.Contains(ctx.Now.TimeOfDay);
+            var isCurrent = slot.Contains(now);
+            var isFinished = !isCurrent && slot.End <= now;
+
             _subjects.Children.Add(Text(
                 slot.DisplayName,
                 Size(19, ctx.Settings.FontScale),
-                isCurrent ? White() : White(0.92),
+                isFinished ? White(0.35) : White(0.95),
                 isCurrent ? FontWeight.Bold : FontWeight.SemiBold));
         }
 
