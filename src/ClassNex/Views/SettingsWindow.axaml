@@ -221,7 +221,7 @@
                 <!-- ============ 关于 ============ -->
                 <StackPanel x:Name="PageAbout" Spacing="6" IsVisible="False">
                     <TextBlock Text="关于" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <ui:SettingsExpander Header="ClassNEX 桌面客户端" Description="版本 0.5.0" IsExpanded="True">
+                    <ui:SettingsExpander Header="ClassNEX 桌面客户端" Description="版本 40w01a" IsExpanded="True">
                         <ui:SettingsExpander.Items>
                             <TextBlock TextWrapping="Wrap" Opacity="0.75"
                                        Text="主界面（悬浮组件课表）、应用设置、档案编辑器、系统托盘。&#10;课表采用 CSES 课程表交换格式；界面统一使用 FluentAvalonia（FluentUI）控件；配色与交互参照 CI（ClassIsland）。"/>
