@@ -28,7 +28,7 @@ public sealed class DividerWidget : WidgetBase
 
     public override void Refresh(WidgetContext ctx)
     {
-        _line.MinHeight = 24 * ctx.Settings.FontScale;
+        _line.MinHeight = 24 * ctx.Settings.EffectiveScale;
 
         // 纵向排列时分割线画成横线，横向排列时画成竖线
         if (ctx.Settings.Orientation == Models.LayoutOrientation.Vertical)

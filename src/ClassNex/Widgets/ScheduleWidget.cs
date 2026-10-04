@@ -70,7 +70,7 @@ public sealed class ScheduleWidget : WidgetBase
         if (ctx.Today.IsEmpty)
         {
             _focusBox.IsVisible = false;
-            _subjects.Children.Add(Text("今天没有课程。", Size(18, ctx.Settings.FontScale), White(0.92)));
+            _subjects.Children.Add(Text("今天没有课程。", Size(CiBody, ctx.Settings.EffectiveScale), White(0.92)));
             return;
         }
 
@@ -85,7 +85,7 @@ public sealed class ScheduleWidget : WidgetBase
 
             _subjects.Children.Add(Text(
                 slot.DisplayName,
-                Size(19, ctx.Settings.FontScale),
+                Size(CiBody, ctx.Settings.EffectiveScale),
                 isFinished ? White(0.35) : White(0.95),
                 isCurrent ? FontWeight.Bold : FontWeight.SemiBold));
         }
@@ -100,8 +100,8 @@ public sealed class ScheduleWidget : WidgetBase
 
         _focusBox.IsVisible = true;
         _focusText.Text = $"{focus.DisplayName} {focus.StartText}-{focus.EndText}";
-        _focusText.FontSize = Size(19, ctx.Settings.FontScale);
-        _progress.Width = Math.Max(90, 150 * ctx.Settings.FontScale);
+        _focusText.FontSize = Size(CiBody, ctx.Settings.EffectiveScale);
+        _progress.Width = Math.Max(90, 105 * ctx.Settings.EffectiveScale);
         _progress.Value = ctx.Today.Current is { } current ? ProgressOf(current, ctx.Now.TimeOfDay) : 0;
     }
 

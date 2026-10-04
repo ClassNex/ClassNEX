@@ -27,6 +27,19 @@ public sealed class WidgetContext
 /// </summary>
 public abstract class WidgetBase
 {
+    // ---- CI 的主界面字号阶梯（data\Settings.json），实际字号 = 该值 × EffectiveScale ----
+    /// <summary>MainWindowSecondaryFontSize = 14</summary>
+    protected const double CiSecondary = 14;
+
+    /// <summary>MainWindowBodyFontSize = 16</summary>
+    protected const double CiBody = 16;
+
+    /// <summary>MainWindowEmphasizedFontSize = 18</summary>
+    protected const double CiEmphasized = 18;
+
+    /// <summary>MainWindowLargeFontSize = 20</summary>
+    protected const double CiLarge = 20;
+
     public WidgetConfig Config { get; init; } = new();
 
     /// <summary>组件类型标识（对应 <see cref="WidgetRegistry"/>）。</summary>
@@ -38,9 +51,12 @@ public abstract class WidgetBase
     /// <summary>根据上下文刷新显示。</summary>
     public abstract void Refresh(WidgetContext ctx);
 
-    /// <summary>按组件字号缩放换算字号，并叠加全局缩放。</summary>
+    /// <summary>
+    /// 按组件字号缩放换算字号，并叠加全局缩放。
+    /// globalScale 传入 <see cref="AppSettings.EffectiveScale"/>（= CI 的 Scale × 全局字号缩放）。
+    /// </summary>
     protected double Size(double baseSize, double globalScale = 1.0) =>
-        baseSize * Math.Clamp(Config.FontScale, 0.5, 2.5) * Math.Clamp(globalScale, 0.6, 2.0);
+        baseSize * Math.Clamp(Config.FontScale, 0.5, 2.5) * Math.Clamp(globalScale, 0.4, 5.0);
 
     protected static IBrush White(double opacity = 1.0) =>
         new SolidColorBrush(Colors.White, opacity);

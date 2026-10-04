@@ -20,6 +20,6 @@ public sealed class DateWidget : WidgetBase
     public override void Refresh(WidgetContext ctx)
     {
         _text.Text = $"{ctx.Today.DayText} {ctx.Today.DateText}";
-        _text.FontSize = Size(22, ctx.Settings.FontScale);
+        _text.FontSize = Size(CiBody, ctx.Settings.EffectiveScale);
     }
 }

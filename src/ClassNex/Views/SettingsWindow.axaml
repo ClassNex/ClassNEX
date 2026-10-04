@@ -106,6 +106,18 @@
                         </ui:SettingsExpander.Items>
                     </ui:SettingsExpander>
 
+                    <ui:SettingsExpander Header="主界面缩放"
+                                         Description="对应 CI 的「主界面缩放」（CI 默认 1.9），整体放大主界面的文字与控件">
+                        <ui:SettingsExpander.Items>
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <Slider x:Name="MainWindowScaleSlider" Minimum="0.6" Maximum="3.0" Width="300"
+                                        TickFrequency="0.05" IsSnapToTickEnabled="True"/>
+                                <TextBlock x:Name="MainWindowScaleValueText" VerticalAlignment="Center"
+                                           Opacity="0.7"/>
+                            </StackPanel>
+                        </ui:SettingsExpander.Items>
+                    </ui:SettingsExpander>
+
                     <ui:SettingsExpander Header="组件排列方向">
                         <ui:SettingsExpander.Items>
                             <ComboBox x:Name="OrientationCombo" HorizontalAlignment="Stretch">

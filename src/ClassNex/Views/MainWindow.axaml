@@ -12,11 +12,11 @@
         Topmost="True"
         ShowInTaskbar="False"
         CanResize="False"
-        SizeToContent="Height"
+        SizeToContent="WidthAndHeight"
         WindowStartupLocation="Manual">
 
-    <!-- 与 CI 一致：卡片是几乎占满屏宽的横条，左右各内缩约 136 物理像素并贴顶 -->
-    <Border x:Name="RootCard" CornerRadius="8" Margin="0" Padding="24,22">
+    <!-- 与 CI 一致：卡片按内容自适应宽度，停靠屏幕顶部并水平居中 -->
+    <Border x:Name="RootCard" CornerRadius="8" Margin="0" Padding="26,12">
         <Border.ContextMenu>
             <ContextMenu>
                 <MenuItem Header="显示 / 隐藏主界面" Click="OnMenuToggleVisible"/>

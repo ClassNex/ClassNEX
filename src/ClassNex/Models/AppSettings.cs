@@ -36,6 +36,15 @@ public sealed class AppSettings
     /// <summary>全局字号缩放。</summary>
     public double FontScale { get; set; } = 1.0;
 
+    /// <summary>
+    /// 主界面缩放（对应 CI Settings.json 的 Scale）。CI 默认值为 1.9，
+    /// 主界面所有文字与控件都按此倍率放大。
+    /// </summary>
+    public double MainWindowScale { get; set; } = 1.9;
+
+    /// <summary>最终生效的缩放 = 主界面缩放 × 全局字号缩放。</summary>
+    public double EffectiveScale => MainWindowScale * FontScale;
+
     /// <summary>鼠标穿透：开启后点击直接落到后方窗口/桌面（CI 风格的桌面浮层行为）。</summary>
     public bool IsClickThrough { get; set; } = true;
 

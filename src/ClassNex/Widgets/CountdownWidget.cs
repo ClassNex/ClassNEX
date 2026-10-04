@@ -19,6 +19,6 @@ public sealed class CountdownWidget : WidgetBase
     public override void Refresh(WidgetContext ctx)
     {
         _text.Text = ctx.CountdownText;
-        _text.FontSize = Size(18, ctx.Settings.FontScale);
+        _text.FontSize = Size(CiSecondary, ctx.Settings.EffectiveScale);
     }
 }

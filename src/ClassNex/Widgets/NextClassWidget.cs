@@ -30,6 +30,6 @@ public sealed class NextClassWidget : WidgetBase
             message = "今日课程已结束。";
 
         _text.Text = message;
-        _text.FontSize = Size(18, ctx.Settings.FontScale);
+        _text.FontSize = Size(CiEmphasized, ctx.Settings.EffectiveScale);
     }
 }

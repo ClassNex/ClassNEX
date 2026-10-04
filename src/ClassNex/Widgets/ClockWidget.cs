@@ -21,6 +21,6 @@ public sealed class ClockWidget : WidgetBase
         _text.Text = Config.ShowSeconds
             ? ctx.Now.ToString("HH:mm:ss")
             : ctx.Now.ToString("HH:mm");
-        _text.FontSize = Size(22, ctx.Settings.FontScale);
+        _text.FontSize = Size(CiLarge, ctx.Settings.EffectiveScale);
     }
 }

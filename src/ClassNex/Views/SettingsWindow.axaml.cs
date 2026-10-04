@@ -75,6 +75,11 @@ public partial class SettingsWindow : Window
             if (!_loading && e.Property.Name == "Value")
                 ApplyInterface();
         };
+        MainWindowScaleSlider.PropertyChanged += (_, e) =>
+        {
+            if (!_loading && e.Property.Name == "Value")
+                ApplyInterface();
+        };
         OrientationCombo.SelectionChanged += (_, _) => ApplyInterface();
         ClickThroughCheck.PropertyChanged += (_, e) =>
         {
@@ -135,8 +140,10 @@ public partial class SettingsWindow : Window
 
         OpacitySlider.Value = Math.Clamp(s.BackgroundOpacity, 0.1, 1);
         FontScaleSlider.Value = Math.Clamp(s.FontScale, 0.8, 1.6);
+        MainWindowScaleSlider.Value = Math.Clamp(s.MainWindowScale, 0.6, 3.0);
         OpacityValueText.Text = $"{s.BackgroundOpacity:P0}";
         FontScaleValueText.Text = $"{s.FontScale:0.00}x";
+        MainWindowScaleValueText.Text = $"{s.MainWindowScale:0.00}x（CI 1.9）";
         OrientationCombo.SelectedIndex = s.Orientation == LayoutOrientation.Vertical ? 1 : 0;
         ClickThroughCheck.IsChecked = s.IsClickThrough;
 
@@ -213,6 +220,7 @@ public partial class SettingsWindow : Window
         var s = AppServices.Settings;
         s.BackgroundOpacity = OpacitySlider.Value;
         s.FontScale = FontScaleSlider.Value;
+        s.MainWindowScale = MainWindowScaleSlider.Value;
         s.Orientation = OrientationCombo.SelectedIndex == 1
             ? LayoutOrientation.Vertical
             : LayoutOrientation.Horizontal;
@@ -220,6 +228,7 @@ public partial class SettingsWindow : Window
 
         OpacityValueText.Text = $"{s.BackgroundOpacity:P0}";
         FontScaleValueText.Text = $"{s.FontScale:0.00}x";
+        MainWindowScaleValueText.Text = $"{s.MainWindowScale:0.00}x（CI 1.9）";
 
         AppServices.SaveSettings();
     }
