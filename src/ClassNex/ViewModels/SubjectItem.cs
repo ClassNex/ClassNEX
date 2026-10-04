@@ -2,62 +2,60 @@ using ClassNex.Models;
 
 namespace ClassNex.ViewModels;
 
-/// <summary>科目列表项：包装 CsesSubject，让编辑时列表能实时刷新。</summary>
+/// <summary>科目列表项：包装 <see cref="Subject"/>，让编辑时列表能实时刷新。</summary>
 public sealed class SubjectItem : ViewModelBase
 {
-    private readonly CsesSubject _model;
+    public SubjectItem(Subject model) => Model = model;
 
-    public SubjectItem(CsesSubject model) => _model = model;
-
-    public CsesSubject Model => _model;
+    public Subject Model { get; }
 
     public string Name
     {
-        get => _model.Name;
+        get => Model.Name;
         set
         {
-            if (_model.Name == value)
+            if (Model.Name == value)
                 return;
-            _model.Name = value;
+            Model.Name = value;
             OnPropertyChanged();
         }
     }
 
     public string SimplifiedName
     {
-        get => _model.SimplifiedName ?? "";
+        get => Model.SimplifiedName ?? "";
         set
         {
             var normalized = string.IsNullOrWhiteSpace(value) ? null : value;
-            if (_model.SimplifiedName == normalized)
+            if (Model.SimplifiedName == normalized)
                 return;
-            _model.SimplifiedName = normalized;
+            Model.SimplifiedName = normalized;
             OnPropertyChanged();
         }
     }
 
     public string Teacher
     {
-        get => _model.Teacher ?? "";
+        get => Model.Teacher ?? "";
         set
         {
             var normalized = string.IsNullOrWhiteSpace(value) ? null : value;
-            if (_model.Teacher == normalized)
+            if (Model.Teacher == normalized)
                 return;
-            _model.Teacher = normalized;
+            Model.Teacher = normalized;
             OnPropertyChanged();
         }
     }
 
     public string Room
     {
-        get => _model.Room ?? "";
+        get => Model.Room ?? "";
         set
         {
             var normalized = string.IsNullOrWhiteSpace(value) ? null : value;
-            if (_model.Room == normalized)
+            if (Model.Room == normalized)
                 return;
-            _model.Room = normalized;
+            Model.Room = normalized;
             OnPropertyChanged();
         }
     }

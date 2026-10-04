@@ -2,40 +2,48 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
+using ClassNex.Models;
 using ClassNex.Services;
+using ClassNex.Widgets;
 
 namespace ClassNex.Views;
 
 /// <summary>
-/// 主界面：悬浮在桌面上的课表卡片（对应 ClassIsland 的「主界面」）。
-/// 无边框、半透明、置顶、可拖拽。
+/// 主界面：悬浮在桌面上的组件容器（对应 ClassIsland 的「主界面」）。
+/// 显示哪些内容由「应用设置 → 主界面组件」决定。
 /// </summary>
 public partial class MainWindow : Window
 {
     private readonly DispatcherTimer _timer;
+    private readonly List<WidgetBase> _widgets = new();
 
     public MainWindow()
     {
         InitializeComponent();
 
         ApplySettings();
-        UpdateContent();
+        RebuildWidgets();
+        RefreshWidgets();
 
-        AppServices.DocumentChanged += UpdateContent;
         AppServices.SettingsChanged += ApplySettings;
+        AppServices.Schedule.ProfileChanged += OnDataChanged;
+        AppServices.TimeLayout.Changed += OnDataChanged;
+        AppServices.Widgets.Changed += OnWidgetsChanged;
 
-        // 每秒刷新，用于实时倒计时
+        // 每秒刷新，用于时钟与倒计时
         _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-        _timer.Tick += (_, _) => UpdateContent();
+        _timer.Tick += (_, _) => RefreshWidgets();
         _timer.Start();
 
         RootCard.PointerPressed += OnCardPointerPressed;
         RootCard.PointerReleased += OnCardPointerReleased;
     }
 
-    /// <summary>应用设置变化时刷新外观。</summary>
+    // ---------- 外观 ----------
+
     public void ApplySettings()
     {
         var s = AppServices.Settings;
@@ -44,21 +52,82 @@ public partial class MainWindow : Window
         RootCard.Background = new SolidColorBrush(Colors.Black, Math.Clamp(s.BackgroundOpacity, 0.05, 1.0));
         RootCard.Cursor = new Cursor(StandardCursorType.SizeAll);
 
-        DateText.IsVisible = s.ShowDate;
-
-        var scale = Math.Clamp(s.FontScale, 0.6, 2.0);
-        DateText.FontSize = 22 * scale;
-        InfoText.FontSize = 20 * scale;
+        WidgetHost.Orientation = s.Orientation == LayoutOrientation.Vertical
+            ? Orientation.Vertical
+            : Orientation.Horizontal;
+        WidgetHost.Spacing = s.Orientation == LayoutOrientation.Vertical ? 6 : 16;
 
         Position = new PixelPoint((int)s.MainWindowLeft, (int)s.MainWindowTop);
     }
 
-    private void UpdateContent()
+    // ---------- 组件 ----------
+
+    private void RebuildWidgets()
     {
-        var (date, info) = ScheduleCalculator.Describe(AppServices.Settings, AppServices.Document, DateTime.Now);
-        DateText.Text = date;
-        InfoText.Text = info;
+        WidgetHost.Children.Clear();
+        _widgets.Clear();
+
+        foreach (var config in AppServices.Widgets.Widgets.Where(w => w.IsEnabled).OrderBy(w => w.Order))
+        {
+            var widget = WidgetFactory.Create(config);
+            if (widget is null)
+                continue;
+
+            _widgets.Add(widget);
+            WidgetHost.Children.Add(widget.View);
+        }
+
+        if (_widgets.Count == 0)
+        {
+            WidgetHost.Children.Add(new TextBlock
+            {
+                Text = "未启用任何组件 —— 请在「应用设置 → 主界面组件」中添加",
+                Foreground = Brushes.White,
+                FontSize = 14,
+            });
+        }
     }
+
+    private void RefreshWidgets()
+    {
+        if (_widgets.Count == 0)
+            return;
+
+        var now = DateTime.Now;
+        var profile = AppServices.Schedule.Profile;
+        var today = AppServices.Time.GetTodaySummary(profile, now);
+
+        var ctx = new WidgetContext
+        {
+            Settings = AppServices.Settings,
+            Profile = profile,
+            Today = today,
+            Now = now,
+            CountdownText = AppServices.Time.GetCountdownText(today.Slots, now.TimeOfDay),
+        };
+
+        foreach (var widget in _widgets)
+        {
+            try
+            {
+                widget.Refresh(ctx);
+            }
+            catch
+            {
+                // 单个组件异常不影响整体
+            }
+        }
+    }
+
+    private void OnDataChanged() => Dispatcher.UIThread.Post(RefreshWidgets);
+
+    private void OnWidgetsChanged() => Dispatcher.UIThread.Post(() =>
+    {
+        RebuildWidgets();
+        RefreshWidgets();
+    });
+
+    // ---------- 拖拽 ----------
 
     protected override void OnOpened(EventArgs e)
     {
@@ -102,6 +171,8 @@ public partial class MainWindow : Window
     // ---------- 右键菜单 ----------
 
     private void OnMenuToggleVisible(object? sender, RoutedEventArgs e) => App.ToggleMainWindow();
+
+    private void OnMenuEditWidgets(object? sender, RoutedEventArgs e) => App.OpenSettings("widgets");
 
     private void OnMenuEditProfile(object? sender, RoutedEventArgs e) => App.OpenProfileEditor();
 

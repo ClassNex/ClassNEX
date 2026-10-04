@@ -1,5 +1,12 @@
 namespace ClassNex.Models;
 
+/// <summary>主界面布局方向。</summary>
+public enum LayoutOrientation
+{
+    Horizontal = 0,
+    Vertical = 1,
+}
+
 /// <summary>应用设置（持久化到 data/Settings.json）。</summary>
 public sealed class AppSettings
 {
@@ -10,7 +17,7 @@ public sealed class AppSettings
     /// <summary>单周起始日期（用于判断当前是单周还是双周）。</summary>
     public DateTime SingleWeekStartTime { get; set; } = new(DateTime.Today.Year, 1, 1);
 
-    /// <summary>多周轮换偏移。</summary>
+    /// <summary>周次轮换偏移。</summary>
     public int WeekRotationOffset { get; set; }
 
     // ---------- 主界面（悬浮课表） ----------
@@ -20,17 +27,25 @@ public sealed class AppSettings
 
     public double MainWindowTop { get; set; } = 80;
 
-    /// <summary>主界面是否显示日期。</summary>
-    public bool ShowDate { get; set; } = true;
-
-    /// <summary>主界面卡片背景不透明度（0~1）。</summary>
+    /// <summary>卡片背景不透明度（0~1）。</summary>
     public double BackgroundOpacity { get; set; } = 0.55;
 
-    /// <summary>主界面是否置顶。</summary>
+    /// <summary>是否置顶。</summary>
     public bool Topmost { get; set; } = true;
 
-    /// <summary>主界面字号缩放。</summary>
+    /// <summary>全局字号缩放。</summary>
     public double FontScale { get; set; } = 1.0;
+
+    /// <summary>组件排列方向。</summary>
+    public LayoutOrientation Orientation { get; set; } = LayoutOrientation.Horizontal;
+
+    // ---------- 组件 ----------
+    /// <summary>主界面组件列表（可增删、排序、单独配置）。</summary>
+    public List<WidgetConfig> Widgets { get; set; } = new();
+
+    // ---------- 时间表 ----------
+    /// <summary>时间表（节次定义）。为空时会从课表反推。</summary>
+    public TimeLayout TimeLayout { get; set; } = new();
 
     // ---------- 外观 ----------
     /// <summary>主题：system / light / dark。</summary>
@@ -40,7 +55,10 @@ public sealed class AppSettings
     /// <summary>点击托盘图标行为：0=显示/隐藏主界面，1=打开应用设置，2=打开档案编辑器。</summary>
     public int TrayClickBehavior { get; set; }
 
-    // ---------- 通用 ----------
-    /// <summary>上课时自动隐藏主界面（预留）。</summary>
-    public bool IsHideOnClass { get; set; }
+    /// <summary>首次运行时的默认组件布局。</summary>
+    public static List<WidgetConfig> CreateDefaultWidgets() => new()
+    {
+        new WidgetConfig { Type = "date", IsEnabled = true, Order = 0 },
+        new WidgetConfig { Type = "schedule", IsEnabled = true, Order = 1 },
+    };
 }

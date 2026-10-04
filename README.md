@@ -24,9 +24,9 @@ ClassNEX 是一款功能强大、可定制、跨平台的课表信息显示工�
 
 | 模块 | 说明 |
 | --- | --- |
-| **主界面**（悬浮课表） | 无边框半透明置顶卡片，悬浮在桌面上，实时显示日期与当前/下一节课；可拖拽、右键菜单 |
-| **应用设置** | 左侧导航 + 通用 / 界面 / 课表 / 关于 四页（主题、主界面不透明度与字号、单周起始、托盘行为等） |
-| **档案编辑器** | 课表 / 时间表 / 科目 / 调课 四个标签页；「科目」页可直接编辑并写回 CSES 文件 |
+| **主界面**（悬浮组件课表） | 无边框半透明置顶卡片，内容由**可自定义的组件**拼装：日期、时钟、今日课表、当前/下节课、倒计时、自定义文本；可拖拽、右键菜单 |
+| **应用设置** | 左侧导航 + 通用 / 界面 / **主界面组件** / 课表 / 关于（主题、不透明度、全局字号、组件排列方向、单周起始、托盘行为） |
+| **档案编辑器** | 课表 / 时间表 / 科目 / 调课 四个标签页；**课表可增删改**（点空格新增、点卡片编辑），**时间表节次可编辑**（改时间会同步到课表） |
 | **系统托盘** | 显示/隐藏主界面、编辑档案、加载课表、换课、编辑主界面、应用设置、重启、退出 |
 
 ### 运行
@@ -54,19 +54,41 @@ ClassNex.sln
 src/ClassNex/
 ├── Program.cs                      # 入口（先加载设置与课表）
 ├── App.axaml(.cs)                  # 主题、托盘、窗口管理、应用生命周期
-├── Models/
-│   ├── CsesModels.cs               # CSES 数据模型
-│   └── AppSettings.cs              # 应用设置模型
-├── Services/
-│   ├── CsesService.cs              # CSES 读写（YAML）
+├── Models/                         # 领域模型（命名对照白皮书 4.1）
+│   ├── Subject.cs                  # 科目
+│   ├── Course.cs                   # 一节课
+│   ├── Schedule.cs                 # 一天的课表
+│   ├── ScheduleProfile.cs          # 课表档案（= CSES 文档）
+│   ├── ClassTime.cs                # 作息时间 / 节次
+│   ├── TimeLayout.cs               # 时间表（节次集合）
+│   ├── CourseSlot.cs               # 运行时课节视图
+│   ├── CourseRef.cs                # 课程引用 / 空格目标
+│   ├── WidgetConfig.cs             # 组件配置
+│   └── AppSettings.cs              # 应用设置
+├── Services/                       # 服务层（命名对照白皮书 4.1）
+│   ├── IScheduleService.cs         # 课表增删改查 + CSES 导入导出
+│   ├── ITimeService.cs             # 当前节次 / 倒计时 / 今日课程
+│   ├── ITimeLayoutService.cs       # 时间表管理（改时间同步课表）
+│   ├── IWidgetService.cs           # 组件增删 / 排序 / 配置
+│   ├── WidgetRegistry.cs           # 可用组件类型注册表
+│   ├── CsesCodec.cs                # CSES YAML 编解码
 │   ├── SettingsService.cs          # 设置持久化（data/Settings.json）
-│   ├── AppServices.cs              # 共享状态（当前课表 / 设置）
-│   ├── ScheduleCalculator.cs       # 今天 / 当前 / 下一节课推算
-│   ├── TimetableGridRenderer.cs    # 周课表网格渲染
-│   └── FilePickerHelper.cs         # 文件选择
+│   ├── FilePickerHelper.cs         # 文件选择
+│   └── AppServices.cs              # 组合根
+├── Widgets/                        # 桌面组件（对照白皮书 第七章）
+│   ├── WidgetBase.cs               # 组件基类 + 上下文
+│   ├── DateWidget.cs               # 日期
+│   ├── ClockWidget.cs              # 时钟
+│   ├── ScheduleWidget.cs           # 今日课表
+│   ├── NextClassWidget.cs          # 当前 / 下节课
+│   ├── CountdownWidget.cs          # 倒计时
+│   ├── TextWidget.cs               # 自定义文本
+│   └── WidgetFactory.cs            # 组件工厂
+├── Controls/
+│   └── TimetableGridBuilder.cs     # 可交互周课表网格
 ├── ViewModels/                     # MVVM
 ├── Views/
-│   ├── MainWindow.axaml            # 主界面（悬浮课表）
+│   ├── MainWindow.axaml            # 主界面（悬浮组件容器）
 │   ├── SettingsWindow.axaml        # 应用设置
 │   └── ProfileEditorWindow.axaml   # 档案编辑器
 └── Assets/

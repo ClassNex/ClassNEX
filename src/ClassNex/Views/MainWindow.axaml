@@ -2,9 +2,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="80"
+        mc:Ignorable="d" d:DesignWidth="520" d:DesignHeight="200"
         x:Class="ClassNex.Views.MainWindow"
-        Title="ClassNex 主界面"
+        Title="ClassNEX 主界面"
         Icon="/Assets/icon.ico"
         SystemDecorations="None"
         TransparencyLevelHint="Transparent"
@@ -21,18 +21,15 @@
             <ContextMenu>
                 <MenuItem Header="显示 / 隐藏主界面" Click="OnMenuToggleVisible"/>
                 <Separator/>
+                <MenuItem Header="编辑主界面（组件）…" Click="OnMenuEditWidgets"/>
                 <MenuItem Header="编辑档案…" Click="OnMenuEditProfile"/>
                 <MenuItem Header="应用设置…" Click="OnMenuOpenSettings"/>
                 <Separator/>
-                <MenuItem Header="退出 ClassNex" Click="OnMenuExit"/>
+                <MenuItem Header="退出 ClassNEX" Click="OnMenuExit"/>
             </ContextMenu>
         </Border.ContextMenu>
 
-        <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
-            <TextBlock x:Name="DateText" FontSize="22" FontWeight="SemiBold"
-                       Foreground="White" VerticalAlignment="Center"/>
-            <TextBlock x:Name="InfoText" FontSize="20"
-                       Foreground="White" VerticalAlignment="Center"/>
-        </StackPanel>
+        <!-- 组件宿主：内容由 WidgetFactory 按配置动态生成 -->
+        <StackPanel x:Name="WidgetHost" Orientation="Vertical" Spacing="6"/>
     </Border>
 </Window>
