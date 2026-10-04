@@ -12,6 +12,8 @@
     <!-- 对外版本号（产品版本，显示在设置→关于与文件属性里） -->
     <Version>0.5.0</Version>
     <InformationalVersion>40w01a</InformationalVersion>
+    <!-- 不要把 git 提交哈希附加到产品版本号后面 -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
   </PropertyGroup>
 
