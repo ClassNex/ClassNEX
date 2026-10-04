@@ -2,247 +2,222 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="700"
+        xmlns:ui="using:FluentAvalonia.UI.Controls"
+        mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="720"
         x:Class="ClassNex.Views.SettingsWindow"
         Title="应用设置"
         Icon="/Assets/icon.ico"
-        Width="960" Height="700"
-        MinWidth="780" MinHeight="560"
+        Width="1000" Height="720"
+        MinWidth="820" MinHeight="580"
         WindowStartupLocation="CenterScreen">
 
-    <DockPanel Background="{DynamicResource ApplicationPageBackgroundThemeBrush}">
+    <!-- 全程使用 FluentAvalonia 控件：NavigationView / SettingsExpander / ToggleSwitch / FontIcon / InfoBar -->
+    <ui:NavigationView x:Name="NavView"
+                       PaneDisplayMode="Left"
+                       OpenPaneLength="210"
+                       IsBackButtonVisible="False"
+                       IsSettingsVisible="False"
+                       IsPaneToggleButtonVisible="False">
+        <ui:NavigationView.MenuItems>
+            <ui:NavigationViewItem Content="通用">
+                <ui:NavigationViewItem.IconSource>
+                    <ui:FontIconSource Glyph="&#xE713;" FontSize="16"/>
+                </ui:NavigationViewItem.IconSource>
+            </ui:NavigationViewItem>
+            <ui:NavigationViewItem Content="界面">
+                <ui:NavigationViewItem.IconSource>
+                    <ui:FontIconSource Glyph="&#xE790;" FontSize="16"/>
+                </ui:NavigationViewItem.IconSource>
+            </ui:NavigationViewItem>
+            <ui:NavigationViewItem Content="主界面组件">
+                <ui:NavigationViewItem.IconSource>
+                    <ui:FontIconSource Glyph="&#xE71D;" FontSize="16"/>
+                </ui:NavigationViewItem.IconSource>
+            </ui:NavigationViewItem>
+            <ui:NavigationViewItem Content="课表">
+                <ui:NavigationViewItem.IconSource>
+                    <ui:FontIconSource Glyph="&#xE787;" FontSize="16"/>
+                </ui:NavigationViewItem.IconSource>
+            </ui:NavigationViewItem>
+            <ui:NavigationViewItem Content="关于">
+                <ui:NavigationViewItem.IconSource>
+                    <ui:FontIconSource Glyph="&#xE946;" FontSize="16"/>
+                </ui:NavigationViewItem.IconSource>
+            </ui:NavigationViewItem>
+        </ui:NavigationView.MenuItems>
 
-        <Border DockPanel.Dock="Top" Padding="20,14"
-                Background="{DynamicResource LayerFillColorDefaultBrush}"
-                BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
-                BorderThickness="0,0,0,1">
-            <TextBlock Text="应用设置" FontSize="18" FontWeight="SemiBold"
-                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-        </Border>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="28" Spacing="10" MaxWidth="720" HorizontalAlignment="Left">
 
-        <Grid ColumnDefinitions="210,*">
+                <!-- ============ 通用 ============ -->
+                <StackPanel x:Name="PageGeneral" Spacing="6">
+                    <TextBlock Text="通用" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,8"/>
 
-            <Border Grid.Column="0"
-                    Background="{DynamicResource LayerFillColorDefaultBrush}"
-                    BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
-                    BorderThickness="0,0,1,0">
-                <ListBox x:Name="NavList" SelectedIndex="0" Padding="8"
-                         Background="Transparent" BorderThickness="0">
-                    <ListBoxItem Content="通用" Padding="12,10"/>
-                    <ListBoxItem Content="界面" Padding="12,10"/>
-                    <ListBoxItem Content="主界面组件" Padding="12,10"/>
-                    <ListBoxItem Content="课表" Padding="12,10"/>
-                    <ListBoxItem Content="关于" Padding="12,10"/>
-                </ListBox>
-            </Border>
+                    <ui:SettingsExpander Header="单周开始日期"
+                                         Description="该日期所在周视为单周，用于推算当前是单周还是双周">
+                        <ui:SettingsExpander.Items>
+                            <DatePicker x:Name="SingleWeekStartPicker" HorizontalAlignment="Stretch"/>
+                        </ui:SettingsExpander.Items>
+                    </ui:SettingsExpander>
 
-            <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
-                <StackPanel Margin="28" Spacing="22" MaxWidth="720" HorizontalAlignment="Left">
+                    <ui:SettingsExpander Header="点击托盘图标行为"
+                                         Description="单击托盘图标时执行的操作">
+                        <ui:SettingsExpander.Items>
+                            <ComboBox x:Name="TrayBehaviorCombo" HorizontalAlignment="Stretch">
+                                <ComboBoxItem Content="显示 / 隐藏主界面"/>
+                                <ComboBoxItem Content="打开应用设置"/>
+                                <ComboBoxItem Content="打开档案编辑器"/>
+                            </ComboBox>
+                        </ui:SettingsExpander.Items>
+                    </ui:SettingsExpander>
+                </StackPanel>
 
-                    <!-- ============ 通用 ============ -->
-                    <StackPanel x:Name="PageGeneral" Spacing="14">
-                        <TextBlock Text="通用" FontSize="22" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
-                                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                                BorderThickness="1" CornerRadius="8" Padding="20">
-                            <StackPanel Spacing="18">
-                                <StackPanel Spacing="6">
-                                    <TextBlock Text="单周开始日期" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    <TextBlock Text="该日期所在周视为单周，用于推算当前是单周还是双周。"
-                                               FontSize="12" TextWrapping="Wrap"
-                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                    <DatePicker x:Name="SingleWeekStartPicker" HorizontalAlignment="Left"/>
-                                </StackPanel>
-                                <StackPanel Spacing="6">
-                                    <TextBlock Text="点击托盘图标行为" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    <ComboBox x:Name="TrayBehaviorCombo" Width="240" HorizontalAlignment="Left">
-                                        <ComboBoxItem Content="显示 / 隐藏主界面"/>
-                                        <ComboBoxItem Content="打开应用设置"/>
-                                        <ComboBoxItem Content="打开档案编辑器"/>
-                                    </ComboBox>
-                                </StackPanel>
+                <!-- ============ 界面 ============ -->
+                <StackPanel x:Name="PageInterface" Spacing="6" IsVisible="False">
+                    <TextBlock Text="界面" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,8"/>
+
+                    <ui:SettingsExpander Header="主题" Description="跟随系统 / 浅色 / 深色">
+                        <ui:SettingsExpander.Items>
+                            <StackPanel Spacing="8">
+                                <RadioButton x:Name="ThemeSystem" GroupName="Theme" Content="跟随系统"/>
+                                <RadioButton x:Name="ThemeLight" GroupName="Theme" Content="浅色"/>
+                                <RadioButton x:Name="ThemeDark" GroupName="Theme" Content="深色"/>
                             </StackPanel>
-                        </Border>
-                    </StackPanel>
+                        </ui:SettingsExpander.Items>
+                    </ui:SettingsExpander>
 
-                    <!-- ============ 界面 ============ -->
-                    <StackPanel x:Name="PageInterface" Spacing="14" IsVisible="False">
-                        <TextBlock Text="界面" FontSize="22" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
-                                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                                BorderThickness="1" CornerRadius="8" Padding="20">
-                            <StackPanel Spacing="18">
-                                <StackPanel Spacing="8">
-                                    <TextBlock Text="主题" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    <RadioButton x:Name="ThemeSystem" GroupName="Theme" Content="跟随系统"/>
-                                    <RadioButton x:Name="ThemeLight" GroupName="Theme" Content="浅色"/>
-                                    <RadioButton x:Name="ThemeDark" GroupName="Theme" Content="深色"/>
-                                </StackPanel>
-
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="主界面背景不透明度" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    <StackPanel Orientation="Horizontal" Spacing="12">
-                                        <Slider x:Name="OpacitySlider" Minimum="0.1" Maximum="1" Width="280"
-                                                TickFrequency="0.05" IsSnapToTickEnabled="True"/>
-                                        <TextBlock x:Name="OpacityValueText" VerticalAlignment="Center"
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                    </StackPanel>
-                                </StackPanel>
-
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="全局字号缩放" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    <StackPanel Orientation="Horizontal" Spacing="12">
-                                        <Slider x:Name="FontScaleSlider" Minimum="0.8" Maximum="1.6" Width="280"
-                                                TickFrequency="0.05" IsSnapToTickEnabled="True"/>
-                                        <TextBlock x:Name="FontScaleValueText" VerticalAlignment="Center"
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                    </StackPanel>
-                                </StackPanel>
-
-                                <StackPanel Spacing="6">
-                                    <TextBlock Text="组件排列方向" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    <ComboBox x:Name="OrientationCombo" Width="200" HorizontalAlignment="Left">
-                                        <ComboBoxItem Content="横向"/>
-                                        <ComboBoxItem Content="纵向"/>
-                                    </ComboBox>
-                                </StackPanel>
-
-                                <CheckBox x:Name="TopmostCheck" Content="主界面置顶显示"/>
+                    <ui:SettingsExpander Header="主界面背景不透明度">
+                        <ui:SettingsExpander.Items>
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <Slider x:Name="OpacitySlider" Minimum="0.1" Maximum="1" Width="300"
+                                        TickFrequency="0.05" IsSnapToTickEnabled="True"/>
+                                <TextBlock x:Name="OpacityValueText" VerticalAlignment="Center" Opacity="0.7"/>
                             </StackPanel>
-                        </Border>
-                    </StackPanel>
+                        </ui:SettingsExpander.Items>
+                    </ui:SettingsExpander>
 
-                    <!-- ============ 主界面组件 ============ -->
-                    <StackPanel x:Name="PageWidgets" Spacing="14" IsVisible="False">
-                        <TextBlock Text="主界面组件" FontSize="22" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        <TextBlock Text="决定悬浮主界面上显示哪些内容：可添加、删除、排序并单独配置每个组件。"
-                                   FontSize="12" TextWrapping="Wrap"
-                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                    <ui:SettingsExpander Header="全局字号缩放">
+                        <ui:SettingsExpander.Items>
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <Slider x:Name="FontScaleSlider" Minimum="0.8" Maximum="1.6" Width="300"
+                                        TickFrequency="0.05" IsSnapToTickEnabled="True"/>
+                                <TextBlock x:Name="FontScaleValueText" VerticalAlignment="Center" Opacity="0.7"/>
+                            </StackPanel>
+                        </ui:SettingsExpander.Items>
+                    </ui:SettingsExpander>
 
-                        <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
-                                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                                BorderThickness="1" CornerRadius="8" Padding="20">
+                    <ui:SettingsExpander Header="组件排列方向">
+                        <ui:SettingsExpander.Items>
+                            <ComboBox x:Name="OrientationCombo" HorizontalAlignment="Stretch">
+                                <ComboBoxItem Content="横向"/>
+                                <ComboBoxItem Content="纵向"/>
+                            </ComboBox>
+                        </ui:SettingsExpander.Items>
+                    </ui:SettingsExpander>
+
+                    <ui:SettingsExpander Header="主界面置顶显示"
+                                         Description="让主界面始终浮在其它窗口之上">
+                        <ui:SettingsExpander.Items>
+                            <CheckBox x:Name="TopmostCheck" Content="主界面置顶显示"/>
+                        </ui:SettingsExpander.Items>
+                    </ui:SettingsExpander>
+                </StackPanel>
+
+                <!-- ============ 主界面组件 ============ -->
+                <StackPanel x:Name="PageWidgets" Spacing="6" IsVisible="False">
+                    <TextBlock Text="主界面组件" FontSize="24" FontWeight="SemiBold"/>
+                    <TextBlock Text="决定悬浮主界面上显示哪些内容。点击组件卡片即可添加。"
+                               Opacity="0.7" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8"/>
+
+                    <ui:SettingsExpander Header="组件库" Description="点击卡片添加到主界面" IsExpanded="True">
+                        <ui:SettingsExpander.Items>
                             <StackPanel Spacing="10">
-                                <Grid ColumnDefinitions="*,Auto">
-                                    <TextBlock Grid.Column="0" Text="组件库" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    <Button Grid.Column="1" x:Name="ResetWidgetButton" Content="恢复默认"/>
-                                </Grid>
-                                <TextBlock Text="点击组件卡片即可添加到主界面（对应 CI「设置 → 主界面 → 组件」的组件库）。"
-                                           FontSize="12" TextWrapping="Wrap"
-                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                 <WrapPanel x:Name="WidgetLibraryPanel"/>
+                                <Button x:Name="ResetWidgetButton" Content="恢复默认布局"/>
                             </StackPanel>
-                        </Border>
+                        </ui:SettingsExpander.Items>
+                    </ui:SettingsExpander>
 
-                        <Grid ColumnDefinitions="280,*">
-                            <DockPanel Grid.Column="0">
-                                <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8"
-                                            Margin="0,10,0,0">
-                                    <Button x:Name="MoveWidgetUpButton" Content="上移"/>
-                                    <Button x:Name="MoveWidgetDownButton" Content="下移"/>
-                                    <Button x:Name="RemoveWidgetButton" Content="删除"/>
-                                </StackPanel>
-                                <ListBox x:Name="WidgetList" Margin="0,0,12,0">
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding DisplayText}"/>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
-                            </DockPanel>
+                    <Grid ColumnDefinitions="300,*">
+                        <StackPanel Grid.Column="0" Spacing="8">
+                            <ListBox x:Name="WidgetList" Margin="0,0,12,0">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding DisplayText}"/>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button x:Name="MoveWidgetUpButton" Content="上移"/>
+                                <Button x:Name="MoveWidgetDownButton" Content="下移"/>
+                                <Button x:Name="RemoveWidgetButton" Content="删除"/>
+                            </StackPanel>
+                        </StackPanel>
 
-                            <Border Grid.Column="1"
-                                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
-                                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                                    BorderThickness="1" CornerRadius="8" Padding="20">
-                                <StackPanel x:Name="WidgetEditor" Spacing="14" IsEnabled="False">
-                                    <TextBlock Text="组件设置" FontSize="16" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    <TextBlock x:Name="WidgetTypeText" FontSize="12" TextWrapping="Wrap"
-                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        <ui:SettingsExpander Grid.Column="1" x:Name="WidgetEditor"
+                                             Header="组件设置" IsExpanded="True">
+                            <ui:SettingsExpander.Items>
+                                <StackPanel Spacing="12">
+                                    <TextBlock x:Name="WidgetTypeText" FontSize="12" Opacity="0.7"
+                                               TextWrapping="Wrap"/>
                                     <CheckBox x:Name="WidgetEnabledCheck" Content="启用该组件"/>
                                     <StackPanel Spacing="4">
-                                        <TextBlock Text="字号缩放"
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock Text="字号缩放" FontSize="12" Opacity="0.7"/>
                                         <StackPanel Orientation="Horizontal" Spacing="12">
                                             <Slider x:Name="WidgetFontSlider" Minimum="0.6" Maximum="2.0"
-                                                    Width="220" TickFrequency="0.05" IsSnapToTickEnabled="True"/>
+                                                    Width="200" TickFrequency="0.05" IsSnapToTickEnabled="True"/>
                                             <TextBlock x:Name="WidgetFontValueText" VerticalAlignment="Center"
-                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                       Opacity="0.7"/>
                                         </StackPanel>
                                     </StackPanel>
                                     <CheckBox x:Name="WidgetSecondsCheck" Content="时钟组件显示秒"/>
                                     <StackPanel Spacing="4">
-                                        <TextBlock Text="自定义文本（仅「自定义文本」组件）"
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                        <TextBox x:Name="WidgetTextBox" Height="70"
+                                        <TextBlock Text="自定义文本（仅「文本」组件）" FontSize="12" Opacity="0.7"/>
+                                        <TextBox x:Name="WidgetTextBox" Height="64"
                                                  AcceptsReturn="True" TextWrapping="Wrap"/>
-                                        <TextBlock Text="可用占位符：{date} {day} {time} {parity} {current} {next} {countdown}"
-                                                   FontSize="11" TextWrapping="Wrap"
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock Text="占位符：{date} {day} {time} {parity} {current} {next} {countdown}"
+                                                   FontSize="11" Opacity="0.6" TextWrapping="Wrap"/>
                                     </StackPanel>
                                 </StackPanel>
-                            </Border>
-                        </Grid>
-                    </StackPanel>
+                            </ui:SettingsExpander.Items>
+                        </ui:SettingsExpander>
+                    </Grid>
+                </StackPanel>
 
-                    <!-- ============ 课表 ============ -->
-                    <StackPanel x:Name="PageSchedule" Spacing="14" IsVisible="False">
-                        <TextBlock Text="课表" FontSize="22" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
-                                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                                BorderThickness="1" CornerRadius="8" Padding="20">
-                            <StackPanel Spacing="14">
-                                <TextBlock Text="当前课表文件" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                <TextBlock x:Name="TimetableFileText" TextWrapping="Wrap"
-                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                <!-- ============ 课表 ============ -->
+                <StackPanel x:Name="PageSchedule" Spacing="6" IsVisible="False">
+                    <TextBlock Text="课表" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,8"/>
+
+                    <ui:SettingsExpander Header="当前课表文件" Description="支持 CSES 课程表交换格式（YAML）">
+                        <ui:SettingsExpander.Items>
+                            <StackPanel Spacing="10">
+                                <TextBlock x:Name="TimetableFileText" TextWrapping="Wrap" FontSize="12"
+                                           Opacity="0.75"/>
                                 <StackPanel Orientation="Horizontal" Spacing="10">
                                     <Button x:Name="OpenTimetableButton" Content="打开课表文件…"/>
                                     <Button x:Name="ReloadTimetableButton" Content="重新加载"/>
                                 </StackPanel>
-                                <TextBlock Text="支持 CSES（Course Schedule Exchange Schema）YAML 格式课表。排课与节次编辑请打开「档案编辑器」。"
-                                           FontSize="12" TextWrapping="Wrap"
-                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                             </StackPanel>
-                        </Border>
-                    </StackPanel>
+                        </ui:SettingsExpander.Items>
+                    </ui:SettingsExpander>
 
-                    <!-- ============ 关于 ============ -->
-                    <StackPanel x:Name="PageAbout" Spacing="14" IsVisible="False">
-                        <TextBlock Text="关于" FontSize="22" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
-                                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                                BorderThickness="1" CornerRadius="8" Padding="20">
-                            <StackPanel Spacing="8">
-                                <TextBlock Text="ClassNEX" FontSize="18" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                <TextBlock Text="桌面客户端 · 版本 0.3.0"
-                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                <TextBlock Text="主界面（悬浮组件课表）、应用设置、档案编辑器、系统托盘。"
-                                           TextWrapping="Wrap"
-                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                <TextBlock Text="课表采用 CSES 课程表交换格式；组件系统参考 ClassIsland / Class-Widgets-2 思路。"
-                                           TextWrapping="Wrap"
-                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-
+                    <ui:InfoBar IsOpen="True" Severity="Informational" IsClosable="False"
+                                Title="排课与节次编辑"
+                                Message="请在「档案编辑器」中编辑课表与时间表（托盘菜单 → 编辑档案…）。"/>
                 </StackPanel>
-            </ScrollViewer>
-        </Grid>
-    </DockPanel>
+
+                <!-- ============ 关于 ============ -->
+                <StackPanel x:Name="PageAbout" Spacing="6" IsVisible="False">
+                    <TextBlock Text="关于" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <ui:SettingsExpander Header="ClassNEX 桌面客户端" Description="版本 0.5.0" IsExpanded="True">
+                        <ui:SettingsExpander.Items>
+                            <TextBlock TextWrapping="Wrap" Opacity="0.75"
+                                       Text="主界面（悬浮组件课表）、应用设置、档案编辑器、系统托盘。&#10;课表采用 CSES 课程表交换格式；界面统一使用 FluentAvalonia（FluentUI）控件；配色与交互参照 CI（ClassIsland）。"/>
+                        </ui:SettingsExpander.Items>
+                    </ui:SettingsExpander>
+                </StackPanel>
+
+            </StackPanel>
+        </ScrollViewer>
+    </ui:NavigationView>
 </Window>

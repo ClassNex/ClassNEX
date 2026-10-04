@@ -36,11 +36,28 @@ public partial class MainWindow : Window
 
         // 每秒刷新，用于时钟与倒计时
         _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-        _timer.Tick += (_, _) => RefreshWidgets();
+        _timer.Tick += (_, _) =>
+        {
+            RefreshWidgets();
+            EnsureTopmost();
+        };
         _timer.Start();
+
+        // 某些全屏窗口会抢走置顶，失焦后重新声明
+        Deactivated += (_, _) => EnsureTopmost();
 
         RootCard.PointerPressed += OnCardPointerPressed;
         RootCard.PointerReleased += OnCardPointerReleased;
+    }
+
+    /// <summary>确保主界面处于置顶状态（CI 的主界面同样是置顶浮层）。</summary>
+    private void EnsureTopmost()
+    {
+        if (!IsVisible || !AppServices.Settings.Topmost)
+            return;
+
+        if (!Topmost)
+            Topmost = true;
     }
 
     // ---------- 外观 ----------

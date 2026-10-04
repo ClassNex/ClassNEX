@@ -271,11 +271,12 @@ public static class TimetableGridBuilder
             MinHeight = 34,
             BorderBrush = new SolidColorBrush(CiPalette.NeutralDark, 0.25),
             BorderThickness = new Thickness(0, 0, 0, 1),
-            Child = new TextBlock
+            Child = new FluentAvalonia.UI.Controls.FontIcon
             {
-                Text = "＋",
-                FontSize = 15,
-                Opacity = isPending ? 0.9 : 0.3,
+                // Fluent 的「Add」字形，替代原来的全角加号字符
+                Glyph = "\uE710",
+                FontSize = 14,
+                Opacity = isPending ? 0.95 : 0.35,
                 Foreground = isPending ? CiPalette.OnAccentBrush() : null,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,

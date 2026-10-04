@@ -9,12 +9,14 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <RootNamespace>ClassNex</RootNamespace>
     <AssemblyName>ClassNex</AssemblyName>
-    <Version>0.4.0</Version>
+    <Version>0.5.0</Version>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\icon.ico" />
+    <!-- 内置鸿蒙字体（HarmonyOS Sans SC，华为免费商用授权，�?Assets\Fonts\LICENSE.txt�?-->
+    <AvaloniaResource Include="Assets\Fonts\*.ttf" />
   </ItemGroup>
 
   <ItemGroup>

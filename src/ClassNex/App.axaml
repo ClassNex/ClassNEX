@@ -4,8 +4,20 @@
              x:Class="ClassNex.App"
              RequestedThemeVariant="Default">
 
+    <!-- 全局字体：内置的鸿蒙字体 HarmonyOS Sans SC -->
+    <Application.Resources>
+        <ResourceDictionary>
+            <FontFamily x:Key="AppFontFamily">avares://ClassNex/Assets/Fonts/HarmonyOS_Sans_SC_Regular.ttf#HarmonyOS Sans SC</FontFamily>
+        </ResourceDictionary>
+    </Application.Resources>
+
     <Application.Styles>
         <sty:FluentAvaloniaTheme PreferSystemTheme="True" />
+
+        <!-- 所有窗口统一使用鸿蒙字体（TextElement.FontFamily 为继承属性，会下发到全部子控件） -->
+        <Style Selector="Window">
+            <Setter Property="TextElement.FontFamily" Value="{DynamicResource AppFontFamily}" />
+        </Style>
     </Application.Styles>
 
     <!--

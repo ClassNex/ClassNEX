@@ -4,15 +4,18 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
-using Avalonia.Media;
 using ClassNex.Models;
 using ClassNex.Services;
 using ClassNex.Styles;
 using ClassNex.ViewModels;
+using FluentAvalonia.UI.Controls;
 
 namespace ClassNex.Views;
 
-/// <summary>应用设置：通用 / 界面 / 主界面组件 / 课表 / 关于。</summary>
+/// <summary>
+/// 应用设置。全程使用 FluentAvalonia（FluentUI）控件：
+/// NavigationView（左侧导航）/ SettingsExpander（设置分组）/ ToggleSwitch（开关）/ FontIcon（图标）。
+/// </summary>
 public partial class SettingsWindow : Window
 {
     private readonly ObservableCollection<WidgetItem> _widgets = new();
@@ -32,7 +35,7 @@ public partial class SettingsWindow : Window
     /// <summary>导航到指定页面：general / interface / widgets / schedule / about。</summary>
     public void NavigateTo(string page)
     {
-        NavList.SelectedIndex = page switch
+        var index = page switch
         {
             "interface" => 1,
             "widgets" => 2,
@@ -40,39 +43,42 @@ public partial class SettingsWindow : Window
             "about" => 4,
             _ => 0,
         };
+
+        if (index < NavView.MenuItems.Count)
+            NavView.SelectedItem = NavView.MenuItems[index];
     }
 
     private void WireEvents()
     {
-        NavList.SelectionChanged += (_, _) => SwitchPage();
+        NavView.SelectionChanged += (_, _) => SwitchPage();
 
         // ---- 通用 ----
         SingleWeekStartPicker.PropertyChanged += (_, e) =>
         {
-            if (!_loading && e.Property == DatePicker.SelectedDateProperty)
+            if (!_loading && e.Property.Name == "SelectedDate")
                 ApplyGeneral();
         };
         TrayBehaviorCombo.SelectionChanged += (_, _) => ApplyGeneral();
 
-        // ---- 界面 ----
-        ThemeSystem.PropertyChanged += (_, e) => ThemeChanged(e.Property, ThemeSystem.IsChecked);
-        ThemeLight.PropertyChanged += (_, e) => ThemeChanged(e.Property, ThemeLight.IsChecked);
-        ThemeDark.PropertyChanged += (_, e) => ThemeChanged(e.Property, ThemeDark.IsChecked);
+        // ---- 界面（ToggleSwitch 用属性名判断，避免依赖具体控件的静态属性）----
+        ThemeSystem.PropertyChanged += (_, e) => ThemeChanged(e.Property.Name, ThemeSystem.IsChecked);
+        ThemeLight.PropertyChanged += (_, e) => ThemeChanged(e.Property.Name, ThemeLight.IsChecked);
+        ThemeDark.PropertyChanged += (_, e) => ThemeChanged(e.Property.Name, ThemeDark.IsChecked);
 
         OpacitySlider.PropertyChanged += (_, e) =>
         {
-            if (!_loading && e.Property == Slider.ValueProperty)
+            if (!_loading && e.Property.Name == "Value")
                 ApplyInterface();
         };
         FontScaleSlider.PropertyChanged += (_, e) =>
         {
-            if (!_loading && e.Property == Slider.ValueProperty)
+            if (!_loading && e.Property.Name == "Value")
                 ApplyInterface();
         };
         OrientationCombo.SelectionChanged += (_, _) => ApplyInterface();
         TopmostCheck.PropertyChanged += (_, e) =>
         {
-            if (!_loading && e.Property == CheckBox.IsCheckedProperty)
+            if (!_loading && e.Property.Name == "IsChecked")
                 ApplyInterface();
         };
 
@@ -85,22 +91,22 @@ public partial class SettingsWindow : Window
 
         WidgetEnabledCheck.PropertyChanged += (_, e) =>
         {
-            if (!_loading && e.Property == CheckBox.IsCheckedProperty)
+            if (!_loading && e.Property.Name == "IsChecked")
                 ApplyWidgetEdit();
         };
         WidgetFontSlider.PropertyChanged += (_, e) =>
         {
-            if (!_loading && e.Property == Slider.ValueProperty)
+            if (!_loading && e.Property.Name == "Value")
                 ApplyWidgetEdit();
         };
         WidgetSecondsCheck.PropertyChanged += (_, e) =>
         {
-            if (!_loading && e.Property == CheckBox.IsCheckedProperty)
+            if (!_loading && e.Property.Name == "IsChecked")
                 ApplyWidgetEdit();
         };
         WidgetTextBox.PropertyChanged += (_, e) =>
         {
-            if (!_loading && e.Property == TextBox.TextProperty)
+            if (!_loading && e.Property.Name == "Text")
                 ApplyWidgetEdit();
         };
 
@@ -136,31 +142,38 @@ public partial class SettingsWindow : Window
 
         RefreshWidgetLibrary();
         RefreshWidgetList();
+
         if (_widgets.Count > 0)
             WidgetList.SelectedIndex = 0;
+
         RefreshTimetableText();
 
         _loading = false;
+
+        NavView.SelectedItem = NavView.MenuItems[0];
         SwitchPage();
     }
 
     private void SwitchPage()
     {
-        var i = NavList.SelectedIndex;
-        PageGeneral.IsVisible = i == 0;
-        PageInterface.IsVisible = i == 1;
-        PageWidgets.IsVisible = i == 2;
-        PageSchedule.IsVisible = i == 3;
-        PageAbout.IsVisible = i == 4;
+        var index = NavView.SelectedItem is { } item && NavView.MenuItems.Contains(item)
+            ? NavView.MenuItems.IndexOf(item)
+            : 0;
+
+        PageGeneral.IsVisible = index == 0;
+        PageInterface.IsVisible = index == 1;
+        PageWidgets.IsVisible = index == 2;
+        PageSchedule.IsVisible = index == 3;
+        PageAbout.IsVisible = index == 4;
     }
 
     private void RefreshTimetableText() => TimetableFileText.Text = AppServices.TimetablePath;
 
     // ==================== 通用 / 界面 ====================
 
-    private void ThemeChanged(AvaloniaProperty property, bool? isChecked)
+    private void ThemeChanged(string propertyName, bool? isChecked)
     {
-        if (_loading || !isChecked.HasValue || property != CheckBox.IsCheckedProperty)
+        if (_loading || !isChecked.HasValue || propertyName != "IsChecked")
             return;
 
         ApplyTheme();
@@ -213,12 +226,7 @@ public partial class SettingsWindow : Window
 
     // ==================== 主界面组件 ====================
 
-    private void UpdateWidgetTypeHint()
-    {
-        // 组件库改为卡片网格后不再需要类型提示
-    }
-
-    /// <summary>组件库（CI 图2）：每个组件类型一张卡片，点击即添加。</summary>
+    /// <summary>组件库：每个组件类型一张卡片，点击即添加。</summary>
     private void RefreshWidgetLibrary()
     {
         WidgetLibraryPanel.Children.Clear();
@@ -227,7 +235,7 @@ public partial class SettingsWindow : Window
         {
             var card = new Border
             {
-                Width = 200,
+                Width = 190,
                 Margin = new Thickness(0, 0, 10, 10),
                 Padding = new Thickness(14, 10),
                 CornerRadius = new CornerRadius(6),
@@ -244,13 +252,13 @@ public partial class SettingsWindow : Window
                         {
                             Text = type.DisplayName,
                             FontSize = 14,
-                            FontWeight = FontWeight.SemiBold,
+                            FontWeight = Avalonia.Media.FontWeight.SemiBold,
                         },
                         new TextBlock
                         {
                             Text = type.Description,
                             FontSize = 11,
-                            TextWrapping = TextWrapping.Wrap,
+                            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
                             Opacity = 0.7,
                         },
                     },
