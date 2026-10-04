@@ -31,3 +31,6 @@ _debug.log
 _ci_verify.log
 _verify.log
 
+# 发布产物
+build/
+
