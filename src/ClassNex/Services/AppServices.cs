@@ -29,6 +29,10 @@ public static class AppServices
         if (Settings.Widgets.Count == 0)
             Settings.Widgets = AppSettings.CreateDefaultWidgets();
 
+        // 迁移：旧版本默认 0.55 → 对齐 CI ComponentLayouts.BackgroundOpacity = 0.5
+        if (Math.Abs(Settings.BackgroundOpacity - 0.55) < 0.001)
+            Settings.BackgroundOpacity = Styles.CiPalette.CardOpacity;
+
         Time = new TimeService(() => Settings);
         Schedule = new ScheduleService(() => Settings);
         TimeLayout = new TimeLayoutService(() => Settings, Schedule);

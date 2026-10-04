@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using ClassNex.Styles;
 
 namespace ClassNex.Widgets;
 
@@ -50,14 +51,19 @@ public sealed class ScheduleWidget : WidgetBase
 
             if (isCurrent)
             {
-                row.Children.Add(new TextBlock
+                // 当前课程用 CI 主色标记（CiPalette.Primary = CI PrimaryColor #00BFFF）
+                row.Children.Add(new Border
                 {
-                    Text = "正在上课",
-                    FontSize = Size(12, ctx.Settings.FontScale),
-                    Foreground = new SolidColorBrush(Colors.White, 0.95),
-                    Background = new SolidColorBrush(Colors.White, 0.18),
+                    Background = new SolidColorBrush(CiPalette.Primary, 0.9),
+                    CornerRadius = new CornerRadius(3),
                     Padding = new Thickness(6, 1),
                     VerticalAlignment = VerticalAlignment.Center,
+                    Child = new TextBlock
+                    {
+                        Text = "正在上课",
+                        FontSize = Size(12, ctx.Settings.FontScale),
+                        Foreground = Brushes.White,
+                    },
                 });
             }
 

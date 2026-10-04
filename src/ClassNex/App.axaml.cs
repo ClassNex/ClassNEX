@@ -6,6 +6,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using ClassNex.Services;
+using ClassNex.Styles;
 using ClassNex.Views;
 using FluentAvalonia.Styling;
 
@@ -26,6 +27,7 @@ public partial class App : Application
             // 托盘常驻：关闭所有窗口也不退出应用
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
+            ApplyCiPalette();
             ApplyTheme(AppServices.Settings.ThemeMode);
 
             _mainWindow = new MainWindow();
@@ -42,6 +44,31 @@ public partial class App : Application
     }
 
     public static FluentAvaloniaTheme? FluentTheme => (FluentAvaloniaTheme?)Current?.Styles[0];
+
+    /// <summary>
+    /// 套用 CI（ClassIsland）配色：把 CI 主色设为 FluentAvalonia 的强调色，
+    /// 使全应用的按钮 / 选中 / 焦点等统一为 CI 色调；并把调色板注册为应用资源供 XAML 使用。
+    /// </summary>
+    private static void ApplyCiPalette()
+    {
+        var theme = FluentTheme;
+        if (theme is not null)
+        {
+            theme.PreferUserAccentColor = false;
+            theme.CustomAccentColor = CiPalette.Primary; // CI PrimaryColor #00BFFF
+        }
+
+        if (Current is null)
+            return;
+
+        Current.Resources["CiPrimary"] = CiPalette.Primary;
+        Current.Resources["CiSecondary"] = CiPalette.Secondary;
+        Current.Resources["CiPrimaryBrush"] = CiPalette.PrimaryBrush;
+        Current.Resources["CiNeutralDark"] = CiPalette.NeutralDark;
+        Current.Resources["CiOverlaySubtle"] = CiPalette.OverlaySubtle;
+        Current.Resources["CiOverlayMedium"] = CiPalette.OverlayMedium;
+        Current.Resources["CiHighlight"] = CiPalette.Highlight;
+    }
 
     private static IClassicDesktopStyleApplicationLifetime? Lifetime =>
         Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;

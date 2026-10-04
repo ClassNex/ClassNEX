@@ -5,6 +5,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using ClassNex.Models;
 using ClassNex.Services;
+using ClassNex.Styles;
 
 namespace ClassNex.Controls;
 
@@ -120,7 +121,7 @@ public static class TimetableGridBuilder
         var border = new Border
         {
             Padding = new Thickness(8, 10),
-            BorderBrush = new SolidColorBrush(Color.FromArgb(40, 128, 128, 128)),
+            BorderBrush = new SolidColorBrush(CiPalette.NeutralDark, 0.18),
             BorderThickness = new Thickness(0, 0, 0, 1),
             Child = new TextBlock
             {
@@ -174,7 +175,7 @@ public static class TimetableGridBuilder
     {
         var border = new Border
         {
-            Background = new SolidColorBrush(Color.FromArgb(14, 128, 128, 128)),
+            Background = new SolidColorBrush(CiPalette.NeutralDark, 0.08),
             CornerRadius = new CornerRadius(6),
             MinHeight = 44,
             Child = new TextBlock
@@ -211,7 +212,6 @@ public static class TimetableGridBuilder
             Text = string.IsNullOrWhiteSpace(subject?.SimplifiedName) ? course.Subject : subject!.SimplifiedName,
             FontWeight = FontWeight.SemiBold,
             FontSize = 14,
-            Foreground = Brushes.White,
             TextWrapping = TextWrapping.Wrap,
         });
 
@@ -227,17 +227,19 @@ public static class TimetableGridBuilder
             {
                 Text = string.Join(" · ", detailParts),
                 FontSize = 11,
-                Foreground = Brushes.White,
-                Opacity = 0.9,
+                Opacity = 0.75,
                 TextWrapping = TextWrapping.Wrap,
             });
         }
 
+        // CI 风格：低饱和中性底 + 左侧科目色条，保持整体色调统一（不做整块高饱和填充）
+        var subjectColor = CiPalette.SubjectColor(course.Subject);
+
         var border = new Border
         {
-            Background = new SolidColorBrush(SubjectColor(course.Subject)),
-            BorderBrush = isSelected ? Brushes.White : null,
-            BorderThickness = isSelected ? new Thickness(2) : new Thickness(0),
+            Background = new SolidColorBrush(subjectColor, isSelected ? 0.38 : 0.18),
+            BorderBrush = new SolidColorBrush(subjectColor, 1.0),
+            BorderThickness = isSelected ? new Thickness(4, 2, 2, 2) : new Thickness(4, 0, 0, 0),
             CornerRadius = new CornerRadius(6),
             Padding = new Thickness(8, 5),
             Child = panel,
@@ -263,22 +265,8 @@ public static class TimetableGridBuilder
         MaxWidth = 620,
     };
 
-    private static readonly Color[] Palette =
-    {
-        Color.Parse("#3B82F6"), Color.Parse("#22C55E"), Color.Parse("#F59E0B"),
-        Color.Parse("#EF4444"), Color.Parse("#8B5CF6"), Color.Parse("#06B6D4"),
-        Color.Parse("#EC4899"), Color.Parse("#F97316"), Color.Parse("#14B8A6"),
-        Color.Parse("#6366F1"),
-    };
-
-    public static Color SubjectColor(string subjectName)
-    {
-        var hash = 0;
-        foreach (var ch in subjectName)
-            hash = (hash * 31 + ch) & 0x7fffffff;
-
-        return Palette[hash % Palette.Length];
-    }
+    /// <summary>科目色：统一走 CI 调色板（同饱和度、同明度、只变色相）。</summary>
+    public static Color SubjectColor(string subjectName) => CiPalette.SubjectColor(subjectName);
 
     public static string FormatRange(string startCses, string endCses) =>
         $"{ClassTime.ToShortTime(startCses)}–{ClassTime.ToShortTime(endCses)}";

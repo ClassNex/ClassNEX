@@ -28,4 +28,5 @@ ClassIsland_app_windows_x64_full_folder*.zip
 # 运行时数据（便携 data 目录）
 data/
 _debug.log
+_ci_verify.log
 

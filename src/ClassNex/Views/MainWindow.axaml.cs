@@ -7,6 +7,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using ClassNex.Models;
 using ClassNex.Services;
+using ClassNex.Styles;
 using ClassNex.Widgets;
 
 namespace ClassNex.Views;
@@ -49,7 +50,11 @@ public partial class MainWindow : Window
         var s = AppServices.Settings;
 
         Topmost = s.Topmost;
-        RootCard.Background = new SolidColorBrush(Colors.Black, Math.Clamp(s.BackgroundOpacity, 0.05, 1.0));
+
+        // 外观参数全部取自 CI：黑底 + 50% 不透明度 + 圆角 8
+        RootCard.Background = new SolidColorBrush(CiPalette.CardBackground,
+            Math.Clamp(s.BackgroundOpacity, 0.05, 1.0));
+        RootCard.CornerRadius = new CornerRadius(CiPalette.CardCornerRadius);
         RootCard.Cursor = new Cursor(StandardCursorType.SizeAll);
 
         WidgetHost.Orientation = s.Orientation == LayoutOrientation.Vertical

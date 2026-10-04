@@ -27,8 +27,8 @@ public sealed class AppSettings
 
     public double MainWindowTop { get; set; } = 80;
 
-    /// <summary>卡片背景不透明度（0~1）。</summary>
-    public double BackgroundOpacity { get; set; } = 0.55;
+    /// <summary>卡片背景不透明度（0~1）。默认 0.5，取自 CI ComponentLayouts.BackgroundOpacity。</summary>
+    public double BackgroundOpacity { get; set; } = 0.5;
 
     /// <summary>是否置顶。</summary>
     public bool Topmost { get; set; } = true;

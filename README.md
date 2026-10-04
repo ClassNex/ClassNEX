@@ -29,6 +29,20 @@ ClassNEX 是一款功能强大、可定制、跨平台的课表信息显示工�
 | **档案编辑器** | 课表 / 时间表 / 科目 / 调课 四个标签页；**课表可增删改**（点空格新增、点卡片编辑），**时间表节次可编辑**（改时间会同步到课表） |
 | **系统托盘** | 显示/隐藏主界面、编辑档案、加载课表、换课、编辑主界面、应用设置、重启、退出 |
 
+### 配色（全部取自 CI / ClassIsland）
+
+所有颜色集中定义在 `src/ClassNex/Styles/CiPalette.cs`，不自行发明色值。来源如下：
+
+| 用途 | 取值 | CI 中的出处 |
+| --- | --- | --- |
+| 主色 / 强调色 | `#00BFFF` | CI `data/Settings.json` → `PrimaryColor` |
+| 副色 | `#7FFFD4` | CI `data/Settings.json` → `SecondaryColor` |
+| 主界面卡片 | `#000000` + 不透明度 `0.5` + 圆角 `8` | CI `ComponentLayouts/Default.json` |
+| 中性深色 / 叠加层 / 提醒色 | `#333333` / `#48000000` / `#66000000` / `#F4EF74` | CI `ClassIsland.dll` 内嵌色值 |
+| 科目配色方式 | 同饱和度、同明度、色相限制在 **160°–260°** | CI `ColorHelper.dll` 的受限色轮（主色 H=195°、副色 H=160°） |
+
+主色会作为 FluentAvalonia 的强调色（`CustomAccentColor`）下发，使全应用的按钮、选中、焦点统一为 CI 色调。
+
 ### 运行
 
 ```powershell
