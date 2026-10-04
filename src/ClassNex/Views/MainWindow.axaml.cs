@@ -205,8 +205,8 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 强制置顶 + 停靠屏幕顶端水平居中（对齐 CI 主界面的停靠方式）。
-    /// 内容宽度会随组件变化，因此每秒校一次。
+    /// 强制置顶 + 对齐 CI 的停靠：**几乎占满屏宽的横条，贴屏幕顶端**。
+    /// 实测 CI 主界面卡片：宽 1647/1917、距顶 1px、左右各内缩 136px（物理）。
     /// </summary>
     private void EnforcePlacement()
     {
@@ -223,9 +223,14 @@ public partial class MainWindow : Window
         var wa = screen.WorkingArea;
         var scale = screen.Scaling <= 0 ? 1.0 : screen.Scaling;
 
-        // 逻辑尺寸 → 物理像素
-        var widthPx = (int)Math.Round(Bounds.Width * scale);
-        var x = wa.X + Math.Max(0, (wa.Width - widthPx) / 2);
+        // CI 的左右内缩量（逻辑像素）
+        const double insetLogical = 109.0;
+
+        var widthLogical = Math.Max(320.0, wa.Width / scale - insetLogical * 2);
+        if (Math.Abs(Width - widthLogical) > 0.5)
+            Width = widthLogical;
+
+        var x = wa.X + (int)Math.Round(insetLogical * scale);
         var y = wa.Y;
 
         var target = new PixelPoint(x, y);

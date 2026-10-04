@@ -12,11 +12,11 @@
         Topmost="True"
         ShowInTaskbar="False"
         CanResize="False"
-        SizeToContent="WidthAndHeight"
-        WindowStartupLocation="Manual"
-        MaxWidth="900">
+        SizeToContent="Height"
+        WindowStartupLocation="Manual">
 
-    <Border x:Name="RootCard" CornerRadius="8" Margin="10" Padding="20,14">
+    <!-- 与 CI 一致：卡片是几乎占满屏宽的横条，左右各内缩约 136 物理像素并贴顶 -->
+    <Border x:Name="RootCard" CornerRadius="8" Margin="0" Padding="24,22">
         <Border.ContextMenu>
             <ContextMenu>
                 <MenuItem Header="显示 / 隐藏主界面" Click="OnMenuToggleVisible"/>
@@ -29,7 +29,8 @@
             </ContextMenu>
         </Border.ContextMenu>
 
-        <!-- 组件宿主：内容由 WidgetFactory 按配置动态生成 -->
-        <StackPanel x:Name="WidgetHost" Orientation="Vertical" Spacing="6"/>
+        <!-- 组件宿主：内容由 WidgetFactory 按配置动态生成，在横条内水平居中 -->
+        <StackPanel x:Name="WidgetHost" Orientation="Vertical" Spacing="6"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
     </Border>
 </Window>
