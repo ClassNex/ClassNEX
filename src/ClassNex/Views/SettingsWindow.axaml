@@ -114,6 +114,13 @@
                             </ComboBox>
                         </ui:SettingsExpander.Items>
                     </ui:SettingsExpander>
+
+                    <ui:SettingsExpander Header="鼠标穿透"
+                                         Description="开启后鼠标点击会直接落到主界面后方的窗口，不会被挡住；鼠标移入主界面会自动淡化。开启时请用托盘菜单操作。">
+                        <ui:SettingsExpander.Items>
+                            <CheckBox x:Name="ClickThroughCheck" Content="启用鼠标穿透"/>
+                        </ui:SettingsExpander.Items>
+                    </ui:SettingsExpander>
                 </StackPanel>
 
                 <!-- ============ 主界面组件 ============ -->

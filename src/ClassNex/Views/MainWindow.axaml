@@ -16,7 +16,7 @@
         WindowStartupLocation="Manual"
         MaxWidth="900">
 
-    <Border x:Name="RootCard" CornerRadius="8" Margin="8,6,8,8" Padding="20,14">
+    <Border x:Name="RootCard" CornerRadius="8" Margin="10" Padding="20,14">
         <Border.ContextMenu>
             <ContextMenu>
                 <MenuItem Header="显示 / 隐藏主界面" Click="OnMenuToggleVisible"/>

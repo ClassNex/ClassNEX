@@ -76,6 +76,11 @@ public partial class SettingsWindow : Window
                 ApplyInterface();
         };
         OrientationCombo.SelectionChanged += (_, _) => ApplyInterface();
+        ClickThroughCheck.PropertyChanged += (_, e) =>
+        {
+            if (!_loading && e.Property.Name == "IsChecked")
+                ApplyInterface();
+        };
 
         // ---- 主界面组件 ----
         ResetWidgetButton.Click += (_, _) => ResetWidgets();
@@ -133,6 +138,7 @@ public partial class SettingsWindow : Window
         OpacityValueText.Text = $"{s.BackgroundOpacity:P0}";
         FontScaleValueText.Text = $"{s.FontScale:0.00}x";
         OrientationCombo.SelectedIndex = s.Orientation == LayoutOrientation.Vertical ? 1 : 0;
+        ClickThroughCheck.IsChecked = s.IsClickThrough;
 
         RefreshWidgetLibrary();
         RefreshWidgetList();
@@ -210,6 +216,7 @@ public partial class SettingsWindow : Window
         s.Orientation = OrientationCombo.SelectedIndex == 1
             ? LayoutOrientation.Vertical
             : LayoutOrientation.Horizontal;
+        s.IsClickThrough = ClickThroughCheck.IsChecked == true;
 
         OpacityValueText.Text = $"{s.BackgroundOpacity:P0}";
         FontScaleValueText.Text = $"{s.FontScale:0.00}x";

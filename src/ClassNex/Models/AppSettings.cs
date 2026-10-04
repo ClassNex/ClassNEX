@@ -36,6 +36,12 @@ public sealed class AppSettings
     /// <summary>全局字号缩放。</summary>
     public double FontScale { get; set; } = 1.0;
 
+    /// <summary>鼠标穿透：开启后点击直接落到后方窗口/桌面（CI 风格的桌面浮层行为）。</summary>
+    public bool IsClickThrough { get; set; } = true;
+
+    /// <summary>鼠标移入主界面时的淡化不透明度。</summary>
+    public double HoverOpacity { get; set; } = 0.35;
+
     /// <summary>组件排列方向。</summary>
     public LayoutOrientation Orientation { get; set; } = LayoutOrientation.Horizontal;
 

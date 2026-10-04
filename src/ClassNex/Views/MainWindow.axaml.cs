@@ -21,6 +21,8 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _timer;
     private readonly List<WidgetBase> _widgets = new();
 
+    private IntPtr _hwnd;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -40,6 +42,7 @@ public partial class MainWindow : Window
         {
             RefreshWidgets();
             EnforcePlacement();
+            UpdateHoverFade();
         };
         _timer.Start();
 
@@ -77,6 +80,9 @@ public partial class MainWindow : Window
             ? Orientation.Vertical
             : Orientation.Horizontal;
         WidgetHost.Spacing = s.Orientation == LayoutOrientation.Vertical ? 6 : 16;
+
+        // 鼠标穿透设置可能被改动
+        ApplyClickThrough();
 
         // 位置固定为「屏幕顶端 + 水平居中」（对齐 CI），不再使用设置里的坐标
         EnforcePlacement();
@@ -154,7 +160,48 @@ public partial class MainWindow : Window
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
+        _hwnd = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
+        ApplyClickThrough();
         EnforcePlacement();
+    }
+
+    /// <summary>应用「鼠标穿透」：开启后点击落到后方窗口，不再被主界面挡住。</summary>
+    private void ApplyClickThrough()
+    {
+        if (_hwnd == IntPtr.Zero)
+            _hwnd = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
+
+        WindowsOverlay.SetClickThrough(_hwnd, AppServices.Settings.IsClickThrough);
+    }
+
+    /// <summary>
+    /// 鼠标移入淡化。因为点击穿透后窗口收不到鼠标消息，这里改为按秒轮询全局光标位置，
+    /// 判断光标是否落在主界面矩形内，从而既保持穿透、又能做出悬停淡化。
+    /// </summary>
+    private void UpdateHoverFade()
+    {
+        var cursor = WindowsOverlay.GetCursorPosition();
+        if (cursor is null || Bounds.Width <= 0 || Bounds.Height <= 0)
+            return;
+
+        var scale = Screens.Primary?.Scaling ?? 1.0;
+        if (scale <= 0)
+            scale = 1.0;
+
+        var left = Position.X;
+        var top = Position.Y;
+        var right = left + Bounds.Width * scale;
+        var bottom = top + Bounds.Height * scale;
+
+        var hovered = cursor.Value.X >= left && cursor.Value.X <= right
+                      && cursor.Value.Y >= top && cursor.Value.Y <= bottom;
+
+        var target = hovered
+            ? Math.Clamp(AppServices.Settings.HoverOpacity, 0.05, 1.0)
+            : 1.0;
+
+        if (Math.Abs(RootCard.Opacity - target) > 0.01)
+            RootCard.Opacity = target;
     }
 
     /// <summary>
