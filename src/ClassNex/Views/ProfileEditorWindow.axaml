@@ -26,6 +26,7 @@
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button x:Name="SaveNowButton" Content="保存"/>
                     <Button x:Name="OpenButton" Content="打开课表…"/>
                     <Button x:Name="ReloadButton" Content="重新加载"/>
                     <Button x:Name="ExportButton" Content="导出 CSES…"/>
@@ -35,85 +36,55 @@
 
         <TabControl x:Name="Tabs" Margin="8">
 
-            <!-- ==================== 课表（1:1 复刻 CI 档案编辑器「课表」页） ====================
-                 CI 结构：CommandBar（工具栏）
-                 + Grid[ DataGrid 列表视图（启用/时间/科目下拉框，每行=一个节次） | 分割条 | 编辑科目面板 ]
-                 编辑模型：选中一行 → 改科目下拉框或点右侧科目 → 立即生效；
-                 勾选「选完科目自动移动到下一个课程」后自动下移一行。 -->
+            <!-- ==================== 课表（按 CI 图2：周课表网格直接显示 + 点选编辑） ====================
+                 CI 结构：CommandBar 工具栏 + 日期导航（2026/10/5 ← → 第N周）
+                 + 周课表网格（7 天列 × 时间点行，直接显示，不再分列表/周视图）
+                 + 右侧「编辑科目」面板。
+                 编辑模型：点格子选中（强调色边框）→ 点右侧科目 → 立即生效；
+                 勾选「选完科目自动移动到下一个课程」后自动移到下一时间点。 -->
             <TabItem Header="课表">
-                <Grid Margin="12" ColumnDefinitions="*,5,350">
+                <Grid Margin="12" RowDefinitions="Auto,Auto,*" ColumnDefinitions="*,5,350">
 
-                    <DockPanel Grid.Column="0">
-                        <!-- 工具栏（对应 CI CommandBar，按其可映射项） -->
-                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="4,0,4,10">
-                            <Button x:Name="RefreshButton" Content="刷新"/>
-                            <Button x:Name="DeleteCourseButton" Content="删除"/>
-                            <ComboBox x:Name="DayCombo" Width="110">
-                                <ComboBoxItem Content="周一"/>
-                                <ComboBoxItem Content="周二"/>
-                                <ComboBoxItem Content="周三"/>
-                                <ComboBoxItem Content="周四"/>
-                                <ComboBoxItem Content="周五"/>
-                                <ComboBoxItem Content="周六"/>
-                                <ComboBoxItem Content="周日"/>
-                            </ComboBox>
-                            <ComboBox x:Name="ParityCombo" Width="110">
-                                <ComboBoxItem Content="全部课程"/>
-                                <ComboBoxItem Content="单周"/>
-                                <ComboBoxItem Content="双周"/>
-                            </ComboBox>
-                        </StackPanel>
+                    <!-- 工具栏：CI 用 CommandBar（Fluent 控件） -->
+                    <StackPanel Grid.Row="0" Grid.ColumnSpan="3" Orientation="Horizontal" Spacing="8"
+                                Margin="0,0,4,8">
+                        <ui:CommandBar x:Name="ClassCommandBar" DefaultLabelPosition="Right"
+                                       Background="Transparent" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="ParityCombo" Width="120" VerticalAlignment="Center">
+                            <ComboBoxItem Content="全部课程"/>
+                            <ComboBoxItem Content="单周"/>
+                            <ComboBoxItem Content="双周"/>
+                        </ComboBox>
+                    </StackPanel>
 
-                        <!-- 列表视图 / 周视图（对应 CI 的两种视图） -->
-                        <TabControl x:Name="ClassPlanViews" Padding="0">
-                            <TabItem Header="列表视图">
-                                <DataGrid x:Name="ClassGrid" Margin="0,0,4,0"
-                                          AutoGenerateColumns="False"
-                                          CanUserSortColumns="False"
-                                          CanUserReorderColumns="False"
-                                          GridLinesVisibility="Horizontal">
-                                    <DataGrid.Columns>
-                                        <DataGridTemplateColumn Header="启用" Width="72">
-                                            <DataGridTemplateColumn.CellTemplate>
-                                                <DataTemplate>
-                                                    <CheckBox IsChecked="{Binding IsEnabled, Mode=TwoWay}"
-                                                              HorizontalAlignment="Center"
-                                                              VerticalAlignment="Center"/>
-                                                </DataTemplate>
-                                            </DataGridTemplateColumn.CellTemplate>
-                                        </DataGridTemplateColumn>
-                                        <DataGridTextColumn Header="时间"
-                                                             Binding="{Binding TimeText}"
-                                                             IsReadOnly="True"
-                                                             Width="130"/>
-                                        <DataGridTemplateColumn Header="科目" Width="*">
-                                            <DataGridTemplateColumn.CellTemplate>
-                                                <DataTemplate>
-                                                    <ComboBox ItemsSource="{Binding Subjects}"
-                                                              SelectedItem="{Binding Subject, Mode=TwoWay}"
-                                                              HorizontalAlignment="Stretch"
-                                                              FontSize="13"/>
-                                                </DataTemplate>
-                                            </DataGridTemplateColumn.CellTemplate>
-                                        </DataGridTemplateColumn>
-                                    </DataGrid.Columns>
-                                </DataGrid>
-                            </TabItem>
+                    <!-- 日期导航（CI：2026/10/5 ← → 第N周） -->
+                    <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Spacing="8" Margin="4,0,4,8">
+                        <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                BorderThickness="1" CornerRadius="4" Padding="10,4">
+                            <TextBlock x:Name="NavDateText" FontSize="13" VerticalAlignment="Center"/>
+                        </Border>
+                        <Button x:Name="PrevWeekButton" Padding="8,2" VerticalAlignment="Center">
+                            <ui:FontIcon Glyph="&#xE76B;" FontSize="14"/>
+                        </Button>
+                        <Button x:Name="NextWeekButton" Padding="8,2" VerticalAlignment="Center">
+                            <ui:FontIcon Glyph="&#xE76C;" FontSize="14"/>
+                        </Button>
+                        <TextBlock x:Name="NavWeekText" Text="第1周" FontSize="13" Opacity="0.8"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
 
-                            <TabItem Header="周视图">
-                                <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                                              VerticalScrollBarVisibility="Auto">
-                                    <Grid x:Name="TimetableGrid" Margin="4"/>
-                                </ScrollViewer>
-                            </TabItem>
-                        </TabControl>
-                    </DockPanel>
+                    <!-- 周课表：直接显示（CI 图2 的形态） -->
+                    <ScrollViewer Grid.Row="2" Grid.Column="0"
+                                  HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                        <Grid x:Name="TimetableGrid" Margin="0,0,4,0"/>
+                    </ScrollViewer>
 
-                    <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch"
+                    <GridSplitter Grid.Row="2" Grid.Column="1" HorizontalAlignment="Stretch"
                                   VerticalAlignment="Stretch" Background="Transparent"/>
 
                     <!-- 编辑科目面板（对应 CI 右侧 TabControl「编辑科目」） -->
-                    <DockPanel Grid.Column="2" Margin="12,0,0,0">
+                    <DockPanel Grid.Row="2" Grid.Column="2" Margin="12,0,0,0">
                         <TextBlock DockPanel.Dock="Top" Text="编辑科目" FontSize="15" FontWeight="SemiBold"
                                    Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                         <CheckBox DockPanel.Dock="Bottom" x:Name="AutoAdvanceCheck"
@@ -124,10 +95,24 @@
                         <Border Margin="0,10,0,0"
                                 Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
                                 BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                                BorderThickness="1" CornerRadius="8" Padding="14">
-                            <ScrollViewer>
-                                <WrapPanel x:Name="SubjectPalettePanel"/>
-                            </ScrollViewer>
+                                BorderThickness="1" CornerRadius="8" Padding="10">
+                            <!-- 科目面板：与 CI 一致用 ListBox + WrapPanel（Fluent 控件，项显示简称） -->
+                            <ListBox x:Name="SubjectPaletteList" Background="Transparent" BorderThickness="0"
+                                     SelectionMode="Single">
+                                <ListBox.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel/>
+                                    </ItemsPanelTemplate>
+                                </ListBox.ItemsPanel>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="Transparent" Padding="8">
+                                            <TextBlock Text="{Binding DisplayName}" FontSize="16"
+                                                       ToolTip.Tip="{Binding Name}" IsHitTestVisible="False"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
                         </Border>
                     </DockPanel>
                 </Grid>

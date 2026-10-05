@@ -52,14 +52,15 @@ public static class EditorSelfTest
                 var grid = new Grid();
                 TimetableGridBuilder.Render(grid, profile, "even");
             });
-            Step("课表网格 Render(选中某课程)", () =>
+            Step("课表网格 Render(选中某格子)", () =>
             {
                 var grid = new Grid();
                 var schedule = profile.Schedules.FirstOrDefault();
                 if (schedule?.Classes.Count > 0)
                 {
-                    var courseRef = new CourseRef(schedule.EnableDay, schedule.Weeks, schedule, schedule.Classes[0]);
-                    TimetableGridBuilder.Render(grid, profile, "all", courseRef);
+                    var course = schedule.Classes[0];
+                    var target = new CellTarget(schedule.EnableDay, course.StartTime, course.EndTime);
+                    TimetableGridBuilder.Render(grid, profile, "all", null, target, DateTime.Today);
                 }
             });
 

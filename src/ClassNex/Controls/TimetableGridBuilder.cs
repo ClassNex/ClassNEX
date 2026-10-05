@@ -22,20 +22,30 @@ public static class TimetableGridBuilder
 {
     public static readonly string[] DayNames = { "周一", "周二", "周三", "周四", "周五", "周六", "周日" };
 
+    /// <summary>列顺序：周日在前（对齐 CI ScheduleDataGrid 的列排列）。值为 CSES 的 enable_day。</summary>
+    private static readonly int[] ColumnDays = { 7, 1, 2, 3, 4, 5, 6 };
+
     private static readonly TimeSpan DefaultDuration = TimeSpan.FromMinutes(45);
 
+    /// <summary>
+    /// 渲染周课表。选中/编辑以「格子」为单位（对齐 CI ScheduleDataGrid 的 SelectedClassInfo）：
+    /// 点任意格子（有课或空的）都会回调 <paramref name="onSelectCell"/>，由调用方记录选中格，
+    /// 再用右侧「编辑科目」面板排课。
+    /// <paramref name="weekStart"/>：显示周的周日日期（表头显示「周日 10/04」形式）。
+    /// </summary>
     public static void Render(
         Grid grid,
         ScheduleProfile profile,
         string parity,
-        CourseRef? selected = null,
-        Action<CourseRef>? onSelectCourse = null,
-        Action<CellTarget>? onSelectEmpty = null,
-        CellTarget? pending = null)
+        Action<CellTarget>? onSelectCell = null,
+        CellTarget? selectedCell = null,
+        DateTime? weekStart = null)
     {
         grid.Children.Clear();
         grid.RowDefinitions.Clear();
         grid.ColumnDefinitions.Clear();
+
+        var week = weekStart ?? DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek);
 
         // 1. 收集当前周次下的课程
         var entries = new List<CourseRef>();
@@ -83,8 +93,12 @@ public static class TimetableGridBuilder
             grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
 
         grid.Children.Add(BuildHeader("时间", 0, 0));
-        for (var d = 0; d < 7; d++)
-            grid.Children.Add(BuildHeader(DayNames[d], 0, d + 1));
+        for (var c = 0; c < 7; c++)
+        {
+            // 表头：周日 10/04 形式（CI ScheduleDataGrid 的列头，周日在前）
+            var date = week.AddDays(c);
+            grid.Children.Add(BuildDayHeader(DayNames[ColumnDays[c] - 1], date, 0, c + 1));
+        }
 
         // 4. 每行：左侧时间 + 7 个格子
         for (var i = 0; i < rows.Count; i++)
@@ -99,12 +113,14 @@ public static class TimetableGridBuilder
 
             for (var day = 1; day <= 7; day++)
             {
+                var column = Array.IndexOf(ColumnDays, day) + 1;
+
                 // 课间行：灰色不可点击（防止把课间当空格排课）
                 if (isBreak)
                 {
                     var breakCell = BuildBreakCell();
                     Grid.SetRow(breakCell, i + 1);
-                    Grid.SetColumn(breakCell, day);
+                    Grid.SetColumn(breakCell, column);
                     grid.Children.Add(breakCell);
                     continue;
                 }
@@ -116,16 +132,16 @@ public static class TimetableGridBuilder
                     .ToList();
 
                 var target = new CellTarget(day, ClassTime.ToCsesTime(startText), ClassTime.ToCsesTime(endText));
-                var isPending = pending is not null
-                                && pending.EnableDay == day
-                                && ClassTime.SameTime(pending.Start, target.Start);
+                var isSelected = selectedCell is not null
+                                 && selectedCell.EnableDay == day
+                                 && ClassTime.SameTime(selectedCell.Start, target.Start);
 
                 var cell = cellCourses.Count == 0
-                    ? BuildEmptyCell(target, onSelectEmpty, isPending)
-                    : BuildCourseCell(cellCourses, selected, onSelectCourse);
+                    ? BuildEmptyCell(target, onSelectCell, isSelected)
+                    : BuildCourseCell(cellCourses, target, isSelected, onSelectCell);
 
                 Grid.SetRow(cell, i + 1);
-                Grid.SetColumn(cell, day);
+                Grid.SetColumn(cell, column);
                 grid.Children.Add(cell);
             }
         }
@@ -147,6 +163,44 @@ public static class TimetableGridBuilder
                 FontSize = 13,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
+            },
+        };
+
+        Grid.SetRow(border, row);
+        Grid.SetColumn(border, col);
+        return border;
+    }
+
+    /// <summary>天列表头：两行（星期 + 日期，如「周日 / 10/04」），对齐 CI ScheduleDataGrid 的列头。</summary>
+    private static Border BuildDayHeader(string dayName, DateTime date, int row, int col)
+    {
+        var border = new Border
+        {
+            Background = CiPalette.SurfaceBrush("SolidBackgroundFillColorTertiaryBrush", 0.5),
+            Padding = new Thickness(8, 6),
+            BorderBrush = new SolidColorBrush(CiPalette.NeutralDark, 0.35),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Child = new StackPanel
+            {
+                Spacing = 1,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = dayName,
+                        FontWeight = FontWeight.SemiBold,
+                        FontSize = 13,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                    },
+                    new TextBlock
+                    {
+                        Text = date.ToString("MM/dd"),
+                        FontSize = 10.5,
+                        Opacity = 0.6,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                    },
+                },
             },
         };
 
@@ -213,30 +267,41 @@ public static class TimetableGridBuilder
         };
     }
 
-    /// <summary>课程单元格：**不加科目底色**（CI 做法），仅文字；选中的课程用 CI 强调青填充。</summary>
+    /// <summary>课程单元格：**不给科目上色**（CI 做法），仅文字；选中的格子用强调色描边（CI 选中格样式）。</summary>
     private static Border BuildCourseCell(
         List<CourseRef> courses,
-        CourseRef? selected,
-        Action<CourseRef>? onSelect)
+        CellTarget target,
+        bool isSelected,
+        Action<CellTarget>? onSelect)
     {
         var panel = new StackPanel { Spacing = 2 };
 
         foreach (var courseRef in courses)
-        {
-            var isSelected = selected is not null && ReferenceEquals(selected.Course, courseRef.Course);
-            panel.Children.Add(BuildCourseLine(courseRef, isSelected, onSelect));
-        }
+            panel.Children.Add(BuildCourseLine(courseRef));
 
-        return new Border
+        var border = new Border
         {
-            Padding = new Thickness(4, 2),
-            BorderBrush = new SolidColorBrush(CiPalette.NeutralDark, 0.25),
-            BorderThickness = new Thickness(0, 0, 0, 1),
+            CornerRadius = new CornerRadius(4),
+            Margin = new Thickness(4, 2),
+            Padding = new Thickness(6, 3),
+            MinHeight = 34,
+            BorderBrush = isSelected
+                ? CiPalette.AccentBrush()
+                : new SolidColorBrush(CiPalette.NeutralDark, 0.25),
+            BorderThickness = isSelected ? new Thickness(2) : new Thickness(0, 0, 0, 1),
             Child = panel,
         };
+
+        if (onSelect is not null)
+        {
+            border.Cursor = new Cursor(StandardCursorType.Hand);
+            border.PointerPressed += (_, _) => onSelect(target);
+        }
+
+        return border;
     }
 
-    private static Border BuildCourseLine(CourseRef courseRef, bool isSelected, Action<CourseRef>? onSelect)
+    private static Border BuildCourseLine(CourseRef courseRef)
     {
         var course = courseRef.Course;
         var subject = AppServices.Schedule.Profile.FindSubject(course.Subject);
@@ -258,8 +323,6 @@ public static class TimetableGridBuilder
             Text = text,
             FontSize = 13,
             FontWeight = FontWeight.SemiBold,
-            // 选中时用「强调色上的文字」色；未选中沿用主题前景色
-            Foreground = isSelected ? CiPalette.OnAccentBrush() : null,
             TextWrapping = TextWrapping.NoWrap,
         });
 
@@ -269,49 +332,37 @@ public static class TimetableGridBuilder
             {
                 Text = string.Join(" · ", detailParts),
                 FontSize = 10.5,
-                Opacity = isSelected ? 0.9 : 0.6,
-                Foreground = isSelected ? CiPalette.OnAccentBrush() : null,
+                Opacity = 0.6,
             });
         }
 
-        var border = new Border
+        return new Border
         {
-            // 只有选中项着色 —— 取当前主题的选中强调色（与 CI 一致，跟随系统强调色）
-            Background = isSelected ? CiPalette.SelectionBrush() : null,
-            CornerRadius = new CornerRadius(4),
-            Padding = new Thickness(6, 3),
+            CornerRadius = new CornerRadius(3),
+            Padding = new Thickness(4, 2),
             Child = panel,
         };
-
-        if (onSelect is not null)
-        {
-            border.Cursor = new Cursor(StandardCursorType.Hand);
-            border.PointerPressed += (_, _) => onSelect(courseRef);
-        }
-
-        return border;
     }
 
-    /// <summary>空格子：极淡的中性底，点击即可排课；待排格子用强调色高亮（CI 图3 的选中格）。</summary>
-    private static Border BuildEmptyCell(CellTarget target, Action<CellTarget>? onSelect, bool isPending = false)
+    /// <summary>空格子：极淡的中性底，点击即选中该格；选中的格子用强调色描边（CI 的选中格）。</summary>
+    private static Border BuildEmptyCell(CellTarget target, Action<CellTarget>? onSelect, bool isSelected = false)
     {
         var border = new Border
         {
-            Background = isPending
-                ? CiPalette.SelectionBrush()
-                : CiPalette.SurfaceBrush("SubtleFillColorSecondaryBrush", 0.12),
+            Background = CiPalette.SurfaceBrush("SubtleFillColorSecondaryBrush", 0.12),
             CornerRadius = new CornerRadius(4),
             Margin = new Thickness(4, 2),
             MinHeight = 34,
-            BorderBrush = new SolidColorBrush(CiPalette.NeutralDark, 0.25),
-            BorderThickness = new Thickness(0, 0, 0, 1),
+            BorderBrush = isSelected
+                ? CiPalette.AccentBrush()
+                : new SolidColorBrush(CiPalette.NeutralDark, 0.25),
+            BorderThickness = isSelected ? new Thickness(2) : new Thickness(0, 0, 0, 1),
             Child = new FluentAvalonia.UI.Controls.FontIcon
             {
                 // Fluent 的「Add」字形，替代原来的全角加号字符
                 Glyph = "\uE710",
                 FontSize = 14,
-                Opacity = isPending ? 0.95 : 0.35,
-                Foreground = isPending ? CiPalette.OnAccentBrush() : null,
+                Opacity = isSelected ? 0.95 : 0.35,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
             },

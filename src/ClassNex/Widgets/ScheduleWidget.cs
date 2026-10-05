@@ -65,11 +65,22 @@ public sealed class ScheduleWidget : WidgetBase
         for (var i = 0; i < slots.Count; i++)
         {
             var slot = slots[i];
+
+            // 课间休息：上一节结束 → 本节开始之间存在空档，且当前时间落在其中时，
+            // 按 CI 的做法在「这个位置」显示「课间休息 起-止」+ 进度条（CI LessonControl.xaml.cs 内置 Break 科目名）
+            if (i > 0)
+            {
+                var gapStart = slots[i - 1].End;
+                var gapEnd = slot.Start;
+                if (gapEnd > gapStart && now >= gapStart && now < gapEnd)
+                    _root.Children.Add(BuildExpandedItem("课间休息", gapStart, gapEnd, now, scale));
+            }
+
             var isCurrent = slot.Contains(now);
             var isFinished = !isCurrent && slot.End <= now;
 
             _root.Children.Add(isCurrent
-                ? BuildExpanded(slot, now, scale)
+                ? BuildExpandedItem(slot.Subject, slot.Start, slot.End, now, scale)
                 : BuildMinimized(slot, isFinished, scale));
         }
     }
@@ -94,14 +105,17 @@ public sealed class ScheduleWidget : WidgetBase
         };
     }
 
-    /// <summary>当前课程（CI LessonControlExpanded）：全名 Bold + 「起-止」时间（底部对齐）+ 下方进度条。</summary>
-    private Control BuildExpanded(CourseSlot slot, TimeSpan now, double scale)
+    /// <summary>
+    /// 当前项（CI LessonControlExpanded）：全名 Bold + 「起-止」时间（底部对齐）+ 下方进度条。
+    /// 课程与课间休息共用（课间时标题为「课间休息」）。
+    /// </summary>
+    private Control BuildExpandedItem(string title, TimeSpan start, TimeSpan end, TimeSpan now, double scale)
     {
-        var name = Text(slot.Subject, Size(CiEmphasized, scale), White(), FontWeight.Bold);
+        var name = Text(title, Size(CiEmphasized, scale), White(), FontWeight.Bold);
         name.VerticalAlignment = VerticalAlignment.Center;
 
         // CI：ExtraInfoType=0 → "StartTime - EndTime"（MainWindowSecondaryFontSize，底部对齐，Margin 6 0 0 0）
-        var time = Text($"{slot.StartText}-{slot.EndText}", Size(CiSecondary, scale), White(0.9));
+        var time = Text($"{start:hh\\:mm}-{end:hh\\:mm}", Size(CiSecondary, scale), White(0.9));
         time.VerticalAlignment = VerticalAlignment.Bottom;
         time.Margin = new Thickness(6, 0, 0, 0);
 
@@ -125,7 +139,7 @@ public sealed class ScheduleWidget : WidgetBase
         {
             Minimum = 0,
             Maximum = 100,
-            Value = ProgressOf(slot, now),
+            Value = ProgressOf(start, end, now),
             Height = 3,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Bottom,
@@ -135,14 +149,14 @@ public sealed class ScheduleWidget : WidgetBase
         return new Grid { Children = { row, progress } };
     }
 
-    /// <summary>当前课程已进行的百分比（CI 主界面当前课下方的进度条）。</summary>
-    private static double ProgressOf(CourseSlot slot, TimeSpan now)
+    /// <summary>当前时段已进行的百分比（CI 主界面当前项下方的进度条）。</summary>
+    private static double ProgressOf(TimeSpan start, TimeSpan end, TimeSpan now)
     {
-        var total = slot.End - slot.Start;
+        var total = end - start;
         if (total <= TimeSpan.Zero)
             return 0;
 
-        var elapsed = now - slot.Start;
+        var elapsed = now - start;
         return Math.Clamp(elapsed.TotalSeconds / total.TotalSeconds * 100, 0, 100);
     }
 }
