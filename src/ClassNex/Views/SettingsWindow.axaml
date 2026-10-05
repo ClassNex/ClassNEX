@@ -11,12 +11,9 @@
         MinWidth="900" MinHeight="560"
         WindowStartupLocation="CenterScreen">
 
-    <!--
-      结构 1:1 对照 CI 的 Views/SettingsWindowNew.axaml：
-        Row0 = 48px 顶栏（左：应用图标 + 标题；右：版本 + 「更多选项…」菜单）
-        Row1 = NavigationView（PaneHeader = 账号块，MenuItems = 各设置页，内容 = 页面标题行 + 页面）
-      另加：顶栏中央的「查找设置」搜索（用户要求的 Windows 设置同款）
-    -->
+    <!-- 结构 1:1 对照 CI 的 Views/SettingsWindowNew.axaml + SettingPages/*：
+         顶栏(48) + NavigationView(PaneHeader 账户块 + MenuItems 图标) + 页面标题行 + 页面。
+         每个设置项 = SettingsExpander(IconSource + Header + Description + Footer 常显控件)。 -->
     <Grid RowDefinitions="48,*">
         <!-- ============ 顶栏（CI：Border Height=48） ============ -->
         <Border Grid.Row="0" Height="48"
@@ -26,16 +23,14 @@
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <Image Source="/Assets/icon.ico" Width="18" Height="18"
                            IsHitTestVisible="False" RenderOptions.BitmapInterpolationMode="HighQuality"/>
-                    <TextBlock Text="应用设置" FontSize="12" VerticalAlignment="Center"
-                               IsHitTestVisible="False"/>
+                    <TextBlock Text="应用设置" FontSize="12" VerticalAlignment="Center" IsHitTestVisible="False"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <TextBlock x:Name="VersionText" FontSize="12" VerticalAlignment="Center"
                                ToolTip.Tip="应用版本"
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                    <Button x:Name="MoreOptionsButton"
-                            Theme="{StaticResource TransparentButton}"
+                    <Button x:Name="MoreOptionsButton" Theme="{StaticResource TransparentButton}"
                             VerticalAlignment="Center" ToolTip.Tip="更多选项…">
                         <ui:FontIcon Glyph="&#xEBAC;" FontSize="14"/>
                         <Button.Flyout>
@@ -60,23 +55,17 @@
             </Grid>
         </Border>
 
-        <!-- ============ 主体导航（CI：NavigationView，OpenPaneLength=283） ============ -->
+        <!-- ============ 主体导航 ============ -->
         <ui:NavigationView Grid.Row="1" x:Name="NavView"
-                           PaneDisplayMode="Left"
-                           OpenPaneLength="283"
-                           IsBackButtonVisible="False"
-                           IsSettingsVisible="False"
+                           PaneDisplayMode="Left" OpenPaneLength="283"
+                           IsBackButtonVisible="False" IsSettingsVisible="False"
                            IsPaneToggleButtonVisible="False">
 
-            <!-- 导航栏顶部「账户」块：点进去只有「用户名」一项设置 -->
             <ui:NavigationView.PaneHeader>
-                <Button x:Name="AccountButton"
-                        Margin="6,10,6,4" Padding="8" CornerRadius="4"
+                <Button x:Name="AccountButton" Margin="6,10,6,4" Padding="8" CornerRadius="4"
                         Background="Transparent" BorderThickness="0"
-                        HorizontalAlignment="Stretch"
-                        HorizontalContentAlignment="Left"
-                        Click="OnAccountClick"
-                        ToolTip.Tip="账户">
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                        Click="OnAccountClick" ToolTip.Tip="账户">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <Border Width="40" Height="40" CornerRadius="20"
                                 Background="{DynamicResource AccentFillColorDefaultBrush}">
@@ -92,7 +81,6 @@
                 </Button>
             </ui:NavigationView.PaneHeader>
 
-            <!-- 导航项：图标字形全部照搬 CI 的 SettingsPageInfo 特性 -->
             <ui:NavigationView.MenuItems>
                 <ui:NavigationViewItem Content="通用">
                     <ui:NavigationViewItem.IconSource>
@@ -126,24 +114,24 @@
                 </ui:NavigationViewItem>
             </ui:NavigationView.MenuItems>
 
-            <!-- 内容区：页面标题行（CI 的 TitleContainer）+ 页面 -->
             <Grid RowDefinitions="Auto,*">
-                <TextBlock x:Name="PageTitleText" Grid.Row="0"
-                           FontSize="28" FontWeight="Normal"
-                           Margin="32,24,32,0"
-                           HorizontalAlignment="Left"/>
-
+                <TextBlock x:Name="PageTitleText" Grid.Row="0" FontSize="28"
+                           Margin="32,24,32,0" HorizontalAlignment="Left"/>
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="32,12,32,24" Spacing="10" MaxWidth="880" HorizontalAlignment="Left">
+                    <StackPanel Margin="32,12,32,24" Spacing="12" MaxWidth="880" HorizontalAlignment="Left">
 
-                        <!-- ============ 通用 ============ -->
-                        <StackPanel x:Name="PageGeneral" Spacing="6">
+                        <!-- ==================== 通用 ==================== -->
+                        <StackPanel x:Name="PageGeneral" Spacing="10">
                             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,2">
                                 <ui:FontIcon Glyph="&#xE84F;" FontSize="16" VerticalAlignment="Center" Opacity="0.85"/>
                                 <TextBlock Text="行为" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             </StackPanel>
+
                             <ui:SettingsExpander Header="单周开始日期"
                                                  Description="该日期所在周视为单周，用于推算当前是单周还是双周">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE304;"/>
+                                </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <DatePicker x:Name="SingleWeekStartPicker" HorizontalAlignment="Stretch"/>
                                 </ui:SettingsExpander.Footer>
@@ -151,6 +139,9 @@
 
                             <ui:SettingsExpander Header="点击托盘图标行为"
                                                  Description="单击托盘图标时执行的操作">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE713;"/>
+                                </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <ComboBox x:Name="TrayBehaviorCombo" HorizontalAlignment="Stretch">
                                         <ComboBoxItem Content="显示 / 隐藏主界面"/>
@@ -161,15 +152,19 @@
                             </ui:SettingsExpander>
                         </StackPanel>
 
-                        <!-- ============ 界面 ============ -->
-                        <StackPanel x:Name="PageInterface" Spacing="6" IsVisible="False">
+                        <!-- ==================== 界面 ==================== -->
+                        <StackPanel x:Name="PageInterface" Spacing="10" IsVisible="False">
                             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,2">
                                 <ui:FontIcon Glyph="&#xEC4A;" FontSize="16" VerticalAlignment="Center" Opacity="0.85"/>
                                 <TextBlock Text="外观" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             </StackPanel>
+
                             <ui:SettingsExpander Header="主题" Description="跟随系统 / 浅色 / 深色">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE790;"/>
+                                </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
-                                    <StackPanel Spacing="8">
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
                                         <RadioButton x:Name="ThemeSystem" GroupName="Theme" Content="跟随系统"/>
                                         <RadioButton x:Name="ThemeLight" GroupName="Theme" Content="浅色"/>
                                         <RadioButton x:Name="ThemeDark" GroupName="Theme" Content="深色"/>
@@ -178,9 +173,12 @@
                             </ui:SettingsExpander>
 
                             <ui:SettingsExpander Header="主界面背景不透明度">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE7B3;"/>
+                                </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="12">
-                                        <Slider x:Name="OpacitySlider" Minimum="0.1" Maximum="1" Width="300"
+                                        <Slider x:Name="OpacitySlider" Minimum="0.1" Maximum="1" Width="240"
                                                 TickFrequency="0.05" IsSnapToTickEnabled="True"/>
                                         <TextBlock x:Name="OpacityValueText" VerticalAlignment="Center" Opacity="0.7"/>
                                     </StackPanel>
@@ -188,9 +186,12 @@
                             </ui:SettingsExpander>
 
                             <ui:SettingsExpander Header="全局字号缩放">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE8D2;"/>
+                                </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="12">
-                                        <Slider x:Name="FontScaleSlider" Minimum="0.8" Maximum="1.6" Width="300"
+                                        <Slider x:Name="FontScaleSlider" Minimum="0.8" Maximum="1.6" Width="240"
                                                 TickFrequency="0.05" IsSnapToTickEnabled="True"/>
                                         <TextBlock x:Name="FontScaleValueText" VerticalAlignment="Center" Opacity="0.7"/>
                                     </StackPanel>
@@ -198,18 +199,23 @@
                             </ui:SettingsExpander>
 
                             <ui:SettingsExpander Header="主界面缩放"
-                                                 Description="对应 CI 的「主界面缩放」（CI 默认 1.9），整体放大主界面的文字与控件">
+                                                 Description="对应 CI 的「主界面缩放」（CI 默认 1.9），整体放大主界面">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE7C3;"/>
+                                </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="12">
-                                        <Slider x:Name="MainWindowScaleSlider" Minimum="0.6" Maximum="3.0" Width="300"
+                                        <Slider x:Name="MainWindowScaleSlider" Minimum="0.6" Maximum="3.0" Width="240"
                                                 TickFrequency="0.05" IsSnapToTickEnabled="True"/>
-                                        <TextBlock x:Name="MainWindowScaleValueText" VerticalAlignment="Center"
-                                                   Opacity="0.7"/>
+                                        <TextBlock x:Name="MainWindowScaleValueText" VerticalAlignment="Center" Opacity="0.7"/>
                                     </StackPanel>
                                 </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>
 
                             <ui:SettingsExpander Header="组件排列方向">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE8A7;"/>
+                                </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <ComboBox x:Name="OrientationCombo" HorizontalAlignment="Stretch">
                                         <ComboBoxItem Content="横向"/>
@@ -219,19 +225,21 @@
                             </ui:SettingsExpander>
 
                             <ui:SettingsExpander Header="鼠标穿透"
-                                                 Description="开启后鼠标点击会直接落到主界面后方的窗口，不会被挡住；鼠标移入主界面会自动淡化。开启时请用托盘菜单操作。">
+                                                 Description="开启后鼠标点击会直接落到主界面后方的窗口；鼠标移入主界面自动淡化">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE7C9;"/>
+                                </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <CheckBox x:Name="ClickThroughCheck" Content="启用鼠标穿透"/>
                                 </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>
                         </StackPanel>
 
-                        <!-- ============ 主界面组件 ============ -->
-                        <StackPanel x:Name="PageWidgets" Spacing="6" IsVisible="False">
-                            <TextBlock Text="决定悬浮主界面上显示哪些内容。点击组件卡片即可添加。"
-                                       Opacity="0.7" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                        <!-- ==================== 主界面组件 ==================== -->
+                        <StackPanel x:Name="PageWidgets" Spacing="10" IsVisible="False">
+                            <TextBlock Text="决定悬浮主界面上显示哪些内容。双击组件卡片添加；点组件右侧「⋯」上移/下移/删除。"
+                                       Opacity="0.7" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,4"/>
 
-                            <!-- 横向组件条（CI：component-listBox，横向排当前启用的组件） -->
                             <Border CornerRadius="6" Padding="4"
                                     Background="{DynamicResource ControlFillColorSecondaryBrush}"
                                     BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1">
@@ -246,8 +254,7 @@
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding DisplayText}" VerticalAlignment="Center"/>
-                                                <Button Content="⋯" Padding="6,0" ToolTip.Tip="更多选项"
-                                                        Click="OnWidgetItemMore">
+                                                <Button Content="⋯" Padding="6,0" ToolTip.Tip="更多选项" Click="OnWidgetItemMore">
                                                     <Button.Flyout>
                                                         <MenuFlyout>
                                                             <MenuItem Header="上移" Click="OnWidgetItemMoveUp"/>
@@ -263,8 +270,7 @@
                                 </ListBox>
                             </Border>
 
-                            <!-- 组件库 / 组件设置（CI：TabControl） -->
-                            <TabControl HorizontalContentAlignment="Stretch" Padding="0" Margin="0,4,0,0">
+                            <TabControl HorizontalContentAlignment="Stretch" Padding="0">
                                 <TabItem Header="组件库">
                                     <StackPanel Spacing="10" Margin="0,10,0,0">
                                         <WrapPanel x:Name="WidgetLibraryPanel"/>
@@ -273,40 +279,52 @@
                                 </TabItem>
                                 <TabItem Header="组件设置">
                                     <ScrollViewer Margin="0,10,0,0">
-                                        <StackPanel x:Name="WidgetEditor" Spacing="12" IsEnabled="False">
-                                            <TextBlock x:Name="WidgetTypeText" FontSize="12" Opacity="0.7"
-                                                       TextWrapping="Wrap"/>
-                                            <CheckBox x:Name="WidgetEnabledCheck" Content="启用该组件"/>
-                                            <StackPanel Spacing="4">
-                                                <TextBlock Text="字号缩放" FontSize="12" Opacity="0.7"/>
-                                                <StackPanel Orientation="Horizontal" Spacing="12">
-                                                    <Slider x:Name="WidgetFontSlider" Minimum="0.6" Maximum="2.0"
-                                                            Width="200" TickFrequency="0.05" IsSnapToTickEnabled="True"/>
-                                                    <TextBlock x:Name="WidgetFontValueText" VerticalAlignment="Center"
-                                                               Opacity="0.7"/>
-                                                </StackPanel>
-                                            </StackPanel>
-                                            <CheckBox x:Name="WidgetSecondsCheck" Content="时钟组件显示秒"/>
-                                            <StackPanel Spacing="4">
-                                                <TextBlock Text="自定义文本（仅「文本」组件）" FontSize="12" Opacity="0.7"/>
-                                                <TextBox x:Name="WidgetTextBox" Height="64"
-                                                         AcceptsReturn="True" TextWrapping="Wrap"/>
-                                                <TextBlock Text="占位符：{date} {day} {time} {parity} {current} {next} {countdown}"
-                                                           FontSize="11" Opacity="0.6" TextWrapping="Wrap"/>
-                                            </StackPanel>
+                                        <StackPanel x:Name="WidgetEditor" Spacing="8" IsEnabled="False">
+                                            <TextBlock x:Name="WidgetTypeText" FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+
+                                            <ui:SettingsExpander Header="启用该组件">
+                                                <ui:SettingsExpander.Footer>
+                                                    <CheckBox x:Name="WidgetEnabledCheck"/>
+                                                </ui:SettingsExpander.Footer>
+                                            </ui:SettingsExpander>
+
+                                            <ui:SettingsExpander Header="字号缩放">
+                                                <ui:SettingsExpander.Footer>
+                                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                                        <Slider x:Name="WidgetFontSlider" Minimum="0.6" Maximum="2.0"
+                                                                Width="200" TickFrequency="0.05" IsSnapToTickEnabled="True"/>
+                                                        <TextBlock x:Name="WidgetFontValueText" VerticalAlignment="Center" Opacity="0.7"/>
+                                                    </StackPanel>
+                                                </ui:SettingsExpander.Footer>
+                                            </ui:SettingsExpander>
+
+                                            <ui:SettingsExpander Header="时钟组件显示秒">
+                                                <ui:SettingsExpander.Footer>
+                                                    <CheckBox x:Name="WidgetSecondsCheck"/>
+                                                </ui:SettingsExpander.Footer>
+                                            </ui:SettingsExpander>
+
+                                            <ui:SettingsExpander Header="自定义文本（仅「文本」组件）"
+                                                                 Description="占位符：{date} {day} {time} {parity} {current} {next} {countdown}">
+                                                <ui:SettingsExpander.Footer>
+                                                    <TextBox x:Name="WidgetTextBox" Width="300" AcceptsReturn="True" TextWrapping="Wrap"/>
+                                                </ui:SettingsExpander.Footer>
+                                            </ui:SettingsExpander>
                                         </StackPanel>
                                     </ScrollViewer>
                                 </TabItem>
                             </TabControl>
                         </StackPanel>
 
-                        <!-- ============ 课表 ============ -->
-                        <StackPanel x:Name="PageSchedule" Spacing="6" IsVisible="False">
+                        <!-- ==================== 课表 ==================== -->
+                        <StackPanel x:Name="PageSchedule" Spacing="10" IsVisible="False">
                             <ui:SettingsExpander Header="当前课表文件" Description="支持 CSES 课程表交换格式（YAML）">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE8A5;"/>
+                                </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Spacing="10">
-                                        <TextBlock x:Name="TimetableFileText" TextWrapping="Wrap" FontSize="12"
-                                                   Opacity="0.75"/>
+                                        <TextBlock x:Name="TimetableFileText" TextWrapping="Wrap" FontSize="12" Opacity="0.75"/>
                                         <StackPanel Orientation="Horizontal" Spacing="10">
                                             <Button x:Name="OpenTimetableButton" Content="打开课表文件…"/>
                                             <Button x:Name="ReloadTimetableButton" Content="重新加载"/>
@@ -320,27 +338,30 @@
                                         Message="请在「档案编辑器」中编辑课表与时间表（托盘菜单 → 编辑档案…）。"/>
                         </StackPanel>
 
-                        <!-- ============ 关于 ============ -->
-                        <StackPanel x:Name="PageAbout" Spacing="6" IsVisible="False">
-                            <ui:SettingsExpander x:Name="AboutExpander" Header="ClassNEX 桌面客户端"
-                                                 IsExpanded="True">
+                        <!-- ==================== 关于 ==================== -->
+                        <StackPanel x:Name="PageAbout" Spacing="10" IsVisible="False">
+                            <ui:SettingsExpander x:Name="AboutExpander" Header="ClassNEX 桌面客户端" IsExpanded="True">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE946;"/>
+                                </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Spacing="6">
                                         <TextBlock x:Name="AboutVersionText" TextWrapping="Wrap" FontWeight="SemiBold"/>
                                         <TextBlock TextWrapping="Wrap" Opacity="0.75"
-                                                   Text="主界面（悬浮组件课表）、应用设置、档案编辑器、系统托盘。&#10;课表采用 CSES 课程表交换格式；界面统一使用 FluentAvalonia（FluentUI）控件；配色与交互参照 CI（ClassIsland）。"/>
+                                                   Text="主界面（悬浮组件课表）、应用设置、档案编辑器、系统托盘。&#10;课表采用 CSES 课程表交换格式；界面使用 AvaloniaFluentUI（Fluent 控件）；配色与交互参照 CI（ClassIsland）。"/>
                                     </StackPanel>
                                 </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>
                         </StackPanel>
 
-                        <!-- ============ 账户（只有「用户名」一项） ============ -->
-                        <StackPanel x:Name="PageAccount" Spacing="6" IsVisible="False">
-                            <ui:SettingsExpander Header="用户名"
-                                                 Description="显示在设置窗口左侧账户块中的名称">
+                        <!-- ==================== 账户 ==================== -->
+                        <StackPanel x:Name="PageAccount" Spacing="10" IsVisible="False">
+                            <ui:SettingsExpander Header="用户名" Description="显示在设置窗口左侧账户块中的名称">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE77B;"/>
+                                </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
-                                    <TextBox x:Name="UserNameBox" HorizontalAlignment="Stretch"
-                                             Watermark="输入用户名"/>
+                                    <TextBox x:Name="UserNameBox" Width="300" Watermark="输入用户名"/>
                                 </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>
                         </StackPanel>
@@ -350,7 +371,7 @@
             </Grid>
         </ui:NavigationView>
 
-        <!-- ============ 顶栏中央搜索（对照用户截图：查找设置） ============ -->
+        <!-- ============ 顶栏中央搜索 ============ -->
         <Grid Grid.Row="0" Grid.RowSpan="2"
               Width="440" HorizontalAlignment="Center" VerticalAlignment="Top"
               Margin="0,8,0,0" ZIndex="100">
@@ -370,7 +391,6 @@
                 </TextBox>
             </Border>
 
-            <!-- 搜索结果（覆盖在内容之上，不占布局） -->
             <Border x:Name="SearchResultsPanel" IsVisible="False"
                     Margin="0,36,0,0" VerticalAlignment="Top"
                     CornerRadius="4" BorderThickness="1" MaxHeight="380"
