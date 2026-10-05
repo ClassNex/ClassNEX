@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ui="using:FluentAvalonia.UI.Controls"
         mc:Ignorable="d" d:DesignWidth="1240" d:DesignHeight="760"
         x:Class="ClassNex.Views.ProfileEditorWindow"
         Title="档案编辑器"
@@ -34,109 +35,105 @@
 
         <TabControl x:Name="Tabs" Margin="8">
 
-            <!-- ==================== 课表（对应图3）==================== -->
+            <!-- ==================== 课表（1:1 复刻 CI 档案编辑器「课表」页） ====================
+                 CI 结构：CommandBar（工具栏）
+                 + Grid[ DataGrid 列表视图（启用/时间/科目下拉框，每行=一个节次） | 分割条 | 编辑科目面板 ]
+                 编辑模型：选中一行 → 改科目下拉框或点右侧科目 → 立即生效；
+                 勾选「选完科目自动移动到下一个课程」后自动下移一行。 -->
             <TabItem Header="课表">
-                <Grid Margin="12" ColumnDefinitions="*,330">
+                <Grid Margin="12" ColumnDefinitions="*,5,350">
 
                     <DockPanel Grid.Column="0">
+                        <!-- 工具栏（对应 CI CommandBar，按其可映射项） -->
                         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="4,0,4,10">
                             <Button x:Name="RefreshButton" Content="刷新"/>
-                            <Button x:Name="NewCourseButton" Content="新课程"/>
                             <Button x:Name="DeleteCourseButton" Content="删除"/>
-                            <ComboBox x:Name="ParityCombo" Width="108"/>
-                            <CheckBox x:Name="AutoAdvanceCheck" Content="选完科目自动移动到下一个课程"
-                                      VerticalAlignment="Center"/>
+                            <ComboBox x:Name="DayCombo" Width="110">
+                                <ComboBoxItem Content="周一"/>
+                                <ComboBoxItem Content="周二"/>
+                                <ComboBoxItem Content="周三"/>
+                                <ComboBoxItem Content="周四"/>
+                                <ComboBoxItem Content="周五"/>
+                                <ComboBoxItem Content="周六"/>
+                                <ComboBoxItem Content="周日"/>
+                            </ComboBox>
+                            <ComboBox x:Name="ParityCombo" Width="110">
+                                <ComboBoxItem Content="全部课程"/>
+                                <ComboBoxItem Content="单周"/>
+                                <ComboBoxItem Content="双周"/>
+                            </ComboBox>
                         </StackPanel>
 
-                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                            <Grid x:Name="TimetableGrid" Margin="4"/>
-                        </ScrollViewer>
+                        <!-- 列表视图 / 周视图（对应 CI 的两种视图） -->
+                        <TabControl x:Name="ClassPlanViews" Padding="0">
+                            <TabItem Header="列表视图">
+                                <DataGrid x:Name="ClassGrid" Margin="0,0,4,0"
+                                          AutoGenerateColumns="False"
+                                          CanUserSortColumns="False"
+                                          CanUserReorderColumns="False"
+                                          GridLinesVisibility="Horizontal">
+                                    <DataGrid.Columns>
+                                        <DataGridTemplateColumn Header="启用" Width="72">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox IsChecked="{Binding IsEnabled, Mode=TwoWay}"
+                                                              HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="时间"
+                                                             Binding="{Binding TimeText}"
+                                                             IsReadOnly="True"
+                                                             Width="130"/>
+                                        <DataGridTemplateColumn Header="科目" Width="*">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <ComboBox ItemsSource="{Binding Subjects}"
+                                                              SelectedItem="{Binding Subject, Mode=TwoWay}"
+                                                              HorizontalAlignment="Stretch"
+                                                              FontSize="13"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </TabItem>
+
+                            <TabItem Header="周视图">
+                                <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                              VerticalScrollBarVisibility="Auto">
+                                    <Grid x:Name="TimetableGrid" Margin="4"/>
+                                </ScrollViewer>
+                            </TabItem>
+                        </TabControl>
                     </DockPanel>
 
-                    <Grid Grid.Column="1" Margin="12,0,0,0" RowDefinitions="Auto,*">
+                    <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Stretch" Background="Transparent"/>
 
-                        <!-- 编辑科目：点选科目 → 点课表格子直接排课（CI 图3 的流程） -->
-                        <Border Grid.Row="0"
-                                Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
-                                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                                BorderThickness="1" CornerRadius="8" Padding="14">
-                            <StackPanel Spacing="8">
-                                <TextBlock Text="编辑科目" FontSize="15" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                <TextBlock x:Name="PaletteHintText" FontSize="11" TextWrapping="Wrap"
-                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                <WrapPanel x:Name="SubjectPalettePanel"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- 课程编辑面板 -->
-                        <Border Grid.Row="1" Margin="0,10,0,0"
+                    <!-- 编辑科目面板（对应 CI 右侧 TabControl「编辑科目」） -->
+                    <DockPanel Grid.Column="2" Margin="12,0,0,0">
+                        <TextBlock DockPanel.Dock="Top" Text="编辑科目" FontSize="15" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <CheckBox DockPanel.Dock="Bottom" x:Name="AutoAdvanceCheck"
+                                  Content="选完科目自动移动到下一个课程" Margin="0,10,0,0"/>
+                        <TextBlock DockPanel.Dock="Bottom" x:Name="PaletteHintText" FontSize="11" TextWrapping="Wrap"
+                                   Margin="0,6,0,0"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        <Border Margin="0,10,0,0"
                                 Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
                                 BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                                 BorderThickness="1" CornerRadius="8" Padding="14">
                             <ScrollViewer>
-                                <StackPanel Spacing="10">
-                                    <TextBlock x:Name="CourseEditorTitle" Text="课程" FontSize="15"
-                                               FontWeight="SemiBold"
-                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-
-                                    <StackPanel Spacing="4">
-                                        <TextBlock Text="星期" FontSize="12"
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                        <ComboBox x:Name="CourseDayCombo" HorizontalAlignment="Stretch">
-                                            <ComboBoxItem Content="周一"/>
-                                            <ComboBoxItem Content="周二"/>
-                                            <ComboBoxItem Content="周三"/>
-                                            <ComboBoxItem Content="周四"/>
-                                            <ComboBoxItem Content="周五"/>
-                                            <ComboBoxItem Content="周六"/>
-                                            <ComboBoxItem Content="周日"/>
-                                        </ComboBox>
-                                    </StackPanel>
-
-                                    <StackPanel Spacing="4">
-                                        <TextBlock Text="科目" FontSize="12"
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                        <ComboBox x:Name="CourseSubjectCombo" HorizontalAlignment="Stretch"/>
-                                    </StackPanel>
-
-                                    <StackPanel Spacing="4">
-                                        <TextBlock Text="开始时间" FontSize="12"
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                        <TimePicker x:Name="CourseStartPicker" HorizontalAlignment="Stretch"/>
-                                    </StackPanel>
-
-                                    <StackPanel Spacing="4">
-                                        <TextBlock Text="结束时间" FontSize="12"
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                        <TimePicker x:Name="CourseEndPicker" HorizontalAlignment="Stretch"/>
-                                    </StackPanel>
-
-                                    <StackPanel Spacing="4">
-                                        <TextBlock Text="周次" FontSize="12"
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                        <ComboBox x:Name="CourseWeeksCombo" HorizontalAlignment="Stretch">
-                                            <ComboBoxItem Content="每周"/>
-                                            <ComboBoxItem Content="单周"/>
-                                            <ComboBoxItem Content="双周"/>
-                                        </ComboBox>
-                                    </StackPanel>
-
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <Button x:Name="AddCourseButton" Content="新增"/>
-                                        <Button x:Name="UpdateCourseButton" Content="保存修改"/>
-                                    </StackPanel>
-
-                                    <TextBlock x:Name="CourseHintText" FontSize="11" TextWrapping="Wrap"
-                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                </StackPanel>
+                                <WrapPanel x:Name="SubjectPalettePanel"/>
                             </ScrollViewer>
                         </Border>
-                    </Grid>
+                    </DockPanel>
                 </Grid>
             </TabItem>
 
-            <!-- ==================== 时间表（对应图4）==================== -->
+            <!-- ==================== 时间表（对应 CI「时间表」页的可视化时间轴） ==================== -->
             <TabItem Header="时间表">
                 <Grid Margin="12" ColumnDefinitions="*,330">
 
@@ -191,7 +188,7 @@
 
                             <Button x:Name="SaveTimeButton" Content="保存修改" HorizontalAlignment="Left"/>
 
-                            <TextBlock Text="修改时间会同步更新课表中使用该时段的所有课程。"
+                            <TextBlock Text="课程的时间跟随其所在节次；修改时间会同步更新课表中使用该时段的课程。"
                                        FontSize="11" TextWrapping="Wrap"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                         </StackPanel>
@@ -199,7 +196,7 @@
                 </Grid>
             </TabItem>
 
-            <!-- ==================== 科目（对应图5）==================== -->
+            <!-- ==================== 科目（对应 CI「科目」页的表格） ==================== -->
             <TabItem Header="科目">
                 <Grid Margin="12" ColumnDefinitions="*,330">
 

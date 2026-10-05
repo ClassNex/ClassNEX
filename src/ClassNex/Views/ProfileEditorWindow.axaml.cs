@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -12,27 +14,34 @@ using ClassNex.Styles;
 namespace ClassNex.Views;
 
 /// <summary>
-/// 档案编辑器（三页分别对齐 CI 截图 3 / 4 / 5）：
-///   课表   —— 点科目 → 点格子直接排课（含「选完科目自动移动到下一个课程」）
-///   时间表 —— 可视化时间轴（上课=强调色块，课间=中性块）
-///   科目   —— 表格（科目名 / 简称 / 户外课程 / 科任老师）
+/// 档案编辑器。课表页 1:1 复刻 CI（ClassIsland）档案编辑器的交互：
+///   列表视图 DataGrid（启用/时间/科目下拉框，每行 = 一个节次）
+///   + 右侧「编辑科目」面板 + 「选完科目自动移动到下一个课程」。
+/// 编辑模型：选中一行 → 改科目下拉框或点右侧科目 → 立即生效（不再靠点格子）。
 /// </summary>
 public partial class ProfileEditorWindow : Window
 {
+    private readonly ObservableCollection<ClassGridRow> _classRows = new();
+    private readonly List<string> _subjectNames = new();
+
     private bool _loading;
-    private CourseRef? _selectedCourse;
+    private bool _updatingRow;
     private ClassTime? _selectedTime;
     private Subject? _currentSubject;
-    private Subject? _paletteSubject;
-    private CellTarget? _pendingCell;
+    private int _day = 1;
+    private string _parity = "all";
 
     public ProfileEditorWindow()
     {
         InitializeComponent();
-        AutoAdvanceCheck.IsChecked = true;
-        WireEvents();
 
+        // 初始化默认值要在事件接线之前，避免过早触发
+        DayCombo.SelectedIndex = 0;
         ParityCombo.SelectedIndex = 0;
+        AutoAdvanceCheck.IsChecked = true;
+        ClassGrid.ItemsSource = _classRows;
+
+        WireEvents();
         LoadAll();
     }
 
@@ -45,26 +54,31 @@ public partial class ProfileEditorWindow : Window
 
     private void WireEvents()
     {
-        ParityCombo.SelectionChanged += (_, _) => RenderTimetable();
+        RefreshButton.Click += (_, _) => { AppServices.ReloadTimetable(); LoadAll(); };
+        DeleteCourseButton.Click += (_, _) => DeleteSelectedCourse();
+
+        DayCombo.SelectionChanged += (_, _) =>
+        {
+            if (_loading) return;
+            _day = Math.Max(1, DayCombo.SelectedIndex + 1);
+            RefreshClassGrid();
+            RenderTimetable();
+        };
+        ParityCombo.SelectionChanged += (_, _) =>
+        {
+            if (_loading) return;
+            _parity = ParityCombo.SelectedIndex switch { 1 => "odd", 2 => "even", _ => "all" };
+            RefreshClassGrid();
+            RenderTimetable();
+        };
         AutoAdvanceCheck.PropertyChanged += (_, e) =>
         {
             if (e.Property == CheckBox.IsCheckedProperty)
-                RefreshPalette();
+                RefreshPaletteHint();
         };
+        ClassGrid.SelectionChanged += (_, _) => RefreshPalette();
 
-        RefreshButton.Click += (_, _) => { AppServices.ReloadTimetable(); LoadAll(); };
-        NewCourseButton.Click += (_, _) =>
-        {
-            _pendingCell = null;
-            _selectedCourse = null;
-            ResetCourseEditor();
-            RenderTimetable();
-            RefreshPalette();
-        };
-        DeleteCourseButton.Click += (_, _) => DeleteCourse();
-        AddCourseButton.Click += (_, _) => AddCourse();
-        UpdateCourseButton.Click += (_, _) => UpdateCourse();
-
+        // ---- 时间表 ----
         AddTimeButton.Click += (_, _) => AddTime();
         RemoveTimeButton.Click += (_, _) => RemoveTime();
         MoveUpButton.Click += (_, _) => MoveTime(-1);
@@ -72,12 +86,13 @@ public partial class ProfileEditorWindow : Window
         ResetTimeButton.Click += (_, _) => ResetTimeLayout();
         SaveTimeButton.Click += (_, _) => SaveTimeEdit();
 
+        // ---- 科目 ----
         AddSubjectButton.Click += (_, _) => AddSubject();
         DeleteSubjectButton.Click += (_, _) => DeleteSubject();
         SaveSubjectsButton.Click += (_, _) =>
         {
             AppServices.Schedule.Save();
-            CourseHintText.Text = "科目已保存到课表文件。";
+            PaletteHintText.Text = "科目已保存到课表文件。";
         };
 
         SubjectNameBox.TextChanged += (_, _) => PushSubjectEdit();
@@ -99,12 +114,10 @@ public partial class ProfileEditorWindow : Window
     private void LoadAll()
     {
         _loading = true;
-        _selectedCourse = null;
         _selectedTime = null;
-        _pendingCell = null;
-        _paletteSubject = null;
+        _currentSubject = null;
 
-        RefreshSubjectCombo();
+        RefreshSubjectNames();
         RefreshPalette();
         RefreshSubjectTable();
         RefreshTimeline();
@@ -112,55 +125,201 @@ public partial class ProfileEditorWindow : Window
 
         _loading = false;
 
-        ResetCourseEditor();
+        RefreshClassGrid();
         RenderTimetable();
     }
 
     private void RefreshInfo() => ProfileInfoText.Text = $"当前课表文件：{AppServices.TimetablePath}";
 
-    private void RefreshSubjectCombo()
+    private void RefreshSubjectNames()
     {
-        var names = AppServices.Schedule.Profile.Subjects.Select(s => s.Name).ToList();
-        var previous = CourseSubjectCombo.SelectedItem as string;
-
-        CourseSubjectCombo.ItemsSource = names;
-
-        if (previous is not null && names.Contains(previous))
-            CourseSubjectCombo.SelectedItem = previous;
-        else if (names.Count > 0)
-            CourseSubjectCombo.SelectedIndex = 0;
+        _subjectNames.Clear();
+        _subjectNames.AddRange(AppServices.Schedule.Profile.Subjects.Select(s => s.Name));
     }
 
-    // ==================== 课表（图3）====================
+    // ==================== 课表（1:1 复刻 CI 列表视图） ====================
 
-    private void RenderTimetable()
+    private CourseRef? FindCourse(int day, string parity, string startCses)
     {
-        var parity = ParityCombo.SelectedIndex switch
+        foreach (var schedule in AppServices.Schedule.Profile.Schedules)
         {
-            1 => "odd",
-            2 => "even",
-            _ => "all",
-        };
+            if (schedule.EnableDay != day)
+                continue;
+            if (!ScheduleProfile.MatchesParity(schedule.Weeks, parity))
+                continue;
 
-        TimetableGridBuilder.Render(
-            TimetableGrid,
-            AppServices.Schedule.Profile,
-            parity,
-            _selectedCourse,
-            SelectCourse,
-            OnEmptyCell,
-            _pendingCell);
+            foreach (var course in schedule.Classes)
+            {
+                if (ClassTime.SameTime(ClassTime.ToShortTime(course.StartTime),
+                                       ClassTime.ToShortTime(startCses)))
+                    return new CourseRef(schedule.EnableDay, schedule.Weeks, schedule, course);
+            }
+        }
+
+        return null;
     }
 
-    /// <summary>科目面板（CI 图3 右侧）：点科目 → 已选中格子则直接排课。</summary>
+    /// <summary>按当前所选星期与周次，重建列表视图的行（每行 = 一个上课时间点）。</summary>
+    private void RefreshClassGrid()
+    {
+        var rows = new List<ClassGridRow>();
+
+        foreach (var time in AppServices.TimeLayout.Layout.Times)
+        {
+            if (time.Kind != ClassTimeKind.Class)
+                continue;
+            if (!TimeSpan.TryParse(time.Start, out var ts) || !TimeSpan.TryParse(time.End, out var te))
+                continue;
+            if (te <= ts)
+                continue;
+
+            var start = ClassTime.ToShortTime(time.Start);
+            var startCses = ClassTime.ToCsesTime(start);
+            var existing = FindCourse(_day, _parity, startCses);
+
+            rows.Add(new ClassGridRow(
+                start,
+                ClassTime.ToShortTime(time.End),
+                _subjectNames,
+                existing?.Course.Subject,
+                existing is not null,
+                OnRowSubjectChanged,
+                OnRowEnabledChanged));
+        }
+
+        _classRows.Clear();
+        foreach (var row in rows)
+            _classRows.Add(row);
+
+        RenderTimetable();
+        RefreshPalette();
+    }
+
+    private void OnRowSubjectChanged(ClassGridRow row, string? subject)
+    {
+        if (_updatingRow)
+            return;
+
+        if (string.IsNullOrWhiteSpace(subject))
+        {
+            RemoveCourseAt(row);
+            return;
+        }
+
+        SetCourseAt(row, subject!);
+    }
+
+    private void OnRowEnabledChanged(ClassGridRow row, bool enabled)
+    {
+        if (_updatingRow)
+            return;
+
+        if (!enabled)
+        {
+            RemoveCourseAt(row);
+            return;
+        }
+
+        var subject = row.Subject;
+        if (string.IsNullOrWhiteSpace(subject))
+            subject = _subjectNames.FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(subject))
+        {
+            // 没有科目可选：回滚勾选
+            row.IsEnabled = false;
+            return;
+        }
+
+        SetCourseAt(row, subject!);
+    }
+
+    /// <summary>把科目写入所选节次（CI 编辑模型：改下拉框 / 点面板科目 → 立即生效）。</summary>
+    private void SetCourseAt(ClassGridRow row, string subject)
+    {
+        _updatingRow = true;
+        try
+        {
+            var existing = FindCourse(_day, _parity, ClassTime.ToCsesTime(row.Start));
+
+            if (existing is not null)
+                existing.Course.Subject = subject;
+            else
+                AppServices.Schedule.AddCourse(_day, _parity, new Course
+                {
+                    Subject = subject,
+                    StartTime = ClassTime.ToCsesTime(row.Start),
+                    EndTime = ClassTime.ToCsesTime(row.End),
+                });
+
+            if (!row.IsEnabled)
+                row.IsEnabled = true;
+
+            PaletteHintText.Text = $"已在 {TimetableGridBuilder.DayNames[_day - 1]} {row.TimeText} 排入「{subject}」。";
+
+            if (AutoAdvanceCheck.IsChecked == true)
+                MoveSelectionToNextRow(row);
+            else
+                RefreshPalette();
+
+            RenderTimetable();
+        }
+        finally
+        {
+            _updatingRow = false;
+        }
+    }
+
+    private void RemoveCourseAt(ClassGridRow row)
+    {
+        _updatingRow = true;
+        try
+        {
+            var existing = FindCourse(_day, _parity, ClassTime.ToCsesTime(row.Start));
+            if (existing is not null)
+            {
+                AppServices.Schedule.RemoveCourse(existing.EnableDay, existing.Weeks, existing.Course);
+                PaletteHintText.Text = $"已删除 {TimetableGridBuilder.DayNames[_day - 1]} {row.TimeText} 的课程。";
+                RenderTimetable();
+            }
+        }
+        finally
+        {
+            _updatingRow = false;
+        }
+    }
+
+    private void DeleteSelectedCourse()
+    {
+        if (ClassGrid.SelectedItem is not ClassGridRow row)
+        {
+            PaletteHintText.Text = "请先在左侧列表选中一行。";
+            return;
+        }
+
+        if (row.IsEnabled)
+            row.IsEnabled = false; // 触发 RemoveCourseAt
+    }
+
+    private void MoveSelectionToNextRow(ClassGridRow row)
+    {
+        var index = _classRows.IndexOf(row);
+        if (index >= 0 && index + 1 < _classRows.Count)
+            ClassGrid.SelectedIndex = index + 1;
+        RefreshPalette();
+    }
+
+    // ==================== 编辑科目面板（CI 右侧） ====================
+
     private void RefreshPalette()
     {
         SubjectPalettePanel.Children.Clear();
 
+        var selected = ClassGrid.SelectedItem as ClassGridRow;
+        var selectedSubject = selected?.Subject;
+
         foreach (var subject in AppServices.Schedule.Profile.Subjects)
         {
-            var picked = ReferenceEquals(subject, _paletteSubject);
-
+            var picked = string.Equals(subject.Name, selectedSubject, StringComparison.Ordinal);
             var button = new Button
             {
                 Content = subject.DisplayName,
@@ -179,212 +338,42 @@ public partial class ProfileEditorWindow : Window
             SubjectPalettePanel.Children.Add(button);
         }
 
-        PaletteHintText.Text = _pendingCell is { } cell
-            ? $"已选 {TimetableGridBuilder.DayNames[cell.EnableDay - 1]} " +
-              $"{ClassTime.ToShortTime(cell.Start)}–{ClassTime.ToShortTime(cell.End)}，点科目即可排课。"
-            : _paletteSubject is { } picked2
-                ? $"当前科目：{picked2.DisplayName}，点课表空格快速排课。"
-                : "点课表空格 → 再点科目即可排课；也可以先选科目再点空格。";
+        RefreshPaletteHint();
+    }
+
+    private void RefreshPaletteHint()
+    {
+        var selected = ClassGrid.SelectedItem as ClassGridRow;
+
+        PaletteHintText.Text = selected is null
+            ? "先在左侧列表选中一个节次（行），再点科目完成排课。"
+            : $"已选 {TimetableGridBuilder.DayNames[_day - 1]} {selected.TimeText}。点科目排课"
+              + (AutoAdvanceCheck.IsChecked == true ? "，然后自动移到下一个课程。" : "。");
     }
 
     private void PickSubject(Subject subject)
     {
-        // 流程一（CI 图3）：已选中空格 → 点科目直接排课
-        if (_pendingCell is { } cell)
+        if (ClassGrid.SelectedItem is not ClassGridRow row)
         {
-            Assign(cell, subject);
-
-            _pendingCell = AutoAdvanceCheck.IsChecked == true ? NextCell(cell) : null;
-            _paletteSubject = subject;
-
-            RefreshPalette();
-            RenderTimetable();
+            PaletteHintText.Text = "请先在左侧列表选中一个节次（行）。";
             return;
         }
 
-        // 流程二：先选科目，再点空格
-        _paletteSubject = ReferenceEquals(_paletteSubject, subject) ? null : subject;
-        CourseSubjectCombo.SelectedItem = _paletteSubject?.Name;
-        RefreshPalette();
+        row.Subject = subject.Name;
     }
 
-    private void OnEmptyCell(CellTarget target)
+    // ==================== 周视图 ====================
+
+    private void RenderTimetable()
     {
-        if (_paletteSubject is { } subject)
-        {
-            Assign(target, subject);
-            RenderTimetable();
-            return;
-        }
-
-        _pendingCell = target;
-        _selectedCourse = null;
-        PrefillFromEmptyCell(target);
-        RefreshPalette();
-        RenderTimetable();
+        TimetableGridBuilder.Render(
+            TimetableGrid,
+            AppServices.Schedule.Profile,
+            _parity,
+            null, null, null, null);
     }
 
-    private void Assign(CellTarget cell, Subject subject)
-    {
-        AppServices.Schedule.AddCourse(cell.EnableDay, "all", new Course
-        {
-            Subject = subject.Name,
-            StartTime = cell.Start,
-            EndTime = cell.End,
-        });
-
-        CourseHintText.Text =
-            $"已在 {TimetableGridBuilder.DayNames[cell.EnableDay - 1]} " +
-            $"{ClassTime.ToShortTime(cell.Start)}–{ClassTime.ToShortTime(cell.End)} 排入「{subject.DisplayName}」。";
-    }
-
-    /// <summary>自动移动到下一个课程：同一行往后，到底则换到下周的第一行。</summary>
-    private CellTarget? NextCell(CellTarget current)
-    {
-        var times = AppServices.TimeLayout.Layout.Times
-            .Where(t => t.Kind == ClassTimeKind.Class)
-            .ToList();
-
-        if (times.Count == 0)
-            return null;
-
-        var index = times.FindIndex(t => ClassTime.SameTime(t.Start, ClassTime.ToShortTime(current.Start)));
-        if (index < 0)
-            index = 0;
-
-        if (index + 1 < times.Count)
-        {
-            var next = times[index + 1];
-            return new CellTarget(current.EnableDay, ClassTime.ToCsesTime(next.Start), ClassTime.ToCsesTime(next.End));
-        }
-
-        var nextDay = current.EnableDay % 7 + 1;
-        return new CellTarget(nextDay, ClassTime.ToCsesTime(times[0].Start), ClassTime.ToCsesTime(times[0].End));
-    }
-
-    private void ResetCourseEditor()
-    {
-        CourseEditorTitle.Text = "课程";
-        CourseHintText.Text = "点课表空格选中，再点上方科目排课。";
-    }
-
-    private void SelectCourse(CourseRef courseRef)
-    {
-        _selectedCourse = courseRef;
-        _pendingCell = null;
-        _loading = true;
-
-        CourseEditorTitle.Text = "编辑课程";
-        CourseDayCombo.SelectedIndex = Math.Clamp(courseRef.EnableDay - 1, 0, 6);
-        CourseSubjectCombo.SelectedItem = courseRef.Course.Subject;
-        CourseStartPicker.SelectedTime = ParseTime(courseRef.Course.StartTime);
-        CourseEndPicker.SelectedTime = ParseTime(courseRef.Course.EndTime);
-        CourseWeeksCombo.SelectedIndex = WeeksToIndex(courseRef.Weeks);
-        CourseHintText.Text =
-            $"已选中：{TimetableGridBuilder.DayNames[courseRef.EnableDay - 1]} " +
-            $"{courseRef.Course.Subject} {TimetableGridBuilder.FormatRange(courseRef.Course.StartTime, courseRef.Course.EndTime)}（{courseRef.WeeksText}）";
-
-        _loading = false;
-        RenderTimetable();
-        RefreshPalette();
-    }
-
-    private void PrefillFromEmptyCell(CellTarget target)
-    {
-        _loading = true;
-        CourseEditorTitle.Text = "新增课程";
-        CourseDayCombo.SelectedIndex = Math.Clamp(target.EnableDay - 1, 0, 6);
-        CourseStartPicker.SelectedTime = ParseTime(target.Start);
-        CourseEndPicker.SelectedTime = ParseTime(target.End);
-        CourseWeeksCombo.SelectedIndex = 0;
-        _loading = false;
-    }
-
-    private void AddCourse()
-    {
-        if (CourseSubjectCombo.SelectedItem is not string subject || string.IsNullOrWhiteSpace(subject))
-        {
-            CourseHintText.Text = "请先在「科目」标签页添加科目。";
-            return;
-        }
-
-        if (!TryReadTimes(out var start, out var end))
-            return;
-
-        AppServices.Schedule.AddCourse(CourseDayCombo.SelectedIndex + 1, IndexToWeeks(CourseWeeksCombo.SelectedIndex),
-            new Course
-            {
-                Subject = subject,
-                StartTime = ToCses(start),
-                EndTime = ToCses(end),
-            });
-
-        _selectedCourse = null;
-        CourseHintText.Text = "已新增课程。";
-        RenderTimetable();
-    }
-
-    private void UpdateCourse()
-    {
-        if (_selectedCourse is null)
-        {
-            CourseHintText.Text = "请先点击课表中的一个课程。";
-            return;
-        }
-
-        if (CourseSubjectCombo.SelectedItem is not string subject || string.IsNullOrWhiteSpace(subject))
-            return;
-
-        if (!TryReadTimes(out var start, out var end))
-            return;
-
-        var day = CourseDayCombo.SelectedIndex + 1;
-        var weeks = IndexToWeeks(CourseWeeksCombo.SelectedIndex);
-        var updated = new Course { Subject = subject, StartTime = ToCses(start), EndTime = ToCses(end) };
-
-        var original = _selectedCourse;
-        if (original.EnableDay == day && original.Weeks == weeks)
-            AppServices.Schedule.UpdateCourse(day, weeks, original.Course, updated);
-        else
-        {
-            AppServices.Schedule.RemoveCourse(original.EnableDay, original.Weeks, original.Course);
-            AppServices.Schedule.AddCourse(day, weeks, updated);
-        }
-
-        _selectedCourse = null;
-        CourseHintText.Text = "已保存修改。";
-        RenderTimetable();
-    }
-
-    private void DeleteCourse()
-    {
-        if (_selectedCourse is null)
-        {
-            CourseHintText.Text = "请先点击课表中的一个课程。";
-            return;
-        }
-
-        AppServices.Schedule.RemoveCourse(_selectedCourse.EnableDay, _selectedCourse.Weeks, _selectedCourse.Course);
-        _selectedCourse = null;
-        CourseHintText.Text = "已删除课程。";
-        RenderTimetable();
-    }
-
-    private bool TryReadTimes(out TimeSpan start, out TimeSpan end)
-    {
-        start = CourseStartPicker.SelectedTime ?? TimeSpan.FromHours(8);
-        end = CourseEndPicker.SelectedTime ?? start.Add(TimeSpan.FromMinutes(45));
-
-        if (end <= start)
-        {
-            CourseHintText.Text = "结束时间必须晚于开始时间。";
-            return false;
-        }
-
-        return true;
-    }
-
-    // ==================== 时间表（图4）====================
+    // ==================== 时间表 ====================
 
     private void RefreshTimeline()
     {
@@ -478,8 +467,8 @@ public partial class ProfileEditorWindow : Window
 
         TimeEditorTitle.Text = $"编辑时间点 · {time.Name}";
         TimeNameBox.Text = time.Name;
-        TimeStartPicker.SelectedTime = ParseTime(time.Start);
-        TimeEndPicker.SelectedTime = ParseTime(time.End);
+        TimeStartPicker.SelectedTime = TimeSpan.TryParse(time.Start, out var s) ? s : TimeSpan.Zero;
+        TimeEndPicker.SelectedTime = TimeSpan.TryParse(time.End, out var e) ? e : TimeSpan.Zero;
         TimeKindCombo.SelectedIndex = time.Kind == ClassTimeKind.Break ? 1 : 0;
 
         _loading = false;
@@ -500,7 +489,7 @@ public partial class ProfileEditorWindow : Window
         _selectedTime = time;
         RefreshTimeline();
         SelectTime(time);
-        RenderTimetable();
+        RefreshClassGrid();
     }
 
     private void RemoveTime()
@@ -511,7 +500,7 @@ public partial class ProfileEditorWindow : Window
         AppServices.TimeLayout.Remove(_selectedTime);
         _selectedTime = null;
         RefreshTimeline();
-        RenderTimetable();
+        RefreshClassGrid();
     }
 
     private void MoveTime(int delta)
@@ -521,7 +510,7 @@ public partial class ProfileEditorWindow : Window
 
         AppServices.TimeLayout.Move(_selectedTime, delta);
         RefreshTimeline();
-        RenderTimetable();
+        RefreshClassGrid();
     }
 
     private void SaveTimeEdit()
@@ -544,7 +533,7 @@ public partial class ProfileEditorWindow : Window
 
         AppServices.TimeLayout.Update(_selectedTime, updated);
         RefreshTimeline();
-        RenderTimetable();
+        RefreshClassGrid();
     }
 
     private void ResetTimeLayout()
@@ -553,10 +542,10 @@ public partial class ProfileEditorWindow : Window
         AppServices.TimeLayout.EnsureFromProfile(AppServices.Schedule.Profile);
         _selectedTime = null;
         RefreshTimeline();
-        RenderTimetable();
+        RefreshClassGrid();
     }
 
-    // ==================== 科目（图5）====================
+    // ==================== 科目 ====================
 
     private void RefreshSubjectTable()
     {
@@ -647,9 +636,9 @@ public partial class ProfileEditorWindow : Window
         _currentSubject.IsOutDoor = OutdoorCheck.IsChecked == true;
 
         RefreshSubjectTable();
+        RefreshSubjectNames();
+        RefreshClassGrid();
         RefreshPalette();
-        RefreshSubjectCombo();
-        RenderTimetable();
     }
 
     private void AddSubject()
@@ -657,8 +646,9 @@ public partial class ProfileEditorWindow : Window
         var subject = AppServices.Schedule.AddSubject("新科目");
         _currentSubject = subject;
         SelectSubjectRow(subject);
+        RefreshSubjectNames();
+        RefreshClassGrid();
         RefreshPalette();
-        RefreshSubjectCombo();
     }
 
     private void DeleteSubject()
@@ -675,9 +665,9 @@ public partial class ProfileEditorWindow : Window
         OutdoorCheck.IsChecked = false;
 
         RefreshSubjectTable();
+        RefreshSubjectNames();
+        RefreshClassGrid();
         RefreshPalette();
-        RefreshSubjectCombo();
-        RenderTimetable();
     }
 
     // ==================== 顶部操作 ====================
@@ -701,25 +691,72 @@ public partial class ProfileEditorWindow : Window
         AppServices.Schedule.ExportTo(path);
         ProfileInfoText.Text = $"已导出到：{path}";
     }
+}
 
-    // ==================== 小工具 ====================
+/// <summary>
+/// 课表列表视图的一行（对应 CI DataGrid 的 ClassInfo 行）：
+/// 一个上课时间点 × 当前星期/周次，含启用开关与科目下拉框。
+/// </summary>
+public sealed class ClassGridRow : INotifyPropertyChanged
+{
+    private readonly Action<ClassGridRow, string?> _onSubjectChanged;
+    private readonly Action<ClassGridRow, bool> _onEnabledChanged;
 
-    private static TimeSpan ParseTime(string text) =>
-        TimeSpan.TryParse(text, out var t) ? t : TimeSpan.Zero;
+    private string? _subject;
+    private bool _isEnabled;
 
-    private static string ToCses(TimeSpan t) => t.ToString(@"hh\:mm\:ss");
-
-    private static int WeeksToIndex(string weeks) => weeks switch
+    public ClassGridRow(
+        string start,
+        string end,
+        IReadOnlyList<string> subjects,
+        string? subject,
+        bool isEnabled,
+        Action<ClassGridRow, string?> onSubjectChanged,
+        Action<ClassGridRow, bool> onEnabledChanged)
     {
-        "odd" => 1,
-        "even" => 2,
-        _ => 0,
-    };
+        Start = start;
+        End = end;
+        Subjects = subjects;
+        _subject = subject;
+        _isEnabled = isEnabled;
+        _onSubjectChanged = onSubjectChanged;
+        _onEnabledChanged = onEnabledChanged;
+    }
 
-    private static string IndexToWeeks(int index) => index switch
+    public string Start { get; }
+
+    public string End { get; }
+
+    /// <summary>科目下拉框的选项（与所有行共享同一列表实例）。</summary>
+    public IReadOnlyList<string> Subjects { get; }
+
+    public string TimeText => $"{Start}-{End}";
+
+    public bool IsEnabled
     {
-        1 => "odd",
-        2 => "even",
-        _ => "all",
-    };
+        get => _isEnabled;
+        set
+        {
+            if (_isEnabled == value)
+                return;
+            _isEnabled = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsEnabled)));
+            _onEnabledChanged(this, value);
+        }
+    }
+
+    public string? Subject
+    {
+        get => _subject;
+        set
+        {
+            if (_subject == value)
+                return;
+            _subject = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Subject)));
+            _onSubjectChanged(this, value);
+        }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 }
