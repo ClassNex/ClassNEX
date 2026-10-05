@@ -1,6 +1,7 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:sty="using:AvaloniaFluentUI.Styling"
+             xmlns:afui="using:AvaloniaFluentUI.Controls"
              x:Class="ClassNex.App"
              RequestedThemeVariant="Default">
 
@@ -17,6 +18,12 @@
         <!-- 所有窗口统一使用鸿蒙字体（TextElement.FontFamily 为继承属性，会下发到全部子控件） -->
         <Style Selector="Window">
             <Setter Property="TextElement.FontFamily" Value="{DynamicResource AppFontFamily}" />
+        </Style>
+
+        <!-- 图标字体：覆盖上面鸿蒙字体的继承，用 Segoe 图标字体渲染 FontIcon 字形
+             （否则 \\uE713 等字形会落到鸿蒙字体上，变成乱码/方块） -->
+        <Style Selector="afui|FontIcon">
+            <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
         </Style>
     </Application.Styles>
 

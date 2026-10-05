@@ -71,7 +71,11 @@ public partial class ProfileEditorWindow : Window
         var button = new AvaloniaFluentUI.Controls.CommandBarButton
         {
             Label = label,
-            IconSource = new AvaloniaFluentUI.Controls.FontIconSource { Glyph = glyph },
+            IconSource = new AvaloniaFluentUI.Controls.FontIconSource
+            {
+                Glyph = glyph,
+                FontFamily = new Avalonia.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),
+            },
         };
 
         button.Click += (_, _) => action();

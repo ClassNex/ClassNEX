@@ -96,32 +96,32 @@
             <ui:NavigationView.MenuItems>
                 <ui:NavigationViewItem Content="通用">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource Glyph="&#xE713;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE713;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="界面">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource Glyph="&#xE51E;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE51E;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="主界面组件">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource Glyph="&#xE06F;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE06F;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="课表">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource Glyph="&#xE787;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE787;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="关于">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource Glyph="&#xE9E4;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE9E4;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="账户">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource Glyph="&#xE77B;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE77B;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
             </ui:NavigationView.MenuItems>
@@ -361,7 +361,8 @@
                 <TextBox x:Name="SearchBox"
                          BorderThickness="0" Background="Transparent"
                          Watermark="查找设置"
-                         VerticalAlignment="Center" Margin="2,0,2,0">
+                         VerticalAlignment="Center" VerticalContentAlignment="Center"
+                         Margin="2,0,2,0">
                     <TextBox.InnerLeftContent>
                         <ui:FontIcon Glyph="&#xE721;" FontSize="12" Margin="8,0,6,0"
                                      VerticalAlignment="Center" Opacity="0.7"/>

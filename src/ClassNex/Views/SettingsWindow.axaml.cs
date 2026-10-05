@@ -450,7 +450,8 @@ public partial class SettingsWindow : Window
                 },
             };
 
-            card.PointerPressed += (_, _) => AddWidget(type.Type);
+            // 双击确认添加（用户要求：选中组件双击确认）
+            card.DoubleTapped += (_, _) => AddWidget(type.Type);
             WidgetLibraryPanel.Children.Add(card);
         }
     }
