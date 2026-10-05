@@ -34,3 +34,4 @@ _verify.log
 # 发布产物
 build/
 
+_tmp_*.png
