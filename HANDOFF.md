@@ -1,6 +1,7 @@
 # ClassNEX 续作指南（HANDOFF）
 
-> 最后更新：2026-10-04 20:30　｜　当前版本 **40w01a**　｜　仓库提交 **26d9056**
+> 最后更新：2026-10-05 20:20　｜　当前版本 **26w41c**　｜　仓库提交 **f7a6405**
+> 已发布：`26w41a_Alpha` / `26w41b_Alpha` / `26w41c_Alpha`（GitHub Releases，均为预发布）
 > 这份文档的目的：**第二天打开新会话，照着它就能无缝继续写。**
 
 ---
@@ -10,13 +11,17 @@
 ```powershell
 cd E:\ClassNex
 dotnet build src\ClassNex\ClassNex.csproj -c Debug          # 编译
-Start-Process "E:\ClassNex\src\ClassNex\bin\Debug\net8.0\ClassNex.exe"   # 运行
+$env:CLASSNEX_VERIFY="1"; Start-Process "E:\ClassNex\src\ClassNex\bin\Debug\net10.0\ClassNex.exe"   # 运行+自检
 ```
 
 - 仓库：https://github.com/ClassNex/ClassNEX （GPL-3.0，分支 `main`）
-- 技术栈：.NET 8 + Avalonia 11.2.8 + FluentAvaloniaUI 2.4.0 + YamlDotNet 16.3.0
-- 数据目录：`<exe 同目录>\data\`（`Settings.json` + `timetable.yaml`）
+- 技术栈：**.NET 10 + Avalonia 11.3.12 + AvaloniaFluentUI 1.0.3 + YamlDotNet 16.3.0**
+  （2026-10-05 已从 FluentAvaloniaUI 迁到用户指定的 AvaloniaFluentUI，见 5.6）
+- 数据目录：`<exe 同目录>\data\`（`settings.json` + `timetable.yaml`）
 - **UI 语言全部中文**，注释也全用中文
+- 调试开关：`CLASSNEX_VERIFY=1` 写 `_verify.log` + 跑自检；
+  `CLASSNEX_VERIFY_PAGE=about|widgets|interface|...` 指定设置窗口自检打开哪一页；
+  `CLASSNEX_VERIFY_SEARCH=1` 模拟搜索输入→点结果
 
 ---
 
@@ -29,7 +34,7 @@ Start-Process "E:\ClassNex\src\ClassNex\bin\Debug\net8.0\ClassNex.exe"   # 运�
 1. **什么都先参照 CI** —— 去翻 CI 的**文件/源码**，不要只看截图猜；
    CI 没有就用类似的，最后才自己想。
 2. **ClassIsland 一律叫 "CI"**。
-3. 界面**只用 FluentAvalonia（FluentUI）控件**，不要引入别的 UI 风格。
+3. 界面**只用 AvaloniaFluentUI（Fluent）控件**，不要引入别的 UI 风格、也不要再回 FluentAvaloniaUI。
 4. 配色/尺寸不要自己发明 —— 优先用 CI 配置文件里的值。
 
 ---
@@ -121,13 +126,15 @@ E:\ClassNex\ClassIsland_app_windows_x64_full_folder (2)\
 
 | 优先级 | 功能 | 说明 |
 | --- | --- | --- |
+| P0 | **设置/组件页继续对齐 CI** | 现在结构已照 CI（SettingsExpander 行 + 横向组件条 + 组件库/组件设置标签），还差 CI 的「高级设置 / 行设置」两个标签、拖拽排序 |
 | P0 | **调课 / 临时调课** | CI 的 `IsSwapMode: true`；只覆盖某一天，不动基础课表 |
-| P0 | **明日课表** | CI `TomorrowScheduleShowMode`；能顺带把主界面宽度拉到 CI 的水平 |
+| P0 | **明日课表** | CI `TomorrowScheduleShowType`；能顺带把主界面宽度拉到 CI 的水平 |
+| P1 | **档案编辑器：双击单元格弹窗改课** | CI `ScheduleDataGridCellControl` 的 `IsEditPopupOpen` + 格内 Popup |
 | P1 | **容器类组件** | CI 组件库有 轮播容器 / 滚动容器 / 分组容器 / 堆叠容器 |
 | P1 | **天气简报组件** | CI 有；需要接天气数据源 |
 | P1 | **多套组件「配置方案」** | CI `CurrentComponentConfig` / `ComponentLayouts\*.json` |
-| P2 | **主界面编辑模式** | CI `HasEditModeTutorialShown` / 编辑模式 |
-| P2 | 科目表格换原生表格控件 | 目前是 `Border`+`TextBlock` 自绘 |
+| P2 | **全面审查文字溢出** | 已修「关于页 header / 组件卡片 / 搜索框」；还需逐页过一遍（界面页 Description、课表页长路径、编辑器长科目名） |
+| P2 | 主界面编辑模式 | CI `HasEditModeTutorialShown` / 编辑模式 |
 | P2 | 多显示器支持 | 目前固定主屏 |
 | P3 | 通知/提醒（上课铃等） | CI 有完整通知系统 |
 
@@ -187,9 +194,44 @@ pwsh 控制台看中文会乱码（**只是显示问题，值本身是对的**�
   改为在 ListBox 上 `AddHandler(PointerReleasedEvent, handler, RoutingStrategies.Tunnel)`，
   再沿 `e.Source` 的视觉父链找 `DataContext`（CI 的做法）
 
+### 5.6 ⚠️ AvaloniaFluentUI（现用 UI 库，2026-10-05 迁移后新增的坑）
+
+**它其实是 FluentAvalonia 的 fork**（README 明说），所以控件名基本同名：
+`SettingsExpander` / `NavigationView` / `CommandBar` / `InfoBar` / `TabView` / `NumberBox` / `FontIcon(Source)` / `IconSourceElement` 都有。
+迁移 = **改命名空间**：`FluentAvalonia.UI.Controls` → `AvaloniaFluentUI.Controls`；
+主题 `FluentAvalonia.Styling.FluentAvaloniaTheme` → `AvaloniaFluentUI.Styling.FluentAvaloniaTheme`。
+**它只提供 `net10.0`**（1.0.3 依赖 Avalonia 11.3.12），所以必须装 .NET 10 SDK。
+
+- ⚠️ **图标必须显式指定字体，且只能用 `Segoe MDL2 Assets`**：
+  Win11 的 `Segoe Fluent Icons`（`SegoeIcons.ttf`）**删掉了一批旧字形码**
+  （`E51E`/`E06F`/`E9E4`/`EBAC`/`E304` 等会显示成**空方块**）；
+  `segmdl2.ttf`（Segoe MDL2 Assets）码位齐全。另外 FontIcon/FontIconSource **不设字体就会继承全局鸿蒙字体** → 全乱码。
+  正确写法：`FontFamily="Segoe MDL2 Assets"`。
+  **验证字形是否存在的方法**：PowerShell `PrivateFontCollection` + `Graphics.DrawString` 把候选码画成 PNG，再 `read_image` 自己看（见 `_tmp_glyphs*.png` 的做法）。
+- ⚠️ **`TryFindResource(key)` 不带主题变体时返回的是「浅色变体」的值**
+  （`CardBackgroundFillColorDefaultBrush = #b3ffffff` = 白），深色界面里会画出**白卡片（发白）**。
+  要么 `TryFindResource(key, ActualThemeVariant, out v)`，要么直接按 `ActualThemeVariant` 给色。
+- ⚠️ **`NavigationView.SelectedItem` 是内部包装对象**：`MenuItems.IndexOf(SelectedItem)` 恒为 -1。
+  按 `((NavigationViewItem)SelectedItem).Content as string` 匹配页面名。
+- ⚠️ **在 `SelectionChanged` 事件内部清空 ItemsSource 会闪退**：把导航/清理用
+  `Dispatcher.UIThread.Post(..., DispatcherPriority.Background)` 推迟到事件处理之后。
+- ⚠️ **每秒刷新时 `Clear()+重建` 会让进度条闪烁**：结构不变时只更新 `ProgressBar.Value`，不要重建控件树。
+- ⚠️ **布局**：同一 Grid 里「固定高度控件 + 内容会变的控件」同层时，后者展开会把前者挤走
+  （搜索结果曾把搜索框顶下去）→ **拆成独立层**，各自的 `VerticalAlignment="Top"`。
+
+### 5.7 验收方式：可以自己截图核对（模型支持图像输入）
+
+不用再让用户当眼睛：
+1. `app_list` 拿窗口 `windowId`（= HWND）；
+2. PowerShell `Add-Type -AssemblyName System.Drawing` + `user32.PrintWindow(hwnd, hdc, 2)`
+   —— **被其它窗口盖住也能抓到**（`CopyFromScreen` 会抓到前台的别的程序）；
+3. 存 PNG 后用 `read_image` 自己看。
+另外 `screen_read`（a11y）能拿到元素 bounds，用来量位置/颜色都很可靠。
+
 ---
 
 ## 6. 工具脚本 `_tools\`
+
 
 | 脚本 | 用途 |
 | --- | --- |
@@ -208,20 +250,32 @@ pwsh 控制台看中文会乱码（**只是显示问题，值本身是对的**�
 ```powershell
 dotnet build src\ClassNex\ClassNex.csproj -c Debug
 ```
-目标：**0 错误 0 警告**（一直是这个标准）。
+目标：**0 错误 0 警告**（一直是这个标准）。产物在 `bin\Debug\net10.0\`。
 
-### 出测试包（框架依赖，~20MB，需测试者装 .NET 8 运行时）
+### 出测试包（**自包含**，免装运行时，~120MB → zip ~55MB）
 ```powershell
-dotnet publish src\ClassNex\ClassNex.csproj -c Release -r win-x64 --self-contained false `
-  -p:DebugType=none -o "E:\ClassNex\build\ClassNEX-40w01a-test-win-x64"
-Compress-Archive -Path "E:\ClassNex\build\ClassNEX-40w01a-test-win-x64\*" `
-  -DestinationPath "E:\ClassNex\build\ClassNEX-40w01a-test-win-x64.zip"
+$out = "E:\ClassNex\build\ClassNEX-26w41c-Alpha-win-x64"
+dotnet publish src\ClassNex\ClassNex.csproj -c Release -r win-x64 --self-contained true `
+  -p:DebugType=none -o $out
+Remove-Item "$out\data" -Recurse -Force          # ⚠️ 必删，否则把本机配置/课表打进去
+Remove-Item "$out\使用说明.txt" -Force -ErrorAction SilentlyContinue   # 用户不要使用说明
+Compress-Archive -Path "$out\*" -DestinationPath "E:\ClassNex\build\ClassNEX-26w41c-Alpha-win-x64.zip"
 ```
-> ⚠️ 打包**之前**记得删掉 `out\data\`，否则会把本机配置和课表打进去。
 
-### 出免运行时包（自包含，~112MB → zip 52MB）
-把 `--self-contained false` 改成 `true`。太大了不适合聊天工具上传，
-**建议走 GitHub Releases**（单文件上限 2GB）。
+### 发布到 GitHub Releases（一条命令）
+`_tools\gh_release.py` 会自动：删同名旧 release → 建预发布 → 上传 zip。
+```powershell
+git tag -f 26w41c_Alpha ; git push -f origin 26w41c_Alpha
+$cred = "protocol=https`nhost=github.com`n" | git credential fill
+$env:GITHUB_TOKEN = ($cred | Select-String '^password=').Line.Substring(9)
+$env:HTTPS_PROXY="http://127.0.0.1:7890"; $env:HTTP_PROXY=$env:HTTPS_PROXY
+$env:GH_TAG="26w41c_Alpha"; $env:GH_TITLE="ClassNEX 26w41c_Alpha"
+python _tools\gh_release.py "E:\ClassNex\build\ClassNEX-26w41c-Alpha-win-x64.zip"
+```
+- 发布说明取自 `RELEASE_NOTES.md`
+- ⚠️ **RELEASE_NOTES.md 只写「这一次」的更新**，不要带上一版（用户明确要求）
+- ⚠️ **不要自己打包上传**，用户说打包才打包（他还没说完就别发）
+- 历史发布 `26w41a/b/c_Alpha` 都保留，别删
 
 ---
 
@@ -234,7 +288,7 @@ Compress-Archive -Path "E:\ClassNex\build\ClassNEX-40w01a-test-win-x64\*" `
 - `WW` = 该年的第几周（ISO 周号）
 - `a` = 当周发布的第几个快照（a、b、c…）
 
-当前：**`26w41a`** = 2026 年第 41 周的第 1 个快照。
+当前：**`26w41c`** = 2026 年第 41 周的第 3 个快照（`26w41a`/`26w41b`/`26w41c` 都已发布为预发布）。
 
 落地方式：
 - `ClassNex.csproj` → `<InformationalVersion>26w41a</InformationalVersion>`
@@ -279,6 +333,8 @@ src/ClassNex/
 ## 11. 明天开新会话时，直接这样跟 AI 说
 
 > 读一下 `E:\ClassNex\HANDOFF.md`，然后我们继续做 ClassNEX。
-> 记住：ClassIsland 简称 CI，什么都要先参照 CI 的文件；界面只用 FluentAvalonia 控件；
-> 改文件不用 PowerShell 的 Set-Content（会写坏编码）。
+> 记住：ClassIsland 简称 CI，什么都要先参照 CI 的文件/源码（在 `E:\ci-source`，已 clone）；
+> 界面只用 **AvaloniaFluentUI** 控件（不是 FluentAvaloniaUI，见 5.6 的坑）；
+> 图标字体只用 `Segoe MDL2 Assets`；改文件不用 PowerShell 的 `Set-Content`（会写坏编码）；
+> 打包上传要等我说，发布说明只写这一版。
 > 今天想做：<你要做的功能>
