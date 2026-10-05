@@ -50,22 +50,22 @@ public static class TimetableGridBuilder
                 entries.Add(new CourseRef(schedule.EnableDay, schedule.Weeks, schedule, course));
         }
 
-        // 2. 行定义：时间表节次 + 课程出现过的开始时间
-        var starts = new SortedSet<TimeSpan>();
+        // 2. 行定义：时间表节次 + 课程出现过的开始时间；课间行不可排课（对齐 CI 档案编辑器）
+        var rowKinds = new SortedDictionary<TimeSpan, bool>(); // start -> 是否课间
 
         foreach (var time in AppServices.TimeLayout.Layout.Times)
         {
             if (TimeSpan.TryParse(time.Start, out var s))
-                starts.Add(s);
+                rowKinds.TryAdd(s, time.Kind == ClassTimeKind.Break);
         }
 
         foreach (var entry in entries)
         {
             if (TimeSpan.TryParse(entry.Course.StartTime, out var s))
-                starts.Add(s);
+                rowKinds[s] = false; // 这一行有课程，不是课间
         }
 
-        var rows = starts.ToList();
+        var rows = rowKinds.Keys.ToList();
 
         if (rows.Count == 0)
         {
@@ -90,14 +90,25 @@ public static class TimetableGridBuilder
         for (var i = 0; i < rows.Count; i++)
         {
             var start = rows[i];
+            var isBreak = rowKinds[start];
             var end = i + 1 < rows.Count ? rows[i + 1] : start + DefaultDuration;
             var startText = start.ToString(@"hh\:mm");
             var endText = end.ToString(@"hh\:mm");
 
-            grid.Children.Add(BuildTimeLabel(startText, endText, i + 1));
+            grid.Children.Add(BuildTimeLabel(startText, endText, i + 1, isBreak));
 
             for (var day = 1; day <= 7; day++)
             {
+                // 课间行：灰色不可点击（防止把课间当空格排课）
+                if (isBreak)
+                {
+                    var breakCell = BuildBreakCell();
+                    Grid.SetRow(breakCell, i + 1);
+                    Grid.SetColumn(breakCell, day);
+                    grid.Children.Add(breakCell);
+                    continue;
+                }
+
                 var cellCourses = entries
                     .Where(e => e.EnableDay == day
                                 && TimeSpan.TryParse(e.Course.StartTime, out var s)
@@ -144,14 +155,15 @@ public static class TimetableGridBuilder
         return border;
     }
 
-    /// <summary>左侧时间列（CI 显示起止时间）。</summary>
-    private static Border BuildTimeLabel(string start, string end, int row)
+    /// <summary>左侧时间列（CI 显示起止时间；课间行淡化）。</summary>
+    private static Border BuildTimeLabel(string start, string end, int row, bool isBreak = false)
     {
         var border = new Border
         {
             Padding = new Thickness(0, 5, 10, 5),
             BorderBrush = new SolidColorBrush(CiPalette.NeutralDark, 0.25),
             BorderThickness = new Thickness(0, 0, 0, 1),
+            Opacity = isBreak ? 0.55 : 1.0,
             Child = new StackPanel
             {
                 Spacing = 0,
@@ -177,6 +189,28 @@ public static class TimetableGridBuilder
         Grid.SetRow(border, row);
         Grid.SetColumn(border, 0);
         return border;
+    }
+
+    /// <summary>课间行单元格：灰色、不可点击（CI 档案编辑器中的课间行同样不可排课）。</summary>
+    private static Border BuildBreakCell()
+    {
+        return new Border
+        {
+            Background = CiPalette.SurfaceBrush("SubtleFillColorSecondaryBrush", 0.35),
+            CornerRadius = new CornerRadius(4),
+            Margin = new Thickness(4, 2),
+            MinHeight = 34,
+            BorderBrush = new SolidColorBrush(CiPalette.NeutralDark, 0.25),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Child = new TextBlock
+            {
+                Text = "课间",
+                FontSize = 11,
+                Opacity = 0.35,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+            },
+        };
     }
 
     /// <summary>课程单元格：**不加科目底色**（CI 做法），仅文字；选中的课程用 CI 强调青填充。</summary>
