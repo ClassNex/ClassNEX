@@ -181,6 +181,11 @@ pwsh 控制台看中文会乱码（**只是显示问题，值本身是对的**�
 - `TrayIcon` 的事件是 **`Clicked`**（不是 `Click`）
 - XAML 里设 `SelectedIndex` 会**过早触发** `SelectionChanged`（此时 `x:Name` 字段还没赋值）
   → 一律在构造函数里 `InitializeComponent()` 之后用代码设
+- ⚠️ **`Background = null` 的控件不参与命中测试**：可点击的格子/Border 未选中态必须给
+  `Brushes.Transparent`（不能给 null），否则「格子点不动、编辑不了」
+- ⚠️ **不要用 `ListBox.SelectionChanged` 做「点一下执行一次」的动作**：点已选中项不触发。
+  改为在 ListBox 上 `AddHandler(PointerReleasedEvent, handler, RoutingStrategies.Tunnel)`，
+  再沿 `e.Source` 的视觉父链找 `DataContext`（CI 的做法）
 
 ---
 
@@ -222,11 +227,22 @@ Compress-Archive -Path "E:\ClassNex\build\ClassNEX-40w01a-test-win-x64\*" `
 
 ## 8. 版本号
 
-- `ClassNex.csproj` → `<InformationalVersion>40w01a</InformationalVersion>`
-  （**对外产品版本**，显示在文件属性「产品版本」和 设置→关于）
-- `<Version>0.5.0</Version>` 保留给程序集数字版本用（`40w01a` 不是合法 SemVer）
+**测试版命名规则：`YYwWWa`**（按发布日期，与 Minecraft 快照同款）
+
+- `YY` = 年份后两位（26 = 2026）
+- `w` = week
+- `WW` = 该年的第几周（ISO 周号）
+- `a` = 当周发布的第几个快照（a、b、c…）
+
+当前：**`26w41a`** = 2026 年第 41 周的第 1 个快照。
+
+落地方式：
+- `ClassNex.csproj` → `<InformationalVersion>26w41a</InformationalVersion>`
+  （**对外产品版本**，显示在文件属性「产品版本」与 设置→关于）
+- `<Version>0.5.0</Version>` 保留给程序集数字版本用（`26w41a` 不是合法 SemVer）
 - `<IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>`
   —— 否则 MSBuild 会自动在版本号后面接 `+<git哈希>`
+- 出包时 zip 名用同一版本号：`ClassNEX-26w41a-test-win-x64.zip`
 
 ---
 
