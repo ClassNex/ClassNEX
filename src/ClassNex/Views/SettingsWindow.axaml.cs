@@ -10,6 +10,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.Styling;
+using Avalonia.Threading;
 using ClassNex.Models;
 using ClassNex.Services;
 using ClassNex.Styles;
@@ -92,6 +93,43 @@ public partial class SettingsWindow : Window
         RefreshAccountName();
 
         SearchResults.ItemsSource = _searchEntries;
+
+#if DEBUG
+        // 自检：模拟「输入关键字 → 点搜索结果」全流程（设 CLASSNEX_VERIFY_SEARCH=1）
+        if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_SEARCH") == "1")
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                try
+                {
+                    var log = System.IO.Path.Combine(AppContext.BaseDirectory, "_verify.log");
+                    SearchBox.Text = "组件";
+                    System.IO.File.AppendAllText(log,
+                        $"SEARCH 设置文本后 Text=「{SearchBox.Text}」命中 {_searchEntries.Count} 条\n");
+
+                    if (_searchEntries.Count == 0)
+                    {
+                        UpdateSearchResults();
+                        System.IO.File.AppendAllText(log,
+                            $"SEARCH 手动重算后命中 {_searchEntries.Count} 条\n");
+                    }
+
+                    if (_searchEntries.Count > 0)
+                    {
+                        SearchResults.SelectedItem = _searchEntries[0];
+                        System.IO.File.AppendAllText(log,
+                            "SEARCH 已选中第一条结果（应触发导航且不闪退）\n");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.IO.File.AppendAllText(
+                        System.IO.Path.Combine(AppContext.BaseDirectory, "_verify.log"),
+                        $"SEARCH 异常：{ex}\n");
+                }
+            }, DispatcherPriority.Background);
+        }
+#endif
     }
 
     /// <summary>账户块显示设置里的用户名（未设置时提示）。</summary>
@@ -299,12 +337,27 @@ public partial class SettingsWindow : Window
         if (SearchResults.SelectedItem is not SearchEntry entry)
             return;
 
-        if (entry.PageIndex >= 0 && entry.PageIndex < NavView.MenuItems.Count)
-            NavView.SelectedItem = NavView.MenuItems[entry.PageIndex];
+        var pageIndex = entry.PageIndex;
 
-        SearchResultsPanel.IsVisible = false;
-        _searchEntries.Clear();
-        SearchBox.Text = "";
+        // 关键：这里正处在 ListBox.SelectionChanged 事件内部，
+        // 直接清空 ItemsSource（_searchEntries）会让控件在处理选中后继续访问已移除的项 → 闪退。
+        // 因此把导航与清理都推迟到本次事件处理结束之后。
+        Dispatcher.UIThread.Post(() =>
+        {
+            try
+            {
+                if (pageIndex >= 0 && pageIndex < NavView.MenuItems.Count)
+                    NavView.SelectedItem = NavView.MenuItems[pageIndex];
+            }
+            catch
+            {
+                // 忽略：导航失败不影响后续清理
+            }
+
+            SearchResultsPanel.IsVisible = false;
+            _searchEntries.Clear();
+            SearchBox.Text = "";
+        }, DispatcherPriority.Background);
     }
 
     // ==================== 更多选项 / 账号块 ====================

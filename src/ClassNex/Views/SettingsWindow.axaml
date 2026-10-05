@@ -396,11 +396,12 @@
             </Grid>
         </ui:NavigationView>
 
-        <!-- ============ 顶栏中央搜索 ============ -->
+        <!-- ============ 顶栏中央搜索 ============
+             搜索框与结果**分开两层**：结果展开时不会把搜索框挤下去（原来同层导致位置错乱） -->
         <Grid Grid.Row="0" Grid.RowSpan="2"
               Width="440" HorizontalAlignment="Center" VerticalAlignment="Top"
               Margin="0,8,0,0" ZIndex="100">
-            <Border Height="32" CornerRadius="4"
+            <Border Height="32" VerticalAlignment="Top" CornerRadius="4"
                     BorderThickness="1"
                     BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
                     Background="{DynamicResource ControlFillColorDefaultBrush}">
@@ -415,23 +416,26 @@
                     </TextBox.InnerLeftContent>
                 </TextBox>
             </Border>
-
-            <Border x:Name="SearchResultsPanel" IsVisible="False"
-                    Margin="0,36,0,0" VerticalAlignment="Top"
-                    CornerRadius="4" BorderThickness="1" MaxHeight="380"
-                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                    Background="{DynamicResource SolidBackgroundFillColorBaseBrush}">
-                <ListBox x:Name="SearchResults" BorderThickness="0" Background="Transparent">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Spacing="1">
-                                <TextBlock Text="{Binding Title}" FontSize="13"/>
-                                <TextBlock Text="{Binding PageName}" FontSize="11" Opacity="0.6"/>
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </Border>
         </Grid>
+
+        <!-- 搜索结果（独立层，紧贴搜索框下方 44px） -->
+        <Border x:Name="SearchResultsPanel" IsVisible="False"
+                Grid.Row="0" Grid.RowSpan="2"
+                Width="440" HorizontalAlignment="Center" VerticalAlignment="Top"
+                Margin="0,44,0,0" ZIndex="101"
+                CornerRadius="4" BorderThickness="1" MaxHeight="380"
+                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                Background="{DynamicResource SolidBackgroundFillColorBaseBrush}">
+            <ListBox x:Name="SearchResults" BorderThickness="0" Background="Transparent">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Spacing="1">
+                            <TextBlock Text="{Binding Title}" FontSize="13"/>
+                            <TextBlock Text="{Binding PageName}" FontSize="11" Opacity="0.6"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
     </Grid>
 </Window>
