@@ -176,9 +176,6 @@ public partial class SettingsWindow : Window
         // ---- 主界面组件 ----
         ResetWidgetButton.Click += (_, _) => ResetWidgets();
         WidgetList.SelectionChanged += (_, _) => SelectWidget();
-        RemoveWidgetButton.Click += (_, _) => RemoveWidget();
-        MoveWidgetUpButton.Click += (_, _) => MoveWidget(-1);
-        MoveWidgetDownButton.Click += (_, _) => MoveWidget(1);
 
         WidgetEnabledCheck.PropertyChanged += (_, e) =>
         {
@@ -249,9 +246,12 @@ public partial class SettingsWindow : Window
 
     private void SwitchPage()
     {
-        var index = NavView.SelectedItem is { } item && NavView.MenuItems.Contains(item)
-            ? NavView.MenuItems.IndexOf(item)
-            : 0;
+        // AvaloniaFluentUI 的 NavigationView.SelectedItem 是内部包装对象，
+        // 不能靠 MenuItems.IndexOf(object) 找索引，改按 Content 字符串匹配。
+        var name = (NavView.SelectedItem as NavigationViewItem)?.Content as string ?? "";
+        var index = Array.IndexOf(PageNames, name);
+        if (index < 0)
+            index = 0;
 
         PageGeneral.IsVisible = index == 0;
         PageInterface.IsVisible = index == 1;
@@ -530,6 +530,20 @@ public partial class SettingsWindow : Window
         RefreshWidgetList();
         WidgetList.SelectedItem = _widgets.FirstOrDefault(w => ReferenceEquals(w.Config, config));
     }
+
+    // 横向组件条「⋯」更多选项（CI 的 ComponentsOperationMenuFlyout）
+    private void OnWidgetItemMore(object? sender, RoutedEventArgs e)
+    {
+        // 点「⋯」先把该项设为选中，后续菜单动作都作用于 _currentWidget
+        if (sender is Control { DataContext: WidgetItem item })
+            WidgetList.SelectedItem = item;
+    }
+
+    private void OnWidgetItemMoveUp(object? sender, RoutedEventArgs e) => MoveWidget(-1);
+
+    private void OnWidgetItemMoveDown(object? sender, RoutedEventArgs e) => MoveWidget(1);
+
+    private void OnWidgetItemDelete(object? sender, RoutedEventArgs e) => RemoveWidget();
 
     private void ResetWidgets()
     {
