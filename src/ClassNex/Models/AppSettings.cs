@@ -71,6 +71,9 @@ public sealed class AppSettings
     public int TrayClickBehavior { get; set; }
 
     // ---------- 通用 ----------
+    /// <summary>用户名（显示在设置窗口左侧的账户块里；空 = 未设置）。</summary>
+    public string UserName { get; set; } = "";
+
     /// <summary>已播种的内置示例课表版本。低于当前版本时会重新播种 data/timetable.yaml。</summary>
     public int SampleSeedVersion { get; set; }
 

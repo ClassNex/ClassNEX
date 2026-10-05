@@ -38,7 +38,7 @@ public partial class SettingsWindow : Window
     }
 
     /// <summary>页面名（顺序与 NavView.MenuItems 一致，对照 CI 的 SettingsPageInfo.Name）。</summary>
-    private static readonly string[] PageNames = { "通用", "界面", "主界面组件", "课表", "关于" };
+    private static readonly string[] PageNames = { "通用", "界面", "主界面组件", "课表", "关于", "账户" };
 
     /// <summary>设置项索引（供顶栏「查找设置」搜索；Title = 设置项，PageIndex = 所属页面）。</summary>
     private static readonly (string Title, int PageIndex)[] SearchIndex =
@@ -61,6 +61,7 @@ public partial class SettingsWindow : Window
         ("当前课表文件", 3),
         ("重新加载课表", 3),
         ("版本信息", 4),
+        ("用户名", 5),
     };
 
     public SettingsWindow()
@@ -84,10 +85,23 @@ public partial class SettingsWindow : Window
         VersionText.Text = version;
         AboutVersionText.Text = $"版本 {version}";
 
-        AccountNameText.Text = Environment.UserName;
-        AccountPathItem.Header = $"课表文件：{System.IO.Path.GetFileName(AppServices.TimetablePath)}";
+        UserNameBox.Text = AppServices.Settings.UserName;
+        RefreshAccountName();
 
         SearchResults.ItemsSource = _searchEntries;
+    }
+
+    /// <summary>账户块显示设置里的用户名（未设置时提示）。</summary>
+    private void RefreshAccountName()
+    {
+        var name = AppServices.Settings.UserName;
+        AccountNameText.Text = string.IsNullOrWhiteSpace(name) ? "未设置用户名" : name.Trim();
+    }
+
+    private void OnAccountClick(object? sender, RoutedEventArgs e)
+    {
+        if (NavView.MenuItems.Count > 5)
+            NavView.SelectedItem = NavView.MenuItems[5];
     }
 
     /// <summary>导航到指定页面：general / interface / widgets / schedule / about。</summary>
@@ -121,6 +135,16 @@ public partial class SettingsWindow : Window
                 ApplyGeneral();
         };
         TrayBehaviorCombo.SelectionChanged += (_, _) => ApplyGeneral();
+
+        // ---- 账户（用户名）----
+        UserNameBox.TextChanged += (_, _) =>
+        {
+            if (_loading)
+                return;
+            AppServices.Settings.UserName = UserNameBox.Text ?? "";
+            AppServices.SaveSettings();
+            RefreshAccountName();
+        };
 
         // ---- 界面（ToggleSwitch 用属性名判断，避免依赖具体控件的静态属性）----
         ThemeSystem.PropertyChanged += (_, e) => ThemeChanged(e.Property.Name, ThemeSystem.IsChecked);
@@ -234,6 +258,7 @@ public partial class SettingsWindow : Window
         PageWidgets.IsVisible = index == 2;
         PageSchedule.IsVisible = index == 3;
         PageAbout.IsVisible = index == 4;
+        PageAccount.IsVisible = index == 5;
 
         // 页面标题行（对照 CI 的 TitleContainer：页面名由外壳统一显示）
         PageTitleText.Text = PageNames[Math.Clamp(index, 0, PageNames.Length - 1)];
