@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
@@ -24,9 +25,11 @@ namespace ClassNex.Views;
 public partial class ProfileEditorWindow : Window
 {
     private readonly List<string> _subjectNames = new();
+    private readonly ObservableCollection<WeekRow> _weekRows = new();
 
     private bool _loading;
     private bool _syncingPalette;
+    private bool _syncingGrid;
     private ClassTime? _selectedTime;
     private Subject? _currentSubject;
     private CellTarget? _selectedCell;
@@ -41,6 +44,7 @@ public partial class ProfileEditorWindow : Window
         ParityCombo.SelectedIndex = 0;
         AutoAdvanceCheck.IsChecked = true;
         _weekStart = DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek);
+        WeekGrid.ItemsSource = _weekRows;
 
         BuildCommandBar();
         WireEvents();
@@ -76,6 +80,10 @@ public partial class ProfileEditorWindow : Window
 
     private void WireEvents()
     {
+        // 周课表选中（CI：单元格 :current → ScheduleDataGridSelectionChanged → SelectedClassInfo）
+        WeekGrid.SelectionChanged += (_, _) => UpdateSelectedCellFromGrid();
+        WeekGrid.CurrentCellChanged += (_, _) => UpdateSelectedCellFromGrid();
+
         // 日期导航（CI：← → 切换周）
         PrevWeekButton.Click += (_, _) => ShiftWeek(-1);
         NextWeekButton.Click += (_, _) => ShiftWeek(1);
@@ -206,23 +214,115 @@ public partial class ProfileEditorWindow : Window
         return null;
     }
 
+    // ==================== 周课表（CI ScheduleDataGrid：真 DataGrid） ====================
+
+    /// <summary>刷新周课表（1:1 对应 CI ScheduleDataGrid.RefreshWeekScheduleRows）。</summary>
     private void RenderTimetable()
     {
-        TimetableGridBuilder.Render(
-            TimetableGrid,
-            AppServices.Schedule.Profile,
-            _parity,
-            OnGridCellSelected,
-            _selectedCell,
-            _weekStart);
+        _syncingGrid = true;
+        try
+        {
+            var rows = WeekRowsBuilder.Build(AppServices.Schedule.Profile, _parity);
+
+            _weekRows.Clear();
+            foreach (var row in rows)
+                _weekRows.Add(row);
+
+            UpdateWeekHeaders();
+            SyncSelectionToGrid();
+        }
+        finally
+        {
+            _syncingGrid = false;
+        }
     }
 
-    /// <summary>点格子：选中该格（CI ScheduleDataGrid 的 SelectedClassInfo）。</summary>
-    private void OnGridCellSelected(CellTarget target)
+    /// <summary>列头：时间 + 周日~周六（星期 + 日期，CI 的 ScheduleDataGridColHeaderControl 形态）。</summary>
+    private void UpdateWeekHeaders()
     {
-        _selectedCell = target;
+        if (WeekGrid.Columns.Count < 8)
+            return;
+
+        WeekGrid.Columns[0].Header = "时间";
+
+        for (var c = 0; c < 7; c++)
+        {
+            var date = _weekStart.AddDays(c);
+            var dayName = TimetableGridBuilder.DayNames[WeekRowsBuilder.ColumnDays[c] - 1];
+
+            WeekGrid.Columns[c + 1].Header = new StackPanel
+            {
+                Spacing = 1,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = dayName,
+                        FontWeight = FontWeight.SemiBold,
+                        FontSize = 13,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                    },
+                    new TextBlock
+                    {
+                        Text = date.ToString("MM/dd"),
+                        FontSize = 10.5,
+                        Opacity = 0.6,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                    },
+                },
+            };
+        }
+    }
+
+    /// <summary>把当前选中的格子反映到 DataGrid 的选中行/当前列。</summary>
+    private void SyncSelectionToGrid()
+    {
+        if (_selectedCell is not { } cell)
+            return;
+
+        var index = -1;
+        for (var i = 0; i < _weekRows.Count; i++)
+        {
+            if (ClassTime.SameTime(_weekRows[i].StartText, ClassTime.ToShortTime(cell.Start)))
+            {
+                index = i;
+                break;
+            }
+        }
+
+        if (index < 0)
+            return;
+
+        WeekGrid.SelectedIndex = index;
+
+        var column = Array.IndexOf(WeekRowsBuilder.ColumnDays, cell.EnableDay);
+        if (column >= 0 && column + 1 < WeekGrid.Columns.Count)
+            WeekGrid.CurrentColumn = WeekGrid.Columns[column + 1];
+    }
+
+    /// <summary>DataGrid 选中变化 → 更新当前编辑目标（CI 的 SelectedClassInfo）。</summary>
+    private void UpdateSelectedCellFromGrid()
+    {
+        if (_syncingGrid)
+            return;
+
+        if (WeekGrid.SelectedItem is not WeekRow row)
+        {
+            _selectedCell = null;
+            RefreshPalette();
+            return;
+        }
+
+        var columnIndex = WeekGrid.CurrentColumn?.DisplayIndex ?? 1;
+        if (columnIndex < 1 || columnIndex > 7)
+            columnIndex = 1;
+
+        var day = WeekRowsBuilder.ColumnDays[columnIndex - 1];
+        _selectedCell = new CellTarget(day,
+            ClassTime.ToCsesTime(row.StartText), ClassTime.ToCsesTime(row.EndText));
+
         RefreshPalette();
-        RenderTimetable();
     }
 
     /// <summary>把科目写入选中的格子（CI 编辑模型：点科目 → 立即生效）。</summary>

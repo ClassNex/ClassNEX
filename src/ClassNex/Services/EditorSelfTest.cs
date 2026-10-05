@@ -37,31 +37,25 @@ public static class EditorSelfTest
         {
             var profile = AppServices.Schedule.Profile;
 
-            Step("课表网格 Render(全部周次)", () =>
+            Step("周课表行构建(全部周次)", () =>
             {
-                var grid = new Grid();
-                TimetableGridBuilder.Render(grid, profile, "all");
+                var rows = WeekRowsBuilder.Build(profile, "all");
+                if (rows.Count == 0) throw new Exception("周课表没有行");
             });
-            Step("课表网格 Render(单周)", () =>
+            Step("周课表行构建(单周)", () =>
             {
-                var grid = new Grid();
-                TimetableGridBuilder.Render(grid, profile, "odd");
+                _ = WeekRowsBuilder.Build(profile, "odd");
             });
-            Step("课表网格 Render(双周)", () =>
+            Step("周课表行构建(双周)", () =>
             {
-                var grid = new Grid();
-                TimetableGridBuilder.Render(grid, profile, "even");
+                _ = WeekRowsBuilder.Build(profile, "even");
             });
-            Step("课表网格 Render(选中某格子)", () =>
+            Step("周课表行构建(带课程)", () =>
             {
-                var grid = new Grid();
-                var schedule = profile.Schedules.FirstOrDefault();
-                if (schedule?.Classes.Count > 0)
-                {
-                    var course = schedule.Classes[0];
-                    var target = new CellTarget(schedule.EnableDay, course.StartTime, course.EndTime);
-                    TimetableGridBuilder.Render(grid, profile, "all", null, target, DateTime.Today);
-                }
+                var rows = WeekRowsBuilder.Build(profile, "all");
+                // 至少有一行在某一列显示了科目
+                if (!rows.Any(r => Enumerable.Range(0, 7).Any(c => !string.IsNullOrEmpty(r[c]))))
+                    throw new Exception("周课表行里没有任何科目文本");
             });
 
             // 模拟「点空格 → 点科目 → 直接排课」+ 自动移动到下一个课程
