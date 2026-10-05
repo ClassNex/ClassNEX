@@ -54,7 +54,8 @@ public partial class App : Application
                     WriteVerifyReport();
                     Services.EditorSelfTest.Run();
                     OpenProfileEditor(0);
-                    OpenSettings("widgets");
+                    // 自检打开设置窗口；用 CLASSNEX_VERIFY_PAGE 指定页面（general/interface/widgets/schedule/about/account）
+                    OpenSettings(Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_PAGE") ?? "widgets");
                 }, DispatcherPriority.Background);
             }
 #endif

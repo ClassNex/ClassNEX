@@ -320,6 +320,27 @@ public partial class SettingsWindow : Window
 
     private void OnShowAbout(object? sender, RoutedEventArgs e) => NavigateTo("about");
 
+    private const string RepoUrl = "https://github.com/ClassNex/ClassNEX";
+
+    private void OnOpenHomePage(object? sender, RoutedEventArgs e) => OpenUrl(RepoUrl);
+
+    private void OnOpenIssues(object? sender, RoutedEventArgs e) => OpenUrl($"{RepoUrl}/issues");
+
+    private void OnOpenLicense(object? sender, RoutedEventArgs e)
+        => OpenUrl("https://www.gnu.org/licenses/gpl-3.0.html");
+
+    private static void OpenUrl(string url)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch
+        {
+            // 忽略：无法打开浏览器
+        }
+    }
+
     private void OnOpenProfileEditor(object? sender, RoutedEventArgs e) => App.OpenProfileEditor(0);
 
     private void OnRestartApp(object? sender, RoutedEventArgs e)
@@ -451,9 +472,13 @@ public partial class SettingsWindow : Window
 
         foreach (var type in AppServices.Widgets.AvailableTypes)
         {
+            // 卡片：定宽 + 文本区定宽，避免描述文字溢出到卡片外
+            const double cardWidth = 268;
+            const double textWidth = cardWidth - 28 - 32 - 12; // 左右内边距 + 图标 + 间距
+
             var card = new Border
             {
-                Width = 210,
+                Width = cardWidth,
                 Margin = new Thickness(0, 0, 10, 10),
                 Padding = new Thickness(14, 10),
                 CornerRadius = new CornerRadius(6),
@@ -477,6 +502,7 @@ public partial class SettingsWindow : Window
                         new StackPanel
                         {
                             Spacing = 3,
+                            Width = textWidth,
                             Children =
                             {
                                 new TextBlock
