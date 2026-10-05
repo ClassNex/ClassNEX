@@ -22,6 +22,12 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        // 全局未处理异常 → 写 _crash.log，便于排查闪退
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+            LogCrash(e.ExceptionObject as Exception);
+        Dispatcher.UIThread.UnhandledException += (_, e) => LogCrash(e.Exception);
+        TaskScheduler.UnobservedTaskException += (_, e) => LogCrash(e.Exception);
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             // 托盘常驻：关闭所有窗口也不退出应用
@@ -46,6 +52,7 @@ public partial class App : Application
                 Dispatcher.UIThread.Post(() =>
                 {
                     WriteVerifyReport();
+                    Services.EditorSelfTest.Run();
                     OpenProfileEditor(0);
                     OpenSettings("widgets");
                 }, DispatcherPriority.Background);
@@ -57,6 +64,23 @@ public partial class App : Application
     }
 
     public static FluentAvaloniaTheme? FluentTheme => (FluentAvaloniaTheme?)Current?.Styles[0];
+
+    /// <summary>把未处理异常写到程序目录下的 _crash.log（排查闪退用）。</summary>
+    private static void LogCrash(Exception? ex)
+    {
+        if (ex is null)
+            return;
+
+        try
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "_crash.log");
+            File.AppendAllText(path, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {ex}\n\n");
+        }
+        catch
+        {
+            // 忽略写日志失败
+        }
+    }
 
 #if DEBUG
     /// <summary>把配色与设置的关键运行时状态写到输出目录 _verify.log，供开发期核对。</summary>
