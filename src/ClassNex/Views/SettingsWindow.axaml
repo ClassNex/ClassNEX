@@ -32,7 +32,7 @@
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                     <Button x:Name="MoreOptionsButton" Theme="{StaticResource TransparentButton}"
                             VerticalAlignment="Center" ToolTip.Tip="更多选项…">
-                        <ui:FontIcon Glyph="&#xEBAC;" FontSize="14"/>
+                        <ui:FontIcon Glyph="&#xE946;" FontSize="14"/>
                         <Button.Flyout>
                             <MenuFlyout>
                                 <MenuItem Header="打开数据目录…" Click="OnOpenDataFolder">
@@ -84,32 +84,32 @@
             <ui:NavigationView.MenuItems>
                 <ui:NavigationViewItem Content="通用">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE713;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE713;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="界面">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE51E;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE790;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="主界面组件">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE06F;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE71D;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="课表">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE787;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE787;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="关于">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE9E4;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE946;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="账户">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE77B;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE77B;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
             </ui:NavigationView.MenuItems>
@@ -130,7 +130,7 @@
                             <ui:SettingsExpander Header="单周开始日期"
                                                  Description="该日期所在周视为单周，用于推算当前是单周还是双周">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE304;"/>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE787;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <DatePicker x:Name="SingleWeekStartPicker" HorizontalAlignment="Stretch"/>
@@ -140,7 +140,7 @@
                             <ui:SettingsExpander Header="点击托盘图标行为"
                                                  Description="单击托盘图标时执行的操作">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE713;"/>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE713;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <ComboBox x:Name="TrayBehaviorCombo" HorizontalAlignment="Stretch">
@@ -161,7 +161,7 @@
 
                             <ui:SettingsExpander Header="主题" Description="跟随系统 / 浅色 / 深色">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE5CB;"/>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE790;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="12">
@@ -174,7 +174,7 @@
 
                             <ui:SettingsExpander Header="主界面背景不透明度">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xF37D;"/>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE71C;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="12">
@@ -187,7 +187,7 @@
 
                             <ui:SettingsExpander Header="全局字号缩放">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xF273;"/>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE8D2;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="12">
@@ -201,7 +201,7 @@
                             <ui:SettingsExpander Header="主界面缩放"
                                                  Description="对应 CI 的「主界面缩放」（CI 默认 1.9），整体放大主界面">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xF4D1;"/>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE71E;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="12">
@@ -214,7 +214,7 @@
 
                             <ui:SettingsExpander Header="组件排列方向">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE6EF;"/>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE700;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <ComboBox x:Name="OrientationCombo" HorizontalAlignment="Stretch">
@@ -227,7 +227,7 @@
                             <ui:SettingsExpander Header="鼠标穿透"
                                                  Description="开启后鼠标点击会直接落到主界面后方的窗口；鼠标移入主界面自动淡化">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE962;"/>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE7C9;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <CheckBox x:Name="ClickThroughCheck" Content="启用鼠标穿透"/>
@@ -253,7 +253,7 @@
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                                <ui:FontIcon FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                <ui:FontIcon FontFamily="Segoe MDL2 Assets"
                                                              Glyph="{Binding Glyph}" FontSize="14" VerticalAlignment="Center"/>
                                                 <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
                                                 <Button Content="⋯" Padding="6,0" ToolTip.Tip="更多选项" Click="OnWidgetItemMore">
@@ -322,7 +322,7 @@
                         <StackPanel x:Name="PageSchedule" Spacing="10" IsVisible="False">
                             <ui:SettingsExpander Header="当前课表文件" Description="支持 CSES 课程表交换格式（YAML）">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE8A5;"/>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE8A5;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Spacing="10">
@@ -360,7 +360,7 @@
                         <StackPanel x:Name="PageAccount" Spacing="10" IsVisible="False">
                             <ui:SettingsExpander Header="用户名" Description="显示在设置窗口左侧账户块中的名称">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE77B;"/>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE77B;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <TextBox x:Name="UserNameBox" Width="300" Watermark="输入用户名"/>

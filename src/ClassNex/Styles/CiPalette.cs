@@ -109,15 +109,28 @@ public static class CiPalette
     public static IBrush OnCardSecondary(double opacity = 0.82) =>
         new SolidColorBrush(Colors.White, opacity);
 
-    private static bool TryResource(string key, out IBrush brush)
+    public static bool TryResource(string key, out IBrush brush)
     {
         brush = Brushes.Transparent;
 
         try
         {
-            if (Application.Current?.TryFindResource(key, out var value) == true && value is IBrush found)
+            var app = Application.Current;
+            if (app is null)
+                return false;
+
+            // 关键：必须带上当前主题变体查询。
+            // TryFindResource(key) 不带变体时返回的是**浅色**变体的值，
+            // 会出现在深色界面里画出白色卡片（用户反馈的「发白」）的问题。
+            if (app.TryFindResource(key, app.ActualThemeVariant, out var value) && value is IBrush themed)
             {
-                brush = found;
+                brush = themed;
+                return true;
+            }
+
+            if (app.TryFindResource(key, out var fallback) && fallback is IBrush plain)
+            {
+                brush = plain;
                 return true;
             }
         }

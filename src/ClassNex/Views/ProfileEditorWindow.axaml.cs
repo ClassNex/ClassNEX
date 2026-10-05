@@ -74,7 +74,7 @@ public partial class ProfileEditorWindow : Window
             IconSource = new AvaloniaFluentUI.Controls.FontIconSource
             {
                 Glyph = glyph,
-                FontFamily = new Avalonia.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),
+                FontFamily = new Avalonia.Media.FontFamily("Segoe MDL2 Assets"),
             },
         };
 

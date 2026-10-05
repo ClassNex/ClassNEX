@@ -7,6 +7,9 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
+using Avalonia.Media;
+using Avalonia.Platform;
+using Avalonia.Styling;
 using ClassNex.Models;
 using ClassNex.Services;
 using ClassNex.Styles;
@@ -411,7 +414,37 @@ public partial class SettingsWindow : Window
 
     // ==================== 主界面组件 ====================
 
-    /// <summary>组件库：每个组件类型一张卡片，点击即添加。</summary>
+    /// <summary>当前是否深色主题（Default 时跟随系统）。</summary>
+    private static bool IsDarkTheme()
+    {
+        var variant = Application.Current?.ActualThemeVariant;
+        if (variant == ThemeVariant.Dark)
+            return true;
+        if (variant == ThemeVariant.Light)
+            return false;
+
+        try
+        {
+            return Application.Current?.PlatformSettings?.GetColorValues().ThemeVariant
+                   == PlatformThemeVariant.Dark;
+        }
+        catch
+        {
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// 组件卡片背景色。注意：不能走 TryFindResource(key) ——
+    /// 它返回的是**浅色**变体的值（#b3ffffff），会在深色界面里画出白色卡片（用户反馈的「发白」）。
+    /// </summary>
+    private static IBrush CardBackground() =>
+        new SolidColorBrush(IsDarkTheme() ? Color.Parse("#2E2E2E") : Color.Parse("#FBFBFB"));
+
+    private static IBrush CardBorder() =>
+        new SolidColorBrush(IsDarkTheme() ? Color.Parse("#3F3F3F") : Color.Parse("#E5E5E5"));
+
+    /// <summary>组件库：每个组件类型一张卡片，双击添加。</summary>
     private void RefreshWidgetLibrary()
     {
         WidgetLibraryPanel.Children.Clear();
@@ -424,8 +457,8 @@ public partial class SettingsWindow : Window
                 Margin = new Thickness(0, 0, 10, 10),
                 Padding = new Thickness(14, 10),
                 CornerRadius = new CornerRadius(6),
-                Background = CiPalette.SurfaceBrush("CardBackgroundFillColorSecondaryBrush", 0.25),
-                BorderBrush = CiPalette.SurfaceBrush("CardStrokeColorDefaultBrush", 0.4),
+                Background = CardBackground(),
+                BorderBrush = CardBorder(),
                 BorderThickness = new Thickness(1),
                 Cursor = new Cursor(StandardCursorType.Hand),
                 Child = new StackPanel
@@ -437,7 +470,7 @@ public partial class SettingsWindow : Window
                         new AvaloniaFluentUI.Controls.FontIcon
                         {
                             Glyph = type.Glyph,
-                            FontFamily = new Avalonia.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),
+                            FontFamily = new Avalonia.Media.FontFamily("Segoe MDL2 Assets"),
                             FontSize = 32,
                             VerticalAlignment = VerticalAlignment.Center,
                         },

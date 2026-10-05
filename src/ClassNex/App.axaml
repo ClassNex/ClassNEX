@@ -20,10 +20,11 @@
             <Setter Property="TextElement.FontFamily" Value="{DynamicResource AppFontFamily}" />
         </Style>
 
-        <!-- 图标字体：覆盖上面鸿蒙字体的继承，用 Segoe 图标字体渲染 FontIcon 字形
-             （否则 \\uE713 等字形会落到鸿蒙字体上，变成乱码/方块） -->
+        <!-- 图标字体：覆盖上面鸿蒙字体的继承。
+             必须只用 Segoe MDL2 Assets（segmdl2.ttf，码位齐全）；
+             Win11 的 Segoe Fluent Icons 删掉了 E51E/E06F/E9E4/EBAC 等旧码位，会显示成空方块。 -->
         <Style Selector="afui|FontIcon">
-            <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
         </Style>
     </Application.Styles>
 

@@ -99,6 +99,38 @@ public partial class App : Application
                 $"卡片圆角             = {CiPalette.CardCornerRadius} (CI 8)\n" +
                 $"课表文件             = {AppServices.TimetablePath}\n" +
                 $"科目数 / 课程数      = {AppServices.Schedule.Profile.Subjects.Count} / {AppServices.Schedule.Profile.Schedules.Sum(s => s.Classes.Count)}\n");
+
+            // 主题资源键探针：逐个问候选键是否存在（AvaloniaFluentUI 主题的键名与 FluentAvaloniaUI 未必一致）
+            try
+            {
+                var candidates = new[]
+                {
+                    "CardBackgroundFillColorDefaultBrush", "CardBackgroundFillColorSecondaryBrush",
+                    "CardStrokeColorDefaultBrush", "ControlFillColorDefaultBrush", "ControlFillColorSecondaryBrush",
+                    "ControlStrokeColorDefaultBrush", "SolidBackgroundFillColorBaseBrush",
+                    "SolidBackgroundFillColorSecondaryBrush", "SolidBackgroundFillColorTertiaryBrush",
+                    "SubtleFillColorSecondaryBrush", "LayerFillColorDefaultBrush",
+                    "TextFillColorPrimaryBrush", "TextFillColorSecondaryBrush",
+                    "AccentFillColorDefaultBrush", "TextOnAccentFillColorPrimaryBrush",
+                    "DividerStrokeColorDefaultBrush", "SystemAccentColor",
+                    "SystemControlHighlightListAccentMediumLowBrush", "SolidColorBackgroundBrush",
+                    "SystemControlBackgroundAltHighBrush", "SystemControlForegroundBaseHighBrush",
+                };
+
+                var lines = new List<string>();
+                foreach (var k in candidates)
+                {
+                    object? v = null;
+                    var ok = Current is not null && Current.TryFindResource(k, out v);
+                    lines.Add($"{(ok ? "[有]" : "[无]")} {k}{(ok ? $" = {v}" : "")}");
+                }
+
+                File.AppendAllText(path, "\n[主题资源键探针]\n" + string.Join("\n", lines) + "\n");
+            }
+            catch (Exception ex)
+            {
+                File.AppendAllText(path, $"\n[探针失败] {ex.Message}\n");
+            }
         }
         catch
         {
