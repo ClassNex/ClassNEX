@@ -11,6 +11,7 @@
         Background="Transparent"
         Topmost="True"
         ShowInTaskbar="False"
+        ShowActivated="False"
         CanResize="False"
         SizeToContent="WidthAndHeight"
         WindowStartupLocation="Manual">

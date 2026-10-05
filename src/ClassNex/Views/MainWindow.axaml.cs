@@ -172,6 +172,10 @@ public partial class MainWindow : Window
             _hwnd = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
 
         WindowsOverlay.SetClickThrough(_hwnd, AppServices.Settings.IsClickThrough);
+
+        // 与 CI 的 WindowFeatures.ToolWindow 等价：主界面不进 Alt+Tab 列表，
+        // 这样按 Alt+Tab 切换窗口时浮窗不会被隐藏或关闭。
+        WindowsOverlay.SetToolWindow(_hwnd, true);
     }
 
     /// <summary>

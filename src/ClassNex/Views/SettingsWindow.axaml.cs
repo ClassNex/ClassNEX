@@ -1,6 +1,9 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
@@ -19,17 +22,72 @@ namespace ClassNex.Views;
 public partial class SettingsWindow : Window
 {
     private readonly ObservableCollection<WidgetItem> _widgets = new();
+    private readonly ObservableCollection<SearchEntry> _searchEntries = new();
 
     private bool _loading;
     private WidgetItem? _currentWidget;
+
+    /// <summary>顶栏搜索的一条结果：设置项 + 所属页面。</summary>
+    private sealed class SearchEntry
+    {
+        public string Title { get; init; } = "";
+
+        public string PageName { get; init; } = "";
+
+        public int PageIndex { get; init; }
+    }
+
+    /// <summary>页面名（顺序与 NavView.MenuItems 一致，对照 CI 的 SettingsPageInfo.Name）。</summary>
+    private static readonly string[] PageNames = { "通用", "界面", "主界面组件", "课表", "关于" };
+
+    /// <summary>设置项索引（供顶栏「查找设置」搜索；Title = 设置项，PageIndex = 所属页面）。</summary>
+    private static readonly (string Title, int PageIndex)[] SearchIndex =
+    {
+        ("单周开始日期", 0),
+        ("点击托盘图标行为", 0),
+        ("主题（浅色 / 深色 / 跟随系统）", 1),
+        ("主界面背景不透明度", 1),
+        ("全局字号缩放", 1),
+        ("主界面缩放", 1),
+        ("组件排列方向", 1),
+        ("鼠标穿透", 1),
+        ("组件库（添加组件）", 2),
+        ("恢复默认布局", 2),
+        ("组件列表（上移 / 下移 / 删除）", 2),
+        ("组件设置：启用该组件", 2),
+        ("组件设置：字号缩放", 2),
+        ("时钟组件显示秒", 2),
+        ("自定义文本占位符", 2),
+        ("当前课表文件", 3),
+        ("重新加载课表", 3),
+        ("版本信息", 4),
+    };
 
     public SettingsWindow()
     {
         InitializeComponent();
         WidgetList.ItemsSource = _widgets;
 
+        InitShell();
         WireEvents();
         LoadFromSettings();
+    }
+
+    /// <summary>初始化外壳：顶栏版本号、导航栏账号块、顶栏搜索（对照 CI 的顶栏与用户给的系统设置截图）。</summary>
+    private void InitShell()
+    {
+        var version = typeof(SettingsWindow).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        if (string.IsNullOrWhiteSpace(version))
+            version = typeof(SettingsWindow).Assembly.GetName().Version?.ToString() ?? "26w41a";
+
+        VersionText.Text = version;
+        AboutVersionText.Text = $"版本 {version}";
+
+        AccountNameText.Text = Environment.UserName;
+        AccountPathItem.Header = $"课表文件：{System.IO.Path.GetFileName(AppServices.TimetablePath)}";
+
+        SearchResults.ItemsSource = _searchEntries;
     }
 
     /// <summary>导航到指定页面：general / interface / widgets / schedule / about。</summary>
@@ -50,6 +108,10 @@ public partial class SettingsWindow : Window
 
     private void WireEvents()
     {
+        // ---- 顶栏「查找设置」搜索 ----
+        SearchBox.TextChanged += (_, _) => UpdateSearchResults();
+        SearchResults.SelectionChanged += (_, _) => NavigateFromSearch();
+
         NavView.SelectionChanged += (_, _) => SwitchPage();
 
         // ---- 通用 ----
@@ -172,6 +234,95 @@ public partial class SettingsWindow : Window
         PageWidgets.IsVisible = index == 2;
         PageSchedule.IsVisible = index == 3;
         PageAbout.IsVisible = index == 4;
+
+        // 页面标题行（对照 CI 的 TitleContainer：页面名由外壳统一显示）
+        PageTitleText.Text = PageNames[Math.Clamp(index, 0, PageNames.Length - 1)];
+    }
+
+    // ==================== 顶栏搜索（查找设置） ====================
+
+    private void UpdateSearchResults()
+    {
+        var query = SearchBox.Text?.Trim() ?? "";
+        _searchEntries.Clear();
+
+        if (query.Length > 0)
+        {
+            foreach (var (title, pageIndex) in SearchIndex)
+            {
+                if (title.Contains(query, StringComparison.OrdinalIgnoreCase)
+                    || PageNames[pageIndex].Contains(query, StringComparison.OrdinalIgnoreCase))
+                {
+                    _searchEntries.Add(new SearchEntry
+                    {
+                        Title = title,
+                        PageName = PageNames[pageIndex],
+                        PageIndex = pageIndex,
+                    });
+                }
+            }
+        }
+
+        SearchResultsPanel.IsVisible = _searchEntries.Count > 0;
+    }
+
+    private void NavigateFromSearch()
+    {
+        if (SearchResults.SelectedItem is not SearchEntry entry)
+            return;
+
+        if (entry.PageIndex >= 0 && entry.PageIndex < NavView.MenuItems.Count)
+            NavView.SelectedItem = NavView.MenuItems[entry.PageIndex];
+
+        SearchResultsPanel.IsVisible = false;
+        _searchEntries.Clear();
+        SearchBox.Text = "";
+    }
+
+    // ==================== 更多选项 / 账号块 ====================
+
+    private void OnOpenDataFolder(object? sender, RoutedEventArgs e)
+        => OpenInExplorer(System.IO.Path.GetDirectoryName(AppServices.TimetablePath));
+
+    private void OnOpenLogFile(object? sender, RoutedEventArgs e)
+    {
+        var log = System.IO.Path.Combine(AppContext.BaseDirectory, "_crash.log");
+        OpenInExplorer(System.IO.File.Exists(log) ? log : AppContext.BaseDirectory);
+    }
+
+    private void OnShowAbout(object? sender, RoutedEventArgs e) => NavigateTo("about");
+
+    private void OnOpenProfileEditor(object? sender, RoutedEventArgs e) => App.OpenProfileEditor(0);
+
+    private void OnRestartApp(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(Environment.ProcessPath))
+                Process.Start(new ProcessStartInfo(Environment.ProcessPath) { UseShellExecute = true });
+        }
+        catch
+        {
+            // 忽略：无法重启时仅退出
+        }
+
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            desktop.Shutdown();
+    }
+
+    private static void OpenInExplorer(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return;
+
+        try
+        {
+            Process.Start(new ProcessStartInfo("explorer.exe", $"\"{path}\"") { UseShellExecute = true });
+        }
+        catch
+        {
+            // 忽略：资源管理器启动失败
+        }
     }
 
     private void RefreshTimetableText() => TimetableFileText.Text = AppServices.TimetablePath;

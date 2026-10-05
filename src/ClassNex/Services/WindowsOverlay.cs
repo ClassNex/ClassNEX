@@ -13,6 +13,7 @@ internal static class WindowsOverlay
     private const int GwlExStyle = -20;
 
     private const int WsExTransparent = 0x00000020; // 点击穿透
+    private const int WsExToolWindow = 0x00000080;  // 工具窗口：不出现在 Alt+Tab / 任务栏
     private const int WsExLayered = 0x00080000;     // 分层窗口（与穿透配合）
     private const int WsExNoActivate = 0x08000000;  // 不抢焦点
 
@@ -63,6 +64,33 @@ internal static class WindowsOverlay
                 style |= WsExTransparent | WsExLayered | WsExNoActivate;
             else
                 style &= ~(long)(WsExTransparent | WsExNoActivate);
+
+            SetExStyle(hWnd, new IntPtr(style));
+        }
+        catch
+        {
+            // 忽略：非 Windows 或句柄失效
+        }
+    }
+
+    /// <summary>
+    /// 设置工具窗口样式（WS_EX_TOOLWINDOW）：
+    /// 与 CI 的 <c>WindowFeatures.ToolWindow</c> 等价 —— 主界面不会出现在 Alt+Tab 列表里，
+    /// 因此按 Alt+Tab 切换窗口时浮窗不会被隐藏/关闭。
+    /// </summary>
+    public static void SetToolWindow(IntPtr hWnd, bool enabled)
+    {
+        if (!OperatingSystem.IsWindows() || hWnd == IntPtr.Zero)
+            return;
+
+        try
+        {
+            var style = GetExStyle(hWnd).ToInt64();
+
+            if (enabled)
+                style |= WsExToolWindow;
+            else
+                style &= ~(long)WsExToolWindow;
 
             SetExStyle(hWnd, new IntPtr(style));
         }
