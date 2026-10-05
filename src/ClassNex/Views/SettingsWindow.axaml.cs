@@ -11,7 +11,7 @@ using ClassNex.Models;
 using ClassNex.Services;
 using ClassNex.Styles;
 using ClassNex.ViewModels;
-using FluentAvalonia.UI.Controls;
+using AvaloniaFluentUI.Controls;
 
 namespace ClassNex.Views;
 

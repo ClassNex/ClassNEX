@@ -68,10 +68,10 @@ public partial class ProfileEditorWindow : Window
 
     private void AddCommand(string label, string glyph, Action action)
     {
-        var button = new FluentAvalonia.UI.Controls.CommandBarButton
+        var button = new AvaloniaFluentUI.Controls.CommandBarButton
         {
             Label = label,
-            IconSource = new FluentAvalonia.UI.Controls.FontIconSource { Glyph = glyph },
+            IconSource = new AvaloniaFluentUI.Controls.FontIconSource { Glyph = glyph },
         };
 
         button.Click += (_, _) => action();

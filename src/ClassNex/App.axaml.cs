@@ -8,7 +8,7 @@ using Avalonia.Threading;
 using ClassNex.Services;
 using ClassNex.Styles;
 using ClassNex.Views;
-using FluentAvalonia.Styling;
+using AvaloniaFluentUI.Styling;
 
 namespace ClassNex;
 

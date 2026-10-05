@@ -331,7 +331,7 @@ public static class TimetableGridBuilder
             MinHeight = 34,
             BorderBrush = new SolidColorBrush(CiPalette.NeutralDark, 0.25),
             BorderThickness = new Thickness(0, 0, 0, 1),
-            Child = new FluentAvalonia.UI.Controls.FontIcon
+            Child = new AvaloniaFluentUI.Controls.FontIcon
             {
                 // Fluent 的「Add」字形，替代原来的全角加号字符
                 Glyph = "\uE710",
