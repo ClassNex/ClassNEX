@@ -60,22 +60,25 @@ public static class TimetableGridBuilder
                 entries.Add(new CourseRef(schedule.EnableDay, schedule.Weeks, schedule, course));
         }
 
-        // 2. 行定义：时间表节次 + 课程出现过的开始时间；课间行不可排课（对齐 CI 档案编辑器）
-        var rowKinds = new SortedDictionary<TimeSpan, bool>(); // start -> 是否课间
+        // 2. 行定义：**只取上课节次**（课间不进网格，对齐 CI 课表编辑器）
+        var rowTimes = new SortedDictionary<TimeSpan, TimeSpan>(); // start -> end
 
         foreach (var time in AppServices.TimeLayout.Layout.Times)
         {
-            if (TimeSpan.TryParse(time.Start, out var s))
-                rowKinds.TryAdd(s, time.Kind == ClassTimeKind.Break);
+            if (time.Kind == ClassTimeKind.Break)
+                continue; // 课间行不放进网格
+            if (TimeSpan.TryParse(time.Start, out var s) && TimeSpan.TryParse(time.End, out var e) && e > s)
+                rowTimes.TryAdd(s, e);
         }
 
         foreach (var entry in entries)
         {
-            if (TimeSpan.TryParse(entry.Course.StartTime, out var s))
-                rowKinds[s] = false; // 这一行有课程，不是课间
+            if (TimeSpan.TryParse(entry.Course.StartTime, out var s)
+                && TimeSpan.TryParse(entry.Course.EndTime, out var e) && e > s)
+                rowTimes.TryAdd(s, e);
         }
 
-        var rows = rowKinds.Keys.ToList();
+        var rows = rowTimes.Keys.ToList();
 
         if (rows.Count == 0)
         {
@@ -104,26 +107,15 @@ public static class TimetableGridBuilder
         for (var i = 0; i < rows.Count; i++)
         {
             var start = rows[i];
-            var isBreak = rowKinds[start];
-            var end = i + 1 < rows.Count ? rows[i + 1] : start + DefaultDuration;
+            var end = rowTimes[start];
             var startText = start.ToString(@"hh\:mm");
             var endText = end.ToString(@"hh\:mm");
 
-            grid.Children.Add(BuildTimeLabel(startText, endText, i + 1, isBreak));
+            grid.Children.Add(BuildTimeLabel(startText, endText, i + 1));
 
             for (var day = 1; day <= 7; day++)
             {
                 var column = Array.IndexOf(ColumnDays, day) + 1;
-
-                // 课间行：灰色不可点击（防止把课间当空格排课）
-                if (isBreak)
-                {
-                    var breakCell = BuildBreakCell();
-                    Grid.SetRow(breakCell, i + 1);
-                    Grid.SetColumn(breakCell, column);
-                    grid.Children.Add(breakCell);
-                    continue;
-                }
 
                 var cellCourses = entries
                     .Where(e => e.EnableDay == day
@@ -245,29 +237,7 @@ public static class TimetableGridBuilder
         return border;
     }
 
-    /// <summary>课间行单元格：灰色、不可点击（CI 档案编辑器中的课间行同样不可排课）。</summary>
-    private static Border BuildBreakCell()
-    {
-        return new Border
-        {
-            Background = CiPalette.SurfaceBrush("SubtleFillColorSecondaryBrush", 0.35),
-            CornerRadius = new CornerRadius(4),
-            Margin = new Thickness(4, 2),
-            MinHeight = 34,
-            BorderBrush = new SolidColorBrush(CiPalette.NeutralDark, 0.25),
-            BorderThickness = new Thickness(0, 0, 0, 1),
-            Child = new TextBlock
-            {
-                Text = "课间",
-                FontSize = 11,
-                Opacity = 0.35,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-            },
-        };
-    }
-
-    /// <summary>课程单元格：**不给科目上色**（CI 做法），仅文字；选中的格子用强调色描边（CI 选中格样式）。</summary>
+    /// <summary>课程单元格：**不给科目上色**（CI 做法），仅文字；选中的格子用强调色整格填充（CI 选中格样式）。</summary>
     private static Border BuildCourseCell(
         List<CourseRef> courses,
         CellTarget target,
@@ -277,18 +247,19 @@ public static class TimetableGridBuilder
         var panel = new StackPanel { Spacing = 2 };
 
         foreach (var courseRef in courses)
-            panel.Children.Add(BuildCourseLine(courseRef));
+            panel.Children.Add(BuildCourseLine(courseRef, isSelected));
 
         var border = new Border
         {
+            // 注意：不能给 null —— Avalonia 里 Background 为 null 的控件不参与命中测试，
+            // 会导致「已有课程的格子点不动」。未选中时用透明画刷（仍可点击）。
+            Background = isSelected ? CiPalette.AccentBrush() : Brushes.Transparent,
             CornerRadius = new CornerRadius(4),
             Margin = new Thickness(4, 2),
             Padding = new Thickness(6, 3),
             MinHeight = 34,
-            BorderBrush = isSelected
-                ? CiPalette.AccentBrush()
-                : new SolidColorBrush(CiPalette.NeutralDark, 0.25),
-            BorderThickness = isSelected ? new Thickness(2) : new Thickness(0, 0, 0, 1),
+            BorderBrush = new SolidColorBrush(CiPalette.NeutralDark, 0.25),
+            BorderThickness = new Thickness(0, 0, 0, 1),
             Child = panel,
         };
 
@@ -301,7 +272,7 @@ public static class TimetableGridBuilder
         return border;
     }
 
-    private static Border BuildCourseLine(CourseRef courseRef)
+    private static Border BuildCourseLine(CourseRef courseRef, bool isSelected)
     {
         var course = courseRef.Course;
         var subject = AppServices.Schedule.Profile.FindSubject(course.Subject);
@@ -323,6 +294,8 @@ public static class TimetableGridBuilder
             Text = text,
             FontSize = 13,
             FontWeight = FontWeight.SemiBold,
+            // 选中格是强调色填充 → 文字用强调色上的前景色（CI 选中格）
+            Foreground = isSelected ? CiPalette.OnAccentBrush() : null,
             TextWrapping = TextWrapping.NoWrap,
         });
 
@@ -332,7 +305,8 @@ public static class TimetableGridBuilder
             {
                 Text = string.Join(" · ", detailParts),
                 FontSize = 10.5,
-                Opacity = 0.6,
+                Opacity = isSelected ? 0.9 : 0.6,
+                Foreground = isSelected ? CiPalette.OnAccentBrush() : null,
             });
         }
 
@@ -344,19 +318,19 @@ public static class TimetableGridBuilder
         };
     }
 
-    /// <summary>空格子：极淡的中性底，点击即选中该格；选中的格子用强调色描边（CI 的选中格）。</summary>
+    /// <summary>空格子：极淡的中性底，点击即选中该格；选中的格子用强调色整格填充（CI 的选中格）。</summary>
     private static Border BuildEmptyCell(CellTarget target, Action<CellTarget>? onSelect, bool isSelected = false)
     {
         var border = new Border
         {
-            Background = CiPalette.SurfaceBrush("SubtleFillColorSecondaryBrush", 0.12),
+            Background = isSelected
+                ? CiPalette.AccentBrush()
+                : CiPalette.SurfaceBrush("SubtleFillColorSecondaryBrush", 0.12),
             CornerRadius = new CornerRadius(4),
             Margin = new Thickness(4, 2),
             MinHeight = 34,
-            BorderBrush = isSelected
-                ? CiPalette.AccentBrush()
-                : new SolidColorBrush(CiPalette.NeutralDark, 0.25),
-            BorderThickness = isSelected ? new Thickness(2) : new Thickness(0, 0, 0, 1),
+            BorderBrush = new SolidColorBrush(CiPalette.NeutralDark, 0.25),
+            BorderThickness = new Thickness(0, 0, 0, 1),
             Child = new FluentAvalonia.UI.Controls.FontIcon
             {
                 // Fluent 的「Add」字形，替代原来的全角加号字符

@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using ClassNex.Controls;
 using ClassNex.Models;
 using ClassNex.Services;
@@ -94,14 +95,10 @@ public partial class ProfileEditorWindow : Window
                 RefreshPaletteHint();
         };
 
-        // 科目面板（CI 用 ListBox）：点科目 → 给选中格子排课
-        SubjectPaletteList.SelectionChanged += (_, _) =>
-        {
-            if (_syncingPalette)
-                return;
-            if (SubjectPaletteList.SelectedItem is Subject subject)
-                AssignSubject(subject);
-        };
+        // 科目面板（CI 用 ListBox）：**每次点击都立即排课**（不能用 SelectionChanged——
+        // 已选中的科目再点不会触发，这正是之前「编辑不了」的原因）
+        SubjectPaletteList.AddHandler(InputElement.PointerReleasedEvent, OnPalettePointerReleased,
+            RoutingStrategies.Tunnel);
 
         SaveNowButton.Click += (_, _) =>
         {
@@ -309,6 +306,33 @@ public partial class ProfileEditorWindow : Window
     }
 
     // ==================== 编辑科目面板（CI 右侧） ====================
+
+    /// <summary>
+    /// 科目面板点击：从点击目标向上找带 Subject 数据上下文的控件 → 立即给选中格排课。
+    /// CI 也是在项容器上挂 PointerReleased（而不是用选中变化事件）。
+    /// </summary>
+    private void OnPalettePointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_syncingPalette)
+            return;
+
+        var subject = FindSubjectFrom(e.Source as Visual);
+        if (subject is not null)
+            AssignSubject(subject);
+    }
+
+    private static Subject? FindSubjectFrom(Visual? source)
+    {
+        while (source is not null)
+        {
+            if (source is Control { DataContext: Subject subject })
+                return subject;
+
+            source = source.GetVisualParent();
+        }
+
+        return null;
+    }
 
     private void RefreshPalette()
     {
