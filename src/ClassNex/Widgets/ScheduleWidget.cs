@@ -1,6 +1,5 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Shapes;
 using Avalonia.Layout;
 using Avalonia.Media;
 using ClassNex.Models;
@@ -20,6 +19,11 @@ public sealed class ScheduleWidget : WidgetBase
 {
     private readonly StackPanel _root;
 
+    private ProgressBar? _currentProgress;
+    private string? _currentTitle;
+    private TimeSpan _currentStart;
+    private TimeSpan _currentEnd;
+
     public override string Type => "schedule";
 
     public ScheduleWidget()
@@ -35,21 +39,44 @@ public sealed class ScheduleWidget : WidgetBase
 
     public override void Refresh(WidgetContext ctx)
     {
-        _root.Children.Clear();
+        var now = ctx.Now.TimeOfDay;
+        var scale = ctx.Settings.EffectiveScale;
 
         // CI ScheduleComponent：当天无课 → PlaceholderTextNoClass
         if (ctx.Today.IsEmpty)
         {
-            _root.Children.Add(Text("今天没有课程。", Size(CiBody, ctx.Settings.EffectiveScale), White(0.92)));
+            _currentProgress = null;
+            _currentTitle = null;
+            if (_root.Children.Count == 0)
+                _root.Children.Add(Text("今天没有课程。", Size(CiBody, scale), White(0.92)));
             return;
         }
 
-        var now = ctx.Now.TimeOfDay;
-        var scale = ctx.Settings.EffectiveScale;
         var slots = ctx.Today.Slots;
 
+        // 定位当前项（正在上的课，或落在课间空档时 = 课间休息）
+        var cur = FindCurrent(slots, now);
+
+        // 关键：当前项没变时**只更新进度条值、不重建**。
+        // 否则每秒 Clear + 重建会反复销毁/重建 ProgressBar，造成肉眼可见的闪烁。
+        if (cur is not null
+            && cur.Value.Title == _currentTitle
+            && cur.Value.Start == _currentStart
+            && cur.Value.End == _currentEnd
+            && _currentProgress is not null)
+        {
+            _currentProgress.Value = ProgressOf(cur.Value.Start, cur.Value.End, now);
+            return;
+        }
+
+        _currentTitle = cur?.Title;
+        _currentStart = cur?.Start ?? default;
+        _currentEnd = cur?.End ?? default;
+        _currentProgress = null;
+
+        _root.Children.Clear();
+
 #if DEBUG
-        // 自检探针：报告真实字号与「早」的实测宽高（供与 CI 实测值对比）
         if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY") == "1")
         {
             var fontSize = Size(CiEmphasized, scale);
@@ -67,22 +94,49 @@ public sealed class ScheduleWidget : WidgetBase
             var slot = slots[i];
 
             // 课间休息：上一节结束 → 本节开始之间存在空档，且当前时间落在其中时，
-            // 按 CI 的做法在「这个位置」显示「课间休息 起-止」+ 进度条（CI LessonControl.xaml.cs 内置 Break 科目名）
+            // 在这个位置显示「课间休息 起-止」+ 进度条（CI LessonControl.xaml.cs 内置 Break 科目名）
             if (i > 0)
             {
                 var gapStart = slots[i - 1].End;
                 var gapEnd = slot.Start;
                 if (gapEnd > gapStart && now >= gapStart && now < gapEnd)
-                    _root.Children.Add(BuildExpandedItem("课间休息", gapStart, gapEnd, now, scale));
+                    AddExpanded("课间休息", gapStart, gapEnd, now, scale);
             }
 
             var isCurrent = slot.Contains(now);
             var isFinished = !isCurrent && slot.End <= now;
 
-            _root.Children.Add(isCurrent
-                ? BuildExpandedItem(slot.Subject, slot.Start, slot.End, now, scale)
-                : BuildMinimized(slot, isFinished, scale));
+            if (isCurrent)
+                AddExpanded(slot.Subject, slot.Start, slot.End, now, scale);
+            else
+                _root.Children.Add(BuildMinimized(slot, isFinished, scale));
         }
+    }
+
+    private (string Title, TimeSpan Start, TimeSpan End)? FindCurrent(System.Collections.Generic.IReadOnlyList<CourseSlot> slots, TimeSpan now)
+    {
+        for (var i = 0; i < slots.Count; i++)
+        {
+            if (i > 0)
+            {
+                var gapStart = slots[i - 1].End;
+                var gapEnd = slots[i].Start;
+                if (gapEnd > gapStart && now >= gapStart && now < gapEnd)
+                    return ("课间休息", gapStart, gapEnd);
+            }
+
+            if (slots[i].Contains(now))
+                return (slots[i].Subject, slots[i].Start, slots[i].End);
+        }
+
+        return null;
+    }
+
+    private void AddExpanded(string title, TimeSpan start, TimeSpan end, TimeSpan now, double scale)
+    {
+        var (control, progress) = BuildExpandedItem(title, start, end, now, scale);
+        _currentProgress = progress;
+        _root.Children.Add(control);
     }
 
     /// <summary>普通课程（CI LessonControlMinimized）：简称 + 两侧间隔；已完成整项淡化 0.6（CI FadeCompletedClasses）。</summary>
@@ -109,12 +163,11 @@ public sealed class ScheduleWidget : WidgetBase
     /// 当前项（CI LessonControlExpanded）：全名 Bold + 「起-止」时间（底部对齐）+ 下方进度条。
     /// 课程与课间休息共用（课间时标题为「课间休息」）。
     /// </summary>
-    private Control BuildExpandedItem(string title, TimeSpan start, TimeSpan end, TimeSpan now, double scale)
+    private (Control Control, ProgressBar Progress) BuildExpandedItem(string title, TimeSpan start, TimeSpan end, TimeSpan now, double scale)
     {
         var name = Text(title, Size(CiEmphasized, scale), White(), FontWeight.Bold);
         name.VerticalAlignment = VerticalAlignment.Center;
 
-        // CI：ExtraInfoType=0 → "StartTime - EndTime"（MainWindowSecondaryFontSize，底部对齐，Margin 6 0 0 0）
         var time = Text($"{start:hh\\:mm}-{end:hh\\:mm}", Size(CiSecondary, scale), White(0.9));
         time.VerticalAlignment = VerticalAlignment.Bottom;
         time.Margin = new Thickness(6, 0, 0, 0);
@@ -123,7 +176,6 @@ public sealed class ScheduleWidget : WidgetBase
         {
             Orientation = Orientation.Horizontal,
             VerticalAlignment = VerticalAlignment.Center,
-            // 底部留出进度条位置
             Margin = new Thickness(0, 0, 0, 5),
             Children =
             {
@@ -134,7 +186,6 @@ public sealed class ScheduleWidget : WidgetBase
             },
         };
 
-        // CI：进度条横跨整个课程项下方（Canvas HorizontalAlignment=Stretch, VerticalAlignment=Bottom）
         var progress = new ProgressBar
         {
             Minimum = 0,
@@ -146,7 +197,7 @@ public sealed class ScheduleWidget : WidgetBase
             Foreground = CiPalette.AccentBrush(),
         };
 
-        return new Grid { Children = { row, progress } };
+        return (new Grid { Children = { row, progress } }, progress);
     }
 
     /// <summary>当前时段已进行的百分比（CI 主界面当前项下方的进度条）。</summary>

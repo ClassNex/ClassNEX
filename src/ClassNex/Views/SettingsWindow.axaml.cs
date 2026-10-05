@@ -420,7 +420,7 @@ public partial class SettingsWindow : Window
         {
             var card = new Border
             {
-                Width = 190,
+                Width = 210,
                 Margin = new Thickness(0, 0, 10, 10),
                 Padding = new Thickness(14, 10),
                 CornerRadius = new CornerRadius(6),
@@ -430,21 +430,36 @@ public partial class SettingsWindow : Window
                 Cursor = new Cursor(StandardCursorType.Hand),
                 Child = new StackPanel
                 {
-                    Spacing = 3,
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 12,
                     Children =
                     {
-                        new TextBlock
+                        new AvaloniaFluentUI.Controls.FontIcon
                         {
-                            Text = type.DisplayName,
-                            FontSize = 14,
-                            FontWeight = Avalonia.Media.FontWeight.SemiBold,
+                            Glyph = type.Glyph,
+                            FontFamily = new Avalonia.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),
+                            FontSize = 32,
+                            VerticalAlignment = VerticalAlignment.Center,
                         },
-                        new TextBlock
+                        new StackPanel
                         {
-                            Text = type.Description,
-                            FontSize = 11,
-                            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-                            Opacity = 0.7,
+                            Spacing = 3,
+                            Children =
+                            {
+                                new TextBlock
+                                {
+                                    Text = type.DisplayName,
+                                    FontSize = 14,
+                                    FontWeight = Avalonia.Media.FontWeight.SemiBold,
+                                },
+                                new TextBlock
+                                {
+                                    Text = type.Description,
+                                    FontSize = 11,
+                                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                                    Opacity = 0.7,
+                                },
+                            },
                         },
                     },
                 },

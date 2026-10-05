@@ -161,7 +161,7 @@
 
                             <ui:SettingsExpander Header="主题" Description="跟随系统 / 浅色 / 深色">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE790;"/>
+                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE5CB;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="12">
@@ -174,7 +174,7 @@
 
                             <ui:SettingsExpander Header="主界面背景不透明度">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE7B3;"/>
+                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xF37D;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="12">
@@ -187,7 +187,7 @@
 
                             <ui:SettingsExpander Header="全局字号缩放">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE8D2;"/>
+                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xF273;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="12">
@@ -201,7 +201,7 @@
                             <ui:SettingsExpander Header="主界面缩放"
                                                  Description="对应 CI 的「主界面缩放」（CI 默认 1.9），整体放大主界面">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE7C3;"/>
+                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xF4D1;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="12">
@@ -214,7 +214,7 @@
 
                             <ui:SettingsExpander Header="组件排列方向">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE8A7;"/>
+                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE6EF;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <ComboBox x:Name="OrientationCombo" HorizontalAlignment="Stretch">
@@ -227,7 +227,7 @@
                             <ui:SettingsExpander Header="鼠标穿透"
                                                  Description="开启后鼠标点击会直接落到主界面后方的窗口；鼠标移入主界面自动淡化">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE7C9;"/>
+                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE962;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <CheckBox x:Name="ClickThroughCheck" Content="启用鼠标穿透"/>
@@ -252,8 +252,10 @@
                                     </ListBox.ItemsPanel>
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
-                                            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding DisplayText}" VerticalAlignment="Center"/>
+                                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                <ui:FontIcon FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                             Glyph="{Binding Glyph}" FontSize="14" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
                                                 <Button Content="⋯" Padding="6,0" ToolTip.Tip="更多选项" Click="OnWidgetItemMore">
                                                     <Button.Flyout>
                                                         <MenuFlyout>
@@ -342,7 +344,7 @@
                         <StackPanel x:Name="PageAbout" Spacing="10" IsVisible="False">
                             <ui:SettingsExpander x:Name="AboutExpander" Header="ClassNEX 桌面客户端" IsExpanded="True">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Glyph="&#xE946;"/>
+                                    <ui:ImageIconSource Source="/Assets/icon.ico"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Spacing="6">

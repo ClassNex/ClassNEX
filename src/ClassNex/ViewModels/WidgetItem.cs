@@ -12,7 +12,11 @@ public sealed class WidgetItem : ViewModelBase
 
     public string Type => Config.Type;
 
-    public string DisplayText => $"{(Config.IsEnabled ? "●" : "○")}  {WidgetRegistry.DisplayNameOf(Config.Type)}";
+    public string Name => WidgetRegistry.DisplayNameOf(Config.Type);
+
+    public string Glyph => WidgetRegistry.GlyphOf(Config.Type);
+
+    public string DisplayText => $"{Name}";
 
     /// <summary>触发列表文本刷新。</summary>
     public void Refresh() => OnPropertyChanged(nameof(DisplayText));
