@@ -15,12 +15,16 @@
          顶栏(48) + NavigationView(PaneHeader 账户块 + MenuItems 图标) + 页面标题行 + 页面。
          每个设置项 = SettingsExpander(IconSource + Header + Description + Footer 常显控件)。 -->
     <Grid RowDefinitions="48,*">
-        <!-- ============ 顶栏（CI：Border Height=48） ============ -->
-        <Border Grid.Row="0" Height="48"
-                BorderThickness="0,0,0,1"
-                BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}">
+        <!-- ============ 顶栏（CI：Border Height=48；不要下面那条浅线） ============ -->
+        <Border Grid.Row="0" Height="48" BorderThickness="0">
             <Grid ColumnDefinitions="Auto,*,Auto" Margin="14,0,10,0">
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <!-- 左上角返回箭头（照 Gallery 标题栏那个 ←） -->
+                    <Button x:Name="BackButton" Theme="{StaticResource TransparentButton}"
+                            Padding="6,4" VerticalAlignment="Center" ToolTip.Tip="返回上一页"
+                            Click="OnNavigateBack">
+                        <ui:FontIcon Glyph="&#xE72B;" FontSize="14"/>
+                    </Button>
                     <Image Source="/Assets/icon.ico" Width="18" Height="18"
                            IsHitTestVisible="False" RenderOptions.BitmapInterpolationMode="HighQuality"/>
                     <TextBlock Text="应用设置" FontSize="12" VerticalAlignment="Center" IsHitTestVisible="False"/>
@@ -61,55 +65,106 @@
                            IsBackButtonVisible="False" IsSettingsVisible="False"
                            IsPaneToggleButtonVisible="False">
 
+            <!-- 账户区 + 搜索：模板取自 FluentUI-Gallery 的账户页
+                 （Win11 默认头像 + 强调色圆环 + 名称 + 邮箱，搜索框在账户区下方） -->
             <ui:NavigationView.PaneHeader>
-                <Button x:Name="AccountButton" Margin="6,10,6,4" Padding="8" CornerRadius="4"
-                        Background="Transparent" BorderThickness="0"
-                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                        Click="OnAccountClick" ToolTip.Tip="账户">
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                        <Border Width="40" Height="40" CornerRadius="20"
-                                Background="{DynamicResource AccentFillColorDefaultBrush}">
-                            <ui:FontIcon Glyph="&#xE77B;" FontSize="18"
-                                         Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
-                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <StackPanel VerticalAlignment="Center" Spacing="1">
-                            <TextBlock x:Name="AccountNameText" FontSize="14" FontWeight="SemiBold"/>
-                            <TextBlock Text="本地账户" FontSize="12" Opacity="0.6"/>
+                <StackPanel Spacing="8" Margin="6,10,6,4">
+                    <!-- 账户卡：照 FluentUI Gallery 的账户卡（IzumiPL/Avalonia-Fluent-UI samples/Gallery）
+                         圆角卡片 + 带描环的 50 圆头像 + 名字 15 SemiBold + 邮箱 12.5/65% -->
+                    <StackPanel.Styles>
+                        <Style Selector="Button.AccountCard">
+                            <Setter Property="Transitions">
+                                <Transitions>
+                                    <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                                </Transitions>
+                            </Setter>
+                        </Style>
+                        <Style Selector="Button.AccountCard:pointerover /template/ ContentPresenter">
+                            <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorSecondaryBrush}"/>
+                        </Style>
+                        <Style Selector="Button.AccountCard:pressed /template/ ContentPresenter">
+                            <Setter Property="Opacity" Value="0.85"/>
+                        </Style>
+                    </StackPanel.Styles>
+
+                    <!-- 账户区（照 Gallery）：**默认无底色**，鼠标移入才出现高亮蒙版 -->
+                    <Button x:Name="AccountButton" Classes="AccountCard"
+                            Padding="8" CornerRadius="8"
+                            Background="Transparent" BorderThickness="0"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                            Click="OnAccountClick" ToolTip.Tip="账户">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <!-- 头像：用 Border 的 Background 画图片 —— Background 一定会被圆角裁剪，
+                                 子元素 Image 则不一定（之前就出现了「四个角」的问题）。
+                                 图片/描环颜色都在代码里设置（图片可在账户页自己上传） -->
+                            <Border x:Name="AccountAvatarRing" Width="52" Height="52" CornerRadius="26"
+                                    BorderThickness="3"/>
+                            <StackPanel VerticalAlignment="Center" Spacing="3">
+                                <TextBlock x:Name="AccountNameText" FontSize="17"/>
+                                <TextBlock x:Name="AccountEmailText" FontSize="13" Opacity="0.7"/>
+                            </StackPanel>
                         </StackPanel>
-                    </StackPanel>
-                </Button>
+                    </Button>
+
+                    <Border Height="32" CornerRadius="4" BorderThickness="1"
+                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                            Background="{DynamicResource ControlFillColorDefaultBrush}">
+                        <TextBox x:Name="SearchBox"
+                                 BorderThickness="0" Background="Transparent"
+                                 Watermark="查找设置"
+                                 VerticalAlignment="Center" VerticalContentAlignment="Center"
+                                 Margin="2,0,2,0">
+                            <TextBox.InnerLeftContent>
+                                <ui:FontIcon Glyph="&#xE721;" FontSize="12" Margin="8,0,6,0"
+                                             VerticalAlignment="Center" Opacity="0.7"/>
+                            </TextBox.InnerLeftContent>
+                        </TextBox>
+                    </Border>
+
+                    <!-- 搜索结果：就地在账户区下方展开（不再做成顶层浮层） -->
+                    <Border x:Name="SearchResultsPanel" IsVisible="False" MaxHeight="300"
+                            CornerRadius="4" BorderThickness="1"
+                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                            Background="{DynamicResource SolidBackgroundFillColorBaseBrush}">
+                        <ListBox x:Name="SearchResults" BorderThickness="0" Background="Transparent">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Spacing="1">
+                                        <TextBlock Text="{Binding Title}" FontSize="13"/>
+                                        <TextBlock Text="{Binding PageName}" FontSize="11" Opacity="0.6"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Border>
+                </StackPanel>
             </ui:NavigationView.PaneHeader>
 
             <ui:NavigationView.MenuItems>
-                <ui:NavigationViewItem Content="通用">
+                <!-- 1:1 照 CI 的页序与页名（Internal 组）：基本 / 外观 / 窗口 / 组件；底部 = 关于 ClassNEX -->
+                <ui:NavigationViewItem Content="基本">
                     <ui:NavigationViewItem.IconSource>
                         <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE713;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
-                <ui:NavigationViewItem Content="界面">
+                <ui:NavigationViewItem Content="外观">
                     <ui:NavigationViewItem.IconSource>
                         <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE790;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
-                <ui:NavigationViewItem Content="主界面组件">
+                <ui:NavigationViewItem Content="窗口">
+                    <ui:NavigationViewItem.IconSource>
+                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE740;" FontSize="16"/>
+                    </ui:NavigationViewItem.IconSource>
+                </ui:NavigationViewItem>
+                <ui:NavigationViewItem Content="组件">
                     <ui:NavigationViewItem.IconSource>
                         <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE71D;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
-                <ui:NavigationViewItem Content="课表">
-                    <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE787;" FontSize="16"/>
-                    </ui:NavigationViewItem.IconSource>
-                </ui:NavigationViewItem>
-                <ui:NavigationViewItem Content="关于">
+                <ui:NavigationViewItem Content="关于 ClassNEX">
                     <ui:NavigationViewItem.IconSource>
                         <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE946;" FontSize="16"/>
-                    </ui:NavigationViewItem.IconSource>
-                </ui:NavigationViewItem>
-                <ui:NavigationViewItem Content="账户">
-                    <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE77B;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
             </ui:NavigationView.MenuItems>
@@ -150,6 +205,25 @@
                                     </ComboBox>
                                 </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>
+
+                            <ui:SettingsExpander Header="当前课表文件" Description="支持 CSES 课程表交换格式（YAML）">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE8A5;"/>
+                                </ui:SettingsExpander.IconSource>
+                                <ui:SettingsExpander.Footer>
+                                    <StackPanel Spacing="10">
+                                        <TextBlock x:Name="TimetableFileText" TextWrapping="Wrap" FontSize="12" Opacity="0.75"/>
+                                        <StackPanel Orientation="Horizontal" Spacing="10">
+                                            <Button x:Name="OpenTimetableButton" Content="打开课表文件…"/>
+                                            <Button x:Name="ReloadTimetableButton" Content="重新加载"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </ui:SettingsExpander.Footer>
+                            </ui:SettingsExpander>
+
+                            <ui:InfoBar IsOpen="True" Severity="Informational" IsClosable="False"
+                                        Title="排课与节次编辑"
+                                        Message="请在「档案编辑器」中编辑课表与时间表（托盘菜单 → 编辑档案…）。"/>
                         </StackPanel>
 
                         <!-- ==================== 界面 ==================== -->
@@ -164,11 +238,12 @@
                                     <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE790;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
-                                    <StackPanel Orientation="Horizontal" Spacing="12">
-                                        <RadioButton x:Name="ThemeSystem" GroupName="Theme" Content="跟随系统"/>
-                                        <RadioButton x:Name="ThemeLight" GroupName="Theme" Content="浅色"/>
-                                        <RadioButton x:Name="ThemeDark" GroupName="Theme" Content="深色"/>
-                                    </StackPanel>
+                                    <!-- 多选一的设置一律用下拉框（照 CI 的 SettingsExpander.Footer + ComboBox 写法） -->
+                                    <ComboBox x:Name="ThemeCombo" MinWidth="140">
+                                        <ComboBoxItem Content="跟随系统"/>
+                                        <ComboBoxItem Content="浅色"/>
+                                        <ComboBoxItem Content="深色"/>
+                                    </ComboBox>
                                 </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>
 
@@ -211,6 +286,14 @@
                                     </StackPanel>
                                 </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>
+                        </StackPanel>
+
+                        <!-- ==================== 窗口（对照 CI WindowSettingsPage） ==================== -->
+                        <StackPanel x:Name="PageWindow" Spacing="10" IsVisible="False">
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,2">
+                                <ui:FontIcon Glyph="&#xE740;" FontSize="16" VerticalAlignment="Center" Opacity="0.85"/>
+                                <TextBlock Text="窗口" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </StackPanel>
 
                             <ui:SettingsExpander Header="组件排列方向">
                                 <ui:SettingsExpander.IconSource>
@@ -230,7 +313,7 @@
                                     <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE7C9;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
-                                    <CheckBox x:Name="ClickThroughCheck" Content="启用鼠标穿透"/>
+                                    <ToggleSwitch x:Name="ClickThroughSwitch"/>
                                 </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>
                         </StackPanel>
@@ -318,28 +401,6 @@
                             </TabControl>
                         </StackPanel>
 
-                        <!-- ==================== 课表 ==================== -->
-                        <StackPanel x:Name="PageSchedule" Spacing="10" IsVisible="False">
-                            <ui:SettingsExpander Header="当前课表文件" Description="支持 CSES 课程表交换格式（YAML）">
-                                <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE8A5;"/>
-                                </ui:SettingsExpander.IconSource>
-                                <ui:SettingsExpander.Footer>
-                                    <StackPanel Spacing="10">
-                                        <TextBlock x:Name="TimetableFileText" TextWrapping="Wrap" FontSize="12" Opacity="0.75"/>
-                                        <StackPanel Orientation="Horizontal" Spacing="10">
-                                            <Button x:Name="OpenTimetableButton" Content="打开课表文件…"/>
-                                            <Button x:Name="ReloadTimetableButton" Content="重新加载"/>
-                                        </StackPanel>
-                                    </StackPanel>
-                                </ui:SettingsExpander.Footer>
-                            </ui:SettingsExpander>
-
-                            <ui:InfoBar IsOpen="True" Severity="Informational" IsClosable="False"
-                                        Title="排课与节次编辑"
-                                        Message="请在「档案编辑器」中编辑课表与时间表（托盘菜单 → 编辑档案…）。"/>
-                        </StackPanel>
-
                         <!-- ==================== 关于（对照 CI AboutSettingsPage） ==================== -->
                         <StackPanel x:Name="PageAbout" Spacing="10" IsVisible="False">
                             <ui:SettingsExpander x:Name="AboutExpander" Header="ClassNEX" IsExpanded="True">
@@ -381,12 +442,48 @@
 
                         <!-- ==================== 账户 ==================== -->
                         <StackPanel x:Name="PageAccount" Spacing="10" IsVisible="False">
-                            <ui:SettingsExpander Header="用户名" Description="显示在设置窗口左侧账户块中的名称">
+                            <!-- 账户卡：照 FluentUI-Gallery 账户页（Win11 默认头像 + 强调色圆环 + 名称 + 邮箱） -->
+                            <Border CornerRadius="8" Padding="20" BorderThickness="1"
+                                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
+                                <StackPanel Orientation="Horizontal" Spacing="18">
+                                    <!-- 同上：用 Background 画头像，保证是正圆而不是四个角 -->
+                                    <Border x:Name="AccountPageAvatarRing" Width="88" Height="88" CornerRadius="44"
+                                            BorderThickness="5"/>
+                                    <StackPanel VerticalAlignment="Center" Spacing="4">
+                                        <TextBlock x:Name="AccountPageNameText" FontSize="24" FontWeight="SemiBold"/>
+                                        <TextBlock x:Name="AccountPageEmailText" FontSize="14" Opacity="0.65"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <ui:SettingsExpander Header="头像" Description="支持 PNG / JPG / BMP / WebP，上传后会复制到应用数据目录">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE91B;"/>
+                                </ui:SettingsExpander.IconSource>
+                                <ui:SettingsExpander.Footer>
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <Button x:Name="ChangeAvatarButton" Content="更换头像…" Click="OnChangeAvatar"/>
+                                        <Button x:Name="ResetAvatarButton" Content="恢复默认" Click="OnResetAvatar"/>
+                                    </StackPanel>
+                                </ui:SettingsExpander.Footer>
+                            </ui:SettingsExpander>
+
+                            <ui:SettingsExpander Header="用户名" Description="显示在账户区的名称">
                                 <ui:SettingsExpander.IconSource>
                                     <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE77B;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <TextBox x:Name="UserNameBox" Width="300" Watermark="输入用户名"/>
+                                </ui:SettingsExpander.Footer>
+                            </ui:SettingsExpander>
+
+                            <ui:SettingsExpander Header="邮箱" Description="显示在账户区的邮箱地址">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE715;"/>
+                                </ui:SettingsExpander.IconSource>
+                                <ui:SettingsExpander.Footer>
+                                    <TextBox x:Name="EmailBox" Width="300" Watermark="输入邮箱"/>
                                 </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>
                         </StackPanel>
@@ -395,47 +492,5 @@
                 </ScrollViewer>
             </Grid>
         </ui:NavigationView>
-
-        <!-- ============ 顶栏中央搜索 ============
-             搜索框与结果**分开两层**：结果展开时不会把搜索框挤下去（原来同层导致位置错乱） -->
-        <Grid Grid.Row="0" Grid.RowSpan="2"
-              Width="440" HorizontalAlignment="Center" VerticalAlignment="Top"
-              Margin="0,8,0,0" ZIndex="100">
-            <Border Height="32" VerticalAlignment="Top" CornerRadius="4"
-                    BorderThickness="1"
-                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                    Background="{DynamicResource ControlFillColorDefaultBrush}">
-                <TextBox x:Name="SearchBox"
-                         BorderThickness="0" Background="Transparent"
-                         Watermark="查找设置"
-                         VerticalAlignment="Center" VerticalContentAlignment="Center"
-                         Margin="2,0,2,0">
-                    <TextBox.InnerLeftContent>
-                        <ui:FontIcon Glyph="&#xE721;" FontSize="12" Margin="8,0,6,0"
-                                     VerticalAlignment="Center" Opacity="0.7"/>
-                    </TextBox.InnerLeftContent>
-                </TextBox>
-            </Border>
-        </Grid>
-
-        <!-- 搜索结果（独立层，紧贴搜索框下方 44px） -->
-        <Border x:Name="SearchResultsPanel" IsVisible="False"
-                Grid.Row="0" Grid.RowSpan="2"
-                Width="440" HorizontalAlignment="Center" VerticalAlignment="Top"
-                Margin="0,44,0,0" ZIndex="101"
-                CornerRadius="4" BorderThickness="1" MaxHeight="380"
-                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                Background="{DynamicResource SolidBackgroundFillColorBaseBrush}">
-            <ListBox x:Name="SearchResults" BorderThickness="0" Background="Transparent">
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel Spacing="1">
-                            <TextBlock Text="{Binding Title}" FontSize="13"/>
-                            <TextBlock Text="{Binding PageName}" FontSize="11" Opacity="0.6"/>
-                        </StackPanel>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
-        </Border>
     </Grid>
 </Window>

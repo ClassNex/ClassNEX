@@ -28,7 +28,8 @@ public sealed class DividerWidget : WidgetBase
 
     public override void Refresh(WidgetContext ctx)
     {
-        _line.MinHeight = 24 * ctx.Settings.EffectiveScale;
+        // 岛高固定 40（CI IslandContainerHeight），分割线撑满岛高
+        _line.MinHeight = 40;
 
         // 纵向排列时分割线画成横线，横向排列时画成竖线
         if (ctx.Settings.Orientation == Models.LayoutOrientation.Vertical)

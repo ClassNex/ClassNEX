@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using ClassNex.Services;
@@ -46,17 +47,58 @@ public partial class App : Application
             }
 
 #if DEBUG
-            // 调试自检（仅 Debug 构建）：设 CLASSNEX_VERIFY=1 时写 _verify.log 并打开全部窗口
+            // 调试自检（仅 Debug 构建）：设 CLASSNEX_VERIFY=1 时写 _verify.log 并跑数据自检。
+            // ★ 默认**只启动浮窗主界面**，不弹「应用设置 / 档案编辑器」——
+            //   需要那两个窗口时才加 CLASSNEX_VERIFY_WINDOWS=1，
+            //   或者用 CLASSNEX_VERIFY_PAGE / CLASSNEX_VERIFY_SEARCH（这两个模式本身需要设置窗口）。
             if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY") == "1")
             {
                 Dispatcher.UIThread.Post(() =>
                 {
                     WriteVerifyReport();
                     Services.EditorSelfTest.Run();
-                    OpenProfileEditor(0);
-                    // 自检打开设置窗口；用 CLASSNEX_VERIFY_PAGE 指定页面（general/interface/widgets/schedule/about/account）
-                    OpenSettings(Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_PAGE") ?? "widgets");
                 }, DispatcherPriority.Background);
+
+                var page = Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_PAGE");
+                var wantWindows =
+                    Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_WINDOWS") == "1"
+                    || !string.IsNullOrWhiteSpace(page)
+                    || Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_SEARCH") == "1";
+
+                if (wantWindows)
+                {
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        OpenProfileEditor(0);
+                        // 自检打开设置窗口；用 CLASSNEX_VERIFY_PAGE 指定页面
+                        // （general/interface/widgets/schedule/about/account）
+                        OpenSettings(page ?? "widgets");
+                    }, DispatcherPriority.Background);
+                }
+
+                // CLASSNEX_VERIFY_EDITMODE=1：启动后直接进入编辑模式（核对组件工具条排版）
+                if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_EDITMODE") == "1")
+                {
+                    Dispatcher.UIThread.Post(() => _mainWindow?.EnterEditMode(), DispatcherPriority.Background);
+                }
+
+                // 设 CLASSNEX_VERIFY_SHOT=1：等布局稳定后把已存在的窗口各自渲染成 PNG，
+                // 供开发期核对排版（RenderTargetBitmap 直接渲染视觉树，不受其它窗口遮挡影响）
+                if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_SHOT") == "1")
+                {
+                    var shotTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+                    shotTimer.Tick += (_, _) =>
+                    {
+                        shotTimer.Stop();
+                        if (_mainWindow is not null)
+                            SaveWindowShot(_mainWindow, "_shot_main.png");
+                        if (_settingsWindow is not null)
+                            SaveWindowShot(_settingsWindow, "_shot_settings.png");
+                        if (_profileEditor is not null)
+                            SaveWindowShot(_profileEditor, "_shot_editor.png");
+                    };
+                    shotTimer.Start();
+                }
             }
 #endif
         }
@@ -132,10 +174,70 @@ public partial class App : Application
             {
                 File.AppendAllText(path, $"\n[探针失败] {ex.Message}\n");
             }
+
+            // MiSans 字体探针：确认字体集合注册成功、Bold 是真实字重（而非合成加粗）
+            try
+            {
+                var fam = new FontFamily("avares://ClassNex/Assets/Fonts/#MiSans");
+                var fontLines = new List<string>();
+                foreach (var (label, weight) in new[]
+                         {
+                             ("Normal", FontWeight.Normal),
+                             ("Medium", FontWeight.Medium),
+                             ("Bold", FontWeight.Bold),
+                         })
+                {
+                    var ok = FontManager.Current.TryGetGlyphTypeface(new Typeface(fam, FontStyle.Normal, weight), out var gt);
+                    fontLines.Add($"MiSans {label,-6} = {(ok ? $"{gt!.FamilyName} / weight {gt.Weight}" : "未命中（回退系统字体）")}");
+                }
+
+                // 文件级探针：对每个 ttf 单独建 FontFamily（单文件集合），看各自解析出的字重（排查字重错位）
+                foreach (var name in new[] { "MiSans-Regular.ttf", "MiSans-Bold.ttf" })
+                {
+                    var fileFamily = new FontFamily($"avares://ClassNex/Assets/Fonts/{name}#MiSans");
+                    if (FontManager.Current.TryGetGlyphTypeface(new Typeface(fileFamily), out var fgt))
+                        fontLines.Add($"{name,-20} = {fgt.FamilyName} / weight {fgt.Weight}");
+                    else
+                        fontLines.Add($"{name,-20} = 加载失败");
+                }
+
+                File.AppendAllText(path, "\n[MiSans 字体探针]\n" + string.Join("\n", fontLines) + "\n");
+            }
+            catch (Exception ex)
+            {
+                File.AppendAllText(path, $"\n[字体探针失败] {ex.Message}\n");
+            }
         }
         catch
         {
             // 自检失败忽略
+        }
+    }
+#endif
+
+#if DEBUG
+    /// <summary>
+    /// 调试用：把窗口的视觉树直接渲染成 PNG 存到程序目录（不受其它窗口遮挡影响）。
+    /// 用于开发期核对排版（SettingsWindow 常被别的窗口盖住，屏幕截图取不到）。
+    /// </summary>
+    private static void SaveWindowShot(Window window, string fileName)
+    {
+        try
+        {
+            var width = (int)Math.Ceiling(window.Bounds.Width);
+            var height = (int)Math.Ceiling(window.Bounds.Height);
+            if (width <= 0 || height <= 0)
+                return;
+
+            var target = new Avalonia.Media.Imaging.RenderTargetBitmap(
+                new PixelSize(width, height), new Vector(96, 96));
+            target.Render(window);
+            target.Save(Path.Combine(AppContext.BaseDirectory, fileName));
+            target.Dispose();
+        }
+        catch (Exception ex)
+        {
+            LogCrash(ex);
         }
     }
 #endif

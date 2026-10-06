@@ -11,7 +11,7 @@
     <AssemblyName>ClassNex</AssemblyName>
     <!-- 对外版本号（产品版本，显示在设置→关于与文件属性里） -->
     <Version>0.5.0</Version>
-    <InformationalVersion>26w41c</InformationalVersion>
+    <InformationalVersion>26w41d</InformationalVersion>
     <!-- 不要把 git 提交哈希附加到产品版本号后面 -->
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <!-- NU1903：Tmds.DBus.Protocol 是 Avalonia.Desktop 的 Linux D-Bus 传递依赖，win-x64 自包含不打包，屏蔽该审计告警 -->
@@ -21,7 +21,9 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\icon.ico" />
-    <!-- 内置鸿蒙字体 HarmonyOS Sans SC（华为免费商用授权，授权文件见 Assets\Fonts\LICENSE.txt） -->
+    <!-- Win11 默认账户头像（取自 C:\ProgramData\Microsoft\User Account Pictures\user.png） -->
+    <AvaloniaResource Include="Assets\avatar.png" />
+    <!-- 内置小米 MiSans 字体（免费商用授权，授权文件见 Assets\Fonts\LICENSE.txt） -->
     <AvaloniaResource Include="Assets\Fonts\*.ttf" />
   </ItemGroup>
 

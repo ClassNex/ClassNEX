@@ -1,8 +1,10 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Layout;
 using Avalonia.Media;
 using ClassNex.Models;
 using ClassNex.Services;
+using ClassNex.Styles;
 
 namespace ClassNex.Widgets;
 
@@ -27,7 +29,9 @@ public sealed class WidgetContext
 /// </summary>
 public abstract class WidgetBase
 {
-    // ---- CI 的主界面字号阶梯（data\Settings.json），实际字号 = 该值 × EffectiveScale ----
+    // ---- CI 的主界面字号阶梯（data\Settings.json 原值）----
+    // 整体缩放由主界面的 LayoutTransformControl(Scale=MainWindowScale×FontScale) 处理，
+    // 组件里只用 CI 原值，不再自行乘缩放（1:1 移植 CI 主界面）。
     /// <summary>MainWindowSecondaryFontSize = 14</summary>
     protected const double CiSecondary = 14;
 
@@ -52,26 +56,63 @@ public abstract class WidgetBase
     public abstract void Refresh(WidgetContext ctx);
 
     /// <summary>
-    /// 按组件字号缩放换算字号，并叠加全局缩放。
-    /// globalScale 传入 <see cref="AppSettings.EffectiveScale"/>（= CI 的 Scale × 全局字号缩放）。
+    /// 组件字号：CI 原值 × 组件自身的字号缩放。
+    /// （全局缩放 = 主界面 LayoutTransformControl 的 Scale，与 CI 一致，不在这里处理。）
     /// </summary>
-    protected double Size(double baseSize, double globalScale = 1.0) =>
-        baseSize * Math.Clamp(Config.FontScale, 0.5, 2.5) * Math.Clamp(globalScale, 0.4, 5.0);
+    protected double Size(double baseSize) =>
+        baseSize * Math.Clamp(Config.FontScale, 0.5, 2.5);
 
-    protected static IBrush White(double opacity = 1.0) =>
-        new SolidColorBrush(Colors.White, opacity);
+    /// <summary>
+    /// 主界面文字画刷 —— **跟随主题取色**（CI 的主界面文字同样来自主题：
+    /// 深色主题=浅色字、浅色主题=深色字；不能写死白色，否则浅色主题下白字看不见）。
+    /// 名字保留为 White（历史调用点都从这里取），实际返回主题的文字色。
+    /// </summary>
+    protected static IBrush White(double opacity = 1.0)
+    {
+        if (CiPalette.TryResource("TextFillColorPrimaryBrush", out var brush))
+        {
+            if (opacity >= 1.0)
+                return brush;
+
+            if (brush is ISolidColorBrush solid)
+                return new SolidColorBrush(solid.Color, Math.Clamp(solid.Opacity * opacity, 0, 1));
+
+            return brush;
+        }
+
+        // 资源取不到时兜底：深色主题下的白字
+        return new SolidColorBrush(Colors.White, opacity);
+    }
 
     protected static TextBlock Text(
         string text,
         double fontSize,
         IBrush? foreground = null,
-        FontWeight weight = FontWeight.Normal) => new()
+        FontWeight weight = FontWeight.Medium)
     {
-        Text = text,
-        FontSize = fontSize,
-        Foreground = foreground ?? White(),
-        FontWeight = weight,
-        VerticalAlignment = VerticalAlignment.Center,
-        TextWrapping = TextWrapping.NoWrap,
+        var block = new TextBlock
+        {
+            Text = text,
+            FontSize = fontSize,
+            Foreground = foreground ?? White(),
+            FontWeight = weight,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextWrapping = TextWrapping.NoWrap,
+        };
+
+        // 灰度抗锯齿：默认的亚像素渲染会在笔画边缘产生彩色毛边（看着像「像素点」），
+        // 在半透明卡片上尤其明显。CI 的浮窗文字是干净的灰度边缘。
+        RenderOptions.SetTextRenderingMode(block, TextRenderingMode.Antialias);
+
+        // 等宽数字（OpenType tnum）：MiSans 的数字是比例宽度（"1" 比 "4" 窄），
+        // 剩余时间每秒变化就会让文本宽度变来变去 → 岛宽变 → 窗口跟着缩放/位移 = 肉眼可见的「抖」。
+        TextElement.SetFontFeatures(block, TabularFigures);
+        return block;
+    }
+
+    /// <summary>等宽数字特性集（tnum），供需要「宽度不随时间变化」的文本使用。</summary>
+    protected static readonly FontFeatureCollection TabularFigures = new()
+    {
+        FontFeature.Parse("tnum"),
     };
 }

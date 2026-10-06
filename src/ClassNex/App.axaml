@@ -5,20 +5,26 @@
              x:Class="ClassNex.App"
              RequestedThemeVariant="Default">
 
-    <!-- 全局字体：内置的鸿蒙字体 HarmonyOS Sans SC -->
+    <!-- 全局字体：小米 MiSans。
+         目录式 avares 引用 → FontManager 自动把 Assets/Fonts/ 下的全部 ttf 注册成一个字体集合，
+         "MiSans" 族同时拥有 Regular 与 Bold 两个真字重（不再合成加粗） -->
     <Application.Resources>
         <ResourceDictionary>
-            <FontFamily x:Key="AppFontFamily">avares://ClassNex/Assets/Fonts/HarmonyOS_Sans_SC_Regular.ttf#HarmonyOS Sans SC</FontFamily>
+            <FontFamily x:Key="AppFontFamily">avares://ClassNex/Assets/Fonts/#MiSans</FontFamily>
         </ResourceDictionary>
     </Application.Resources>
 
     <Application.Styles>
         <sty:FluentAvaloniaTheme PreferSystemTheme="True" />
 
-        <!-- 所有窗口统一使用鸿蒙字体（TextElement.FontFamily 为继承属性，会下发到全部子控件） -->
+        <!-- 所有窗口统一使用 MiSans（TextElement.FontFamily 为继承属性，会下发到全部子控件） -->
         <Style Selector="Window">
             <Setter Property="TextElement.FontFamily" Value="{DynamicResource AppFontFamily}" />
         </Style>
+
+        <!-- 文字渲染：灰度抗锯齿在主界面组件里用 RenderOptions.SetTextRenderingMode 逐个设置
+             （见 WidgetBase.Text；Avalonia 11.3 的 RenderOptions 没有可供 XAML Setter 用的
+              TextRenderingMode 附加属性字段，所以不能写在样式里）。 -->
 
         <!-- 图标字体：覆盖上面鸿蒙字体的继承。
              必须只用 Segoe MDL2 Assets（segmdl2.ttf，码位齐全）；

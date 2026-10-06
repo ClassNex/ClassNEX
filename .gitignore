@@ -37,3 +37,7 @@ build/
 _tmp_*.png
 _tools/frames/
 _tools/frames2/
+
+_tools/*.png
+
+_tools/_tmp*

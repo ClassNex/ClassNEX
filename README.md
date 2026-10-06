@@ -19,51 +19,50 @@ ClassNEX 是一款功能强大、可定制、跨平台的课表信息显示工�
 > [!TIP]
 > **要继续开发 / 接手这个项目？请先读 [`HANDOFF.md`](HANDOFF.md)（续作指南）。**
 >
-> 里面有：一分钟上手、CI 权威配置来源与已抄录的参数、已完成功能清单、
+> 里面有：一分钟上手、界面取值的实测依据与参数、已完成功能清单、
 > 待办 TODO（带优先级）、环境与工程踩坑记录、编译与打包命令、版本号规则。
-> 当前版本 **26w41a**。
+> 当前版本 **26w41d**。
 
 ---
 
 ## 当前实现（阶段一：桌面端课表）
 
-仓库中 `src/ClassNex` 是当前**可运行的桌面客户端**，参考 [ClassIsland](https://github.com/ClassIsland/ClassIsland) 的产品形态实现，「应用」与「课表」分离，课表采用 **CSES** 交换格式。
+仓库中 `src/ClassNex` 是当前**可运行的桌面客户端**：「应用」与「课表」分离，课表采用 **CSES** 交换格式。
 
 | 模块 | 说明 |
 | --- | --- |
 | **主界面**（悬浮组件课表） | 无边框半透明置顶卡片，内容由**可自定义的组件**拼装：日期、时钟、今日课表、当前/下节课、倒计时、自定义文本；可拖拽、右键菜单 |
-| **应用设置** | 左侧导航 + 通用 / 界面 / **主界面组件** / 课表 / 关于（主题、不透明度、全局字号、组件排列方向、单周起始、托盘行为） |
+| **应用设置** | 左侧账户卡 + 搜索 + 分组导航；页面：基本 / 外观 / 窗口 / 组件 / 关于（主题、不透明度、全局字号、主界面缩放、组件排列方向、鼠标穿透、单周起始、托盘行为、头像与用户名） |
 | **档案编辑器** | 课表 / 时间表 / 科目 / 调课 四个标签页；**课表可增删改**（点空格新增、点卡片编辑），**时间表节次可编辑**（改时间会同步到课表） |
 | **系统托盘** | 显示/隐藏主界面、编辑档案、加载课表、换课、编辑主界面、应用设置、重启、退出 |
 
-### 配色（以 CI / ClassIsland 为准）
+### 配色原则
 
-**核心结论：CI 的默认主题里没有任何硬编码强调色。** 已核实 CI 源码
-`ClassIsland/XamlThemes/FluentTheme/Styles.axaml` —— 它只使用 FluentAvalonia 的标准资源键
-（`AccentFillColorDefaultBrush`、`TextOnAccentFillColorPrimaryBrush`、`SolidBackgroundFillColorSecondaryBrush` …）。
+**核心结论：本应用不硬编码任何强调色。** 主界面与设置界面全部使用 Fluent 标准资源键
+（`AccentFillColorDefaultBrush`、`TextOnAccentFillColorPrimaryBrush`、`SolidBackgroundFillColorSecondaryBrush` …），
+因此深/浅色主题与强调色都能跟随系统。
 
-因此：
-
-| 项目 | 做法（与 CI 一致） |
+| 项目 | 做法 |
 | --- | --- |
 | **强调色** | **不写死**，`CustomAccentColor = null` + `PreferUserAccentColor = true`，跟随 **Windows 系统强调色** |
-| **表面色** | **不覆盖**，使用 FluentAvalonia 深/浅色默认值 |
-| **科目标识** | CI **不给科目上色**；课表单元格与主界面科目都是「中性底 + 文字」，只有**选中项**使用主题强调色 |
+| **表面色** | **不覆盖**，使用主题默认值；主界面卡片用半透明表面色叠加桌面壁纸，因此会带一点壁纸色 |
+| **科目标识** | **不给科目上色**；课表单元格与主界面科目都是「中性底 + 文字」，只有**选中项**使用主题强调色 |
 
-> 踩坑记录：曾把 CI 截图的选中色 `#589499` 当成"CI 强调色"、把表面色 `#292D2E` 当成"CI 表面色"。
-> 实际上前者是**你机器的 Windows 强调色**（注册表 `AccentColor` = `#459BAC`）经 Fluent 变体计算的结果，
-> 后者是 Fluent 深色底叠加 **Mica 壁纸透色**（壁纸正好是青绿湖水）。两者都不是 CI 的固有值。
+> 踩坑记录：曾把运行时截图的选中色 `#589499` 当成"主题强调色"、把表面色 `#292D2E` 当成"卡片底色"。
+> 实际上前者是**本机 Windows 强调色**（注册表 `AccentColor` = `#459BAC`）经 Fluent 变体计算的结果，
+> 后者是深色底叠加 **Mica 壁纸透色**（壁纸正好是青绿湖水）。两者都不是固有值 —— 
+> 取色一律以「主题资源键 + 系统配置」为准，不要从截图里吸色。
 
-只有 CI **自己在配置里写死**的值才被本应用沿用（定义于 `src/ClassNex/Styles/CiPalette.cs`）：
+本应用内置的固定取值（定义于 `src/ClassNex/Styles/` 下的调色板）：
 
-| 用途 | 取值 | CI 中的出处 |
-| --- | --- | --- |
-| 主界面卡片 | `#000000` + 不透明度 `0.5` + 圆角 `8` | `ComponentLayouts/Default.json` |
-| 默认科目渐变第二色 | `#7FFFD4` | `data/Settings.json` → `SecondaryColor` |
-| 阴影 / 叠加层 | `#48000000` / `#66000000` | `XamlThemes/FluentTheme/Styles.axaml` 的 `BoxShadow` |
-| 中性深色 / 提醒色 | `#333333` / `#F4EF74` | `ClassIsland.dll` 内嵌色值 |
+| 用途 | 取值 |
+| --- | --- |
+| 主界面卡片 | `#000000` + 不透明度 `0.5` + 圆角 `8` |
+| 默认科目渐变第二色 | `#7FFFD4` |
+| 阴影 / 叠加层 | `#48000000` / `#66000000` |
+| 中性深色 / 提醒色 | `#333333` / `#F4EF74` |
 
-排查用脚本见 `_tools/`（`find_ci_default_color.py` 扫 CI 程序集取色，`analyze_ci_palette.py` 对截图做色彩直方图统计）。
+排查用脚本见 `_tools/`（对运行截图做色彩直方图统计，辅助判断主题取色）。
 
 ### 运行
 
@@ -201,7 +200,7 @@ ClassNEX/
 
 本项目的开发参考了以下优秀的开源项目：
 
-* [ClassIsland](https://github.com/ClassIsland/ClassIsland)
+* [FluentUI（AvaloniaFluentUI）](https://github.com/IzumiPL/Avalonia-Fluent-UI)
 * [Class-Widgets-2](https://github.com/RinLit-233-shiroko/Class-Widgets-2)
 * [MornheIsland](https://github.com/HeyCrab3/MornheIsland)
 

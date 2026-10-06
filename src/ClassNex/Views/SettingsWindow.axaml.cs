@@ -28,6 +28,10 @@ public partial class SettingsWindow : Window
     private readonly ObservableCollection<WidgetItem> _widgets = new();
     private readonly ObservableCollection<SearchEntry> _searchEntries = new();
 
+    /// <summary>页面访问历史（供左上角返回箭头，照 Gallery 标题栏的 ← 行为）。</summary>
+    private readonly List<int> _pageHistory = new();
+    private int _lastPageIndex = -1;
+
     private bool _loading;
     private WidgetItem? _currentWidget;
 
@@ -42,28 +46,28 @@ public partial class SettingsWindow : Window
     }
 
     /// <summary>页面名（顺序与 NavView.MenuItems 一致，对照 CI 的 SettingsPageInfo.Name）。</summary>
-    private static readonly string[] PageNames = { "通用", "界面", "主界面组件", "课表", "关于", "账户" };
+    private static readonly string[] PageNames = { "基本", "外观", "窗口", "组件", "关于 ClassNEX", "账户" };
 
     /// <summary>设置项索引（供顶栏「查找设置」搜索；Title = 设置项，PageIndex = 所属页面）。</summary>
     private static readonly (string Title, int PageIndex)[] SearchIndex =
     {
         ("单周开始日期", 0),
         ("点击托盘图标行为", 0),
+        ("当前课表文件", 0),
+        ("重新加载课表", 0),
         ("主题（浅色 / 深色 / 跟随系统）", 1),
         ("主界面背景不透明度", 1),
         ("全局字号缩放", 1),
         ("主界面缩放", 1),
-        ("组件排列方向", 1),
-        ("鼠标穿透", 1),
-        ("组件库（添加组件）", 2),
-        ("恢复默认布局", 2),
-        ("组件列表（上移 / 下移 / 删除）", 2),
-        ("组件设置：启用该组件", 2),
-        ("组件设置：字号缩放", 2),
-        ("时钟组件显示秒", 2),
-        ("自定义文本占位符", 2),
-        ("当前课表文件", 3),
-        ("重新加载课表", 3),
+        ("组件排列方向", 2),
+        ("鼠标穿透", 2),
+        ("组件库（添加组件）", 3),
+        ("恢复默认布局", 3),
+        ("组件列表（上移 / 下移 / 删除）", 3),
+        ("组件设置：启用该组件", 3),
+        ("组件设置：字号缩放", 3),
+        ("时钟组件显示秒", 3),
+        ("自定义文本占位符", 3),
         ("版本信息", 4),
         ("用户名", 5),
     };
@@ -90,6 +94,7 @@ public partial class SettingsWindow : Window
         AboutVersionText.Text = $"版本 {version}";
 
         UserNameBox.Text = AppServices.Settings.UserName;
+        EmailBox.Text = AppServices.Settings.Email;
         RefreshAccountName();
 
         SearchResults.ItemsSource = _searchEntries;
@@ -132,30 +137,236 @@ public partial class SettingsWindow : Window
 #endif
     }
 
-    /// <summary>账户块显示设置里的用户名（未设置时提示）。</summary>
+    /// <summary>账户区显示设置里的用户名与邮箱（照 FluentUI-Gallery 的账户卡：名称 + 邮箱）。</summary>
     private void RefreshAccountName()
     {
         var name = AppServices.Settings.UserName;
-        AccountNameText.Text = string.IsNullOrWhiteSpace(name) ? "未设置用户名" : name.Trim();
+        var email = AppServices.Settings.Email;
+        var displayName = string.IsNullOrWhiteSpace(name) ? "未设置用户名" : name.Trim();
+        var displayEmail = string.IsNullOrWhiteSpace(email) ? "未设置邮箱" : email.Trim();
+
+        AccountNameText.Text = displayName;
+        AccountEmailText.Text = displayEmail;
+        AccountPageNameText.Text = displayName;
+        AccountPageEmailText.Text = displayEmail;
+
+        // 头像描环：直接取软件强调色（用户要求「框框的取色按照软件取色来」）
+        if (CiPalette.TryResource("AccentFillColorDefaultBrush", out var accentBrush) &&
+            accentBrush is ISolidColorBrush solid)
+        {
+            AccountAvatarRing.BorderBrush = new SolidColorBrush(solid.Color);
+            AccountPageAvatarRing.BorderBrush = new SolidColorBrush(solid.Color);
+        }
+
+        RefreshAvatarImages();
+    }
+
+    /// <summary>把颜色往白/黑方向混合（t=0 保持原色，t=1 变成 target）。</summary>
+    private static Color Mix(Color c, Color target, double t)
+    {
+        t = Math.Clamp(t, 0, 1);
+        return Color.FromRgb(
+            (byte)Math.Clamp(c.R + (target.R - c.R) * t, 0, 255),
+            (byte)Math.Clamp(c.G + (target.G - c.G) * t, 0, 255),
+            (byte)Math.Clamp(c.B + (target.B - c.B) * t, 0, 255));
+    }
+
+    /// <summary>色相旋转（度）+ 饱和度倍数，用来从强调色派生出「第二色」。</summary>
+    private static Color RotateHue(Color c, double degrees, double satScale)
+    {
+        var r = c.R / 255.0;
+        var g = c.G / 255.0;
+        var b = c.B / 255.0;
+        var max = Math.Max(r, Math.Max(g, b));
+        var min = Math.Min(r, Math.Min(g, b));
+        var l = (max + min) / 2;
+        double h = 0, s = 0;
+
+        if (Math.Abs(max - min) > 1e-6)
+        {
+            var d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            if (Math.Abs(max - r) < 1e-6)
+                h = (g - b) / d + (g < b ? 6 : 0);
+            else if (Math.Abs(max - g) < 1e-6)
+                h = (b - r) / d + 2;
+            else
+                h = (r - g) / d + 4;
+            h /= 6;
+        }
+
+        h = (h + degrees / 360.0) % 1.0;
+        if (h < 0)
+            h += 1.0;
+        s = Math.Clamp(s * satScale, 0, 1);
+
+        double R = l, G = l, B = l;   // 灰阶兜底
+        if (s > 1e-6)
+        {
+            var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+            var p = 2 * l - q;
+            R = HueToRgb(p, q, h + 1.0 / 3);
+            G = HueToRgb(p, q, h);
+            B = HueToRgb(p, q, h - 1.0 / 3);
+        }
+
+        return Color.FromRgb(
+            (byte)Math.Clamp(R * 255, 0, 255),
+            (byte)Math.Clamp(G * 255, 0, 255),
+            (byte)Math.Clamp(B * 255, 0, 255));
+    }
+
+    private static double HueToRgb(double p, double q, double t)
+    {
+        if (t < 0)
+            t += 1;
+        if (t > 1)
+            t -= 1;
+        if (t < 1.0 / 6)
+            return p + (q - p) * 6 * t;
+        if (t < 1.0 / 2)
+            return q;
+        if (t < 2.0 / 3)
+            return p + (q - p) * (2.0 / 3 - t) * 6;
+        return p;
     }
 
     private void OnAccountClick(object? sender, RoutedEventArgs e)
     {
-        if (NavView.MenuItems.Count > 5)
-            NavView.SelectedItem = NavView.MenuItems[5];
+        NavigateTo("account");
     }
 
-    /// <summary>导航到指定页面：general / interface / widgets / schedule / about。</summary>
+    /// <summary>头像文件路径：上传后复制到 data/avatar.png；不存在时用内置头像。</summary>
+    private static string CustomAvatarPath =>
+        System.IO.Path.Combine(AppContext.BaseDirectory, "data", "avatar.png");
+
+    private const string DefaultAvatarUri = "avares://ClassNex/Assets/avatar.png";
+
+    /// <summary>按当前头像状态刷新两处头像（左栏账户卡 + 账户页大图）。
+    /// 用 Border.Background 的 ImageBrush 画图 —— Background 必被圆角裁剪，保证是正圆。</summary>
+    private void RefreshAvatarImages()
+    {
+        try
+        {
+            Avalonia.Media.Imaging.Bitmap bitmap;
+            if (System.IO.File.Exists(CustomAvatarPath))
+            {
+                using var stream = System.IO.File.OpenRead(CustomAvatarPath);
+                bitmap = new Avalonia.Media.Imaging.Bitmap(stream);
+            }
+            else
+            {
+                using var stream = AssetLoader.Open(new Uri(DefaultAvatarUri));
+                bitmap = new Avalonia.Media.Imaging.Bitmap(stream);
+            }
+
+            var brush = new ImageBrush(bitmap)
+            {
+                Stretch = Stretch.UniformToFill,
+                AlignmentX = AlignmentX.Center,
+                AlignmentY = AlignmentY.Center,
+            };
+
+            AccountAvatarRing.Background = brush;
+            AccountPageAvatarRing.Background = brush;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[头像] 加载失败：{ex.Message}");
+        }
+    }
+
+    /// <summary>更换头像：选图片 → 复制到 data/avatar.png → 立即刷新。</summary>
+    private async void OnChangeAvatar(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var files = await StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+            {
+                Title = "选择头像图片",
+                AllowMultiple = false,
+                FileTypeFilter = new[]
+                {
+                    new Avalonia.Platform.Storage.FilePickerFileType("图片")
+                    {
+                        Patterns = new[] { "*.png", "*.jpg", "*.jpeg", "*.bmp", "*.webp", "*.gif" },
+                    },
+                },
+            });
+
+            var file = files.FirstOrDefault();
+            if (file is null)
+                return;
+
+            var dir = System.IO.Path.GetDirectoryName(CustomAvatarPath)!;
+            System.IO.Directory.CreateDirectory(dir);
+
+            await using (var src = await file.OpenReadAsync())
+            await using (var dst = System.IO.File.Create(CustomAvatarPath))
+            {
+                await src.CopyToAsync(dst);
+            }
+
+            RefreshAvatarImages();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[头像] 更换失败：{ex.Message}");
+        }
+    }
+
+    /// <summary>恢复默认头像：删除自定义文件并恢复内置头像。</summary>
+    private void OnResetAvatar(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (System.IO.File.Exists(CustomAvatarPath))
+                System.IO.File.Delete(CustomAvatarPath);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[头像] 删除失败：{ex.Message}");
+        }
+
+        RefreshAvatarImages();
+    }
+
+    /// <summary>左上角返回箭头：回到上一个页面。</summary>
+    private void OnNavigateBack(object? sender, RoutedEventArgs e)
+    {
+        if (_pageHistory.Count == 0)
+            return;
+
+        var index = _pageHistory[^1];
+        _pageHistory.RemoveAt(_pageHistory.Count - 1);
+        if (index >= 0 && index < NavView.MenuItems.Count)
+        {
+            _lastPageIndex = index;
+            NavView.SelectedItem = NavView.MenuItems[index];
+        }
+    }
+
+    /// <summary>导航到指定页面：basic / appearance / window / widgets / about / account。</summary>
     public void NavigateTo(string page)
     {
         var index = page switch
         {
-            "interface" => 1,
-            "widgets" => 2,
-            "schedule" => 3,
+            "appearance" => 1,
+            "window" => 2,
+            "widgets" => 3,
             "about" => 4,
             _ => 0,
         };
+
+        // 账户页不占导航位，从账户卡进入时直接切页
+        if (page == "account")
+        {
+            PageGeneral.IsVisible = PageInterface.IsVisible = PageWindow.IsVisible =
+                PageWidgets.IsVisible = PageAbout.IsVisible = false;
+            PageAccount.IsVisible = true;
+            PageTitleText.Text = "账户";
+            return;
+        }
 
         if (index < NavView.MenuItems.Count)
             NavView.SelectedItem = NavView.MenuItems[index];
@@ -177,7 +388,7 @@ public partial class SettingsWindow : Window
         };
         TrayBehaviorCombo.SelectionChanged += (_, _) => ApplyGeneral();
 
-        // ---- 账户（用户名）----
+        // ---- 账户（用户名 / 邮箱）----
         UserNameBox.TextChanged += (_, _) =>
         {
             if (_loading)
@@ -187,10 +398,21 @@ public partial class SettingsWindow : Window
             RefreshAccountName();
         };
 
-        // ---- 界面（ToggleSwitch 用属性名判断，避免依赖具体控件的静态属性）----
-        ThemeSystem.PropertyChanged += (_, e) => ThemeChanged(e.Property.Name, ThemeSystem.IsChecked);
-        ThemeLight.PropertyChanged += (_, e) => ThemeChanged(e.Property.Name, ThemeLight.IsChecked);
-        ThemeDark.PropertyChanged += (_, e) => ThemeChanged(e.Property.Name, ThemeDark.IsChecked);
+        EmailBox.TextChanged += (_, _) =>
+        {
+            if (_loading)
+                return;
+            AppServices.Settings.Email = EmailBox.Text ?? "";
+            AppServices.SaveSettings();
+            RefreshAccountName();
+        };
+
+        // ---- 界面（主题改成下拉框：多选一的设置一律用 ComboBox，照 CI 的写法）----
+        ThemeCombo.SelectionChanged += (_, _) =>
+        {
+            if (!_loading)
+                ApplyTheme();
+        };
 
         OpacitySlider.PropertyChanged += (_, e) =>
         {
@@ -208,7 +430,7 @@ public partial class SettingsWindow : Window
                 ApplyInterface();
         };
         OrientationCombo.SelectionChanged += (_, _) => ApplyInterface();
-        ClickThroughCheck.PropertyChanged += (_, e) =>
+        ClickThroughSwitch.PropertyChanged += (_, e) =>
         {
             if (!_loading && e.Property.Name == "IsChecked")
                 ApplyInterface();
@@ -258,9 +480,12 @@ public partial class SettingsWindow : Window
         SingleWeekStartPicker.SelectedDate = new DateTimeOffset(s.SingleWeekStartTime);
         TrayBehaviorCombo.SelectedIndex = Math.Clamp(s.TrayClickBehavior, 0, 2);
 
-        ThemeSystem.IsChecked = s.ThemeMode == "system";
-        ThemeLight.IsChecked = s.ThemeMode == "light";
-        ThemeDark.IsChecked = s.ThemeMode == "dark";
+        ThemeCombo.SelectedIndex = s.ThemeMode switch
+        {
+            "light" => 1,
+            "dark" => 2,
+            _ => 0,
+        };
 
         OpacitySlider.Value = Math.Clamp(s.BackgroundOpacity, 0.1, 1);
         FontScaleSlider.Value = Math.Clamp(s.FontScale, 0.8, 1.6);
@@ -269,7 +494,7 @@ public partial class SettingsWindow : Window
         FontScaleValueText.Text = $"{s.FontScale:0.00}x";
         MainWindowScaleValueText.Text = $"{s.MainWindowScale:0.00}x（CI 1.9）";
         OrientationCombo.SelectedIndex = s.Orientation == LayoutOrientation.Vertical ? 1 : 0;
-        ClickThroughCheck.IsChecked = s.IsClickThrough;
+        ClickThroughSwitch.IsChecked = s.IsClickThrough;
 
         RefreshWidgetLibrary();
         RefreshWidgetList();
@@ -294,12 +519,17 @@ public partial class SettingsWindow : Window
         if (index < 0)
             index = 0;
 
+        // 记录页面历史（返回箭头用）
+        if (_lastPageIndex >= 0 && _lastPageIndex != index)
+            _pageHistory.Add(_lastPageIndex);
+        _lastPageIndex = index;
+
         PageGeneral.IsVisible = index == 0;
         PageInterface.IsVisible = index == 1;
-        PageWidgets.IsVisible = index == 2;
-        PageSchedule.IsVisible = index == 3;
+        PageWindow.IsVisible = index == 2;
+        PageWidgets.IsVisible = index == 3;
         PageAbout.IsVisible = index == 4;
-        PageAccount.IsVisible = index == 5;
+        PageAccount.IsVisible = false;   // 账户页只从账户卡进入
 
         // 页面标题行（对照 CI 的 TitleContainer：页面名由外壳统一显示）
         PageTitleText.Text = PageNames[Math.Clamp(index, 0, PageNames.Length - 1)];
@@ -457,9 +687,13 @@ public partial class SettingsWindow : Window
             return;
 
         var s = AppServices.Settings;
-        s.ThemeMode = ThemeLight.IsChecked == true ? "light"
-            : ThemeDark.IsChecked == true ? "dark"
-            : "system";
+        // 下拉框：0=跟随系统 1=浅色 2=深色
+        s.ThemeMode = ThemeCombo.SelectedIndex switch
+        {
+            1 => "light",
+            2 => "dark",
+            _ => "system",
+        };
 
         App.ApplyTheme(s.ThemeMode);
         AppServices.SaveSettings();
@@ -477,7 +711,7 @@ public partial class SettingsWindow : Window
         s.Orientation = OrientationCombo.SelectedIndex == 1
             ? LayoutOrientation.Vertical
             : LayoutOrientation.Horizontal;
-        s.IsClickThrough = ClickThroughCheck.IsChecked == true;
+        s.IsClickThrough = ClickThroughSwitch.IsChecked == true;
 
         OpacityValueText.Text = $"{s.BackgroundOpacity:P0}";
         FontScaleValueText.Text = $"{s.FontScale:0.00}x";

@@ -48,8 +48,8 @@ public sealed class AppSettings
     /// <summary>鼠标穿透：开启后点击直接落到后方窗口/桌面（CI 风格的桌面浮层行为）。</summary>
     public bool IsClickThrough { get; set; } = true;
 
-    /// <summary>鼠标移入主界面时的淡化不透明度。</summary>
-    public double HoverOpacity { get; set; } = 0.35;
+    /// <summary>鼠标移入时主界面的目标不透明度（CI 值 0.05，见 CI MainWindowLine.axaml 的 IsLineFaded 样式）。</summary>
+    public double HoverOpacity { get; set; } = 0.05;
 
     /// <summary>组件排列方向。</summary>
     public LayoutOrientation Orientation { get; set; } = LayoutOrientation.Horizontal;
@@ -70,9 +70,12 @@ public sealed class AppSettings
     /// <summary>点击托盘图标行为：0=显示/隐藏主界面，1=打开应用设置，2=打开档案编辑器。</summary>
     public int TrayClickBehavior { get; set; }
 
-    // ---------- 通用 ----------
-    /// <summary>用户名（显示在设置窗口左侧的账户块里；空 = 未设置）。</summary>
-    public string UserName { get; set; } = "";
+    // ---------- 账户 ----------
+    /// <summary>用户名（显示在设置窗口左侧账户区与账户页）。</summary>
+    public string UserName { get; set; } = "LingOfficial";
+
+    /// <summary>邮箱（显示在设置窗口左侧账户区与账户页）。</summary>
+    public string Email { get; set; } = "Lingofficial0423@gamil";
 
     /// <summary>已播种的内置示例课表版本。低于当前版本时会重新播种 data/timetable.yaml。</summary>
     public int SampleSeedVersion { get; set; }

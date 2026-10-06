@@ -13,25 +13,106 @@
         ShowInTaskbar="False"
         ShowActivated="False"
         CanResize="False"
-        SizeToContent="WidthAndHeight"
+        SizeToContent="Height"
         WindowStartupLocation="Manual">
 
-    <!-- 与 CI 一致：卡片按内容自适应宽度，停靠屏幕顶部并水平居中 -->
-    <Border x:Name="RootCard" CornerRadius="8" Margin="0" Padding="26,12">
-        <Border.ContextMenu>
+    <!-- ================= 1:1 移植 CI 浮窗主界面结构 =================
+         CardHost（Panel）          —— 启动/显示淡入：composition 250ms / 0.25,1,0.5,1（CI MainWindowLine.PlayFadeInAnimation）
+         HoverHost（Panel）         —— 鼠标移入淡化：Opacity 0.05、100ms 线性（CI IsLineFaded 样式）
+         RootScale（LayoutTransformControl）—— CI RootLayoutTransformControl：ScaleTransform 1.9（CI Settings.Scale）
+         IslandBackground（Border） —— CI MainWindowLine 的 .line-background：
+                                      高固定 40（IslandContainerHeight）、宽 300ms 过渡（BackgroundWidth DoubleTransition）、
+                                      背景 SolidBackgroundFillColorSecondaryBrush、透明度 BackgroundOpacity、
+                                      1px 描边 ControlElevationBorderBrush、圆角 RadiusX=8、阴影 0 4 8 2 #48000000
+         CardContent（Border）      —— CI GridContentRoot：Margin="12 0"、MinWidth=20
+    -->
+    <Panel x:Name="CardHost">
+        <Panel.ContextMenu>
             <ContextMenu>
                 <MenuItem Header="显示 / 隐藏主界面" Click="OnMenuToggleVisible"/>
                 <Separator/>
-                <MenuItem Header="编辑主界面（组件）…" Click="OnMenuEditWidgets"/>
+                <MenuItem Header="编辑主界面（编辑模式）…" Click="OnMenuEnterEditMode"/>
+                <MenuItem Header="组件设置…" Click="OnMenuEditWidgets"/>
                 <MenuItem Header="编辑档案…" Click="OnMenuEditProfile"/>
                 <MenuItem Header="应用设置…" Click="OnMenuOpenSettings"/>
                 <Separator/>
                 <MenuItem Header="退出 ClassNEX" Click="OnMenuExit"/>
             </ContextMenu>
-        </Border.ContextMenu>
+        </Panel.ContextMenu>
 
-        <!-- 组件宿主：内容由 WidgetFactory 按配置动态生成，在横条内水平居中 -->
-        <StackPanel x:Name="WidgetHost" Orientation="Vertical" Spacing="6"
-                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
-    </Border>
+        <Panel x:Name="HoverHost">
+            <Panel.Transitions>
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.100"/>
+                </Transitions>
+            </Panel.Transitions>
+
+            <!-- 底部留白：容纳岛的阴影（CI 窗口高 = 岛 40×1.9 + 阴影区） -->
+            <Grid Margin="0,0,0,16">
+
+                <LayoutTransformControl x:Name="RootScale" ClipToBounds="False"
+                                        TextElement.FontWeight="Medium">
+                    <!-- CI：MainWindowFontWeight2 默认 = FontWeight.Medium(500)，
+                         挂在 ZoomBorder 的 TextElement 上下发给全部组件（所以 CI 的字看起来更饱满） -->
+                    <LayoutTransformControl.LayoutTransform>
+                        <ScaleTransform/>
+                    </LayoutTransformControl.LayoutTransform>
+
+                    <StackPanel>
+                        <Panel x:Name="LinePanel" ClipToBounds="False">
+
+                            <!-- CI .line-background：岛背景。宽度变化在代码里做 300ms 缓动
+                                 （CI BackgroundWidth DoubleTransition 0.300 / 0.65,0,0.35,1.0；
+                                  Avalonia 的 Width 过渡在 LayoutTransformControl 内不生效，改用代码补间）。
+                                 注意：CI 的 .line-background 没有 ClipToBounds —— 加了会把 BoxShadow 裁掉。 -->
+                            <Border x:Name="IslandBackground"
+                                    Height="40"
+                                    HorizontalAlignment="Center"
+                                    CornerRadius="8"
+                                    BorderThickness="1"
+                                    BoxShadow="0 4 8 2 #48000000">
+                            </Border>
+
+                            <!-- CI GridContentRoot：Margin="12 0"、MinWidth=20 -->
+                            <Border x:Name="CardContent"
+                                    Margin="12,0"
+                                    MinWidth="20"
+                                    Background="Transparent"
+                                    HorizontalAlignment="Center">
+                                <Grid>
+                                    <StackPanel x:Name="WidgetHost"
+                                                Orientation="Horizontal"
+                                                Spacing="0"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Stretch"/>
+
+                                    <!-- 启动占位骨架（组件还没加载出来时显示）：一小块 + 一长块。
+                                         尺寸照参考图实测换算（缩放 2.375）：块 80×24 / 620×24、
+                                         间隔 14、岛左右内边距 ~18；块底色在代码里按深浅主题取色 -->
+                                    <StackPanel x:Name="SkeletonHost"
+                                                Orientation="Horizontal"
+                                                Spacing="14"
+                                                Margin="6,0"
+                                                IsVisible="False"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center">
+                                        <Border x:Name="SkeletonBlock1" Width="80" Height="24" CornerRadius="6"/>
+                                        <Border x:Name="SkeletonBlock2" Width="620" Height="24" CornerRadius="6"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                        </Panel>
+
+                        <!-- 编辑模式底部工具条（CI「编辑主界面」的底部栏：添加组件 / 组件设置 / 完成） -->
+                        <Panel x:Name="EditBarHost"
+                               IsVisible="False"
+                               Margin="0,8,0,0"
+                               HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </LayoutTransformControl>
+
+            </Grid>
+        </Panel>
+    </Panel>
 </Window>

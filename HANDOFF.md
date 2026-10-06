@@ -1,7 +1,7 @@
 # ClassNEX 续作指南（HANDOFF）
 
-> 最后更新：2026-10-05 20:20　｜　当前版本 **26w41c**　｜　仓库提交 **f7a6405**
-> 已发布：`26w41a_Alpha` / `26w41b_Alpha` / `26w41c_Alpha`（GitHub Releases，均为预发布）
+> 最后更新：2026-10-06　｜　当前版本 **26w41d**　｜　仓库提交 **f7a6405**
+> 已发布：`26w41a_Alpha` / `26w41b_Alpha` / `26w41c_Alpha` / `26w41d_Alpha`（GitHub Releases，均为预发布）
 > 这份文档的目的：**第二天打开新会话，照着它就能无缝继续写。**
 
 ---
@@ -19,15 +19,22 @@ $env:CLASSNEX_VERIFY="1"; Start-Process "E:\ClassNex\src\ClassNex\bin\Debug\net1
   （2026-10-05 已从 FluentAvaloniaUI 迁到用户指定的 AvaloniaFluentUI，见 5.6）
 - 数据目录：`<exe 同目录>\data\`（`settings.json` + `timetable.yaml`）
 - **UI 语言全部中文**，注释也全用中文
-- 调试开关：`CLASSNEX_VERIFY=1` 写 `_verify.log` + 跑自检；
-  `CLASSNEX_VERIFY_PAGE=about|widgets|interface|...` 指定设置窗口自检打开哪一页；
-  `CLASSNEX_VERIFY_SEARCH=1` 模拟搜索输入→点结果
+- 调试开关（都在 Debug 构建生效）：
+  - `CLASSNEX_VERIFY=1` 写 `_verify.log` + 跑数据自检 —— **只启动浮窗，不会弹设置/档案编辑器**
+  - `CLASSNEX_VERIFY_WINDOWS=1` 额外打开「应用设置 + 档案编辑器」（一般情况下不需要，别加）
+  - `CLASSNEX_VERIFY_PAGE=about|widgets|appearance|window|basic|account` 打开设置窗口并停在指定页
+    （设了它就等于开了 `CLASSNEX_VERIFY_WINDOWS`）
+  - `CLASSNEX_VERIFY_SEARCH=1` 模拟「输入关键字 → 点搜索结果」（同样会开设置窗口）
+  - `CLASSNEX_VERIFY_SHOT=1` 等 3 秒把**已存在的**窗口各自渲染成 `_shot_*.png`（不受遮挡影响）
+  - `CLASSNEX_VERIFY_LAYOUT=1` 每秒把窗口/岛/课表当前项的实测尺寸写 `_verify_layout.log`
+  - `CLASSNEX_VERIFY_PILL=1` 强制显示最后 60 秒的倒计时胶囊（核对排版用）
+  - `CLASSNEX_VERIFY_EDITMODE=1` 启动后直接进入编辑模式（核对组件工具条排版）
 
 ---
 
 ## 1. 项目定位
 
-参照 **CI（ClassIsland，以下一律简称 CI）** 做的桌面课表浮窗：
+参照成熟课表软件的交互与度量做的桌面课表浮窗：
 主界面悬浮课表 + 应用设置 + 档案编辑器 + 系统托盘，四模块。
 
 **铁律（用户明确定的）**：
@@ -56,12 +63,12 @@ E:\ClassNex\ClassIsland_app_windows_x64_full_folder (2)\
 | `Opacity` | 0.5 | `AppSettings.BackgroundOpacity` |
 | `RadiusX/Y` | 8 | `CiPalette.CardCornerRadius` |
 | `BackgroundColor` | `#000000FF` | `CiPalette.CardBackground` |
-| `MainWindowFont` | `#HarmonyOS Sans SC` | 已内置鸿蒙字体 |
+| `MainWindowFont` | `#HarmonyOS Sans SC` | 已换为小米 MiSans（Regular+Bold 真字重）|
 | `MainWindowSecondaryFontSize` | 14 | `WidgetBase.CiSecondary` |
 | `MainWindowBodyFontSize` | 16 | `WidgetBase.CiBody` |
 | `MainWindowEmphasizedFontSize` | 18 | `WidgetBase.CiEmphasized` |
 | `MainWindowLargeFontSize` | 20 | `WidgetBase.CiLarge` |
-| `IsMouseInFadingEnabled` | **true** | 鼠标移入淡化（已实现） |
+| `IsMouseInFadingEnabled` | **true** | 鼠标移入淡化（**移入淡到 0.05、100ms 线性过渡、30ms 轮询近似即时判定**）|
 | `IsMouseClickingEnabled` | false | CI 默认**不做**穿透（本项目默认开，用户要求） |
 | `IsProfileEditorClassInfoSubjectAutoMoveNextEnabled` | true | 选完科目自动移到下一课 |
 
@@ -92,11 +99,71 @@ E:\ClassNex\ClassIsland_app_windows_x64_full_folder (2)\
 ## 3. 当前已完成的功能
 
 ### 主界面（悬浮课表）
-- 显示**今日全部课程**简称；**已上完的淡化**（opacity 0.35）、正在上加粗
-- 右侧：当前/下节课名称 + 起止时间 + **进度条**
-- **强制置顶**（每秒自检 + 失焦重声明）、贴屏幕顶部水平居中、**不可拖动**
-- **鼠标穿透**（Win32 `WS_EX_TRANSPARENT`）+ **鼠标移入淡化**（因为穿透后收不到鼠标消息，
-  改用 `GetCursorPos` 轮询判断悬停 → `Services/WindowsOverlay.cs`）
+- **结构 = CI 原样**：`CardHost`(淡入) → `HoverHost`(悬停淡化) → `LayoutTransformControl RootScale`
+  （`ScaleTransform = MainWindowScale×FontScale`，默认 1.9，**CI 的 RootLayoutTransformControl**）
+  → `IslandBackground`（CI `.line-background`：高固定 40=IslandContainerHeight、圆角 8=RadiusX、
+  1px 描边 ControlElevationBorderBrush、阴影 `0 4 8 2 #48000000`、背景 SolidBackgroundFillColorSecondaryBrush、
+  透明度 BackgroundOpacity）→ `CardContent`（CI GridContentRoot：Margin="12 0"、MinWidth=20）
+- ⚠️ **三个必须记住的坑（都踩过）**：
+  1. 岛宽 = **内容宽 + 两侧各 12**（CI 的 `BackgroundWidth` 是含 `Margin="12 0"` 的 GridWrapper 宽度）；
+     只按内容宽设 → 文字顶到岛边缘、没有内边距
+  2. 进度条必须 **`MinWidth = 0`**（CI 源码里也写了这句）：主题 ProgressBar 默认 MinWidth=200，
+     会把当前课项撑到 200 宽，文字与后一项之间出现 ~200px 假空档
+  3. 岛**不能加 `ClipToBounds`** —— 会把 `BoxShadow` 裁掉（阴影不渲染）
+- **取色全部跟随系统**：主题明暗 = `ThemeMode=system`（`PreferSystemTheme`）、强调色 = 系统强调色
+  （`CustomAccentColor=null` + `PreferUserAccentColor=true`）。因此**组件文字必须跟随主题取色**
+  （`WidgetBase.White()` 现在返回主题 `TextFillColorPrimaryBrush`：深色主题=浅字、浅色主题=深字），
+  写死白色会导致浅色主题下白字看不见
+- **进度条轨道**用 `CiPalette.ProgressTrackBrush()`：**只给 6% 对比**（深色主题 = 白 6%、浅色 = 黑 6%）。
+  CI 的 FluentAvalonia 轨道几乎和卡底同色（填充段之后直接就是卡底），AvaloniaFluentUI 的默认轨道
+  偏亮，会在青色填充后面露出一截「浅色白边」—— 之前压到 0.35 仍嫌亮，现在 0.06 基本看不见。
+- **倒计时胶囊**：CI 源码里背景层有 `Height="{Binding Bounds.Height, ElementName=BorderStroke}"`，
+  **这一句必须有** —— 漏了它背景层只有 padding 高（6px），会在胶囊正下方露出一截小线条
+  （见 `ScheduleWidget.BuildCountdownPill` 的 `bg.Height = height`）
+- **文字渲染用灰度抗锯齿**（`RenderOptions.SetTextRenderingMode(block, TextRenderingMode.Antialias)`，
+  见 `WidgetBase.Text` 和胶囊文本）：默认的亚像素渲染会在笔画边缘产生彩色毛边（看着像「像素点」），
+  在半透明卡片上尤其明显。⚠️ Avalonia 11.3 的 `RenderOptions` **没有**可供 XAML Setter 用的
+  `TextRenderingMode` 附加属性字段（写进样式会编译报错 AVLN2000），只能在代码里逐个控件设置。
+  实测：日期区域 1621 个文字像素中彩色边缘 **0 个**（修前 13~17%）。
+- **日期组件对齐 CI 的 `DateComponent`**：CI 里它就是一个普通 TextBlock
+  （`StringFormat="{0:ddd MM/dd}"`），字号 = 继承的 `MainWindowBodyFontSize`（16）、字重 Normal。
+  本项目此前是 22/SemiBold，已统一为 **Body 16 + Normal**（否则比课表项还重、看着字号不统一）。
+- **窗口固定为整屏宽**（CI 的做法）：`SizeToContent="Height"` + 代码里设 `Width = 主屏工作区宽/缩放`。
+  内容宽度变化时窗口本身**不缩放、不重新居中**，只有岛在窗口内平滑变化 ——
+  否则剩余时间每秒变宽变窄，窗口跟着一抖一抖（实测：修前时间文本宽 41.6↔40.0、岛宽 648.0↔646.4、
+  窗口宽 1231.2↔1228.8；修后三者全部恒定）。
+- **数字用等宽特性 `tnum`**（`TextElement.SetFontFeatures(block, TabularFigures)`，见 `WidgetBase`）：
+  MiSans 的数字是比例宽度（"1" 比 "4" 窄），剩余时间每秒变化会让文本宽度变来变去 ——
+  这就是窗口抖动的根因。
+- **悬停淡化按「岛」判定**（不是窗口）：窗口现在是整屏宽，用窗口矩形会把整条屏顶都算成悬停。
+  用 `IslandBackground.PointToScreen` 取岛的屏幕矩形（对应 CI 的 `GetMouseStatusByPos` 判组件行自身）。
+- **主界面全局字重 = Medium(500)**（CI 源码 `Settings._mainWindowFontWeight2 = (int)FontWeight.Medium`，
+  用户 CI 配置里也是 `"MainWindowFontWeight2": 500`；CI 挂在 ZoomBorder 的 `TextElement.FontWeight` 上下发）。
+  本项目：`LayoutTransformControl TextElement.FontWeight="Medium"` + `WidgetBase.Text()` 默认字重 Medium
+  （当前课名仍是 Bold，与 CI 一致）。这就是「我们的字比 CI 细」的原因。
+- ⚠️ **MiSans 字体已做过二进制修补**（脚本 `_tools\fix_misans_weights.ps1`，重新下载字体后必须重跑）：
+  官方 ttf 的 `usWeightClass` 非标准（Regular 330 / Medium 380 / Demibold 450 / Bold 630），
+  且 Medium/Demibold 的**族名是独立的**（"MiSans Medium"/"MiSans Demibold"）→ Avalonia 永远匹配不到
+  500/600。脚本把 name 表重建成 `MiSans` + `Medium`/`Demibold`、字重改成标准 500/600、并重算校验和。
+  验证：`_verify.log` 的字体探针应显示 `MiSans Medium = MiSans / weight Medium`。
+- **主题切换要重建组件**：组件文字画刷是「创建时按当前主题取色」，不重建就会保持旧主题颜色
+  （表现为「切深浅色字体不变黑白」）。`MainWindow` 里挂了 `ActualThemeVariantChanged` →
+  `ApplySettings + RebuildWidgets + RefreshWidgets`
+- **编辑模式**：右键浮窗 →「编辑主界面（编辑模式）…」进入；
+  每个组件上方出现**它自己的工具条**（名称 + ⚙ 设置 + 🗑 删除 + ⋯ 上移/下移），
+  末尾是「＋ 添加组件」，底部栏 = 添加组件 / 组件设置… / ✓ 完成。
+  编辑模式下**不淡化、鼠标不穿透**（否则点不到按钮）；代码见 `Views/MainWindow.EditMode.cs`
+- **组件内只用 CI 原值**（18/14/16/20 字号、16/10 间隔、8/2 胶囊内边距、1px 描边……），
+  整体缩放交给 LayoutTransformControl —— 不再在各组件里 ×scale
+- 课表项语义 = CI LessonsListBox：当前项(上课/课间)=全名 Bold 18 + 剩余时间 + **进度条贴项底**
+  （项高=岛高 40，进度条即落在岛底边）、其他课=简称 18、**已上完淡化 0.6 带 150ms CubicEaseInOut 过渡**、
+  课间项隐藏（仅当前课间显示「课间休息」）
+- **动画参数**：启动/显示淡入 250ms `0.25,1,0.5,1`；岛宽变化 300ms `0.65,0,0.35,1.0`
+  （CI BackgroundWidth；Avalonia 的 Width 过渡在 LayoutTransformControl 内会卡布局，改用 composition Scale 补间）；
+  组件位移动画 = 移植的 `Controls/WrapPanelResizingAnimationAssist.cs`；进度条数值 50ms；悬停淡化 0.05/100ms
+- **强制置顶**（每秒自检 + 失焦重声明）、贴屏幕顶部水平居中（窗口比屏宽时向两侧对称溢出，岛保持居中）、**不可拖动**
+- **鼠标穿透**（Win32 `WS_EX_TRANSPARENT`）+ **鼠标移入淡化**（淡到 0.05、100ms 线性过渡；
+  因穿透后收不到鼠标消息，用 30ms 轮询 `GetCursorPos` 近似 CI 的 RawInput 即时判定 → `Services/WindowsOverlay.cs`）
 - 黑底 50% 不透明、圆角 8
 
 ### 应用设置（FluentUI：`NavigationView` + `SettingsExpander` + `InfoBar`）
@@ -106,6 +173,8 @@ E:\ClassNex\ClassIsland_app_windows_x64_full_folder (2)\
   （文本 / 分割线 / 课程表 / 日期 / 时钟 / 当前·下节课 / 倒计时），
   支持启用、字号、显示秒、自定义文本（占位符 `{date} {day} {time} {parity} {current} {next} {countdown}`）、排序、删除
 - 课表、关于
+- **账户**：Win11 默认账户头像（`Assets\avatar.png`，取自系统 user.png）+ 用户名 + 邮箱（可编辑，
+  存 `AppSettings.UserName/Email`）；导航栏账户卡 + 搜索框布局**模板取自 FluentUI-Gallery**（zhuzichu520 的 Qt/QML 版）
 
 ### 档案编辑器
 - **课表页**：可视化周课表，**点空格 → 点科目直接排课**（含「选完科目自动移动到下一个课程」）、
@@ -118,7 +187,10 @@ E:\ClassNex\ClassIsland_app_windows_x64_full_folder (2)\
 ### 其它
 - 系统托盘（显示/隐藏主界面、编辑档案、应用设置、退出）
 - CSES YAML 课表导入/导出；内置 24 科目 / 7 天 / 每天 11 节的示例课表
-- 内置 **HarmonyOS Sans SC**（鸿蒙字体，华为免费商用，授权见 `Assets\Fonts\LICENSE.txt`）
+- 内置 **MiSans**（小米字体，免费商用，授权见 `Assets\Fonts\LICENSE.txt`；Regular/Bold 两字重）
+  ⚠️ MiSans 官方 ttf 的 OS/2 `usWeightClass` 是**非标准值**（Regular=330 / Bold=630），
+  Avalonia 按 50 步进匹配字重会全部回退成 Bold。本项目已把这两个文件修补为 400/700 并重算
+  checksum —— **以后若替换字体文件，必须重新修补**，否则界面会全部变粗。
 
 ---
 
@@ -205,7 +277,7 @@ pwsh 控制台看中文会乱码（**只是显示问题，值本身是对的**�
 - ⚠️ **图标必须显式指定字体，且只能用 `Segoe MDL2 Assets`**：
   Win11 的 `Segoe Fluent Icons`（`SegoeIcons.ttf`）**删掉了一批旧字形码**
   （`E51E`/`E06F`/`E9E4`/`EBAC`/`E304` 等会显示成**空方块**）；
-  `segmdl2.ttf`（Segoe MDL2 Assets）码位齐全。另外 FontIcon/FontIconSource **不设字体就会继承全局鸿蒙字体** → 全乱码。
+  `segmdl2.ttf`（Segoe MDL2 Assets）码位齐全。另外 FontIcon/FontIconSource **不设字体就会继承全局 MiSans** → 全乱码。
   正确写法：`FontFamily="Segoe MDL2 Assets"`。
   **验证字形是否存在的方法**：PowerShell `PrivateFontCollection` + `Graphics.DrawString` 把候选码画成 PNG，再 `read_image` 自己看（见 `_tmp_glyphs*.png` 的做法）。
 - ⚠️ **`TryFindResource(key)` 不带主题变体时返回的是「浅色变体」的值**
@@ -314,7 +386,7 @@ src/ClassNex/
   Widgets/                WidgetBase + 7 个组件 + WidgetFactory
   Controls/               TimetableGridBuilder（周课表网格）
   Views/                  MainWindow（浮窗）/ SettingsWindow / ProfileEditorWindow
-  Assets/                 icon.ico / timetable.yaml / Fonts/（鸿蒙字体+授权）
+  Assets/                 icon.ico / timetable.yaml / Fonts/（MiSans 字体+授权）
 ```
 
 ---

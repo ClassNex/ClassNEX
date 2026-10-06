@@ -32,6 +32,6 @@ public sealed class TextWidget : WidgetBase
             .Replace("{current}", ctx.Today.Current?.DisplayName ?? "")
             .Replace("{next}", ctx.Today.Next?.DisplayName ?? "");
 
-        _text.FontSize = Size(CiBody, ctx.Settings.EffectiveScale);
+        _text.FontSize = Size(CiBody);
     }
 }
