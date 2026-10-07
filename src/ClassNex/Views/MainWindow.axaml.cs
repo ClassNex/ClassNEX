@@ -399,6 +399,9 @@ public partial class MainWindow : Window
         NotificationMaskText.Text = text;
         NotificationMask.IsVisible = true;
 
+        // CI：SlantedMaskControl 斜切条纹打开（IsOpened=true，两边→中间，360ms/120ms 交错）
+        NotificationMaskBg.IsOpened = true;
+
         // 文字按用户要求用黑色（强调色底上的黑字，深浅色模式一致）。
         // 挂在遮罩根的 TextElement.Foreground 上，继承到图标与文字；避免被其它样式覆盖。
         Avalonia.Controls.Documents.TextElement.SetForeground(NotificationMask, Brushes.Black);
@@ -430,9 +433,12 @@ public partial class MainWindow : Window
         visual.StartAnimation(nameof(visual.Scale), scale);
     }
 
-    /// <summary>隐藏通知遮罩（对照 CI 的 :mask-out —— 文字 Opacity 1→0，0.2s）。</summary>
+    /// <summary>隐藏通知遮罩（对照 CI 的 :mask-out —— 文字 Opacity 1→0 0.2s + 条纹收起）。</summary>
     public void HideNotificationMask()
     {
+        // CI：SlantedMaskControl 斜切条纹收起（IsOpened=false，中间→两边）
+        NotificationMaskBg.IsOpened = false;
+
         var visual = ElementComposition.GetElementVisual(NotificationMaskContent);
         if (visual is null)
         {
