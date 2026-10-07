@@ -124,7 +124,7 @@
                                     <Border Padding="12 0">
                                         <StackPanel x:Name="NotificationMaskContent"
                                                     Orientation="Horizontal"
-                                                    Spacing="8"
+                                                    Spacing="0"
                                                     HorizontalAlignment="Center"
                                                     VerticalAlignment="Center"
                                                     RenderTransformOrigin="50%,50%">
@@ -132,12 +132,14 @@
                                                 <ScaleTransform/>
                                             </StackPanel.RenderTransform>
                                             <TextBlock Text="&#xE823;" FontFamily="Segoe MDL2 Assets"
-                                                       FontSize="20" Foreground="Black" VerticalAlignment="Center"/>
+                                                       FontSize="20" Height="20" Width="20" TextAlignment="Center"
+                                                       Foreground="Black" VerticalAlignment="Center"/>
                                             <TextBlock x:Name="NotificationMaskText"
-                                                       FontSize="18" FontWeight="Bold" Foreground="Black"
+                                                       FontSize="18" FontWeight="Bold" Foreground="Black" Margin="8,0"
                                                        VerticalAlignment="Center"/>
                                             <TextBlock Text="&#xE823;" FontFamily="Segoe MDL2 Assets"
-                                                       FontSize="20" Foreground="Black" VerticalAlignment="Center"/>
+                                                       FontSize="20" Height="20" Width="20" TextAlignment="Center"
+                                                       Foreground="Black" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Border>
                                 </Panel>

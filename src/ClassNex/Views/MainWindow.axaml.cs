@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Animation;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -407,52 +408,79 @@ public partial class MainWindow : Window
         Avalonia.Controls.Documents.TextElement.SetForeground(NotificationMask, Brushes.Black);
         NotificationMaskText.Foreground = Brushes.Black;
 
-        var visual = ElementComposition.GetElementVisual(NotificationMaskContent);
-        if (visual is null)
-            return;
-
-        var compositor = visual.Compositor;
-        visual.CenterPoint = new Vector3D(visual.Size.X / 2, visual.Size.Y / 2, 0);
-        visual.Opacity = 0f;
-
+        // CI :mask-in（FluentTheme/Styles.axaml）：
+        //   Opacity 0→1：Delay 0.26s / 0.25s / 0.25,1,0.5,1
+        //   ScaleX/Y 1.1→1.0：Delay 0.26s / 0.75s / 0.25,1,0.5,1
+        // 用属性动画驱动 XAML 的 ScaleTransform（RenderTransformOrigin=50%,50% 生效）。
+        // 之前用 composition 缩放，布局完成前 visual.Size=0 → 中心点错位 → 文字「跑一下」。
         var easing = Easing.Parse("0.25, 1, 0.5, 1");
 
-        var fade = compositor.CreateScalarKeyFrameAnimation();
-        fade.InsertKeyFrame(0f, 0f);
-        fade.InsertKeyFrame(1f, 1f, easing);
-        fade.DelayTime = TimeSpan.FromMilliseconds(260);
-        fade.Duration = TimeSpan.FromMilliseconds(250);
-        visual.StartAnimation(nameof(visual.Opacity), fade);
+        var fade = new Animation
+        {
+            Delay = TimeSpan.FromMilliseconds(260),
+            Duration = TimeSpan.FromMilliseconds(250),
+            FillMode = FillMode.Forward,
+            Easing = easing,
+            Children =
+            {
+                new KeyFrame { Cue = new Cue(0), Setters = { new Setter(OpacityProperty, 0.0) } },
+                new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, 1.0) } },
+            },
+        };
+        _ = fade.RunAsync(NotificationMaskContent);
 
-        visual.Scale = new Vector3D(1.1f, 1.1f, 1f);
-        var scale = compositor.CreateVector3DKeyFrameAnimation();
-        scale.InsertKeyFrame(0f, new Vector3D(1.1f, 1.1f, 1f));
-        scale.InsertKeyFrame(1f, new Vector3D(1f, 1f, 1f), easing);
-        scale.DelayTime = TimeSpan.FromMilliseconds(260);
-        scale.Duration = TimeSpan.FromMilliseconds(750);
-        visual.StartAnimation(nameof(visual.Scale), scale);
+        var scale = new Animation
+        {
+            Delay = TimeSpan.FromMilliseconds(260),
+            Duration = TimeSpan.FromMilliseconds(750),
+            FillMode = FillMode.Forward,
+            Easing = easing,
+            Children =
+            {
+                new KeyFrame
+                {
+                    Cue = new Cue(0),
+                    Setters =
+                    {
+                        new Setter(ScaleTransform.ScaleXProperty, 1.1),
+                        new Setter(ScaleTransform.ScaleYProperty, 1.1),
+                    },
+                },
+                new KeyFrame
+                {
+                    Cue = new Cue(1),
+                    Setters =
+                    {
+                        new Setter(ScaleTransform.ScaleXProperty, 1.0),
+                        new Setter(ScaleTransform.ScaleYProperty, 1.0),
+                    },
+                },
+            },
+        };
+        _ = scale.RunAsync((ScaleTransform)NotificationMaskContent.RenderTransform!);
     }
 
     /// <summary>隐藏通知遮罩（对照 CI 的 :mask-out —— 文字 Opacity 1→0 0.2s + 条纹收起）。</summary>
     public void HideNotificationMask()
     {
-        // CI：SlantedMaskControl 斜切条纹收起（IsOpened=false，中间→两边）
+        // CI：SlantedMaskControl 斜切条纹收起（IsOpened=false，中间→两边，360ms+120ms≈480ms）
         NotificationMaskBg.IsOpened = false;
 
-        var visual = ElementComposition.GetElementVisual(NotificationMaskContent);
-        if (visual is null)
+        // CI :mask-out —— 文字 Opacity 1→0（0.2s）
+        var fade = new Animation
         {
-            NotificationMask.IsVisible = false;
-            return;
-        }
+            Duration = TimeSpan.FromMilliseconds(200),
+            FillMode = FillMode.Forward,
+            Children =
+            {
+                new KeyFrame { Cue = new Cue(0), Setters = { new Setter(OpacityProperty, 1.0) } },
+                new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, 0.0) } },
+            },
+        };
+        _ = fade.RunAsync(NotificationMaskContent);
 
-        var fade = visual.Compositor.CreateScalarKeyFrameAnimation();
-        fade.InsertKeyFrame(0f, 1f);
-        fade.InsertKeyFrame(1f, 0f);
-        fade.Duration = TimeSpan.FromMilliseconds(200);
-        visual.StartAnimation(nameof(visual.Opacity), fade);
-
-        DispatcherTimer.RunOnce(() => NotificationMask.IsVisible = false, TimeSpan.FromMilliseconds(220));
+        // 等条纹收完（480ms）再隐藏整个遮罩 —— 之前 220ms 就藏了，结束动画「闪一下就没了」
+        DispatcherTimer.RunOnce(() => NotificationMask.IsVisible = false, TimeSpan.FromMilliseconds(500));
     }
 
     /// <summary>
