@@ -485,6 +485,39 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// 面具之后的 Overlay 阶段（对照 CI 的 ClassOffOverlay：下节课是…）：
+    /// 文字换成下节课信息并淡入（条纹保持展开，保证黑字可读；CI 是收起条纹+白字，本项目按用户要求黑字）。
+    /// </summary>
+    public void ShowNotificationOverlay(string text)
+    {
+        NotificationMaskText.Text = text;
+
+        var fade = new Animation
+        {
+            Delay = TimeSpan.FromMilliseconds(200),
+            Duration = TimeSpan.FromMilliseconds(250),
+            FillMode = FillMode.Forward,
+            Easing = Easing.Parse("0.25, 1, 0.5, 1"),
+            Children =
+            {
+                new KeyFrame { Cue = new Cue(0), Setters = { new Setter(OpacityProperty, 0.0) } },
+                new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, 1.0) } },
+            },
+        };
+        _ = fade.RunAsync(NotificationMaskContent);
+    }
+
+    /// <summary>
+    /// 预热斜切条纹动画（首次触发会 JIT + 编译几何，容易卡一下）：
+    /// 启动后快速开-合一次，之后的提醒动画就顺滑了。面具保持隐藏，不会有可见闪烁。
+    /// </summary>
+    public void WarmNotificationMask()
+    {
+        NotificationMaskBg.IsOpened = true;
+        DispatcherTimer.RunOnce(() => NotificationMaskBg.IsOpened = false, TimeSpan.FromMilliseconds(60));
+    }
+
+    /// <summary>
     /// 岛宽变化（CI BackgroundWidth DoubleTransition 0.300 / 0.65,0,0.35,1.0）。
     /// 布局宽度直接对齐内容；视觉宽度用 composition Scale 动画补间 ——
     /// Avalonia 的 Width 过渡在 LayoutTransformControl 内会卡住布局，不能用。

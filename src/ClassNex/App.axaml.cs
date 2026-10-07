@@ -61,6 +61,9 @@ public partial class App : Application
             Services.AppServices.MainWindow = _mainWindow;
             _notificationService.Start();
 
+            // 预热提醒动画（斜切条纹首次触发要 JIT/编译几何，启动 1 秒后静默开合一次，之后不卡）
+            DispatcherTimer.RunOnce(() => _mainWindow?.WarmNotificationMask(), TimeSpan.FromSeconds(1));
+
 #if DEBUG
             // 调试：CLASSNEX_VERIFY_NOTIFY=1 时启动后连放三次（3s/8s/13s）重要通知：
             // 水波纹 + 岛上遮罩文字（与真实上课/课间触发完全同一条链路）。

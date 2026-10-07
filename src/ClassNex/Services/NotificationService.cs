@@ -51,7 +51,8 @@ public sealed class NotificationService
         if (!AppServices.Settings.AllowNotification)
             return;
 
-        var key = CurrentKey(DateTime.Now);
+        var now = DateTime.Now;
+        var key = CurrentKey(now);
         if (key == _lastKey)
             return;
 
@@ -85,6 +86,24 @@ public sealed class NotificationService
                 var center = mainWindow.GetIslandCenterOnScreen() ?? new PixelPoint(0, 0);
                 _effectWindow.PlayEffect(new RippleEffect(center));
                 mainWindow.ShowNotificationMask(maskText);
+
+                // CI：下课（课间）提醒在面具之后还有 Overlay 阶段（ClassOffOverlay：下节课是…）
+                if (key.StartsWith("break:"))
+                {
+                    var summary = AppServices.Time.GetTodaySummary(AppServices.Schedule.Profile, now);
+                    var next = AppServices.Time.GetNextCourse(summary.Slots, now.TimeOfDay);
+                    if (next is { } nxt)
+                    {
+                        var teacher = n.ShowTeacherName && !string.IsNullOrWhiteSpace(nxt.Teacher)
+                            ? $" {nxt.Teacher}"
+                            : "";
+                        var overlayText = $"下节课是：{nxt.DisplayName}{teacher} {nxt.TimeRange}";
+                        DispatcherTimer.RunOnce(() => mainWindow.ShowNotificationOverlay(overlayText),
+                            TimeSpan.FromMilliseconds(1500));
+                        DispatcherTimer.RunOnce(mainWindow.HideNotificationMask, TimeSpan.FromMilliseconds(3500));
+                        return;
+                    }
+                }
 
                 // CI：通知请求结束后面具淡出（:mask-out 0.2s），这里按类通知默认时长 3 秒
                 DispatcherTimer.RunOnce(mainWindow.HideNotificationMask, TimeSpan.FromSeconds(3));
