@@ -66,8 +66,17 @@ public sealed class NotificationService
                 && AppServices.Settings.IsMainWindowVisible
                 && AppServices.MainWindow is { IsEditMode: false } mainWindow)
             {
+                // CI 的 Mask 文字（遮罩）：课间 = 课间名，上课 = 科目名（ClassNotificationProvider 的 BreakNameText）
+                var maskText = key.StartsWith("break:")
+                    ? "课间休息"
+                    : key.Split(':', 3)[2];
+
                 var center = mainWindow.GetIslandCenterOnScreen() ?? new PixelPoint(0, 0);
                 _effectWindow.PlayEffect(new RippleEffect(center));
+                mainWindow.ShowNotificationMask(maskText);
+
+                // CI：通知请求结束后面具淡出（:mask-out 0.2s），这里按类通知默认时长 3 秒
+                DispatcherTimer.RunOnce(mainWindow.HideNotificationMask, TimeSpan.FromSeconds(3));
             }
         }
     }

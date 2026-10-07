@@ -102,6 +102,37 @@
                                 </Grid>
                             </Border>
 
+                            <!-- CI OverlayMask：重要通知时盖在岛上的强调色遮罩 + 大字提示
+                                 （对照 CI FluentTheme/Styles.axaml 的 OverlayMask/OverlayMaskContent：
+                                   宽=岛宽、高=岛高 40、圆角 8、ClipToBounds、强调色底、白字 Bold）。 -->
+                            <Border x:Name="NotificationMask"
+                                    Height="40"
+                                    HorizontalAlignment="Center"
+                                    CornerRadius="8"
+                                    ClipToBounds="True"
+                                    Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                    IsVisible="False"
+                                    IsHitTestVisible="False"
+                                    Width="{Binding #IslandBackground.Width}">
+                                <StackPanel x:Name="NotificationMaskContent"
+                                            Orientation="Horizontal"
+                                            Spacing="8"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            RenderTransformOrigin="50%,50%">
+                                    <StackPanel.RenderTransform>
+                                        <ScaleTransform/>
+                                    </StackPanel.RenderTransform>
+                                    <TextBlock Text="&#xE823;" FontFamily="Segoe MDL2 Assets"
+                                               FontSize="20" Foreground="White" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="NotificationMaskText"
+                                               FontSize="18" FontWeight="Bold" Foreground="White"
+                                               VerticalAlignment="Center"/>
+                                    <TextBlock Text="&#xE823;" FontFamily="Segoe MDL2 Assets"
+                                               FontSize="20" Foreground="White" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+
                         </Panel>
 
                         <!-- 编辑模式底部工具条（CI「编辑主界面」的底部栏：添加组件 / 组件设置 / 完成） -->

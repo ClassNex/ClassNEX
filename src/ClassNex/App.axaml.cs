@@ -62,14 +62,20 @@ public partial class App : Application
             _notificationService.Start();
 
 #if DEBUG
-            // 调试：CLASSNEX_VERIFY_NOTIFY=1 时启动 3 秒后演示一次重要通知（水波纹）。
+            // 调试：CLASSNEX_VERIFY_NOTIFY=1 时启动后连放三次（3s/8s/13s）重要通知：
+            // 水波纹 + 岛上遮罩文字（与真实上课/课间触发完全同一条链路）。
             if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_NOTIFY") == "1")
             {
-                DispatcherTimer.RunOnce(() =>
+                foreach (var delay in new[] { 3, 8, 13 })
                 {
-                    var center = _mainWindow?.GetIslandCenterOnScreen() ?? new Avalonia.PixelPoint(200, 200);
-                    _effectWindow!.PlayEffect(new Controls.NotificationEffects.RippleEffect(center));
-                }, TimeSpan.FromSeconds(3));
+                    DispatcherTimer.RunOnce(() =>
+                    {
+                        var center = _mainWindow?.GetIslandCenterOnScreen() ?? new Avalonia.PixelPoint(200, 200);
+                        _effectWindow!.PlayEffect(new Controls.NotificationEffects.RippleEffect(center));
+                        _mainWindow?.ShowNotificationMask("课间休息");
+                        DispatcherTimer.RunOnce(() => _mainWindow?.HideNotificationMask(), TimeSpan.FromSeconds(3));
+                    }, TimeSpan.FromSeconds(delay));
+                }
             }
 #endif
 

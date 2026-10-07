@@ -390,6 +390,61 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// 重要通知遮罩：岛上显示大字提示（对照 CI 的 MaskContent + FluentTheme/Styles.axaml 的
+    /// :mask-in 动画 —— 文字 Opacity 0→1（Delay 0.26s / 0.25s / 0.25,1,0.5,1）
+    /// + Scale 1.1→1.0（Delay 0.26s / 0.75s / 0.25,1,0.5,1））。
+    /// </summary>
+    public void ShowNotificationMask(string text)
+    {
+        NotificationMaskText.Text = text;
+        NotificationMask.IsVisible = true;
+
+        var visual = ElementComposition.GetElementVisual(NotificationMaskContent);
+        if (visual is null)
+            return;
+
+        var compositor = visual.Compositor;
+        visual.CenterPoint = new Vector3D(visual.Size.X / 2, visual.Size.Y / 2, 0);
+        visual.Opacity = 0f;
+
+        var easing = Easing.Parse("0.25, 1, 0.5, 1");
+
+        var fade = compositor.CreateScalarKeyFrameAnimation();
+        fade.InsertKeyFrame(0f, 0f);
+        fade.InsertKeyFrame(1f, 1f, easing);
+        fade.DelayTime = TimeSpan.FromMilliseconds(260);
+        fade.Duration = TimeSpan.FromMilliseconds(250);
+        visual.StartAnimation(nameof(visual.Opacity), fade);
+
+        visual.Scale = new Vector3D(1.1f, 1.1f, 1f);
+        var scale = compositor.CreateVector3DKeyFrameAnimation();
+        scale.InsertKeyFrame(0f, new Vector3D(1.1f, 1.1f, 1f));
+        scale.InsertKeyFrame(1f, new Vector3D(1f, 1f, 1f), easing);
+        scale.DelayTime = TimeSpan.FromMilliseconds(260);
+        scale.Duration = TimeSpan.FromMilliseconds(750);
+        visual.StartAnimation(nameof(visual.Scale), scale);
+    }
+
+    /// <summary>隐藏通知遮罩（对照 CI 的 :mask-out —— 文字 Opacity 1→0，0.2s）。</summary>
+    public void HideNotificationMask()
+    {
+        var visual = ElementComposition.GetElementVisual(NotificationMaskContent);
+        if (visual is null)
+        {
+            NotificationMask.IsVisible = false;
+            return;
+        }
+
+        var fade = visual.Compositor.CreateScalarKeyFrameAnimation();
+        fade.InsertKeyFrame(0f, 1f);
+        fade.InsertKeyFrame(1f, 0f);
+        fade.Duration = TimeSpan.FromMilliseconds(200);
+        visual.StartAnimation(nameof(visual.Opacity), fade);
+
+        DispatcherTimer.RunOnce(() => NotificationMask.IsVisible = false, TimeSpan.FromMilliseconds(220));
+    }
+
+    /// <summary>
     /// 岛宽变化（CI BackgroundWidth DoubleTransition 0.300 / 0.65,0,0.35,1.0）。
     /// 布局宽度直接对齐内容；视觉宽度用 composition Scale 动画补间 ——
     /// Avalonia 的 Width 过渡在 LayoutTransformControl 内会卡住布局，不能用。
