@@ -171,15 +171,17 @@
                                            RenderTransformOrigin="50%,50%"/>
                             </Border>
 
-                            <!-- CI 提醒轨道：提醒时横跨岛底的整宽进度条
-                                 （视频实测：岛扩到整屏宽、文字居中，底下蓝填充随提醒时长推进） -->
+                            <!-- CI 提醒轨道：Overlay 阶段显示，横跨岛底的细进度条；
+                                 显示提醒**剩余时间**——满格起从右向左倒扣变淡 -->
                             <ProgressBar x:Name="NotificationTrack"
-                                         Height="7"
+                                         Height="2" MinHeight="2"
                                          MinWidth="0"
-                                         Minimum="0" Maximum="100" Value="0"
+                                         Minimum="0" Maximum="100" Value="100"
                                          VerticalAlignment="Bottom"
                                          HorizontalAlignment="Center"
                                          IsVisible="False"
+                                         Background="#4D808080"
+                                         Foreground="{DynamicResource AccentFillColorDefaultBrush}"
                                          Width="{Binding #IslandBackground.Width}"/>
 
                         </Panel>

@@ -386,28 +386,55 @@ public partial class MainWindow : Window
         // 取消宽度补间可能留下的缩放（否则岛会被 Scale 缩回去）
         if (ElementComposition.GetElementVisual(IslandBackground) is { } visual)
             visual.Scale = new Vector3D(1, 1, 1);
+    }
 
+    /// <summary>
+    /// CI 提醒轨道：**只在 Overlay 阶段显示**（面具阶段没有）。
+    /// 显示提醒剩余时间 —— 满格(100)起从右向左倒扣变淡，走到 0 表示提醒即将结束。
+    /// </summary>
+    private void StartNotificationTrack()
+    {
         NotificationTrack.Background = CiPalette.ProgressTrackBrush();
+        NotificationTrack.Foreground = CiPalette.AccentBrush();
         NotificationTrack.Width = Math.Max(1, IslandBackground.Width - 24); // 与 GridContentRoot 两侧 12 内边距对齐
-        NotificationTrack.Value = 0;
+        NotificationTrack.Value = 100;
         NotificationTrack.IsVisible = true;
 
-        var track = new Animation
+        _trackStopwatch ??= new System.Diagnostics.Stopwatch();
+        _trackStopwatch.Restart();
+        _trackTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+        _trackTimer.Tick -= OnTrackTick;
+        _trackTimer.Tick += OnTrackTick;
+        _trackTimer.Start();
+    }
+
+    private DispatcherTimer? _trackTimer;
+
+    private System.Diagnostics.Stopwatch? _trackStopwatch;
+
+    /// <summary>Overlay 阶段时长（轨道在这段时间内从满格走到 0）。</summary>
+    private const double NotificationTrackDurationMs = 2000;
+
+    private void OnTrackTick(object? sender, EventArgs e)
+    {
+        if (_trackStopwatch is null || !NotificationTrack.IsVisible)
         {
-            Duration = TimeSpan.FromMilliseconds(3500),
-            FillMode = FillMode.Forward,
-            Children =
-            {
-                new KeyFrame { Cue = new Cue(0), Setters = { new Setter(ProgressBar.ValueProperty, 0.0) } },
-                new KeyFrame { Cue = new Cue(1), Setters = { new Setter(ProgressBar.ValueProperty, 100.0) } },
-            },
-        };
-        _ = track.RunAsync(NotificationTrack);
+            _trackTimer?.Stop();
+            return;
+        }
+
+        // 剩余时间：progress 0→1 时 Value 从 100 → 0（右端向左收缩）
+        var progress = Math.Clamp(_trackStopwatch.Elapsed.TotalMilliseconds / NotificationTrackDurationMs, 0, 1);
+        NotificationTrack.Value = (1 - progress) * 100;
+
+        if (progress >= 1)
+            _trackTimer?.Stop();
     }
 
     /// <summary>提醒结束：岛恢复为内容宽，隐藏轨道。</summary>
     private void RestoreIslandAfterNotification()
     {
+        _trackTimer?.Stop();
         NotificationTrack.IsVisible = false;
         if (_preNotificationIslandWidth is { } previous)
         {
@@ -560,6 +587,9 @@ public partial class MainWindow : Window
         // 岛的正常区域显示 Overlay 文字并淡入
         NotificationOverlayText.Text = text;
         NotificationOverlay.IsVisible = true;
+
+        // CI：轨道只在 Overlay 阶段出现（面具阶段没有）—— 剩余时间从满格右→左倒扣
+        StartNotificationTrack();
 
         var fade = new Animation
         {
