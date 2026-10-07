@@ -399,6 +399,11 @@ public partial class MainWindow : Window
         NotificationMaskText.Text = text;
         NotificationMask.IsVisible = true;
 
+        // 文字必须是白色（CI：TextOnAccentFillColorPrimaryBrush，强调色底上的白字）。
+        // 挂在遮罩根的 TextElement.Foreground 上，继承到图标与文字；避免被其它样式覆盖成主题前景色（黑）。
+        Avalonia.Controls.Documents.TextElement.SetForeground(NotificationMask, Brushes.White);
+        NotificationMaskText.Foreground = Brushes.White;
+
         var visual = ElementComposition.GetElementVisual(NotificationMaskContent);
         if (visual is null)
             return;

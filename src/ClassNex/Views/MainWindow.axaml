@@ -113,6 +113,7 @@
                                     Background="{DynamicResource AccentFillColorDefaultBrush}"
                                     IsVisible="False"
                                     IsHitTestVisible="False"
+                                    TextElement.Foreground="White"
                                     Width="{Binding #IslandBackground.Width}">
                                 <StackPanel x:Name="NotificationMaskContent"
                                             Orientation="Horizontal"
