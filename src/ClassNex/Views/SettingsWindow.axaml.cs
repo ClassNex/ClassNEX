@@ -11,7 +11,6 @@ using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.Styling;
 using Avalonia.Threading;
-using Avalonia.VisualTree;
 using ClassNex.Models;
 using ClassNex.Services;
 using ClassNex.Styles;
@@ -82,140 +81,7 @@ public partial class SettingsWindow : AppWindow
         InitShell();
         WireEvents();
         LoadFromSettings();
-
-        // 可视树（NavigationView 内部的 SplitView）要等模板套用后才存在，所以挂 Loaded
-        Loaded += (_, _) =>
-        {
-            if (_paneStateHooked)
-                return;
-            _paneStateHooked = true;
-            HookPaneState();
-        };
     }
-
-    // ==================== 账户卡：左栏折叠时收缩到侧边栏 ====================
-
-    private SplitView? _paneSplitView;
-    private bool _accountCompact;
-    private bool _paneStateHooked;
-    private IDisposable? _accountTextTimer;
-
-    /// <summary>
-    /// 订阅左栏折叠状态。AvaloniaFluentUI 的 NavigationView 没公开 IsPaneOpen：
-    /// 它的 ☰ 折叠改的是 <c>PaneDisplayMode</c>（Left → 紧凑/最小），内部 SplitView 的
-    /// <c>IsPaneOpen</c> 只是启动态。所以两边都订阅，任一变化都刷新账户卡。
-    /// </summary>
-    private void HookPaneState()
-    {
-        NavView.PropertyChanged += (_, e) =>
-        {
-            if (e.Property.Name == "PaneDisplayMode")
-            {
-                LogPaneState("PaneDisplayMode 变化");
-                ApplyAccountCompact(!string.Equals(NavView.PaneDisplayMode.ToString(), "Left", StringComparison.Ordinal));
-            }
-        };
-
-        _paneSplitView = NavView.GetVisualDescendants().OfType<SplitView>().FirstOrDefault();
-        if (_paneSplitView is null)
-            return;
-
-        // 不要强制 IsPaneOpen —— 之前为了让左栏「默认展开」强制设 true，
-        // 结果和 NavigationView 内部状态打架，☰ 就再也点不开了。这里只按当前状态同步账户卡。
-        ApplyAccountCompact(!_paneSplitView.IsPaneOpen);
-
-        _paneSplitView.PropertyChanged += (_, e) =>
-        {
-            if (e.Property == SplitView.IsPaneOpenProperty)
-            {
-                LogPaneState("IsPaneOpen 变化");
-                ApplyAccountCompact(!_paneSplitView.IsPaneOpen);
-            }
-        };
-
-#if DEBUG
-        // 调试：CLASSNEX_VERIFY_PANE_COMPACT=1 时直接把左栏折叠，方便核对账户卡收缩效果
-        if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_PANE_COMPACT") == "1")
-            _paneSplitView.IsPaneOpen = false;
-#endif
-    }
-
-    /// <summary>DEBUG：把左栏状态写到程序目录 _pane.log，用来确认 ☰ 到底改的是哪个属性。</summary>
-    [Conditional("DEBUG")]
-    private void LogPaneState(string tag)
-    {
-        try
-        {
-            var line = $"[{DateTime.Now:HH:mm:ss.fff}] {tag}: IsPaneOpen={_paneSplitView?.IsPaneOpen} " +
-                       $"DisplayMode={NavView.PaneDisplayMode}\n";
-            File.AppendAllText(Path.Combine(AppContext.BaseDirectory, "_pane.log"), line);
-        }
-        catch
-        {
-            // 忽略
-        }
-    }
-
-    /// <summary>
-    /// 折叠时文字要先淡出、再真正从布局里移除（只设 Opacity=0 的话文字仍占宽度，
-    /// 卡片会保持 ~229 宽而溢出 48 DIP 的侧边栏 —— 那就是「错位」的来源）。
-    /// </summary>
-    private void SetAccountTextVisible(bool visible)
-    {
-        _accountTextTimer?.Dispose();
-
-        if (visible)
-        {
-            AccountTextHost.IsVisible = true;
-            AccountTextHost.Opacity = 1;
-            return;
-        }
-
-        AccountTextHost.Opacity = 0;
-        _accountTextTimer = DispatcherTimer.RunOnce(
-            () => AccountTextHost.IsVisible = false,
-            TimeSpan.FromMilliseconds(200));
-    }
-
-    /// <summary>
-    /// compact=true：账户卡收成「只有头像」（56→36 圆），并往左滑进侧边栏中间，名字/邮箱淡出；
-    /// compact=false：还原完整账户卡。
-    /// 只改 **RenderTransform / 头像尺寸 / 文字透明度**（全部是重绘级属性，不触发重新布局），
-    /// 所以过渡是平滑的、且 hover 蒙版跟着一起移动，不会错位。
-    /// </summary>
-    private void ApplyAccountCompact(bool compact)
-    {
-        if (_accountCompact == compact)
-            return;
-
-        _accountCompact = compact;
-
-        if (compact)
-        {
-            // 侧边栏宽约 48 DIP：把头像从 x=20 挪到居中位置（约 6），所以整体左移 14
-            AccountShift.X = -14;
-            AccountAvatarRing.Width = 36;
-            AccountAvatarRing.Height = 36;
-            AccountAvatarRing.CornerRadius = new CornerRadius(18);
-            AccountAvatarRing.BorderThickness = new Thickness(2);
-            SetAccountTextVisible(false);
-            AccountTextHost.IsHitTestVisible = false;
-        }
-        else
-        {
-            AccountShift.X = 0;
-            AccountAvatarRing.Width = 56;
-            AccountAvatarRing.Height = 56;
-            AccountAvatarRing.CornerRadius = new CornerRadius(28);
-            AccountAvatarRing.BorderThickness = new Thickness(3);
-            SetAccountTextVisible(true);
-            AccountTextHost.IsHitTestVisible = true;
-        }
-    }
-
-    /// <summary>账户卡的位移变换（XAML 里 RenderTransform 里的 TranslateTransform，x:Name 不生成字段，这里取）。</summary>
-    private TranslateTransform AccountShift =>
-        (TranslateTransform)AccountCardHost.RenderTransform!;
 
     /// <summary>
     /// Mica 云母背景 + 沉浸式标题栏（照 CI 的 <c>MyWindow.OnLoaded</c>：
