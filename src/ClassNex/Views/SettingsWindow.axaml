@@ -615,7 +615,7 @@
         <!-- 账户卡（浮在左栏顶部）：放在 NavigationView 之后 = 绘制在其上，
              且**不受 PaneHeader 的内边距与裁剪影响**，所以能把头像左缘与下方导航项对齐。 -->
         <StackPanel Grid.Row="1" Width="266" HorizontalAlignment="Left" VerticalAlignment="Top"
-                    Margin="22,48,0,0" Spacing="8">
+                    Margin="10,48,0,0" Spacing="8">
             <StackPanel.Styles>
                 <Style Selector="Button.AccountCard">
                     <Setter Property="Transitions">
