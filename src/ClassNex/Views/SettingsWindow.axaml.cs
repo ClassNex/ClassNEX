@@ -110,21 +110,27 @@ public partial class SettingsWindow : AppWindow
         NavView.PropertyChanged += (_, e) =>
         {
             if (e.Property.Name == "PaneDisplayMode")
+            {
+                LogPaneState("PaneDisplayMode 变化");
                 ApplyAccountCompact(!string.Equals(NavView.PaneDisplayMode.ToString(), "Left", StringComparison.Ordinal));
+            }
         };
 
         _paneSplitView = NavView.GetVisualDescendants().OfType<SplitView>().FirstOrDefault();
         if (_paneSplitView is null)
             return;
 
-        // NavigationView 内部的 SplitView 初始是关的 —— 设置窗口应该默认展开左栏（CI / Win11 设置都这样）
-        _paneSplitView.IsPaneOpen = true;
-        ApplyAccountCompact(false);
+        // 不要强制 IsPaneOpen —— 之前为了让左栏「默认展开」强制设 true，
+        // 结果和 NavigationView 内部状态打架，☰ 就再也点不开了。这里只按当前状态同步账户卡。
+        ApplyAccountCompact(!_paneSplitView.IsPaneOpen);
 
         _paneSplitView.PropertyChanged += (_, e) =>
         {
             if (e.Property == SplitView.IsPaneOpenProperty)
+            {
+                LogPaneState("IsPaneOpen 变化");
                 ApplyAccountCompact(!_paneSplitView.IsPaneOpen);
+            }
         };
 
 #if DEBUG
@@ -132,6 +138,22 @@ public partial class SettingsWindow : AppWindow
         if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_PANE_COMPACT") == "1")
             _paneSplitView.IsPaneOpen = false;
 #endif
+    }
+
+    /// <summary>DEBUG：把左栏状态写到程序目录 _pane.log，用来确认 ☰ 到底改的是哪个属性。</summary>
+    [Conditional("DEBUG")]
+    private void LogPaneState(string tag)
+    {
+        try
+        {
+            var line = $"[{DateTime.Now:HH:mm:ss.fff}] {tag}: IsPaneOpen={_paneSplitView?.IsPaneOpen} " +
+                       $"DisplayMode={NavView.PaneDisplayMode}\n";
+            File.AppendAllText(Path.Combine(AppContext.BaseDirectory, "_pane.log"), line);
+        }
+        catch
+        {
+            // 忽略
+        }
     }
 
     /// <summary>
