@@ -346,6 +346,15 @@ python _tools\gh_release.py "E:\ClassNex\build\ClassNEX-26w41c-Alpha-win-x64.zip
 ```
 - 发布说明取自 `RELEASE_NOTES.md`
 - ⚠️ **RELEASE_NOTES.md 只写「这一次」的更新**，不要带上一版（用户明确要求）
+- ⚠️ **发布说明开头固定用 caution 警告块**（用户给的模板，2026-10-07 起）：
+  ```markdown
+  > [!caution]
+  > # 警告！请不要使用此版本
+  >
+  > 当前版本为 <版本号> 的早期技术预览版本，仅适用于开发者进行修复和技术性预览，
+  > 不要在生产环境使用此版本。欢迎在 Issue 中汇报您使用时遇到的问题。
+  ```
+  （ClassNEX 是 Windows 桌面应用，去掉原模板里「Android 版本」那句）
 - ⚠️ **不要自己打包上传**，用户说打包才打包（他还没说完就别发）
 - 历史发布 `26w41a/b/c_Alpha` 都保留，别删
 
