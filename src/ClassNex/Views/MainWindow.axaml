@@ -190,6 +190,7 @@
                                          Height="2" MinHeight="2"
                                          MinWidth="0"
                                          Minimum="0" Maximum="100" Value="100"
+                                         FlowDirection="RightToLeft"
                                          VerticalAlignment="Bottom"
                                          HorizontalAlignment="Center"
                                          IsVisible="False"
