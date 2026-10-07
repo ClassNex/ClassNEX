@@ -94,11 +94,14 @@ public sealed class NotificationService
                     var next = AppServices.Time.GetNextCourse(summary.Slots, now.TimeOfDay);
                     if (next is { } nxt)
                     {
+                        var breakStart = TimeSpan.Parse(key["break:".Length..]);
+                        var gap = next.Start - breakStart;
                         var teacher = n.ShowTeacherName && !string.IsNullOrWhiteSpace(nxt.Teacher)
-                            ? $" {nxt.Teacher}"
+                            ? nxt.Teacher!
                             : "";
-                        var overlayText = $"下节课是：{nxt.DisplayName}{teacher} {nxt.TimeRange}";
-                        DispatcherTimer.RunOnce(() => mainWindow.ShowNotificationOverlay(overlayText),
+                        var left = $"本节{n.ClassOffMaskText}长 {FormatDuration(gap)}";
+                        DispatcherTimer.RunOnce(() => mainWindow.ShowNotificationOverlay(
+                                left, nxt.DisplayName, teacher, nxt.TimeRange),
                             TimeSpan.FromMilliseconds(1500));
                         DispatcherTimer.RunOnce(mainWindow.HideNotificationMask, TimeSpan.FromMilliseconds(3500));
                         return;
@@ -124,6 +127,23 @@ public sealed class NotificationService
             return "finished";
 
         return summary.Slots.Count == 0 ? "empty" : "before";
+    }
+
+    /// <summary>时长人性化（1:1 对照 CI ClassNotificationProviderControl.FormatTimeSpan）。</summary>
+    private static string FormatDuration(TimeSpan span)
+    {
+        if (span.TotalSeconds <= 0)
+            return "0 分钟";
+
+        var parts = new List<string>(3);
+        if (span.Hours > 0)
+            parts.Add($"{span.Hours} 小时");
+        if (span.Minutes > 0)
+            parts.Add(span.Seconds > 0 ? $"{span.Minutes} 分" : $"{span.Minutes} 分钟");
+        if (span.Seconds > 0)
+            parts.Add($"{span.Seconds} 秒");
+
+        return string.Join(" ", parts);
     }
 
     /// <summary>与 ScheduleWidget.FindCurrent 完全相同的定位逻辑（当前课 / 课间空档）。</summary>

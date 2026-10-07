@@ -80,11 +80,15 @@ public partial class App : Application
                         var summary = Services.AppServices.Time.GetTodaySummary(
                             Services.AppServices.Schedule.Profile, DateTime.Now);
                         var next = Services.AppServices.Time.GetNextCourse(summary.Slots, DateTime.Now.TimeOfDay);
-                        var overlay = next is { } nxt
-                            ? $"下节课是：{nxt.DisplayName} {nxt.TimeRange}"
-                            : "今日课程已结束。";
-                        DispatcherTimer.RunOnce(() => _mainWindow?.ShowNotificationOverlay(overlay),
-                            TimeSpan.FromMilliseconds(1500));
+                        DispatcherTimer.RunOnce(() =>
+                        {
+                            if (next is { } nxt)
+                                _mainWindow?.ShowNotificationOverlay(
+                                    "本节课间休息长 20 分钟", nxt.DisplayName, "", nxt.TimeRange);
+                            else
+                                _mainWindow?.ShowNotificationOverlay(
+                                    "本节课间休息", "今日课程已结束。", "", "");
+                        }, TimeSpan.FromMilliseconds(1500));
                         DispatcherTimer.RunOnce(() => _mainWindow?.HideNotificationMask(),
                             TimeSpan.FromMilliseconds(3500));
                     }, TimeSpan.FromSeconds(delay));

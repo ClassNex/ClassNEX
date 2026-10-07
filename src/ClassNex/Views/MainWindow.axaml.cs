@@ -578,7 +578,7 @@ public partial class MainWindow : Window
     /// 面具之后的 Overlay 阶段（对照 CI 的 ClassOffOverlay）：**面具收起后**，
     /// 「下节课是…」显示在**岛的正常区域**（主题文字色，不盖遮罩）—— 与 CI 一致。
     /// </summary>
-    public void ShowNotificationOverlay(string text)
+    public void ShowNotificationOverlay(string left, string subject, string teacher, string time)
     {
         // CI：mask-out（条纹中间→两边收起），遮罩消失，岛恢复原样
         NotificationMaskBg.IsOpened = false;
@@ -586,15 +586,19 @@ public partial class MainWindow : Window
 
         // 岛的正常区域显示 Overlay 文字并淡入。
         // CI 顺序：先 mask-out（条纹中间→两边收完约 480ms），**之后**才 overlay-in ——
-        // 所以文字先保持透明，淡入延迟 450ms（等条纹收完），轨道同样延迟启动。
-        NotificationOverlayText.Text = text;
+        // 所以文字先保持透明，淡入延迟 500ms（等条纹完全收完），轨道同样延迟启动。
+        NotificationOverlayLeft.Text = left;
+        NotificationOverlaySubject.Text = subject;
+        NotificationOverlayTeacher.Text = teacher;
+        NotificationOverlayTeacher.IsVisible = teacher.Length > 0;
+        NotificationOverlayTime.Text = time;
         NotificationOverlay.IsVisible = true;
         NotificationOverlay.Opacity = 0;
-        DispatcherTimer.RunOnce(StartNotificationTrack, TimeSpan.FromMilliseconds(450));
+        DispatcherTimer.RunOnce(StartNotificationTrack, TimeSpan.FromMilliseconds(500));
 
         var fade = new Animation
         {
-            Delay = TimeSpan.FromMilliseconds(450),
+            Delay = TimeSpan.FromMilliseconds(500),
             Duration = TimeSpan.FromMilliseconds(250),
             FillMode = FillMode.Forward,
             Easing = Easing.Parse("0.25, 1, 0.5, 1"),
