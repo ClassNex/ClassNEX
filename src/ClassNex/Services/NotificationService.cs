@@ -60,16 +60,27 @@ public sealed class NotificationService
         // 重要通知：上课开始 / 课间休息开始（CI：MainWindowLine 在通知的 Mask 播放时放 RippleEffect）
         if (key.StartsWith("course:") || key.StartsWith("break:"))
         {
+            // 提醒设置（1:1 对照 CI ClassNotificationSettings）：
+            // 上课提醒 / 下课提醒各自开关；遮罩文字取设置值（默认：上课 / 课间休息）
+            var n = AppServices.Settings.Notification;
+            if (key.StartsWith("course:"))
+            {
+                if (!n.IsClassOnNotificationEnabled)
+                    return;
+            }
+            else
+            {
+                if (!n.IsClassOffNotificationEnabled)
+                    return;
+            }
+
             // CI：settings.IsNotificationEffectEnabled && Settings.AllowNotificationEffect &&
             //     !IsAllComponentsHid && Settings.IsMainWindowVisible && !HasSoundsPlayed
             if (AppServices.Settings.AllowNotificationEffect
                 && AppServices.Settings.IsMainWindowVisible
                 && AppServices.MainWindow is { IsEditMode: false } mainWindow)
             {
-                // CI 的 Mask 文字（遮罩）：课间 = 课间名，上课 = 科目名（ClassNotificationProvider 的 BreakNameText）
-                var maskText = key.StartsWith("break:")
-                    ? "课间休息"
-                    : key.Split(':', 3)[2];
+                var maskText = key.StartsWith("break:") ? n.ClassOffMaskText : n.ClassOnMaskText;
 
                 var center = mainWindow.GetIslandCenterOnScreen() ?? new PixelPoint(0, 0);
                 _effectWindow.PlayEffect(new RippleEffect(center));

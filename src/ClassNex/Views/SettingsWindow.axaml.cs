@@ -47,7 +47,7 @@ public partial class SettingsWindow : AppWindow
     }
 
     /// <summary>页面名（顺序与 NavView.MenuItems 一致，对照 CI 的 SettingsPageInfo.Name）。</summary>
-    private static readonly string[] PageNames = { "基本", "外观", "窗口", "组件", "关于 ClassNEX", "账户" };
+    private static readonly string[] PageNames = { "基本", "外观", "窗口", "组件", "提醒", "关于 ClassNEX", "账户" };
 
     /// <summary>设置项索引（供顶栏「查找设置」搜索；Title = 设置项，PageIndex = 所属页面）。</summary>
     private static readonly (string Title, int PageIndex)[] SearchIndex =
@@ -535,6 +535,9 @@ public partial class SettingsWindow : AppWindow
         OrientationCombo.SelectedIndex = s.Orientation == LayoutOrientation.Vertical ? 1 : 0;
         ClickThroughSwitch.IsChecked = s.IsClickThrough;
 
+        // 提醒设置（1:1 照 CI ClassNotificationSettings）
+        LoadNotificationSettings();
+
         RefreshWidgetLibrary();
         RefreshWidgetList();
 
@@ -567,7 +570,8 @@ public partial class SettingsWindow : AppWindow
         PageInterface.IsVisible = index == 1;
         PageWindow.IsVisible = index == 2;
         PageWidgets.IsVisible = index == 3;
-        PageAbout.IsVisible = index == 4;
+        PageNotification.IsVisible = index == 4;
+        PageAbout.IsVisible = index == 5;
         PageAccount.IsVisible = false;   // 账户页只从账户卡进入
 
         // 页面标题行（对照 CI 的 TitleContainer：页面名由外壳统一显示）
@@ -888,6 +892,69 @@ public partial class SettingsWindow : AppWindow
         }
 
         _loading = false;
+    }
+
+    /// <summary>把设置里的提醒配置载入控件并挂事件（对照 CI ClassNotificationSettings 的字段与默认值）。</summary>
+    private void LoadNotificationSettings()
+    {
+        var n = AppServices.Settings.Notification;
+        PreparingEnabledCheck.IsChecked = n.IsClassOnPreparingNotificationEnabled;
+        PreparingSpeechCheck.IsChecked = n.IsSpeechEnabledOnClassPreparing;
+        ClassOnEnabledCheck.IsChecked = n.IsClassOnNotificationEnabled;
+        ClassOnSpeechCheck.IsChecked = n.IsSpeechEnabledOnClassOn;
+        ClassOffEnabledCheck.IsChecked = n.IsClassOffNotificationEnabled;
+        ClassOffSpeechCheck.IsChecked = n.IsSpeechEnabledOnClassOff;
+        ShowTeacherCheck.IsChecked = n.ShowTeacherName;
+        IndoorPreparingBox.Value = Math.Clamp(n.InDoorClassPreparingDeltaTime, 0, 3600);
+        OutdoorPreparingBox.Value = Math.Clamp(n.OutDoorClassPreparingDeltaTime, 0, 3600);
+        PreparingText.Text = n.ClassOnPreparingText;
+        PreparingMaskText.Text = n.ClassOnPreparingMaskText;
+        OutdoorPreparingText.Text = n.OutdoorClassOnPreparingText;
+        OutdoorPreparingMaskText.Text = n.OutdoorClassOnPreparingMaskText;
+        ClassOnMaskBox.Text = n.ClassOnMaskText;
+        ClassOffOverlayBox.Text = n.ClassOffOverlayText;
+
+        PreparingEnabledCheck.IsCheckedChanged += (_, _) => SaveNotificationSettings();
+        PreparingSpeechCheck.IsCheckedChanged += (_, _) => SaveNotificationSettings();
+        ClassOnEnabledCheck.IsCheckedChanged += (_, _) => SaveNotificationSettings();
+        ClassOnSpeechCheck.IsCheckedChanged += (_, _) => SaveNotificationSettings();
+        ClassOffEnabledCheck.IsCheckedChanged += (_, _) => SaveNotificationSettings();
+        ClassOffSpeechCheck.IsCheckedChanged += (_, _) => SaveNotificationSettings();
+        ShowTeacherCheck.IsCheckedChanged += (_, _) => SaveNotificationSettings();
+        IndoorPreparingBox.ValueChanged += (_, _) => SaveNotificationSettings();
+        OutdoorPreparingBox.ValueChanged += (_, _) => SaveNotificationSettings();
+        PreparingText.TextChanged += (_, _) => SaveNotificationSettings();
+        PreparingMaskText.TextChanged += (_, _) => SaveNotificationSettings();
+        OutdoorPreparingText.TextChanged += (_, _) => SaveNotificationSettings();
+        OutdoorPreparingMaskText.TextChanged += (_, _) => SaveNotificationSettings();
+        ClassOnMaskBox.TextChanged += (_, _) => SaveNotificationSettings();
+        ClassOffOverlayBox.TextChanged += (_, _) => SaveNotificationSettings();
+    }
+
+    /// <summary>把提醒设置控件写回设置并保存（值变化时调用）。</summary>
+    private void SaveNotificationSettings()
+    {
+        if (_loading)
+            return;
+
+        var n = AppServices.Settings.Notification;
+        n.IsClassOnPreparingNotificationEnabled = PreparingEnabledCheck.IsChecked == true;
+        n.IsSpeechEnabledOnClassPreparing = PreparingSpeechCheck.IsChecked == true;
+        n.IsClassOnNotificationEnabled = ClassOnEnabledCheck.IsChecked == true;
+        n.IsSpeechEnabledOnClassOn = ClassOnSpeechCheck.IsChecked == true;
+        n.IsClassOffNotificationEnabled = ClassOffEnabledCheck.IsChecked == true;
+        n.IsSpeechEnabledOnClassOff = ClassOffSpeechCheck.IsChecked == true;
+        n.ShowTeacherName = ShowTeacherCheck.IsChecked == true;
+        n.InDoorClassPreparingDeltaTime = (int)Math.Clamp(IndoorPreparingBox.Value, 0, 3600);
+        n.OutDoorClassPreparingDeltaTime = (int)Math.Clamp(OutdoorPreparingBox.Value, 0, 3600);
+        n.ClassOnPreparingText = PreparingText.Text ?? "";
+        n.ClassOnPreparingMaskText = PreparingMaskText.Text ?? "";
+        n.OutdoorClassOnPreparingText = OutdoorPreparingText.Text ?? "";
+        n.OutdoorClassOnPreparingMaskText = OutdoorPreparingMaskText.Text ?? "";
+        n.ClassOnMaskText = ClassOnMaskBox.Text ?? "";
+        n.ClassOffOverlayText = ClassOffOverlayBox.Text ?? "";
+
+        AppServices.SaveSettings();
     }
 
     private void ApplyWidgetEdit()

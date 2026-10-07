@@ -87,6 +87,9 @@ public sealed class AppSettings
     /// <summary>允许次要通知（灵动通知胶囊，对照 ClassWidgets 的 tip_toast）。</summary>
     public bool AllowMinorNotification { get; set; } = true;
 
+    /// <summary>上课/下课/课前准备提醒设置（1:1 对照 CI 的 ClassNotificationSettings）。</summary>
+    public NotificationSettings Notification { get; set; } = new();
+
     /// <summary>已播种的内置示例课表版本。低于当前版本时会重新播种 data/timetable.yaml。</summary>
     public int SampleSeedVersion { get; set; }
 
@@ -96,4 +99,43 @@ public sealed class AppSettings
         new WidgetConfig { Type = "date", IsEnabled = true, Order = 0 },
         new WidgetConfig { Type = "schedule", IsEnabled = true, Order = 1 },
     };
+}
+
+/// <summary>
+/// 上课/下课/课前准备提醒设置 —— 1:1 对照 CI 的
+/// <c>ClassIsland/Models/NotificationProviderSettings/ClassNotificationSettings.cs</c>（字段与默认值一致）。
+/// </summary>
+public sealed class NotificationSettings
+{
+    public bool IsClassOnNotificationEnabled { get; set; } = true;
+
+    public bool IsClassOnPreparingNotificationEnabled { get; set; } = true;
+
+    public bool IsClassOffNotificationEnabled { get; set; } = true;
+
+    public int InDoorClassPreparingDeltaTime { get; set; } = 60;
+
+    public int OutDoorClassPreparingDeltaTime { get; set; } = 600;
+
+    public string ClassOnPreparingText { get; set; } = "准备上课，请回到座位并保持安静，做好上课准备。";
+
+    public string ClassOnPreparingMaskText { get; set; } = "即将上课";
+
+    public string OutdoorClassOnPreparingMaskText { get; set; } = "即将上课";
+
+    public string OutdoorClassOnPreparingText { get; set; } = "下节课程为户外课程，请合理规划时间，做好上课准备。";
+
+    public string ClassOnMaskText { get; set; } = "上课";
+
+    public string ClassOffMaskText { get; set; } = "课间休息";
+
+    public string ClassOffOverlayText { get; set; } = "";
+
+    public bool IsSpeechEnabledOnClassPreparing { get; set; } = true;
+
+    public bool IsSpeechEnabledOnClassOn { get; set; } = true;
+
+    public bool IsSpeechEnabledOnClassOff { get; set; } = true;
+
+    public bool ShowTeacherName { get; set; }
 }

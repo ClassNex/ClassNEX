@@ -171,6 +171,11 @@
                         <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE71D;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
+                <ui:NavigationViewItem Content="提醒">
+                    <ui:NavigationViewItem.IconSource>
+                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE838;" FontSize="16"/>
+                    </ui:NavigationViewItem.IconSource>
+                </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="关于 ClassNEX">
                     <ui:NavigationViewItem.IconSource>
                         <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE946;" FontSize="16"/>
@@ -183,6 +188,111 @@
                            Margin="32,24,32,0" HorizontalAlignment="Left"/>
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="32,12,32,24" Spacing="12" MaxWidth="880" HorizontalAlignment="Left">
+
+                        <!-- ==================== 提醒（1:1 照 CI ClassNotificationProviderSettingsControl.axaml） ==================== -->
+                        <StackPanel x:Name="PageNotification" Spacing="12" IsVisible="False">
+                            <ui:InfoBar Message="此处的设置可以在档案设置中被附加设置覆盖。"
+                                        IsOpen="True" IsClosable="False"/>
+
+                            <ui:SettingsExpander Header="在课前准备时发出提醒"
+                                                 Description="在上课前一段时间发出醒目提醒，提示做好上课准备。">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE916;"/>
+                                </ui:SettingsExpander.IconSource>
+                                <ui:SettingsExpander.Footer>
+                                    <CheckBox x:Name="PreparingEnabledCheck"/>
+                                </ui:SettingsExpander.Footer>
+                                <ui:SettingsExpanderItem>
+                                    <CheckBox Content="启用语音" x:Name="PreparingSpeechCheck"/>
+                                </ui:SettingsExpanderItem>
+                                <ui:SettingsExpanderItem Content="室内课程课前提醒时间"
+                                                         Description="在室内课程的上课前指定时间进行上课提醒。">
+                                    <ui:SettingsExpanderItem.Footer>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <ui:NumberBox x:Name="IndoorPreparingBox" Maximum="3600" Minimum="0"
+                                                          Width="150" SpinButtonPlacementMode="Inline"/>
+                                            <TextBlock Text="秒" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </ui:SettingsExpanderItem.Footer>
+                                </ui:SettingsExpanderItem>
+                                <ui:SettingsExpanderItem Content="室外课程课前提醒时间"
+                                                         Description="在室外课程的上课前指定时间进行上课提醒。">
+                                    <ui:SettingsExpanderItem.Footer>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <ui:NumberBox x:Name="OutdoorPreparingBox" Maximum="3600" Minimum="0"
+                                                          Width="150" SpinButtonPlacementMode="Inline"/>
+                                            <TextBlock Text="秒" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </ui:SettingsExpanderItem.Footer>
+                                </ui:SettingsExpanderItem>
+                                <ui:SettingsExpanderItem Content="室内课程准备上课提醒文字">
+                                    <ui:SettingsExpanderItem.Footer>
+                                        <TextBox x:Name="PreparingText" MinWidth="150"/>
+                                    </ui:SettingsExpanderItem.Footer>
+                                </ui:SettingsExpanderItem>
+                                <ui:SettingsExpanderItem Content="室内课程准备上课遮罩文字">
+                                    <ui:SettingsExpanderItem.Footer>
+                                        <TextBox x:Name="PreparingMaskText" MinWidth="150"/>
+                                    </ui:SettingsExpanderItem.Footer>
+                                </ui:SettingsExpanderItem>
+                                <ui:SettingsExpanderItem Content="户外课程准备上课提醒文字">
+                                    <ui:SettingsExpanderItem.Footer>
+                                        <TextBox x:Name="OutdoorPreparingText" MinWidth="150"/>
+                                    </ui:SettingsExpanderItem.Footer>
+                                </ui:SettingsExpanderItem>
+                                <ui:SettingsExpanderItem Content="户外课程准备上课遮罩文字">
+                                    <ui:SettingsExpanderItem.Footer>
+                                        <TextBox x:Name="OutdoorPreparingMaskText"/>
+                                    </ui:SettingsExpanderItem.Footer>
+                                </ui:SettingsExpanderItem>
+                            </ui:SettingsExpander>
+
+                            <ui:SettingsExpander Header="在上课时发出提醒"
+                                                 Description="在上课时发出醒目提醒，提示已经上课。">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE8AB;"/>
+                                </ui:SettingsExpander.IconSource>
+                                <ui:SettingsExpander.Footer>
+                                    <CheckBox x:Name="ClassOnEnabledCheck"/>
+                                </ui:SettingsExpander.Footer>
+                                <ui:SettingsExpanderItem>
+                                    <CheckBox Content="启用语音" x:Name="ClassOnSpeechCheck"/>
+                                </ui:SettingsExpanderItem>
+                                <ui:SettingsExpanderItem Content="上课遮罩文字">
+                                    <ui:SettingsExpanderItem.Footer>
+                                        <TextBox x:Name="ClassOnMaskBox" MinWidth="150"/>
+                                    </ui:SettingsExpanderItem.Footer>
+                                </ui:SettingsExpanderItem>
+                            </ui:SettingsExpander>
+
+                            <ui:SettingsExpander Header="在下课时发出提醒"
+                                                 Description="在下课时发出醒目提醒，提示已经下课。">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE7C4;"/>
+                                </ui:SettingsExpander.IconSource>
+                                <ui:SettingsExpander.Footer>
+                                    <CheckBox x:Name="ClassOffEnabledCheck"/>
+                                </ui:SettingsExpander.Footer>
+                                <ui:SettingsExpanderItem>
+                                    <CheckBox Content="启用语音" x:Name="ClassOffSpeechCheck"/>
+                                </ui:SettingsExpanderItem>
+                                <ui:SettingsExpanderItem Content="下课提醒文字">
+                                    <ui:SettingsExpanderItem.Footer>
+                                        <TextBox x:Name="ClassOffOverlayBox" MinWidth="150" Watermark="（禁用）"/>
+                                    </ui:SettingsExpanderItem.Footer>
+                                </ui:SettingsExpanderItem>
+                            </ui:SettingsExpander>
+
+                            <ui:SettingsExpander Header="显示科任老师名字"
+                                                 Description="在显示课程相关的提醒时同时展示并播报对应科任老师的名字">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE77B;"/>
+                                </ui:SettingsExpander.IconSource>
+                                <ui:SettingsExpander.Footer>
+                                    <CheckBox x:Name="ShowTeacherCheck"/>
+                                </ui:SettingsExpander.Footer>
+                            </ui:SettingsExpander>
+                        </StackPanel>
 
                         <!-- ==================== 通用 ==================== -->
                         <StackPanel x:Name="PageGeneral" Spacing="10">
