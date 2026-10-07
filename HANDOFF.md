@@ -355,6 +355,7 @@ python _tools\gh_release.py "E:\ClassNex\build\ClassNEX-26w41c-Alpha-win-x64.zip
   > 本版本的 Android 版本仍有大量功能未适配，仅作跨平台可行性验证，欢迎在 Issue 中汇报您使用时遇到的问题。
   ```
   **警告块之后直接写「## 更新内容」**，中间不要再加 NOTE 版本头；**也不要写「打包信息」段**（用户要求：说明文档 = 警告块 + 更新内容，仅此）
+  **发布说明里不要提到 CI / ClassIsland**，也不要用内部控件类名（RippleEffect 等），用功能语言描述
 - ⚠️ **不要自己打包上传**，用户说打包才打包（他还没说完就别发）
 - 历史发布 `26w41a/b/c_Alpha` 都保留，别删
 
