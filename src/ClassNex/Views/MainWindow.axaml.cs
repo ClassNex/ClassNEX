@@ -400,8 +400,21 @@ public partial class MainWindow : Window
         NotificationTrack.Value = 100;
         NotificationTrack.IsVisible = true;
 
-        _trackStopwatch ??= new System.Diagnostics.Stopwatch();
-        _trackStopwatch.Restart();
+        // 淡入（200ms），不再瞬间满格弹出
+        NotificationTrack.Opacity = 0;
+        var fade = new Animation
+        {
+            Duration = TimeSpan.FromMilliseconds(200),
+            FillMode = FillMode.Forward,
+            Children =
+            {
+                new KeyFrame { Cue = new Cue(0), Setters = { new Setter(OpacityProperty, 0.0) } },
+                new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, 1.0) } },
+            },
+        };
+        _ = fade.RunAsync(NotificationTrack);
+
+        // 时钟已从通知开始（ShowNotificationMask）起走，这里不再重启
         _trackTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
         _trackTimer.Tick -= OnTrackTick;
         _trackTimer.Tick += OnTrackTick;
@@ -412,8 +425,8 @@ public partial class MainWindow : Window
 
     private System.Diagnostics.Stopwatch? _trackStopwatch;
 
-    /// <summary>Overlay 阶段时长（轨道在这段时间内从满格走到 0）。</summary>
-    private const double NotificationTrackDurationMs = 2000;
+    /// <summary>整段通知时长（面具 1.5s + Overlay 2s）；轨道按此倒扣剩余时间。</summary>
+    private const double NotificationTrackDurationMs = 3500;
 
     private void OnTrackTick(object? sender, EventArgs e)
     {
@@ -479,6 +492,11 @@ public partial class MainWindow : Window
 
         // CI 提醒态（视频实测）：岛扩展到**整屏宽**、文字居中、底下一条整宽轨道随提醒时长推进
         ExpandIslandForNotification();
+
+        // 轨道时钟从**通知一开始**就走（整段 3.5s），Overlay 阶段轨道出现时已是真实剩余百分比，
+        // 不会从 100% 满格突然弹出来。
+        _trackStopwatch ??= new System.Diagnostics.Stopwatch();
+        _trackStopwatch.Restart();
 
         // CI :mask-in —— 岛的正常内容透明度置 0（GridContentRoot），否则课表会和面具/Overlay 叠字
         CardContent.Opacity = 0;
