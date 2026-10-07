@@ -33,6 +33,23 @@
                     <TextBlock Text="应用设置" FontSize="12" VerticalAlignment="Center" IsHitTestVisible="False"/>
                 </StackPanel>
 
+                <!-- Win11 设置同款：搜索框在顶栏居中（用户要求：搬到顶栏） -->
+                <Border Grid.Column="1" Width="420" Height="32" CornerRadius="8" BorderThickness="1"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                        Background="{DynamicResource ControlFillColorDefaultBrush}">
+                    <TextBox x:Name="SearchBox"
+                             BorderThickness="0" Background="Transparent"
+                             Watermark="查找设置"
+                             VerticalAlignment="Center" VerticalContentAlignment="Center"
+                             Margin="2,0,2,0">
+                        <TextBox.InnerLeftContent>
+                            <ui:FontIcon Glyph="&#xE721;" FontSize="12" Margin="8,0,6,0"
+                                         VerticalAlignment="Center" Opacity="0.7"/>
+                        </TextBox.InnerLeftContent>
+                    </TextBox>
+                </Border>
+
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <TextBlock x:Name="VersionText" FontSize="12" VerticalAlignment="Center"
                                ToolTip.Tip="应用版本"
@@ -96,22 +113,6 @@
                         </Style>
                     </StackPanel.Styles>
 
-                    <!-- 搜索框放最顶上（用户要求：改回最顶上；圆角 8 更圆） -->
-                    <Border Height="34" CornerRadius="8" BorderThickness="1"
-                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                            Background="{DynamicResource ControlFillColorDefaultBrush}">
-                        <TextBox x:Name="SearchBox"
-                                 BorderThickness="0" Background="Transparent"
-                                 Watermark="查找设置"
-                                 VerticalAlignment="Center" VerticalContentAlignment="Center"
-                                 Margin="2,0,2,0">
-                            <TextBox.InnerLeftContent>
-                                <ui:FontIcon Glyph="&#xE721;" FontSize="12" Margin="8,0,6,0"
-                                             VerticalAlignment="Center" Opacity="0.7"/>
-                            </TextBox.InnerLeftContent>
-                        </TextBox>
-                    </Border>
-
                     <!-- 账户区（照 Gallery）：**默认无底色**，鼠标移入才出现高亮蒙版 -->
                     <Button x:Name="AccountButton" Classes="AccountCard"
                             Padding="8" CornerRadius="8"
@@ -130,23 +131,6 @@
                             </StackPanel>
                         </StackPanel>
                     </Button>
-
-                    <!-- 搜索结果：就地在账户区下方展开（不再做成顶层浮层） -->
-                    <Border x:Name="SearchResultsPanel" IsVisible="False" MaxHeight="300"
-                            CornerRadius="4" BorderThickness="1"
-                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                            Background="{DynamicResource SolidBackgroundFillColorBaseBrush}">
-                        <ListBox x:Name="SearchResults" BorderThickness="0" Background="Transparent">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <StackPanel Spacing="1">
-                                        <TextBlock Text="{Binding Title}" FontSize="13"/>
-                                        <TextBlock Text="{Binding PageName}" FontSize="11" Opacity="0.6"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
-                    </Border>
                 </StackPanel>
             </ui:NavigationView.PaneHeader>
 
@@ -662,5 +646,24 @@
                 </ScrollViewer>
             </Grid>
         </ui:NavigationView>
+
+        <!-- 搜索结果：挂在顶栏搜索框正下方（Win11 设置同款下拉；放在导航之后 = 绘制在最上层） -->
+        <Border x:Name="SearchResultsPanel" Grid.Row="1" IsVisible="False" MaxHeight="300"
+                Width="420" HorizontalAlignment="Center" VerticalAlignment="Top"
+                Margin="0,4,0,0"
+                CornerRadius="8" BorderThickness="1"
+                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                Background="{DynamicResource SolidBackgroundFillColorBaseBrush}">
+            <ListBox x:Name="SearchResults" BorderThickness="0" Background="Transparent">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Spacing="1">
+                            <TextBlock Text="{Binding Title}" FontSize="13"/>
+                            <TextBlock Text="{Binding PageName}" FontSize="11" Opacity="0.6"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
     </Grid>
 </wd:AppWindow>
