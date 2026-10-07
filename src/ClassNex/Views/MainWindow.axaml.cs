@@ -481,20 +481,29 @@ public partial class MainWindow : Window
         _ = fade.RunAsync(NotificationMaskContent);
 
         // 等条纹收完（480ms）再隐藏整个遮罩 —— 之前 220ms 就藏了，结束动画「闪一下就没了」
-        DispatcherTimer.RunOnce(() => NotificationMask.IsVisible = false, TimeSpan.FromMilliseconds(500));
+        DispatcherTimer.RunOnce(() =>
+        {
+            NotificationMask.IsVisible = false;
+            NotificationOverlay.IsVisible = false;
+        }, TimeSpan.FromMilliseconds(500));
     }
 
     /// <summary>
-    /// 面具之后的 Overlay 阶段（对照 CI 的 ClassOffOverlay：下节课是…）：
-    /// 文字换成下节课信息并淡入（条纹保持展开，保证黑字可读；CI 是收起条纹+白字，本项目按用户要求黑字）。
+    /// 面具之后的 Overlay 阶段（对照 CI 的 ClassOffOverlay）：**面具收起后**，
+    /// 「下节课是…」显示在**岛的正常区域**（主题文字色，不盖遮罩）—— 与 CI 一致。
     /// </summary>
     public void ShowNotificationOverlay(string text)
     {
-        NotificationMaskText.Text = text;
+        // CI：mask-out（条纹中间→两边收起），遮罩消失，岛恢复原样
+        NotificationMaskBg.IsOpened = false;
+        DispatcherTimer.RunOnce(() => NotificationMask.IsVisible = false, TimeSpan.FromMilliseconds(500));
+
+        // 岛的正常区域显示 Overlay 文字并淡入
+        NotificationOverlayText.Text = text;
+        NotificationOverlay.IsVisible = true;
 
         var fade = new Animation
         {
-            Delay = TimeSpan.FromMilliseconds(200),
             Duration = TimeSpan.FromMilliseconds(250),
             FillMode = FillMode.Forward,
             Easing = Easing.Parse("0.25, 1, 0.5, 1"),
@@ -504,7 +513,7 @@ public partial class MainWindow : Window
                 new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, 1.0) } },
             },
         };
-        _ = fade.RunAsync(NotificationMaskContent);
+        _ = fade.RunAsync(NotificationOverlay);
     }
 
     /// <summary>

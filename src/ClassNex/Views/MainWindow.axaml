@@ -145,6 +145,22 @@
                                 </Panel>
                             </Border>
 
+                            <!-- CI OverlayContent：面具收起后显示的「下节课是…」——**不盖遮罩**，
+                                 直接显示在岛的正常区域，用主题文字色（CI 的 OverlayContent 在岛内容层）。 -->
+                            <Border x:Name="NotificationOverlay"
+                                    Height="40"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    IsVisible="False"
+                                    IsHitTestVisible="False"
+                                    Width="{Binding #IslandBackground.Width}">
+                                <TextBlock x:Name="NotificationOverlayText"
+                                           FontSize="18"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           RenderTransformOrigin="50%,50%"/>
+                            </Border>
+
                         </Panel>
 
                         <!-- 编辑模式底部工具条（CI「编辑主界面」的底部栏：添加组件 / 组件设置 / 完成） -->
