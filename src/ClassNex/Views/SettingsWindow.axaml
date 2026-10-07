@@ -33,9 +33,10 @@
                     <TextBlock Text="应用设置" FontSize="12" VerticalAlignment="Center" IsHitTestVisible="False"/>
                 </StackPanel>
 
-                <!-- Win11 设置同款：搜索框在顶栏居中（用户要求：搬到顶栏） -->
+                <!-- Win11 设置同款：搜索框在顶栏居中偏右（用户要求再往右一点） -->
                 <Border Grid.Column="1" Width="420" Height="32" CornerRadius="8" BorderThickness="1"
                         HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Margin="150,0,0,0"
                         BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
                         Background="{DynamicResource ControlFillColorDefaultBrush}">
                     <TextBox x:Name="SearchBox"
@@ -94,7 +95,7 @@
             <!-- 账户区 + 搜索：模板取自 FluentUI-Gallery 的账户页
                  （Win11 默认头像 + 强调色圆环 + 名称 + 邮箱，搜索框在账户区下方） -->
             <ui:NavigationView.PaneHeader>
-                <StackPanel Spacing="8" Margin="6,10,6,4">
+                <StackPanel Spacing="8" Margin="6,26,6,4">
                     <!-- 账户卡：照 FluentUI Gallery 的账户卡（IzumiPL/Avalonia-Fluent-UI samples/Gallery）
                          圆角卡片 + 带描环的 50 圆头像 + 名字 15 SemiBold + 邮箱 12.5/65% -->
                     <StackPanel.Styles>
