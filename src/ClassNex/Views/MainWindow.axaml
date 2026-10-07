@@ -184,18 +184,20 @@
                                 </Grid>
                             </Border>
 
-                            <!-- CI 提醒轨道：Overlay 阶段显示，横跨岛底的细进度条；
-                                 显示提醒**剩余时间**——满格起从右向左倒扣变淡 -->
-                            <ProgressBar x:Name="NotificationTrack"
-                                         Height="2" MinHeight="2"
-                                         MinWidth="0"
-                                         Minimum="0" Maximum="100" Value="100"
-                                         VerticalAlignment="Bottom"
-                                         HorizontalAlignment="Center"
-                                         IsVisible="False"
-                                         Background="#4D808080"
-                                         Foreground="{DynamicResource AccentFillColorDefaultBrush}"
-                                         Width="{Binding #IslandBackground.Width}"/>
+                            <!-- CI 提醒轨道：Overlay 阶段显示。**自绘**（灰底 + 强调色填充条），
+                                 代码直接设置填充宽度 —— 规避 ProgressBar 主题自带的 Value 过渡动画
+                                 （那会把它变成 0→100 的「充能」，用户不要；要求出现即满格）。 -->
+                            <Panel x:Name="NotificationTrack"
+                                   Height="2" MinHeight="2"
+                                   VerticalAlignment="Bottom"
+                                   HorizontalAlignment="Center"
+                                   IsVisible="False"
+                                   Width="{Binding #IslandBackground.Width}">
+                                <Border Background="#4D808080"/>
+                                <Border x:Name="NotificationTrackFill"
+                                        Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                        HorizontalAlignment="Left"/>
+                            </Panel>
 
                         </Panel>
 

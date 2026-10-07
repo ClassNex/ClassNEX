@@ -394,14 +394,11 @@ public partial class MainWindow : Window
     /// </summary>
     private void StartNotificationTrack()
     {
-        NotificationTrack.Background = CiPalette.ProgressTrackBrush();
-        NotificationTrack.Foreground = CiPalette.AccentBrush();
-        NotificationTrack.Width = Math.Max(1, IslandBackground.Width - 24); // 与 GridContentRoot 两侧 12 内边距对齐
-
-        // 关键：禁掉主题可能加在 ProgressBar 上的 Value 过渡 ——
-        // 否则把 Value 设成 100 会被动画成 0→100 的「充能」效果（用户不要）。
-        NotificationTrack.Transitions = null;
-        NotificationTrack.Value = 100;
+        // 自绘轨道：灰底在 XAML，填充条宽度直接按剩余比例设置。
+        // 出现的第一帧填充就是满格（直接设宽度，没有任何动画/过渡）。
+        _trackFullWidth = Math.Max(1, IslandBackground.Width - 24); // 与 GridContentRoot 两侧 12 内边距对齐
+        NotificationTrack.Width = _trackFullWidth;
+        NotificationTrackFill.Width = _trackFullWidth;
         NotificationTrack.IsVisible = true;
 
         // Overlay 开始时轨道 = 满格，先停顿再倒扣
@@ -418,6 +415,8 @@ public partial class MainWindow : Window
 
     private System.Diagnostics.Stopwatch? _trackStopwatch;
 
+    private double _trackFullWidth;
+
     /// <summary>Overlay 阶段时长：先停顿 500ms（满格），再在 1500ms 内倒扣到 0。</summary>
     private const double TrackHoldMs = 500;
 
@@ -433,16 +432,15 @@ public partial class MainWindow : Window
 
         var t = _trackStopwatch.Elapsed.TotalMilliseconds;
 
-        // 前 500ms 停顿：保持满格，给眼睛一个「满的」停留，然后才开始变少
+        // 前 500ms 停顿：保持满格，然后才开始变少（左缘锚定、右端往左退）
         if (t < TrackHoldMs)
         {
-            NotificationTrack.Value = 100;
+            NotificationTrackFill.Width = _trackFullWidth;
             return;
         }
 
-        // 剩余时间：progress 0→1 时 Value 从 100 → 0（左缘锚定、右端向左收缩）
         var progress = Math.Clamp((t - TrackHoldMs) / NotificationTrackDurationMs, 0, 1);
-        NotificationTrack.Value = (1 - progress) * 100;
+        NotificationTrackFill.Width = _trackFullWidth * (1 - progress);
 
         if (progress >= 1)
             _trackTimer?.Stop();
