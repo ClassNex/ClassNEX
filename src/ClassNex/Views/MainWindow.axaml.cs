@@ -458,7 +458,7 @@ public partial class MainWindow : Window
                 },
             },
         };
-        _ = scale.RunAsync((ScaleTransform)NotificationMaskContent.RenderTransform!);
+        _ = scale.RunAsync(NotificationMaskContent);
     }
 
     /// <summary>隐藏通知遮罩（对照 CI 的 :mask-out —— 文字 Opacity 1→0 0.2s + 条纹收起）。</summary>
