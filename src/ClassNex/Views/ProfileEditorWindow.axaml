@@ -1,28 +1,37 @@
-<Window xmlns="https://github.com/avaloniaui"
+<wd:AppWindow xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:ui="using:AvaloniaFluentUI.Controls"
+        xmlns:wd="using:AvaloniaFluentUI.Windowing"
         mc:Ignorable="d" d:DesignWidth="1240" d:DesignHeight="760"
         x:Class="ClassNex.Views.ProfileEditorWindow"
         Title="档案编辑器"
         Icon="/Assets/icon.ico"
+        TitleBarHeight="48"
+        IsTitleBarContentVisible="False"
         Width="1240" Height="760"
         MinWidth="960" MinHeight="600"
         WindowStartupLocation="CenterScreen">
 
-    <DockPanel Background="{DynamicResource ApplicationPageBackgroundThemeBrush}">
+    <!-- 沉浸式标题栏（同设置窗口）：DockPanel 不设不透明背景，窗口的 Mica 云母才能透上来 -->
+    <DockPanel>
 
-        <Border DockPanel.Dock="Top" Padding="20,14"
-                Background="{DynamicResource LayerFillColorDefaultBrush}"
-                BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
-                BorderThickness="0,0,0,1">
-            <Grid ColumnDefinitions="Auto,*,Auto">
-                <StackPanel Grid.Column="0" Spacing="2">
-                    <TextBlock Text="档案编辑器" FontSize="18" FontWeight="SemiBold"
-                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                    <TextBlock x:Name="ProfileInfoText" FontSize="12"
-                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+        <!-- 顶栏 = 标题栏那一行（48 与 TitleBarHeight 对齐）：透明 + 无下分隔线，
+             第 4 列留 152 宽避让系统最小化/最大化/关闭按钮 -->
+        <Border DockPanel.Dock="Top" Height="48" Padding="14,0"
+                Background="Transparent"
+                BorderThickness="0">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Image Source="/Assets/icon.ico" Width="18" Height="18"
+                           IsHitTestVisible="False" RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                    <StackPanel Spacing="0" VerticalAlignment="Center">
+                        <TextBlock Text="档案编辑器" FontSize="12"
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock x:Name="ProfileInfoText" FontSize="11"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                    </StackPanel>
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
@@ -31,6 +40,9 @@
                     <Button x:Name="ReloadButton" Content="重新加载"/>
                     <Button x:Name="ExportButton" Content="导出 CSES…"/>
                 </StackPanel>
+
+                <!-- 系统最小化/最大化/关闭按钮占位（沉浸式标题栏里它们画在右上角） -->
+                <Border Grid.Column="3" Width="152"/>
             </Grid>
         </Border>
 
@@ -321,4 +333,4 @@
 
         </TabControl>
     </DockPanel>
-</Window>
+</wd:AppWindow>

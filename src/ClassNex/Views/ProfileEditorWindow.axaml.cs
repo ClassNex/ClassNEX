@@ -11,6 +11,7 @@ using ClassNex.Controls;
 using ClassNex.Models;
 using ClassNex.Services;
 using ClassNex.Styles;
+using AvaloniaFluentUI.Windowing;
 
 namespace ClassNex.Views;
 
@@ -22,7 +23,7 @@ namespace ClassNex.Views;
 /// 编辑模型：点格子选中（强调色描边）→ 点右侧科目 → 立即生效；
 /// 勾选「选完科目自动移动到下一个课程」后自动移到下一时间点。
 /// </summary>
-public partial class ProfileEditorWindow : Window
+public partial class ProfileEditorWindow : AppWindow
 {
     private readonly List<string> _subjectNames = new();
     private readonly ObservableCollection<WeekRow> _weekRows = new();
@@ -49,6 +50,51 @@ public partial class ProfileEditorWindow : Window
         BuildCommandBar();
         WireEvents();
         LoadAll();
+    }
+
+    /// <summary>
+    /// 沉浸式标题栏 + Mica 云母（与设置窗口同一套做法，照 CI 的 <c>MyWindow.OnLoaded</c>）：
+    /// 根元素是 <c>AvaloniaFluentUI.Windowing.AppWindow</c>，客户区扩展到标题栏，
+    /// 系统最小化/最大化/关闭按钮画在应用右上角（顶栏第 4 列留了 152 宽避让）。
+    /// TitleBarHitTestType 必须设为 Complex，否则标题栏区域内的按钮收不到点击。
+    /// </summary>
+    protected override void OnOpened(EventArgs e)
+    {
+        base.OnOpened(e);
+
+        try
+        {
+            if (TitleBar is { } bar)
+                bar.TitleBarHitTestType = TitleBarHitTestType.Complex;
+
+            AppWindow.SetAllowInteractionInTitleBar(this, true);
+        }
+        catch
+        {
+            // 忽略：不支持时保持默认
+        }
+
+        try
+        {
+            if (!OperatingSystem.IsWindows())
+                return;
+
+            // CI：Windows 11 21H2（build 22000）及以上才支持 Mica
+            if (Environment.OSVersion.Version < new Version(10, 0, 22000))
+                return;
+
+            TransparencyLevelHint = new[]
+            {
+                WindowTransparencyLevel.Mica,
+                WindowTransparencyLevel.AcrylicBlur,
+                WindowTransparencyLevel.None,
+            };
+            Background = Brushes.Transparent;
+        }
+        catch
+        {
+            // 忽略：不支持 Mica 时保持普通背景
+        }
     }
 
     /// <summary>切换到指定标签页（0=课表 / 1=时间表 / 2=科目 / 3=调课）。</summary>
