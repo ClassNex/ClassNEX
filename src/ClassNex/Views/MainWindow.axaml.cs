@@ -428,8 +428,10 @@ public partial class MainWindow : Window
 
     private System.Diagnostics.Stopwatch? _trackStopwatch;
 
-    /// <summary>Overlay 阶段时长（轨道满格起在这段时间内倒扣到 0）。</summary>
-    private const double NotificationTrackDurationMs = 2000;
+    /// <summary>Overlay 阶段时长：先停顿 500ms（满格），再在 1500ms 内倒扣到 0。</summary>
+    private const double TrackHoldMs = 500;
+
+    private const double NotificationTrackDurationMs = 1500;
 
     private void OnTrackTick(object? sender, EventArgs e)
     {
@@ -439,8 +441,17 @@ public partial class MainWindow : Window
             return;
         }
 
-        // 剩余时间：progress 0→1 时 Value 从 100 → 0（右端向左收缩）
-        var progress = Math.Clamp(_trackStopwatch.Elapsed.TotalMilliseconds / NotificationTrackDurationMs, 0, 1);
+        var t = _trackStopwatch.Elapsed.TotalMilliseconds;
+
+        // 前 500ms 停顿：保持满格，给眼睛一个「满的」停留，然后才开始变少
+        if (t < TrackHoldMs)
+        {
+            NotificationTrack.Value = 100;
+            return;
+        }
+
+        // 剩余时间：progress 0→1 时 Value 从 100 → 0（左缘锚定、右端向左收缩）
+        var progress = Math.Clamp((t - TrackHoldMs) / NotificationTrackDurationMs, 0, 1);
         NotificationTrack.Value = (1 - progress) * 100;
 
         if (progress >= 1)
