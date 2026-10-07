@@ -500,13 +500,7 @@ public partial class SettingsWindow : AppWindow
                 ApplyWidgetEdit();
         };
 
-        // ---- 课表 ----
-        OpenTimetableButton.Click += OnOpenTimetable;
-        ReloadTimetableButton.Click += (_, _) =>
-        {
-            AppServices.ReloadTimetable();
-            RefreshTimetableText();
-        };
+        // ---- 课表 ----（「当前课表文件」一行已按用户要求移除，课表文件在档案编辑器里管理）
     }
 
     // ==================== 加载 ====================
@@ -516,7 +510,7 @@ public partial class SettingsWindow : AppWindow
         _loading = true;
         var s = AppServices.Settings;
 
-        SingleWeekStartPicker.SelectedDate = new DateTimeOffset(s.SingleWeekStartTime);
+        SingleWeekStartPicker.SelectedDate = s.SingleWeekStartTime;
         TrayBehaviorCombo.SelectedIndex = Math.Clamp(s.TrayClickBehavior, 0, 2);
 
         ThemeCombo.SelectedIndex = s.ThemeMode switch
@@ -546,8 +540,6 @@ public partial class SettingsWindow : AppWindow
 
         if (_widgets.Count > 0)
             WidgetList.SelectedIndex = 0;
-
-        RefreshTimetableText();
 
         _loading = false;
 
@@ -702,8 +694,6 @@ public partial class SettingsWindow : AppWindow
             // 忽略：资源管理器启动失败
         }
     }
-
-    private void RefreshTimetableText() => TimetableFileText.Text = AppServices.TimetablePath;
 
     // ==================== 通用 / 界面 ====================
 
@@ -1111,6 +1101,5 @@ public partial class SettingsWindow : AppWindow
             return;
 
         AppServices.LoadTimetable(path);
-        RefreshTimetableText();
     }
 }

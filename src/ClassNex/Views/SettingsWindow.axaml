@@ -96,6 +96,22 @@
                         </Style>
                     </StackPanel.Styles>
 
+                    <!-- 搜索框放最顶上（用户要求：改回最顶上） -->
+                    <Border Height="32" CornerRadius="4" BorderThickness="1"
+                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                            Background="{DynamicResource ControlFillColorDefaultBrush}">
+                        <TextBox x:Name="SearchBox"
+                                 BorderThickness="0" Background="Transparent"
+                                 Watermark="查找设置"
+                                 VerticalAlignment="Center" VerticalContentAlignment="Center"
+                                 Margin="2,0,2,0">
+                            <TextBox.InnerLeftContent>
+                                <ui:FontIcon Glyph="&#xE721;" FontSize="12" Margin="8,0,6,0"
+                                             VerticalAlignment="Center" Opacity="0.7"/>
+                            </TextBox.InnerLeftContent>
+                        </TextBox>
+                    </Border>
+
                     <!-- 账户区（照 Gallery）：**默认无底色**，鼠标移入才出现高亮蒙版 -->
                     <Button x:Name="AccountButton" Classes="AccountCard"
                             Padding="8" CornerRadius="8"
@@ -114,21 +130,6 @@
                             </StackPanel>
                         </StackPanel>
                     </Button>
-
-                    <Border Height="32" CornerRadius="4" BorderThickness="1"
-                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                            Background="{DynamicResource ControlFillColorDefaultBrush}">
-                        <TextBox x:Name="SearchBox"
-                                 BorderThickness="0" Background="Transparent"
-                                 Watermark="查找设置"
-                                 VerticalAlignment="Center" VerticalContentAlignment="Center"
-                                 Margin="2,0,2,0">
-                            <TextBox.InnerLeftContent>
-                                <ui:FontIcon Glyph="&#xE721;" FontSize="12" Margin="8,0,6,0"
-                                             VerticalAlignment="Center" Opacity="0.7"/>
-                            </TextBox.InnerLeftContent>
-                        </TextBox>
-                    </Border>
 
                     <!-- 搜索结果：就地在账户区下方展开（不再做成顶层浮层） -->
                     <Border x:Name="SearchResultsPanel" IsVisible="False" MaxHeight="300"
@@ -297,7 +298,7 @@
                         <!-- ==================== 通用 ==================== -->
                         <StackPanel x:Name="PageGeneral" Spacing="10">
                             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,2">
-                                <ui:FontIcon Glyph="&#xE84F;" FontSize="16" VerticalAlignment="Center" Opacity="0.85"/>
+                                <ui:FontIcon Glyph="&#xE945;" FontSize="16" VerticalAlignment="Center" Opacity="0.85"/>
                                 <TextBlock Text="行为" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             </StackPanel>
 
@@ -326,13 +327,29 @@
                                 <ui:SettingsExpander.IconSource>
                                     <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE787;"/>
                                 </ui:SettingsExpander.IconSource>
+                                <!-- 1:1 照 CI：紧凑的 CalendarDatePicker(120) + 强调色图标按钮（Flyout 调整多周轮换偏移） -->
                                 <ui:SettingsExpander.Footer>
-                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                        <DatePicker x:Name="SingleWeekStartPicker" Width="340"
-                                                    HorizontalAlignment="Right"/>
-                                        <ui:NumberBox x:Name="WeekRotationBox" Minimum="1" Maximum="99"
-                                                      SpinButtonPlacementMode="Inline" Width="150"
-                                                      VerticalAlignment="Center" ToolTip.Tip="周次轮换"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Stretch">
+                                        <CalendarDatePicker x:Name="SingleWeekStartPicker" Width="120"
+                                                            VerticalAlignment="Stretch"/>
+                                        <Button Theme="{StaticResource TransparentButton}"
+                                                Classes="accent"
+                                                VerticalAlignment="Stretch"
+                                                Padding="8,0"
+                                                ToolTip.Tip="调整多周轮换偏移…">
+                                            <ui:FontIcon Glyph="&#xE324;" FontSize="14"/>
+                                            <Button.Flyout>
+                                                <Flyout>
+                                                    <StackPanel Spacing="8" Margin="4">
+                                                        <TextBlock Text="多周轮换偏移" FontSize="14"/>
+                                                        <TextBlock Text="向前/向后偏移几周（用于对齐实际教学周次）"
+                                                                   FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                                                        <ui:NumberBox x:Name="WeekRotationBox" Minimum="1" Maximum="99"
+                                                                      SpinButtonPlacementMode="Inline" Width="160"/>
+                                                    </StackPanel>
+                                                </Flyout>
+                                            </Button.Flyout>
+                                        </Button>
                                     </StackPanel>
                                 </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>
@@ -375,21 +392,6 @@
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <CheckBox x:Name="StartupSplashCheck"/>
-                                </ui:SettingsExpander.Footer>
-                            </ui:SettingsExpander>
-
-                            <ui:SettingsExpander Header="当前课表文件" Description="支持 CSES 课程表交换格式（YAML）">
-                                <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE8A5;"/>
-                                </ui:SettingsExpander.IconSource>
-                                <ui:SettingsExpander.Footer>
-                                    <StackPanel Spacing="10">
-                                        <TextBlock x:Name="TimetableFileText" TextWrapping="Wrap" FontSize="12" Opacity="0.75"/>
-                                        <StackPanel Orientation="Horizontal" Spacing="10">
-                                            <Button x:Name="OpenTimetableButton" Content="打开课表文件…"/>
-                                            <Button x:Name="ReloadTimetableButton" Content="重新加载"/>
-                                        </StackPanel>
-                                    </StackPanel>
                                 </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>
 

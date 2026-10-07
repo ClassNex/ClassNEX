@@ -61,6 +61,9 @@ public partial class App : Application
             Services.AppServices.MainWindow = _mainWindow;
             _notificationService.Start();
 
+            // 处理 classnex:// Url 协议参数（第三方应用/网页调用本应用）
+            HandleUrlProtocol(Environment.GetCommandLineArgs());
+
             // 预热提醒动画（斜切条纹首次触发要 JIT/编译几何，启动 1 秒后静默开合一次，之后不卡）
             DispatcherTimer.RunOnce(() => _mainWindow?.WarmNotificationMask(), TimeSpan.FromSeconds(1));
 
@@ -158,20 +161,74 @@ public partial class App : Application
 
     public static FluentAvaloniaTheme? FluentTheme => (FluentAvaloniaTheme?)Current?.Styles[0];
 
-    /// <summary>把未处理异常写到程序目录下的 _crash.log（排查闪退用）。</summary>
+    /// <summary>把未处理异常写到程序目录下的 _crash.log（排查闪退用），并按「教学安全模式」处理。</summary>
     private static void LogCrash(Exception? ex)
     {
         if (ex is null)
             return;
 
+        var path = Path.Combine(AppContext.BaseDirectory, "_crash.log");
         try
         {
-            var path = Path.Combine(AppContext.BaseDirectory, "_crash.log");
             File.AppendAllText(path, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {ex}\n\n");
         }
         catch
         {
             // 忽略写日志失败
+        }
+
+        // 教学安全模式：0=显示崩溃报告（打开日志）1=忽略并继续 2=重新启动应用
+        try
+        {
+            if (!AppServices.Settings.TeachingSafeMode)
+                return;
+
+            switch (AppServices.Settings.CrashHandlingMode)
+            {
+                case 0:
+                    Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+                    break;
+                case 2:
+                    var exe = Environment.ProcessPath;
+                    if (!string.IsNullOrWhiteSpace(exe))
+                        Process.Start(new ProcessStartInfo(exe) { UseShellExecute = true });
+                    Environment.Exit(1);
+                    break;
+            }
+        }
+        catch
+        {
+            // 安全模式的兜底动作失败时忽略（不能因为兜底再抛异常）
+        }
+    }
+
+    /// <summary>
+    /// 响应 classnex:// Url 协议（在设置里开启「注册 Url 协议」后，第三方应用或网页可调用）。
+    /// 支持：classnex://settings 打开设置、classnex://profile 打开档案编辑器、
+    /// classnex://show 显示主界面、classnex://hide 隐藏主界面。
+    /// </summary>
+    private static void HandleUrlProtocol(string[] args)
+    {
+        var url = args.FirstOrDefault(a => a.StartsWith("classnex://", StringComparison.OrdinalIgnoreCase));
+        if (url is null || Current is not App app)
+            return;
+
+        var action = url["classnex://".Length..].Trim('/').ToLowerInvariant();
+        switch (action)
+        {
+            case "profile":
+                OpenProfileEditor();
+                break;
+            case "show":
+                app._mainWindow?.Show();
+                break;
+            case "hide":
+                app._mainWindow?.Hide();
+                break;
+            case "settings":
+            default:
+                OpenSettings();
+                break;
         }
     }
 
