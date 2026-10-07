@@ -72,7 +72,7 @@
                            Background="Transparent"
                            PaneDisplayMode="Left" OpenPaneLength="283"
                            IsBackButtonVisible="False" IsSettingsVisible="False"
-                           IsPaneToggleButtonVisible="False">
+                           IsPaneToggleButtonVisible="True">
 
             <!-- 账户区 + 搜索：模板取自 FluentUI-Gallery 的账户页
                  （Win11 默认头像 + 强调色圆环 + 名称 + 邮箱，搜索框在账户区下方） -->
@@ -301,18 +301,44 @@
                                 <TextBlock Text="行为" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             </StackPanel>
 
-                            <ui:SettingsExpander Header="单周开始日期"
-                                                 Description="该日期所在周视为单周，用于推算当前是单周还是双周">
+                            <ui:SettingsExpander Header="开机自启"
+                                                 Description="在您的系统启动时自动运行本应用。">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE7C4;"/>
+                                </ui:SettingsExpander.IconSource>
+                                <ui:SettingsExpander.Footer>
+                                    <CheckBox x:Name="StartupCheck"/>
+                                </ui:SettingsExpander.Footer>
+                            </ui:SettingsExpander>
+
+                            <ui:SettingsExpander Header="注册 Url 协议"
+                                                 Description="允许第三方应用或网页通过 Url 协议 classnex:// 调用本应用的部分功能。">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE71C;"/>
+                                </ui:SettingsExpander.IconSource>
+                                <ui:SettingsExpander.Footer>
+                                    <CheckBox x:Name="UrlProtocolCheck"/>
+                                </ui:SettingsExpander.Footer>
+                            </ui:SettingsExpander>
+
+                            <ui:SettingsExpander Header="学期开始时间"
+                                                 Description="设置学期首日，该日期将作为多周轮换课表的计算起点和每周的第一天。">
                                 <ui:SettingsExpander.IconSource>
                                     <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE787;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
-                                    <DatePicker x:Name="SingleWeekStartPicker" HorizontalAlignment="Stretch"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <DatePicker x:Name="SingleWeekStartPicker" Width="340"
+                                                    HorizontalAlignment="Right"/>
+                                        <ui:NumberBox x:Name="WeekRotationBox" Minimum="1" Maximum="99"
+                                                      SpinButtonPlacementMode="Inline" Width="150"
+                                                      VerticalAlignment="Center" ToolTip.Tip="周次轮换"/>
+                                    </StackPanel>
                                 </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>
 
                             <ui:SettingsExpander Header="点击托盘图标行为"
-                                                 Description="单击托盘图标时执行的操作">
+                                                 Description="鼠标左键点击本应用托盘图标时进行的操作。无论此设置处于何种选项，鼠标右键点击托盘图标总是会打开主菜单。">
                                 <ui:SettingsExpander.IconSource>
                                     <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE713;"/>
                                 </ui:SettingsExpander.IconSource>
@@ -322,6 +348,33 @@
                                         <ComboBoxItem Content="打开应用设置"/>
                                         <ComboBoxItem Content="打开档案编辑器"/>
                                     </ComboBox>
+                                </ui:SettingsExpander.Footer>
+                            </ui:SettingsExpander>
+
+                            <ui:SettingsExpander Header="教学安全模式"
+                                                 Description="启用后，如果应用发生意外崩溃，将自动按照右侧选择的方法处理崩溃，以确保教学不受到影响。如果发生的是不可忽略的异常，应用将自动退出。您可以在日志记录中查看崩溃详情。">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE7C9;"/>
+                                </ui:SettingsExpander.IconSource>
+                                <ui:SettingsExpander.Footer>
+                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <ComboBox x:Name="SafeModeCombo" Width="160" SelectedIndex="0">
+                                            <ComboBoxItem Content="显示崩溃报告"/>
+                                            <ComboBoxItem Content="忽略并继续"/>
+                                            <ComboBoxItem Content="重新启动应用"/>
+                                        </ComboBox>
+                                        <CheckBox x:Name="SafeModeCheck" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </ui:SettingsExpander.Footer>
+                            </ui:SettingsExpander>
+
+                            <ui:SettingsExpander Header="显示启动加载界面"
+                                                 Description="启动时显示加载界面。注意：在不启用【禁用动画等待】的情况下，此功能会拖慢启动速度。">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE790;"/>
+                                </ui:SettingsExpander.IconSource>
+                                <ui:SettingsExpander.Footer>
+                                    <CheckBox x:Name="StartupSplashCheck"/>
                                 </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>
 

@@ -328,10 +328,13 @@ public partial class MainWindow : Window
 
         // CI 同款的「出现动画」：窗口真正显示后才开始（订阅 IsVisible 会在首帧渲染前触发，动画白跑）。
         // 顺序：① 先显示「骨架占位」（组件还没加载出来时）② 组件就绪后换成真实内容并 250ms 淡入。
-        ShowSkeleton();
-        if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_SKELETON") == "1")
+        // 设置「基本 → 显示启动加载界面」可以关掉骨架。
+        if (AppServices.Settings.ShowStartupSplash)
+            ShowSkeleton();
+        if (!AppServices.Settings.ShowStartupSplash
+            || Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_SKELETON") == "1")
         {
-            // 调试：保持骨架不切换，方便截图/核对样式
+            // 调试：CLASSNEX_VERIFY_SKELETON=1 时保持骨架不切换，方便截图/核对样式
         }
         else
         {

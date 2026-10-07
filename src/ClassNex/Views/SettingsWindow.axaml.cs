@@ -538,6 +538,9 @@ public partial class SettingsWindow : AppWindow
         // 提醒设置（1:1 照 CI ClassNotificationSettings）
         LoadNotificationSettings();
 
+        // 行为（开机自启 / Url 协议 / 学期开始时间周次 / 教学安全模式 / 启动加载界面）
+        LoadBehaviorSettings();
+
         RefreshWidgetLibrary();
         RefreshWidgetList();
 
@@ -892,6 +895,69 @@ public partial class SettingsWindow : AppWindow
         }
 
         _loading = false;
+    }
+
+    /// <summary>「基本 → 行为」各项：载入 + 接线（开机自启/Url 协议会写注册表）。</summary>
+    private void LoadBehaviorSettings()
+    {
+        var s = AppServices.Settings;
+
+        StartupCheck.IsChecked = s.RunAtStartup;
+        UrlProtocolCheck.IsChecked = s.RegisterUrlProtocol;
+        WeekRotationBox.Value = Math.Clamp(s.WeekRotationOffset + 1, 1, 99);
+        SafeModeCheck.IsChecked = s.TeachingSafeMode;
+        SafeModeCombo.SelectedIndex = Math.Clamp(s.CrashHandlingMode, 0, 2);
+        StartupSplashCheck.IsChecked = s.ShowStartupSplash;
+
+        StartupCheck.IsCheckedChanged += (_, _) =>
+        {
+            if (_loading)
+                return;
+            AppServices.Settings.RunAtStartup = StartupCheck.IsChecked == true;
+            AppServices.SaveSettings();
+            StartupRegistry.SetRunAtStartup(AppServices.Settings.RunAtStartup);
+        };
+
+        UrlProtocolCheck.IsCheckedChanged += (_, _) =>
+        {
+            if (_loading)
+                return;
+            AppServices.Settings.RegisterUrlProtocol = UrlProtocolCheck.IsChecked == true;
+            AppServices.SaveSettings();
+            StartupRegistry.SetUrlProtocol(AppServices.Settings.RegisterUrlProtocol);
+        };
+
+        WeekRotationBox.ValueChanged += (_, _) =>
+        {
+            if (_loading)
+                return;
+            AppServices.Settings.WeekRotationOffset = (int)Math.Clamp(WeekRotationBox.Value, 1, 99) - 1;
+            AppServices.SaveSettings();
+        };
+
+        SafeModeCheck.IsCheckedChanged += (_, _) =>
+        {
+            if (_loading)
+                return;
+            AppServices.Settings.TeachingSafeMode = SafeModeCheck.IsChecked == true;
+            AppServices.SaveSettings();
+        };
+
+        SafeModeCombo.SelectionChanged += (_, _) =>
+        {
+            if (_loading)
+                return;
+            AppServices.Settings.CrashHandlingMode = Math.Clamp(SafeModeCombo.SelectedIndex, 0, 2);
+            AppServices.SaveSettings();
+        };
+
+        StartupSplashCheck.IsCheckedChanged += (_, _) =>
+        {
+            if (_loading)
+                return;
+            AppServices.Settings.ShowStartupSplash = StartupSplashCheck.IsChecked == true;
+            AppServices.SaveSettings();
+        };
     }
 
     /// <summary>把设置里的提醒配置载入控件并挂事件（对照 CI ClassNotificationSettings 的字段与默认值）。</summary>

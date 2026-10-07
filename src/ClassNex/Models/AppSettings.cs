@@ -90,6 +90,23 @@ public sealed class AppSettings
     /// <summary>上课/下课/课前准备提醒设置（1:1 对照 CI 的 ClassNotificationSettings）。</summary>
     public NotificationSettings Notification { get; set; } = new();
 
+    // ---------- 行为（对照设置页「基本 → 行为」） ----------
+
+    /// <summary>开机自启（写入 HKCU 的 Run 项）。</summary>
+    public bool RunAtStartup { get; set; }
+
+    /// <summary>注册 classnex:// Url 协议（写入 HKCU\Software\Classes）。</summary>
+    public bool RegisterUrlProtocol { get; set; }
+
+    /// <summary>教学安全模式：崩溃时按 <see cref="CrashHandlingMode"/> 处理。</summary>
+    public bool TeachingSafeMode { get; set; }
+
+    /// <summary>崩溃处理方式：0=显示崩溃报告 1=忽略并继续 2=重新启动应用。</summary>
+    public int CrashHandlingMode { get; set; }
+
+    /// <summary>启动时显示加载界面（浮窗骨架）。</summary>
+    public bool ShowStartupSplash { get; set; } = true;
+
     /// <summary>已播种的内置示例课表版本。低于当前版本时会重新播种 data/timetable.yaml。</summary>
     public int SampleSeedVersion { get; set; }
 
