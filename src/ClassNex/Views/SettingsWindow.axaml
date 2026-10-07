@@ -96,8 +96,8 @@
                         </Style>
                     </StackPanel.Styles>
 
-                    <!-- 搜索框放最顶上（用户要求：改回最顶上） -->
-                    <Border Height="32" CornerRadius="4" BorderThickness="1"
+                    <!-- 搜索框放最顶上（用户要求：改回最顶上；圆角 8 更圆） -->
+                    <Border Height="34" CornerRadius="8" BorderThickness="1"
                             BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
                             Background="{DynamicResource ControlFillColorDefaultBrush}">
                         <TextBox x:Name="SearchBox"
