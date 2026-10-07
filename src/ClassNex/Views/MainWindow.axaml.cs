@@ -584,15 +584,17 @@ public partial class MainWindow : Window
         NotificationMaskBg.IsOpened = false;
         DispatcherTimer.RunOnce(() => NotificationMask.IsVisible = false, TimeSpan.FromMilliseconds(500));
 
-        // 岛的正常区域显示 Overlay 文字并淡入
+        // 岛的正常区域显示 Overlay 文字并淡入。
+        // CI 顺序：先 mask-out（条纹中间→两边收完约 480ms），**之后**才 overlay-in ——
+        // 所以文字先保持透明，淡入延迟 450ms（等条纹收完），轨道同样延迟启动。
         NotificationOverlayText.Text = text;
         NotificationOverlay.IsVisible = true;
-
-        // CI：轨道只在 Overlay 阶段出现（面具阶段没有）—— 剩余时间从满格右→左倒扣
-        StartNotificationTrack();
+        NotificationOverlay.Opacity = 0;
+        DispatcherTimer.RunOnce(StartNotificationTrack, TimeSpan.FromMilliseconds(450));
 
         var fade = new Animation
         {
+            Delay = TimeSpan.FromMilliseconds(450),
             Duration = TimeSpan.FromMilliseconds(250),
             FillMode = FillMode.Forward,
             Easing = Easing.Parse("0.25, 1, 0.5, 1"),
