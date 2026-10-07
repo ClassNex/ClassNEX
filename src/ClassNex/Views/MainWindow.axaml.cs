@@ -397,26 +397,16 @@ public partial class MainWindow : Window
         NotificationTrack.Background = CiPalette.ProgressTrackBrush();
         NotificationTrack.Foreground = CiPalette.AccentBrush();
         NotificationTrack.Width = Math.Max(1, IslandBackground.Width - 24); // 与 GridContentRoot 两侧 12 内边距对齐
+
+        // 关键：禁掉主题可能加在 ProgressBar 上的 Value 过渡 ——
+        // 否则把 Value 设成 100 会被动画成 0→100 的「充能」效果（用户不要）。
+        NotificationTrack.Transitions = null;
+        NotificationTrack.Value = 100;
         NotificationTrack.IsVisible = true;
 
-        // Overlay 开始时轨道 = 满格，然后随这段时长倒扣到 0
-        NotificationTrack.Value = 100;
+        // Overlay 开始时轨道 = 满格，先停顿再倒扣
         _trackStopwatch ??= new System.Diagnostics.Stopwatch();
         _trackStopwatch.Restart();
-
-        // 淡入（200ms），不瞬间弹出
-        NotificationTrack.Opacity = 0;
-        var fade = new Animation
-        {
-            Duration = TimeSpan.FromMilliseconds(200),
-            FillMode = FillMode.Forward,
-            Children =
-            {
-                new KeyFrame { Cue = new Cue(0), Setters = { new Setter(OpacityProperty, 0.0) } },
-                new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, 1.0) } },
-            },
-        };
-        _ = fade.RunAsync(NotificationTrack);
 
         _trackTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
         _trackTimer.Tick -= OnTrackTick;
