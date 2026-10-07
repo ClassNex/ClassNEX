@@ -394,62 +394,39 @@ public partial class MainWindow : Window
     /// </summary>
     private void StartNotificationTrack()
     {
-        // 自绘轨道：灰底在 XAML，填充条宽度直接按剩余比例设置。
-        // 出现的第一帧填充就是满格（直接设宽度，没有任何动画/过渡）。
+        // 自绘轨道：灰底在 XAML，填充条**满宽 + Scale=1**（出现第一帧就是满的，无充能）。
         _trackFullWidth = Math.Max(1, IslandBackground.Width - 24); // 与 GridContentRoot 两侧 12 内边距对齐
         NotificationTrack.Width = _trackFullWidth;
         NotificationTrackFill.Width = _trackFullWidth;
         NotificationTrack.IsVisible = true;
 
-        // Overlay 开始时轨道 = 满格，先停顿再倒扣
-        _trackStopwatch ??= new System.Diagnostics.Stopwatch();
-        _trackStopwatch.Restart();
+        if (ElementComposition.GetElementVisual(NotificationTrackFill) is { } fillVisual)
+        {
+            fillVisual.CenterPoint = new Vector3D(0, fillVisual.Size.Y / 2, 0); // 左缘锚定
+            fillVisual.Scale = new Vector3D(1, 1, 1);
+        }
 
-        _trackTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
-        _trackTimer.Tick -= OnTrackTick;
-        _trackTimer.Tick += OnTrackTick;
-        _trackTimer.Start();
+        // 停顿 500ms（满格）后，用 composition Scale.X 1→0 平滑收缩（GPU 补间，不生硬）
+        DispatcherTimer.RunOnce(() =>
+        {
+            var visual = ElementComposition.GetElementVisual(NotificationTrackFill);
+            if (visual is null)
+                return;
+
+            visual.CenterPoint = new Vector3D(0, visual.Size.Y / 2, 0);
+            var anim = visual.Compositor.CreateVector3DKeyFrameAnimation();
+            anim.InsertKeyFrame(0f, new Vector3D(1, 1, 1));
+            anim.InsertKeyFrame(1f, new Vector3D(0, 1, 1), new LinearEasing());
+            anim.Duration = TimeSpan.FromMilliseconds(1500);
+            visual.StartAnimation(nameof(visual.Scale), anim);
+        }, TimeSpan.FromMilliseconds(500));
     }
-
-    private DispatcherTimer? _trackTimer;
-
-    private System.Diagnostics.Stopwatch? _trackStopwatch;
 
     private double _trackFullWidth;
-
-    /// <summary>Overlay 阶段时长：先停顿 500ms（满格），再在 1500ms 内倒扣到 0。</summary>
-    private const double TrackHoldMs = 500;
-
-    private const double NotificationTrackDurationMs = 1500;
-
-    private void OnTrackTick(object? sender, EventArgs e)
-    {
-        if (_trackStopwatch is null || !NotificationTrack.IsVisible)
-        {
-            _trackTimer?.Stop();
-            return;
-        }
-
-        var t = _trackStopwatch.Elapsed.TotalMilliseconds;
-
-        // 前 500ms 停顿：保持满格，然后才开始变少（左缘锚定、右端往左退）
-        if (t < TrackHoldMs)
-        {
-            NotificationTrackFill.Width = _trackFullWidth;
-            return;
-        }
-
-        var progress = Math.Clamp((t - TrackHoldMs) / NotificationTrackDurationMs, 0, 1);
-        NotificationTrackFill.Width = _trackFullWidth * (1 - progress);
-
-        if (progress >= 1)
-            _trackTimer?.Stop();
-    }
 
     /// <summary>提醒结束：岛恢复为内容宽，隐藏轨道。</summary>
     private void RestoreIslandAfterNotification()
     {
-        _trackTimer?.Stop();
         NotificationTrack.IsVisible = false;
         if (_preNotificationIslandWidth is { } previous)
         {
