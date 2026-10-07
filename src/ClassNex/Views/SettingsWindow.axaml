@@ -614,8 +614,20 @@
 
         <!-- 账户卡（浮在左栏顶部）：放在 NavigationView 之后 = 绘制在其上，
              且**不受 PaneHeader 的内边距与裁剪影响**，所以能把头像左缘与下方导航项对齐。 -->
-        <StackPanel Grid.Row="1" Width="266" HorizontalAlignment="Left" VerticalAlignment="Top"
+        <StackPanel x:Name="AccountCardHost" Grid.Row="1" Width="266"
+                    HorizontalAlignment="Left" VerticalAlignment="Top"
                     Margin="20,48,0,0" Spacing="8">
+            <!-- 左栏折叠时收缩成「只有头像」并滑到侧边栏（宽度/边距/头像尺寸都走过渡动画） -->
+            <StackPanel.Transitions>
+                <Transitions>
+                    <DoubleTransition Property="Width" Duration="0:0:0.25">
+                        <DoubleTransition.Easing><CubicEaseOut/></DoubleTransition.Easing>
+                    </DoubleTransition>
+                    <ThicknessTransition Property="Margin" Duration="0:0:0.25">
+                        <ThicknessTransition.Easing><CubicEaseOut/></ThicknessTransition.Easing>
+                    </ThicknessTransition>
+                </Transitions>
+            </StackPanel.Transitions>
             <StackPanel.Styles>
                 <Style Selector="Button.AccountCard">
                     <Setter Property="Transitions">
@@ -639,10 +651,21 @@
                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                     Click="OnAccountClick" ToolTip.Tip="账户">
                 <StackPanel Orientation="Horizontal" Spacing="12">
-                    <Border x:Name="AccountAvatarRing" Width="52" Height="52" CornerRadius="26"
-                            BorderThickness="3"/>
-                    <StackPanel VerticalAlignment="Center" Spacing="3">
-                        <TextBlock x:Name="AccountNameText" FontSize="17"/>
+                    <Border x:Name="AccountAvatarRing" Width="56" Height="56" CornerRadius="28"
+                            BorderThickness="3">
+                        <Border.Transitions>
+                            <Transitions>
+                                <DoubleTransition Property="Width" Duration="0:0:0.25">
+                                    <DoubleTransition.Easing><CubicEaseOut/></DoubleTransition.Easing>
+                                </DoubleTransition>
+                                <DoubleTransition Property="Height" Duration="0:0:0.25">
+                                    <DoubleTransition.Easing><CubicEaseOut/></DoubleTransition.Easing>
+                                </DoubleTransition>
+                            </Transitions>
+                        </Border.Transitions>
+                    </Border>
+                    <StackPanel x:Name="AccountTextHost" VerticalAlignment="Center" Spacing="3">
+                        <TextBlock x:Name="AccountNameText" FontSize="18"/>
                         <TextBlock x:Name="AccountEmailText" FontSize="13" Opacity="0.7"/>
                     </StackPanel>
                 </StackPanel>

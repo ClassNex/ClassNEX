@@ -11,6 +11,7 @@ using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using ClassNex.Models;
 using ClassNex.Services;
 using ClassNex.Styles;
@@ -81,6 +82,79 @@ public partial class SettingsWindow : AppWindow
         InitShell();
         WireEvents();
         LoadFromSettings();
+
+        // 可视树（NavigationView 内部的 SplitView）要等模板套用后才存在，所以挂 Loaded
+        Loaded += (_, _) =>
+        {
+            if (_paneStateHooked)
+                return;
+            _paneStateHooked = true;
+            HookPaneState();
+        };
+    }
+
+    // ==================== 账户卡：左栏折叠时收缩到侧边栏 ====================
+
+    private SplitView? _paneSplitView;
+    private bool _accountCompact;
+    private bool _paneStateHooked;
+
+    /// <summary>
+    /// 订阅左栏折叠状态：AvaloniaFluentUI 的 NavigationView 没公开 IsPaneOpen，
+    /// 它内部用的是 SplitView，所以从可视树取出来订阅 <see cref="SplitView.IsPaneOpenProperty"/>。
+    /// </summary>
+    private void HookPaneState()
+    {
+        _paneSplitView = NavView.GetVisualDescendants().OfType<SplitView>().FirstOrDefault();
+        if (_paneSplitView is null)
+            return;
+
+        // NavigationView 内部的 SplitView 初始是关的 —— 设置窗口应该默认展开左栏（CI / Win11 设置都这样）
+        _paneSplitView.IsPaneOpen = true;
+        ApplyAccountCompact(false);
+
+        _paneSplitView.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == SplitView.IsPaneOpenProperty)
+                ApplyAccountCompact(!_paneSplitView.IsPaneOpen);
+        };
+    }
+
+    /// <summary>
+    /// compact=true：账户卡收成「只有头像」（56→36 圆），并挪到侧边栏中间；
+    /// compact=false：还原完整账户卡。宽度/边距/头像尺寸都有过渡动画（在 XAML 里定义）。
+    /// </summary>
+    private void ApplyAccountCompact(bool compact)
+    {
+        if (_accountCompact == compact)
+            return;
+
+        _accountCompact = compact;
+
+        if (compact)
+        {
+            AccountTextHost.IsVisible = false;
+            AccountCardHost.Width = 52;
+            AccountCardHost.Margin = new Thickness(4, 48, 0, 0);
+            AccountAvatarRing.Width = 36;
+            AccountAvatarRing.Height = 36;
+            AccountAvatarRing.CornerRadius = new CornerRadius(18);
+            AccountAvatarRing.BorderThickness = new Thickness(2);
+            AccountButton.Padding = new Thickness(8, 0);
+            AccountButton.HorizontalContentAlignment = HorizontalAlignment.Center;
+        }
+        else
+        {
+            AccountTextHost.IsVisible = true;
+            AccountCardHost.Width = 266;
+            AccountCardHost.Margin = new Thickness(20, 48, 0, 0);
+            AccountAvatarRing.Width = 56;
+            AccountAvatarRing.Height = 56;
+            AccountAvatarRing.CornerRadius = new CornerRadius(28);
+            AccountAvatarRing.BorderThickness = new Thickness(3);
+            AccountButton.Padding = new Thickness(0);
+            AccountButton.HorizontalContentAlignment = HorizontalAlignment.Left;
+        }
     }
 
     /// <summary>
