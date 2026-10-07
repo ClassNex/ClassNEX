@@ -499,16 +499,6 @@ public partial class SettingsWindow : AppWindow
             if (!_loading && e.Property.Name == "Value")
                 ApplyWidgetEdit();
         };
-        WidgetSecondsCheck.PropertyChanged += (_, e) =>
-        {
-            if (!_loading && e.Property.Name == "IsChecked")
-                ApplyWidgetEdit();
-        };
-        WidgetTextBox.PropertyChanged += (_, e) =>
-        {
-            if (!_loading && e.Property.Name == "Text")
-                ApplyWidgetEdit();
-        };
 
         // ---- 课表 ----
         OpenTimetableButton.Click += OnOpenTimetable;
@@ -888,13 +878,13 @@ public partial class SettingsWindow : AppWindow
             WidgetEnabledCheck.IsChecked = config.IsEnabled;
             WidgetFontSlider.Value = Math.Clamp(config.FontScale, 0.6, 2.0);
             WidgetFontValueText.Text = $"{config.FontScale:0.00}x";
-            WidgetSecondsCheck.IsChecked = config.ShowSeconds;
-            WidgetTextBox.Text = config.Text ?? "";
 
-            // 每个组件只显示**自己的**设置项（不再所有组件底下都挂一个「自定义文本」）：
-            //   时钟 → 「显示秒」；文本 → 「自定义文本」；其余类型两个都不显示。
-            WidgetSecondsExpander.IsVisible = config.Type == "clock";
-            WidgetTextExpander.IsVisible = config.Type == "text";
+            // 重建该组件的**专属**设置项（每种组件一套，见 WidgetSettingsBuilder）
+            WidgetSettingsPanel.Children.Clear();
+            foreach (var row in WidgetSettingsBuilder.Build(config, OnWidgetSettingChanged))
+                WidgetSettingsPanel.Children.Add(row);
+
+            WidgetNoSettingsText.IsVisible = !WidgetSettingsBuilder.HasSettings(config.Type);
         }
 
         _loading = false;
@@ -908,12 +898,23 @@ public partial class SettingsWindow : AppWindow
         var config = _currentWidget.Config;
         config.IsEnabled = WidgetEnabledCheck.IsChecked == true;
         config.FontScale = WidgetFontSlider.Value;
-        config.ShowSeconds = WidgetSecondsCheck.IsChecked == true;
-        config.Text = WidgetTextBox.Text;
 
         WidgetFontValueText.Text = $"{config.FontScale:0.00}x";
         _currentWidget.Refresh();
 
+        AppServices.Widgets.Save();
+    }
+
+    /// <summary>
+    /// 组件**专属**设置变化后的回调（值已由 <see cref="WidgetSettingsBuilder"/> 直接写进 config）：
+    /// 刷新浮窗上该组件并落盘。
+    /// </summary>
+    private void OnWidgetSettingChanged()
+    {
+        if (_loading || _currentWidget is null)
+            return;
+
+        _currentWidget.Refresh();
         AppServices.Widgets.Save();
     }
 

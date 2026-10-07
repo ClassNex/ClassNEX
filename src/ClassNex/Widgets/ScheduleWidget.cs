@@ -253,12 +253,12 @@ public sealed class ScheduleWidget : WidgetBase
         {
             Orientation = Orientation.Horizontal,
             VerticalAlignment = VerticalAlignment.Center,
-            Opacity = isFinished ? 0.6 : 1.0,
+            Opacity = isFinished && Config.FadeCompletedClasses ? 0.6 : 1.0,
             Children =
             {
-                new Border { Width = 10 }, // CI：10 × ScheduleSpacing(=1)
+                new Border { Width = 10 * Config.ScheduleSpacing }, // CI：10 × ScheduleSpacing
                 text,
-                new Border { Width = 10 },
+                new Border { Width = 10 * Config.ScheduleSpacing },
             },
         };
 

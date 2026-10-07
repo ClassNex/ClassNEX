@@ -392,20 +392,14 @@
                                                 </ui:SettingsExpander.Footer>
                                             </ui:SettingsExpander>
 
-                                            <!-- 以下两项是「按组件类型」才显示的设置：由代码在选中组件时切换 IsVisible，
-                                                 让每个组件只看到自己的设置项（不再所有组件底下都挂一个自定义文本） -->
-                                            <ui:SettingsExpander x:Name="WidgetSecondsExpander" Header="显示秒">
-                                                <ui:SettingsExpander.Footer>
-                                                    <CheckBox x:Name="WidgetSecondsCheck"/>
-                                                </ui:SettingsExpander.Footer>
-                                            </ui:SettingsExpander>
-
-                                            <ui:SettingsExpander x:Name="WidgetTextExpander" Header="自定义文本"
-                                                                 Description="占位符：{date} {day} {time} {parity} {current} {next} {countdown}">
-                                                <ui:SettingsExpander.Footer>
-                                                    <TextBox x:Name="WidgetTextBox" Width="300" AcceptsReturn="True" TextWrapping="Wrap"/>
-                                                </ui:SettingsExpander.Footer>
-                                            </ui:SettingsExpander>
+                                            <!-- 组件**专属**设置：按选中组件的类型动态构建，
+                                                 对照 CI 的 Controls/Components/XxxComponentSettingsControl.axaml
+                                                 （CI 里 Date/Separator 等组件没有设置控件 → 这里也没有设置项） -->
+                                            <StackPanel x:Name="WidgetSettingsPanel" Spacing="8"/>
+                                            <TextBlock x:Name="WidgetNoSettingsText"
+                                                       Text="该组件没有专属设置。"
+                                                       FontSize="12" Opacity="0.7" Margin="4,2,0,0"
+                                                       IsVisible="False"/>
                                         </StackPanel>
                                     </ScrollViewer>
                                 </TabItem>
