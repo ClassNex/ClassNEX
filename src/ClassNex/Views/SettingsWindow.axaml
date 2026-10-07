@@ -97,7 +97,7 @@
             <ui:NavigationView.PaneHeader>
                 <!-- 负左边距：a11y 实测 ☰=185 / 导航项=184 / 账户卡=204（物理），
                      左移 15 DIP 让账户卡与 ☰、导航项左缘对齐；再多会被面板裁掉头像 -->
-                <StackPanel Spacing="8" Margin="-39,26,6,4">
+                <StackPanel Spacing="8" Margin="-34,26,6,4">
                     <!-- 账户卡：照 FluentUI Gallery 的账户卡（IzumiPL/Avalonia-Fluent-UI samples/Gallery）
                          圆角卡片 + 带描环的 50 圆头像 + 名字 15 SemiBold + 邮箱 12.5/65% -->
                     <StackPanel.Styles>
