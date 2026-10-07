@@ -397,10 +397,14 @@ public partial class MainWindow : Window
         NotificationTrack.Background = CiPalette.ProgressTrackBrush();
         NotificationTrack.Foreground = CiPalette.AccentBrush();
         NotificationTrack.Width = Math.Max(1, IslandBackground.Width - 24); // 与 GridContentRoot 两侧 12 内边距对齐
-        NotificationTrack.Value = 100;
         NotificationTrack.IsVisible = true;
 
-        // 淡入（200ms），不再瞬间满格弹出
+        // Overlay 开始时轨道 = 满格，然后随这段时长倒扣到 0
+        NotificationTrack.Value = 100;
+        _trackStopwatch ??= new System.Diagnostics.Stopwatch();
+        _trackStopwatch.Restart();
+
+        // 淡入（200ms），不瞬间弹出
         NotificationTrack.Opacity = 0;
         var fade = new Animation
         {
@@ -414,7 +418,6 @@ public partial class MainWindow : Window
         };
         _ = fade.RunAsync(NotificationTrack);
 
-        // 时钟已从通知开始（ShowNotificationMask）起走，这里不再重启
         _trackTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
         _trackTimer.Tick -= OnTrackTick;
         _trackTimer.Tick += OnTrackTick;
@@ -425,8 +428,8 @@ public partial class MainWindow : Window
 
     private System.Diagnostics.Stopwatch? _trackStopwatch;
 
-    /// <summary>整段通知时长（面具 1.5s + Overlay 2s）；轨道按此倒扣剩余时间。</summary>
-    private const double NotificationTrackDurationMs = 3500;
+    /// <summary>Overlay 阶段时长（轨道满格起在这段时间内倒扣到 0）。</summary>
+    private const double NotificationTrackDurationMs = 2000;
 
     private void OnTrackTick(object? sender, EventArgs e)
     {
