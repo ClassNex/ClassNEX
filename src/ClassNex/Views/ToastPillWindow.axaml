@@ -1,0 +1,42 @@
+<Window x:Class="ClassNex.Views.ToastPillWindow"
+        xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ui="using:AvaloniaFluentUI.Controls"
+        mc:Ignorable="d" d:DesignWidth="646" d:DesignHeight="125"
+        Topmost="True"
+        Background="Transparent"
+        CanResize="False"
+        SystemDecorations="None"
+        ShowInTaskbar="False"
+        ShowActivated="False">
+    <!-- ClassWidgets 的「灵动通知」（view/widget-toast-bar.ui + tip_toast.py 的 tip_toast）：
+         顶部居中胶囊条，盖在悬浮组件行的位置，放大出现 / 停留 / 缩小淡出。 -->
+    <Border x:Name="Root"
+            CornerRadius="8"
+            Padding="8,8,8,22"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch">
+        <StackPanel Orientation="Horizontal" Spacing="40"
+                    VerticalAlignment="Center" HorizontalAlignment="Center">
+            <!-- CW：icon(48) —spacing 23— 标题(22pt) -->
+            <StackPanel Orientation="Horizontal" Spacing="23" VerticalAlignment="Center">
+                <ui:FontIcon x:Name="PillIcon"
+                             FontFamily="Segoe MDL2 Assets"
+                             Glyph="&#xE916;"
+                             FontSize="32"
+                             Foreground="White"/>
+                <TextBlock x:Name="TitleText" FontSize="22" Foreground="White"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+            <!-- CW：副标题(14pt, 白 78%) —spacing 16— 课名(20pt) -->
+            <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                <TextBlock x:Name="SubtitleText" FontSize="14" Opacity="0.78" Foreground="White"
+                           VerticalAlignment="Center"/>
+                <TextBlock x:Name="LessonText" FontSize="20" Foreground="White"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

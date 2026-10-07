@@ -77,6 +77,16 @@ public sealed class AppSettings
     /// <summary>邮箱（显示在设置窗口左侧账户区与账户页）。</summary>
     public string Email { get; set; } = "Lingofficial0423@gamil";
 
+    // ---------- 通知 ----------
+    /// <summary>允许通知（总开关：水波纹 + 灵动通知都受它控制）。</summary>
+    public bool AllowNotification { get; set; } = true;
+
+    /// <summary>允许重要通知特效（上下课/课间休息时的全局水波纹，对照 CI 的 AllowNotificationEffect）。</summary>
+    public bool AllowNotificationEffect { get; set; } = true;
+
+    /// <summary>允许次要通知（灵动通知胶囊，对照 ClassWidgets 的 tip_toast）。</summary>
+    public bool AllowMinorNotification { get; set; } = true;
+
     /// <summary>已播种的内置示例课表版本。低于当前版本时会重新播种 data/timetable.yaml。</summary>
     public int SampleSeedVersion { get; set; }
 

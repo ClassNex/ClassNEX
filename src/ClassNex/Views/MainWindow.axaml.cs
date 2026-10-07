@@ -365,6 +365,30 @@ public partial class MainWindow : Window
         PlayFadeInAnimation();
     }
 
+    /// <summary>浮窗岛的屏幕矩形（物理像素），供灵动通知胶囊定位（对照 CI MainWindowLine 取 GridWrapper 的做法）。</summary>
+    public PixelRect? GetIslandScreenRect()
+    {
+        if (IslandBackground is not { } island || !island.IsLoaded)
+            return null;
+
+        var topLeft = island.PointToScreen(new Point(0, 0));
+
+        var scaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0;
+        var size = new PixelSize(
+            Math.Max(1, (int)Math.Round(island.Bounds.Width * scaling)),
+            Math.Max(1, (int)Math.Round(island.Bounds.Height * scaling)));
+        return new PixelRect(topLeft, size);
+    }
+
+    /// <summary>浮窗岛中心的屏幕坐标（物理像素），供重要通知水波纹定位（对照 CI MainWindowLine.GetCenter）。</summary>
+    public PixelPoint? GetIslandCenterOnScreen()
+    {
+        if (IslandBackground is not { } island || !island.IsLoaded)
+            return null;
+
+        return island.PointToScreen(new Point(island.Bounds.Width / 2, island.Bounds.Height / 2));
+    }
+
     /// <summary>
     /// 岛宽变化（CI BackgroundWidth DoubleTransition 0.300 / 0.65,0,0.35,1.0）。
     /// 布局宽度直接对齐内容；视觉宽度用 composition Scale 动画补间 ——

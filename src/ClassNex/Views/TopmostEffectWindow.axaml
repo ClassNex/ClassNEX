@@ -1,0 +1,39 @@
+<Window x:Class="ClassNex.Views.TopmostEffectWindow"
+        xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:ClassNex.Views"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance local:TopmostEffectWindow}"
+        Topmost="True"
+        Title="顶层效果窗口" Height="1" Width="1"
+        Background="Transparent"
+        Closing="TopmostEffectWindow_OnClosing"
+        CanResize="False"
+        SystemDecorations="None"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        Loaded="Control_OnLoaded">
+    <!-- 1:1 移植自 CI（ClassIsland/Views/TopmostEffectWindow.axaml）：
+         全屏透明置顶窗口，承载全局特效（水波纹等），有特效时显示、播完隐藏。 -->
+    <Grid>
+        <ItemsControl VerticalAlignment="Stretch"
+                      HorizontalAlignment="Stretch"
+                      ItemsSource="{Binding ViewModel.EffectControls, Mode=OneWay}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch">
+                        <ContentPresenter Content="{Binding}"/>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <Grid/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+        </ItemsControl>
+    </Grid>
+</Window>

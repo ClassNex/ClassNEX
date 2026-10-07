@@ -18,6 +18,8 @@ public partial class App : Application
     private MainWindow? _mainWindow;
     private SettingsWindow? _settingsWindow;
     private ProfileEditorWindow? _profileEditor;
+    private Views.TopmostEffectWindow? _effectWindow;
+    private Services.NotificationService? _notificationService;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
@@ -45,6 +47,31 @@ public partial class App : Application
             {
                 Dispatcher.UIThread.Post(() => _mainWindow?.Hide(), DispatcherPriority.Background);
             }
+
+            // ============ 通知：CI 的全局水波纹（1:1 移植；ClassWidgets 灵动通知暂不接线） ============
+            _effectWindow = new Views.TopmostEffectWindow();
+            _notificationService = new Services.NotificationService(_effectWindow);
+
+            // 效果窗口铺满主屏工作区。
+            // ★ 对照 CI MainWindow.axaml.cs:929 —— scale 传 1/dpiX（把物理像素换算成 DIP），
+            //   传 1.0 会让窗口（和波纹半径）比屏幕大 1.25 倍（用户反馈「大小不对」的根因）。
+            if (_mainWindow is { } mw && mw.Screens.Primary is { } primary)
+                _effectWindow.UpdateWindowPos(primary, 1 / primary.Scaling, false);
+
+            Services.AppServices.MainWindow = _mainWindow;
+            _notificationService.Start();
+
+#if DEBUG
+            // 调试：CLASSNEX_VERIFY_NOTIFY=1 时启动 3 秒后演示一次重要通知（水波纹）。
+            if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_NOTIFY") == "1")
+            {
+                DispatcherTimer.RunOnce(() =>
+                {
+                    var center = _mainWindow?.GetIslandCenterOnScreen() ?? new Avalonia.PixelPoint(200, 200);
+                    _effectWindow!.PlayEffect(new Controls.NotificationEffects.RippleEffect(center));
+                }, TimeSpan.FromSeconds(3));
+            }
+#endif
 
 #if DEBUG
             // 调试自检（仅 Debug 构建）：设 CLASSNEX_VERIFY=1 时写 _verify.log 并跑数据自检。

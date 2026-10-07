@@ -1,0 +1,32 @@
+<UserControl x:Class="ClassNex.Controls.NotificationEffects.RippleEffect"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:ClassNex.Controls.NotificationEffects"
+             xmlns:converters="clr-namespace:ClassNex.Converters"
+             mc:Ignorable="d" 
+             IsHitTestVisible="False"
+             d:DesignHeight="450" d:DesignWidth="800">
+    <!-- 1:1 移植自 CI（ClassIsland/Controls/NotificationEffects/RippleEffect.axaml） -->
+    <UserControl.Resources>
+        <converters:RippleEffectTranslationConverter x:Key="RippleEffectTranslationConverter" />
+    </UserControl.Resources>
+    <Canvas DataContext="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=local:RippleEffect}}"
+             ClipToBounds="True">
+        <Ellipse StrokeThickness="200"
+                 x:Name="EllipseMain"
+                 Canvas.Left="{Binding CenterX}"
+                 Canvas.Top="{Binding CenterY}"
+                 VerticalAlignment="Center"
+                 HorizontalAlignment="Center"
+                 Fill="{Binding Fill}" RenderTransformOrigin="0.5, 0.5">
+            <Ellipse.RenderTransform>
+                <TransformGroup>
+                    <TranslateTransform X="{Binding EllipseSize, Converter={StaticResource RippleEffectTranslationConverter}}" 
+                                        Y="{Binding EllipseSize, Converter={StaticResource RippleEffectTranslationConverter}}"/>
+                </TransformGroup>
+            </Ellipse.RenderTransform>
+        </Ellipse>
+    </Canvas>
+</UserControl>

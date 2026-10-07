@@ -18,6 +18,9 @@ public static class AppServices
 
     public static IWidgetService Widgets { get; private set; } = null!;
 
+    /// <summary>主窗口（悬浮课表）。由 App 在创建后注入，供通知服务取岛的中心/矩形。</summary>
+    public static Views.MainWindow? MainWindow { get; set; }
+
     /// <summary>应用设置发生变化。</summary>
     public static event Action? SettingsChanged;
 
