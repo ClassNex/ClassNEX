@@ -74,12 +74,22 @@
                                     BoxShadow="0 4 8 2 #48000000">
                             </Border>
 
-                            <!-- CI GridContentRoot：Margin="12 0"、MinWidth=20 -->
+                            <!-- CI GridContentRoot：Margin="12 0"、MinWidth=20
+                                 通知期间透明度置 0（CI :mask-in 时把岛内容隐藏，避免与面具/Overlay 叠字） -->
                             <Border x:Name="CardContent"
                                     Margin="12,0"
                                     MinWidth="20"
                                     Background="Transparent"
                                     HorizontalAlignment="Center">
+                                <Border.Transitions>
+                                    <Transitions>
+                                        <DoubleTransition Property="Opacity" Duration="0:0:0.2">
+                                            <DoubleTransition.Easing>
+                                                <SineEaseIn/>
+                                            </DoubleTransition.Easing>
+                                        </DoubleTransition>
+                                    </Transitions>
+                                </Border.Transitions>
                                 <Grid>
                                     <StackPanel x:Name="WidgetHost"
                                                 Orientation="Horizontal"

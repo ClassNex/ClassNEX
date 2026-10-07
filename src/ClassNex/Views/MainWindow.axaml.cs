@@ -401,6 +401,9 @@ public partial class MainWindow : Window
         NotificationMaskText.Text = text;
         NotificationMask.IsVisible = true;
 
+        // CI :mask-in —— 岛的正常内容透明度置 0（GridContentRoot），否则课表会和面具/Overlay 叠字
+        CardContent.Opacity = 0;
+
         // CI：SlantedMaskControl 斜切条纹打开（IsOpened=true，两边→中间，360ms/120ms 交错）
         NotificationMaskBg.IsOpened = true;
 
@@ -485,6 +488,8 @@ public partial class MainWindow : Window
         {
             NotificationMask.IsVisible = false;
             NotificationOverlay.IsVisible = false;
+            // 通知结束，岛的正常内容恢复显示
+            CardContent.Opacity = 1;
         }, TimeSpan.FromMilliseconds(500));
     }
 
