@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Reactive.Linq;
 using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Animation.Easings;
@@ -122,22 +121,23 @@ public class SlantedMaskControl : Control
     {
         // 初始化为 closed
         Region0Progress = Region1Progress = Region2Progress = Region3Progress = Region4Progress = 0.0;
+    }
 
-        this.GetObservable(Region0ProgressProperty).Subscribe(_ => InvalidateVisual());
-        this.GetObservable(Region1ProgressProperty).Subscribe(_ => InvalidateVisual());
-        this.GetObservable(Region2ProgressProperty).Subscribe(_ => InvalidateVisual());
-        this.GetObservable(Region3ProgressProperty).Subscribe(_ => InvalidateVisual());
-        this.GetObservable(Region4ProgressProperty).Subscribe(_ => InvalidateVisual());
-        this.GetObservable(IsOpenedProperty).Skip(1).Subscribe(_ =>
+    static SlantedMaskControl()
+    {
+        // 进度变化 → 重绘；IsOpened 变化 → 打开/收起动画
+        // （CI 用 System.Reactive 的 GetObservable+Subscribe，本项目没有该依赖，用等价的 Changed 订阅）
+        Region0ProgressProperty.Changed.AddClassHandler<SlantedMaskControl>((o, _) => o.InvalidateVisual());
+        Region1ProgressProperty.Changed.AddClassHandler<SlantedMaskControl>((o, _) => o.InvalidateVisual());
+        Region2ProgressProperty.Changed.AddClassHandler<SlantedMaskControl>((o, _) => o.InvalidateVisual());
+        Region3ProgressProperty.Changed.AddClassHandler<SlantedMaskControl>((o, _) => o.InvalidateVisual());
+        Region4ProgressProperty.Changed.AddClassHandler<SlantedMaskControl>((o, _) => o.InvalidateVisual());
+        IsOpenedProperty.Changed.AddClassHandler<SlantedMaskControl>((o, _) =>
         {
-            if (IsOpened)
-            {
-                Open();
-            }
+            if (o.IsOpened)
+                o.Open();
             else
-            {
-                Close();
-            }
+                o.Close();
         });
     }
 
