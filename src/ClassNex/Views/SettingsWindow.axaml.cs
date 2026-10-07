@@ -94,9 +94,14 @@ public partial class SettingsWindow : AppWindow
         base.OnOpened(e);
 
         // 顶栏在标题栏区域内，默认只用于拖动窗口 → 里面的按钮（返回 / 更多选项）收不到点击。
-        // 照 CI 的 SettingsWindowNew.axaml 设 AllowInteractionInTitleBar，让标题栏里的控件可交互。
+        // TitleBarHitTestType 默认 Simple = 整条标题栏只做边界判定；改成 Complex 后
+        // 会用渲染器对可视元素做命中测试，标题栏里的控件即可交互（库文档原话：
+        // "Use this if you're using something like a TabView or NavigationView"）。
         try
         {
+            if (TitleBar is { } bar)
+                bar.TitleBarHitTestType = TitleBarHitTestType.Complex;
+
             AppWindow.SetAllowInteractionInTitleBar(this, true);
         }
         catch
