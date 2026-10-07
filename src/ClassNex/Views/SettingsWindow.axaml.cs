@@ -93,6 +93,17 @@ public partial class SettingsWindow : AppWindow
     {
         base.OnOpened(e);
 
+        // 顶栏在标题栏区域内，默认只用于拖动窗口 → 里面的按钮（返回 / 更多选项）收不到点击。
+        // 照 CI 的 SettingsWindowNew.axaml 设 AllowInteractionInTitleBar，让标题栏里的控件可交互。
+        try
+        {
+            AppWindow.SetAllowInteractionInTitleBar(this, true);
+        }
+        catch
+        {
+            // 忽略：不支持时保持默认
+        }
+
         try
         {
             if (!OperatingSystem.IsWindows())
