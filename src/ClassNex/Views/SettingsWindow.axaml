@@ -65,8 +65,11 @@
             </Grid>
         </Border>
 
-        <!-- ============ 主体导航 ============ -->
+        <!-- ============ 主体导航 ============
+             Background 必须显式置空：NavigationView 自带不透明底色，会把窗口的 Mica 云母盖掉，
+             只有顶栏能透出云母（这就是「内容区没做到云母」的原因）。 -->
         <ui:NavigationView Grid.Row="1" x:Name="NavView"
+                           Background="Transparent"
                            PaneDisplayMode="Left" OpenPaneLength="283"
                            IsBackButtonVisible="False" IsSettingsVisible="False"
                            IsPaneToggleButtonVisible="False">

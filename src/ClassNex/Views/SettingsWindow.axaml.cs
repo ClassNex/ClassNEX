@@ -787,14 +787,15 @@ public partial class SettingsWindow : AppWindow
     }
 
     /// <summary>
-    /// 组件卡片背景色。注意：不能走 TryFindResource(key) ——
-    /// 它返回的是**浅色**变体的值（#b3ffffff），会在深色界面里画出白色卡片（用户反馈的「发白」）。
+    /// 组件卡片背景色。要求与窗口的 Mica 云母协调，所以用**半透明**层：
+    /// 深色 = 白 10% / 浅色 = 白 70%（浅色值取自主题实测 CardBackgroundFillColorDefaultBrush=#b3ffffff）。
+    /// 注意：不能走 TryFindResource(key) —— 它返回的是**浅色**变体的值，会在深色界面里画出白色卡片（「发白」）。
     /// </summary>
     private static IBrush CardBackground() =>
-        new SolidColorBrush(IsDarkTheme() ? Color.Parse("#2E2E2E") : Color.Parse("#FBFBFB"));
+        new SolidColorBrush(Color.Parse(IsDarkTheme() ? "#1AFFFFFF" : "#B3FFFFFF"));
 
     private static IBrush CardBorder() =>
-        new SolidColorBrush(IsDarkTheme() ? Color.Parse("#3F3F3F") : Color.Parse("#E5E5E5"));
+        new SolidColorBrush(Color.Parse(IsDarkTheme() ? "#1FFFFFFF" : "#0F000000"));
 
     /// <summary>组件库：每个组件类型一张卡片，双击添加。</summary>
     private void RefreshWidgetLibrary()
