@@ -98,13 +98,21 @@ public partial class SettingsWindow : AppWindow
     private SplitView? _paneSplitView;
     private bool _accountCompact;
     private bool _paneStateHooked;
+    private IDisposable? _accountTextTimer;
 
     /// <summary>
-    /// 订阅左栏折叠状态：AvaloniaFluentUI 的 NavigationView 没公开 IsPaneOpen，
-    /// 它内部用的是 SplitView，所以从可视树取出来订阅 <see cref="SplitView.IsPaneOpenProperty"/>。
+    /// 订阅左栏折叠状态。AvaloniaFluentUI 的 NavigationView 没公开 IsPaneOpen：
+    /// 它的 ☰ 折叠改的是 <c>PaneDisplayMode</c>（Left → 紧凑/最小），内部 SplitView 的
+    /// <c>IsPaneOpen</c> 只是启动态。所以两边都订阅，任一变化都刷新账户卡。
     /// </summary>
     private void HookPaneState()
     {
+        NavView.PropertyChanged += (_, e) =>
+        {
+            if (e.Property.Name == "PaneDisplayMode")
+                ApplyAccountCompact(!string.Equals(NavView.PaneDisplayMode.ToString(), "Left", StringComparison.Ordinal));
+        };
+
         _paneSplitView = NavView.GetVisualDescendants().OfType<SplitView>().FirstOrDefault();
         if (_paneSplitView is null)
             return;
@@ -118,11 +126,40 @@ public partial class SettingsWindow : AppWindow
             if (e.Property == SplitView.IsPaneOpenProperty)
                 ApplyAccountCompact(!_paneSplitView.IsPaneOpen);
         };
+
+#if DEBUG
+        // 调试：CLASSNEX_VERIFY_PANE_COMPACT=1 时直接把左栏折叠，方便核对账户卡收缩效果
+        if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_PANE_COMPACT") == "1")
+            _paneSplitView.IsPaneOpen = false;
+#endif
     }
 
     /// <summary>
-    /// compact=true：账户卡收成「只有头像」（56→36 圆），并挪到侧边栏中间；
-    /// compact=false：还原完整账户卡。宽度/边距/头像尺寸都有过渡动画（在 XAML 里定义）。
+    /// 折叠时文字要先淡出、再真正从布局里移除（只设 Opacity=0 的话文字仍占宽度，
+    /// 卡片会保持 ~229 宽而溢出 48 DIP 的侧边栏 —— 那就是「错位」的来源）。
+    /// </summary>
+    private void SetAccountTextVisible(bool visible)
+    {
+        _accountTextTimer?.Dispose();
+
+        if (visible)
+        {
+            AccountTextHost.IsVisible = true;
+            AccountTextHost.Opacity = 1;
+            return;
+        }
+
+        AccountTextHost.Opacity = 0;
+        _accountTextTimer = DispatcherTimer.RunOnce(
+            () => AccountTextHost.IsVisible = false,
+            TimeSpan.FromMilliseconds(200));
+    }
+
+    /// <summary>
+    /// compact=true：账户卡收成「只有头像」（56→36 圆），并往左滑进侧边栏中间，名字/邮箱淡出；
+    /// compact=false：还原完整账户卡。
+    /// 只改 **RenderTransform / 头像尺寸 / 文字透明度**（全部是重绘级属性，不触发重新布局），
+    /// 所以过渡是平滑的、且 hover 蒙版跟着一起移动，不会错位。
     /// </summary>
     private void ApplyAccountCompact(bool compact)
     {
@@ -133,29 +170,30 @@ public partial class SettingsWindow : AppWindow
 
         if (compact)
         {
-            AccountTextHost.IsVisible = false;
-            AccountCardHost.Width = 52;
-            AccountCardHost.Margin = new Thickness(4, 48, 0, 0);
+            // 侧边栏宽约 48 DIP：把头像从 x=20 挪到居中位置（约 6），所以整体左移 14
+            AccountShift.X = -14;
             AccountAvatarRing.Width = 36;
             AccountAvatarRing.Height = 36;
             AccountAvatarRing.CornerRadius = new CornerRadius(18);
             AccountAvatarRing.BorderThickness = new Thickness(2);
-            AccountButton.Padding = new Thickness(8, 0);
-            AccountButton.HorizontalContentAlignment = HorizontalAlignment.Center;
+            SetAccountTextVisible(false);
+            AccountTextHost.IsHitTestVisible = false;
         }
         else
         {
-            AccountTextHost.IsVisible = true;
-            AccountCardHost.Width = 266;
-            AccountCardHost.Margin = new Thickness(20, 48, 0, 0);
+            AccountShift.X = 0;
             AccountAvatarRing.Width = 56;
             AccountAvatarRing.Height = 56;
             AccountAvatarRing.CornerRadius = new CornerRadius(28);
             AccountAvatarRing.BorderThickness = new Thickness(3);
-            AccountButton.Padding = new Thickness(0);
-            AccountButton.HorizontalContentAlignment = HorizontalAlignment.Left;
+            SetAccountTextVisible(true);
+            AccountTextHost.IsHitTestVisible = true;
         }
     }
+
+    /// <summary>账户卡的位移变换（XAML 里 RenderTransform 里的 TranslateTransform，x:Name 不生成字段，这里取）。</summary>
+    private TranslateTransform AccountShift =>
+        (TranslateTransform)AccountCardHost.RenderTransform!;
 
     /// <summary>
     /// Mica 云母背景 + 沉浸式标题栏（照 CI 的 <c>MyWindow.OnLoaded</c>：

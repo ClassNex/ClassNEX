@@ -617,17 +617,18 @@
         <StackPanel x:Name="AccountCardHost" Grid.Row="1" Width="266"
                     HorizontalAlignment="Left" VerticalAlignment="Top"
                     Margin="20,48,0,0" Spacing="8">
-            <!-- 左栏折叠时收缩成「只有头像」并滑到侧边栏（宽度/边距/头像尺寸都走过渡动画） -->
-            <StackPanel.Transitions>
-                <Transitions>
-                    <DoubleTransition Property="Width" Duration="0:0:0.25">
-                        <DoubleTransition.Easing><CubicEaseOut/></DoubleTransition.Easing>
-                    </DoubleTransition>
-                    <ThicknessTransition Property="Margin" Duration="0:0:0.25">
-                        <ThicknessTransition.Easing><CubicEaseOut/></ThicknessTransition.Easing>
-                    </ThicknessTransition>
-                </Transitions>
-            </StackPanel.Transitions>
+            <!-- 折叠/展开的位移走 RenderTransform（只重绘不重新布局 → 不抖、不僵；蒙版跟着一起走） -->
+            <StackPanel.RenderTransform>
+                <TranslateTransform>
+                    <TranslateTransform.Transitions>
+                        <Transitions>
+                            <DoubleTransition Property="X" Duration="0:0:0.28">
+                                <DoubleTransition.Easing><CubicEaseOut/></DoubleTransition.Easing>
+                            </DoubleTransition>
+                        </Transitions>
+                    </TranslateTransform.Transitions>
+                </TranslateTransform>
+            </StackPanel.RenderTransform>
             <StackPanel.Styles>
                 <Style Selector="Button.AccountCard">
                     <Setter Property="Transitions">
@@ -644,27 +645,34 @@
                 </Style>
             </StackPanel.Styles>
 
-            <!-- 账户区（照 Gallery）：**默认无底色**，鼠标移入才出现高亮蒙版；Padding=0 让头像贴左缘 -->
+            <!-- 账户区（照 Gallery）：**默认无底色**，鼠标移入才出现高亮蒙版；Padding=0 让头像贴左缘。
+                 注意 HorizontalAlignment=Left（不 Stretch）：蒙版宽度 = 内容宽度，折叠时才不会有一条
+                 266 宽的蒙版横在侧边栏外面。 -->
             <Button x:Name="AccountButton" Classes="AccountCard"
                     Padding="0" CornerRadius="8"
                     Background="Transparent" BorderThickness="0"
-                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                    HorizontalAlignment="Left" HorizontalContentAlignment="Left"
                     Click="OnAccountClick" ToolTip.Tip="账户">
                 <StackPanel Orientation="Horizontal" Spacing="12">
                     <Border x:Name="AccountAvatarRing" Width="56" Height="56" CornerRadius="28"
                             BorderThickness="3">
                         <Border.Transitions>
                             <Transitions>
-                                <DoubleTransition Property="Width" Duration="0:0:0.25">
+                                <DoubleTransition Property="Width" Duration="0:0:0.28">
                                     <DoubleTransition.Easing><CubicEaseOut/></DoubleTransition.Easing>
                                 </DoubleTransition>
-                                <DoubleTransition Property="Height" Duration="0:0:0.25">
+                                <DoubleTransition Property="Height" Duration="0:0:0.28">
                                     <DoubleTransition.Easing><CubicEaseOut/></DoubleTransition.Easing>
                                 </DoubleTransition>
                             </Transitions>
                         </Border.Transitions>
                     </Border>
                     <StackPanel x:Name="AccountTextHost" VerticalAlignment="Center" Spacing="3">
+                        <StackPanel.Transitions>
+                            <Transitions>
+                                <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
+                            </Transitions>
+                        </StackPanel.Transitions>
                         <TextBlock x:Name="AccountNameText" FontSize="18"/>
                         <TextBlock x:Name="AccountEmailText" FontSize="13" Opacity="0.7"/>
                     </StackPanel>
