@@ -65,8 +65,8 @@ public partial class App : Application
             DispatcherTimer.RunOnce(() => _mainWindow?.WarmNotificationMask(), TimeSpan.FromSeconds(1));
 
 #if DEBUG
-            // 调试：CLASSNEX_VERIFY_NOTIFY=1 时启动后连放三次（3s/8s/13s）重要通知：
-            // 水波纹 + 岛上遮罩文字（与真实上课/课间触发完全同一条链路）。
+            // 调试：CLASSNEX_VERIFY_NOTIFY=1 时启动后连放三次（3s/8s/13s）重要通知，
+            // 与真实下课提醒同链路：面具 1.5s → Overlay「下节课是…」→ 3.5s 收起。
             if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_NOTIFY") == "1")
             {
                 foreach (var delay in new[] { 3, 8, 13 })
@@ -76,7 +76,17 @@ public partial class App : Application
                         var center = _mainWindow?.GetIslandCenterOnScreen() ?? new Avalonia.PixelPoint(200, 200);
                         _effectWindow!.PlayEffect(new Controls.NotificationEffects.RippleEffect(center));
                         _mainWindow?.ShowNotificationMask("课间休息");
-                        DispatcherTimer.RunOnce(() => _mainWindow?.HideNotificationMask(), TimeSpan.FromSeconds(3));
+
+                        var summary = Services.AppServices.Time.GetTodaySummary(
+                            Services.AppServices.Schedule.Profile, DateTime.Now);
+                        var next = Services.AppServices.Time.GetNextCourse(summary.Slots, DateTime.Now.TimeOfDay);
+                        var overlay = next is { } nxt
+                            ? $"下节课是：{nxt.DisplayName} {nxt.TimeRange}"
+                            : "今日课程已结束。";
+                        DispatcherTimer.RunOnce(() => _mainWindow?.ShowNotificationOverlay(overlay),
+                            TimeSpan.FromMilliseconds(1500));
+                        DispatcherTimer.RunOnce(() => _mainWindow?.HideNotificationMask(),
+                            TimeSpan.FromMilliseconds(3500));
                     }, TimeSpan.FromSeconds(delay));
                 }
             }
