@@ -171,6 +171,17 @@
                                            RenderTransformOrigin="50%,50%"/>
                             </Border>
 
+                            <!-- CI 提醒轨道：提醒时横跨岛底的整宽进度条
+                                 （视频实测：岛扩到整屏宽、文字居中，底下蓝填充随提醒时长推进） -->
+                            <ProgressBar x:Name="NotificationTrack"
+                                         Height="7"
+                                         MinWidth="0"
+                                         Minimum="0" Maximum="100" Value="0"
+                                         VerticalAlignment="Bottom"
+                                         HorizontalAlignment="Center"
+                                         IsVisible="False"
+                                         Width="{Binding #IslandBackground.Width}"/>
+
                         </Panel>
 
                         <!-- 编辑模式底部工具条（CI「编辑主界面」的底部栏：添加组件 / 组件设置 / 完成） -->

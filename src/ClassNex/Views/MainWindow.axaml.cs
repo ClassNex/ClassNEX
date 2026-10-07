@@ -367,6 +367,55 @@ public partial class MainWindow : Window
         PlayFadeInAnimation();
     }
 
+    /// <summary>提醒前的岛宽（提醒时扩展为整屏宽，结束后恢复）。</summary>
+    private double? _preNotificationIslandWidth;
+
+    /// <summary>
+    /// CI 提醒态：岛扩展为整屏宽（视频实测提醒时黑条横跨全屏），并显示岛底的整宽进度轨道
+    /// —— 蓝色填充随提醒时长从 0 走到 100%。
+    /// </summary>
+    private void ExpandIslandForNotification()
+    {
+        _preNotificationIslandWidth ??= IslandBackground.Width;
+
+        var scale = Math.Max(0.1, AppServices.Settings.MainWindowScale);
+        var full = Bounds.Width / scale;   // 窗口已是整屏宽，除以整体缩放 = 岛的逻辑宽
+        if (full > IslandBackground.Width)
+            IslandBackground.Width = full;
+
+        // 取消宽度补间可能留下的缩放（否则岛会被 Scale 缩回去）
+        if (ElementComposition.GetElementVisual(IslandBackground) is { } visual)
+            visual.Scale = new Vector3D(1, 1, 1);
+
+        NotificationTrack.Background = CiPalette.ProgressTrackBrush();
+        NotificationTrack.Width = Math.Max(1, IslandBackground.Width - 24); // 与 GridContentRoot 两侧 12 内边距对齐
+        NotificationTrack.Value = 0;
+        NotificationTrack.IsVisible = true;
+
+        var track = new Animation
+        {
+            Duration = TimeSpan.FromMilliseconds(3500),
+            FillMode = FillMode.Forward,
+            Children =
+            {
+                new KeyFrame { Cue = new Cue(0), Setters = { new Setter(ProgressBar.ValueProperty, 0.0) } },
+                new KeyFrame { Cue = new Cue(1), Setters = { new Setter(ProgressBar.ValueProperty, 100.0) } },
+            },
+        };
+        _ = track.RunAsync(NotificationTrack);
+    }
+
+    /// <summary>提醒结束：岛恢复为内容宽，隐藏轨道。</summary>
+    private void RestoreIslandAfterNotification()
+    {
+        NotificationTrack.IsVisible = false;
+        if (_preNotificationIslandWidth is { } previous)
+        {
+            IslandBackground.Width = previous;
+            _preNotificationIslandWidth = null;
+        }
+    }
+
     /// <summary>浮窗岛的屏幕矩形（物理像素），供灵动通知胶囊定位（对照 CI MainWindowLine 取 GridWrapper 的做法）。</summary>
     public PixelRect? GetIslandScreenRect()
     {
@@ -400,6 +449,9 @@ public partial class MainWindow : Window
     {
         NotificationMaskText.Text = text;
         NotificationMask.IsVisible = true;
+
+        // CI 提醒态（视频实测）：岛扩展到**整屏宽**、文字居中、底下一条整宽轨道随提醒时长推进
+        ExpandIslandForNotification();
 
         // CI :mask-in —— 岛的正常内容透明度置 0（GridContentRoot），否则课表会和面具/Overlay 叠字
         CardContent.Opacity = 0;
@@ -490,6 +542,8 @@ public partial class MainWindow : Window
             NotificationOverlay.IsVisible = false;
             // 通知结束，岛的正常内容恢复显示
             CardContent.Opacity = 1;
+            // 岛恢复内容宽、轨道隐藏
+            RestoreIslandAfterNotification();
         }, TimeSpan.FromMilliseconds(500));
     }
 
