@@ -16,6 +16,7 @@ using ClassNex.Services;
 using ClassNex.Styles;
 using ClassNex.ViewModels;
 using AvaloniaFluentUI.Controls;
+using AvaloniaFluentUI.Windowing;
 
 namespace ClassNex.Views;
 
@@ -23,7 +24,7 @@ namespace ClassNex.Views;
 /// 应用设置。全程使用 FluentAvalonia（FluentUI）控件：
 /// NavigationView（左侧导航）/ SettingsExpander（设置分组）/ ToggleSwitch（开关）/ FontIcon（图标）。
 /// </summary>
-public partial class SettingsWindow : Window
+public partial class SettingsWindow : AppWindow
 {
     private readonly ObservableCollection<WidgetItem> _widgets = new();
     private readonly ObservableCollection<SearchEntry> _searchEntries = new();
@@ -80,6 +81,38 @@ public partial class SettingsWindow : Window
         InitShell();
         WireEvents();
         LoadFromSettings();
+    }
+
+    /// <summary>
+    /// Mica 云母背景 + 沉浸式标题栏（照 CI 的 <c>MyWindow.OnLoaded</c>：
+    /// Windows 11 21H2 / build 22000 及以上才启用，否则保持普通不透明背景）。
+    /// 根元素已是 <c>AvaloniaFluentUI.Windowing.AppWindow</c>：客户区扩展到标题栏，
+    /// 系统的最小化/最大化/关闭按钮直接画在右上角（顶栏第 4 列留了 140 宽避让）。
+    /// </summary>
+    protected override void OnOpened(EventArgs e)
+    {
+        base.OnOpened(e);
+
+        try
+        {
+            if (!OperatingSystem.IsWindows())
+                return;
+
+            if (Environment.OSVersion.Version < new Version(10, 0, 22000))
+                return;
+
+            TransparencyLevelHint = new[]
+            {
+                WindowTransparencyLevel.Mica,
+                WindowTransparencyLevel.AcrylicBlur,
+                WindowTransparencyLevel.None,
+            };
+            Background = Brushes.Transparent;
+        }
+        catch
+        {
+            // 忽略：不支持 Mica 时保持普通背景
+        }
     }
 
     /// <summary>初始化外壳：顶栏版本号、导航栏账号块、顶栏搜索（对照 CI 的顶栏与用户给的系统设置截图）。</summary>
