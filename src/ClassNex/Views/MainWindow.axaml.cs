@@ -193,12 +193,13 @@ public partial class MainWindow : Window
         WidgetHost.Children.Clear();
         _widgets.Clear();
 
-        // CI WrapPanelResizingAnimationAssist：组件容器做隐式 Offset 动画
-        // （300ms / 0.65,0,0.35,1.0，与 CI MainWindow.axaml 传的参数一致），
-        // 内容重排时组件平滑滑动而不是硬跳。
-        WrapPanelResizingAnimationAssist.SetIsResizingAnimationEnabled(WidgetHost, true);
-        WrapPanelResizingAnimationAssist.SetDuration(WidgetHost, TimeSpan.FromMilliseconds(300));
-        WrapPanelResizingAnimationAssist.SetEasing(WidgetHost, Easing.Parse("0.65, 0, 0.35, 1.0"));
+        // ⚠️ 这里**不能**启用 CI 的 WrapPanelResizingAnimationAssist（隐式 Offset 动画）：
+        // 岛的宽度是「布局立刻跳到目标宽 + composition Scale.X 补间放大」实现的
+        // （见 SetIslandWidth —— Avalonia 的 Width 过渡在 LayoutTransformControl 里会卡布局）。
+        // 若组件再加一层 300ms 的 Offset 补间，组件会被画在「旧位置 × 未完成的缩放」上，
+        // 与邻居文字叠在一起（用户录屏里文本组件输入时 周三10/07 与 111111 相互重影）。
+        // 只保留岛的宽度生长动画即可，组件位置直接跟随布局。
+        WrapPanelResizingAnimationAssist.SetIsResizingAnimationEnabled(WidgetHost, false);
 
         foreach (var config in AppServices.Widgets.Widgets.Where(w => w.IsEnabled).OrderBy(w => w.Order))
         {

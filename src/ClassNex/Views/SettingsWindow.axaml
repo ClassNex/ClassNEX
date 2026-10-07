@@ -392,13 +392,15 @@
                                                 </ui:SettingsExpander.Footer>
                                             </ui:SettingsExpander>
 
-                                            <ui:SettingsExpander Header="时钟组件显示秒">
+                                            <!-- 以下两项是「按组件类型」才显示的设置：由代码在选中组件时切换 IsVisible，
+                                                 让每个组件只看到自己的设置项（不再所有组件底下都挂一个自定义文本） -->
+                                            <ui:SettingsExpander x:Name="WidgetSecondsExpander" Header="显示秒">
                                                 <ui:SettingsExpander.Footer>
                                                     <CheckBox x:Name="WidgetSecondsCheck"/>
                                                 </ui:SettingsExpander.Footer>
                                             </ui:SettingsExpander>
 
-                                            <ui:SettingsExpander Header="自定义文本（仅「文本」组件）"
+                                            <ui:SettingsExpander x:Name="WidgetTextExpander" Header="自定义文本"
                                                                  Description="占位符：{date} {day} {time} {parity} {current} {next} {countdown}">
                                                 <ui:SettingsExpander.Footer>
                                                     <TextBox x:Name="WidgetTextBox" Width="300" AcceptsReturn="True" TextWrapping="Wrap"/>

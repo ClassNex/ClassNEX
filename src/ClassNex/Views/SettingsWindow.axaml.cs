@@ -890,8 +890,11 @@ public partial class SettingsWindow : AppWindow
             WidgetFontValueText.Text = $"{config.FontScale:0.00}x";
             WidgetSecondsCheck.IsChecked = config.ShowSeconds;
             WidgetTextBox.Text = config.Text ?? "";
-            WidgetSecondsCheck.IsEnabled = config.Type == "clock";
-            WidgetTextBox.IsEnabled = config.Type == "text";
+
+            // 每个组件只显示**自己的**设置项（不再所有组件底下都挂一个「自定义文本」）：
+            //   时钟 → 「显示秒」；文本 → 「自定义文本」；其余类型两个都不显示。
+            WidgetSecondsExpander.IsVisible = config.Type == "clock";
+            WidgetTextExpander.IsVisible = config.Type == "text";
         }
 
         _loading = false;
