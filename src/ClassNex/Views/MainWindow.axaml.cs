@@ -472,11 +472,6 @@ public partial class MainWindow : Window
         // CI 提醒态（视频实测）：岛扩展到**整屏宽**、文字居中、底下一条整宽轨道随提醒时长推进
         ExpandIslandForNotification();
 
-        // 轨道时钟从**通知一开始**就走（整段 3.5s），Overlay 阶段轨道出现时已是真实剩余百分比，
-        // 不会从 100% 满格突然弹出来。
-        _trackStopwatch ??= new System.Diagnostics.Stopwatch();
-        _trackStopwatch.Restart();
-
         // CI :mask-in —— 岛的正常内容透明度置 0（GridContentRoot），否则课表会和面具/Overlay 叠字
         CardContent.Opacity = 0;
 
