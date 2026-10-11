@@ -569,6 +569,9 @@ public partial class SettingsWindow : AppWindow
             if (WidgetLibraryList.SelectedItem is WidgetTypeItem item)
                 AddWidget(item.Type);
         };
+#if DEBUG
+        VerifyDialogHook();
+#endif
     }
 
     // 主页（PageHome）目前按用户要求留空白，内容待设计。
@@ -801,10 +804,13 @@ public partial class SettingsWindow : AppWindow
 
     // ==================== 关于页：连点版本号解锁调试（对照 CI AboutSettingsPage.DebugBorder） ====================
 
+    /// <summary>启用调试菜单时必须手打一遍的免责声明（对照 CI 的验证文本）。</summary>
+    private const string DebugUnlockPhrase = "我知晓我所做的行为开发者不对对此负责";
+
     private int _versionClickCount;
 
-    /// <summary>关于页版本号连点 10 次 → 解锁「调试」页（出现在左栏底部）。</summary>
-    private void OnVersionPointerPressed(object? sender, PointerPressedEventArgs e)
+    /// <summary>版本号连点 10 次 → 弹 Fluent 对话框、手打免责声明 → 解锁「调试」页（左栏底部）。</summary>
+    private async void OnVersionPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         var s = AppServices.Settings;
         if (s.IsDebugOptionsEnabled)
@@ -815,11 +821,88 @@ public partial class SettingsWindow : AppWindow
             return;
 
         _versionClickCount = 0;
+
+        // 对照 CI：必须先输入确认文本，输入正确才解锁
+        if (!await ConfirmDebugUnlockAsync())
+            return;
+
         s.IsDebugOptionsEnabled = true;
         AppServices.SaveSettings();
         RefreshDebugVisibility();
         NavigateTo("debug");
     }
+
+    /// <summary>启用调试菜单的确认对话框（Fluent ContentDialog）：要求手打 <see cref="DebugUnlockPhrase"/>。</summary>
+    private async Task<bool> ConfirmDebugUnlockAsync()
+    {
+        var input = new TextBox
+        {
+            Watermark = DebugUnlockPhrase,
+            AcceptsReturn = false,
+        };
+
+        var content = new StackPanel
+        {
+            Spacing = 10,
+            Children =
+            {
+                new TextBlock
+                {
+                    TextWrapping = TextWrapping.Wrap,
+                    Text = "您正在启用仅供开发使用的调试菜单。此页面中的功能仅限开发与调试用途，"
+                           + "开发者不对以非开发用途使用本页面功能造成的任何后果负责，"
+                           + "也不接受因此产生的 Bug 反馈。",
+                },
+                new TextBlock
+                {
+                    TextWrapping = TextWrapping.Wrap,
+                    Text = $"如果您确实要启用，请在下方文本框中输入：{DebugUnlockPhrase}",
+                },
+                input,
+            },
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = "启用调试菜单",
+            Content = content,
+            PrimaryButtonText = "继续",
+            CloseButtonText = "取消",
+            DefaultButton = ContentDialogButton.Primary,
+        };
+
+        var result = await dialog.ShowAsync();
+        if (result != ContentDialogResult.Primary)
+            return false;
+
+        if (string.Equals(input.Text?.Trim(), DebugUnlockPhrase, StringComparison.Ordinal))
+            return true;
+
+        // 输入不对：提示后不放行（对照 CI 的 ShowWarningToast）
+        await new ContentDialog
+        {
+            Title = "验证结果不正确",
+            Content = new TextBlock
+            {
+                TextWrapping = TextWrapping.Wrap,
+                Text = $"输入的文本与要求的不一致，请重新操作并输入：{DebugUnlockPhrase}",
+            },
+            CloseButtonText = "知道了",
+        }.ShowAsync();
+
+        return false;
+    }
+
+#if DEBUG
+    /// <summary>调试：CLASSNEX_VERIFY_DIALOG=1 时启动后自动弹出「启用调试菜单」对话框，便于核对样式。</summary>
+    private void VerifyDialogHook()
+    {
+        if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_DIALOG") != "1")
+            return;
+
+        DispatcherTimer.RunOnce(async () => await ConfirmDebugUnlockAsync(), TimeSpan.FromSeconds(2));
+    }
+#endif
 
     private void RefreshDebugVisibility() => DebugNavItem.IsVisible = AppServices.Settings.IsDebugOptionsEnabled;
 
