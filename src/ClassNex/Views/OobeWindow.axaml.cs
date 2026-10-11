@@ -9,15 +9,17 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using AvaloniaFluentUI.Windowing;
 using ClassNex.Services;
 
 namespace ClassNex.Views;
 
 /// <summary>
 /// 首次启动向导（OOBE）。全新安装第一次启动时显示，走完流程前不显示课表浮窗。
-/// 版式参照 Windows 的「语音访问」欢迎页：左侧文字与选项，右侧插图，右下角主按钮。
+/// 版式参照 Windows 的「语音访问」欢迎页：左侧文字与选项，右侧大插图（向右下溢出被裁），右下角主按钮。
+/// 窗口基类是 AvaloniaFluentUI 的 AppWindow（沉浸式标题栏 + 云母），必须与 XAML 根节点 wd:AppWindow 一致。
 /// </summary>
-public partial class OobeWindow : Window
+public partial class OobeWindow : AppWindow
 {
     private const int PageCount = 5;
 
@@ -154,10 +156,8 @@ public partial class OobeWindow : Window
     {
         if (_isEnglish)
         {
-            WelcomeBody.Text = "Welcome to ClassNEX. It shows your timetable, current lesson and class bells on the classroom display. All data stays on this device.";
+            WelcomeBody.Text = "Welcome to ClassNEX — let's get started";
             Bullet1.Text = "• Selecting \"Agree and continue\" lets ClassNEX read and write timetable and settings data on this device.";
-            Bullet2.Text = "• Your data is never uploaded to any server and is not collected for any other purpose.";
-            Bullet3.Text = "• You import the timetable file yourself; the app only parses and displays it locally.";
             PrivacyLink.Content = "Privacy policy";
             LicenseLink.Content = "License (GPL-3.0)";
             LanguageLabel.Text = "Language";
@@ -182,10 +182,8 @@ public partial class OobeWindow : Window
         }
         else
         {
-            WelcomeBody.Text = "欢迎使用 ClassNEX。它会在教室大屏上显示课表、当前课程与上课提醒，所有数据都保存在本机。";
+            WelcomeBody.Text = "欢迎使用 ClassNEX，让我们开始吧";
             Bullet1.Text = "• 选择「同意并继续」即表示你同意 ClassNEX 在本机读写课表与设置数据。";
-            Bullet2.Text = "• 你的数据不会上传到任何服务器，也不会被收集用于其他用途。";
-            Bullet3.Text = "• 课表文件由你自己导入，应用只在本机解析与展示。";
             PrivacyLink.Content = "隐私政策";
             LicenseLink.Content = "开源许可（GPL-3.0）";
             LanguageLabel.Text = "选择语言";

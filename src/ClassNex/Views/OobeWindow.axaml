@@ -1,12 +1,19 @@
-<Window xmlns="https://github.com/avaloniaui"
+<wd:AppWindow xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="using:AvaloniaFluentUI.Controls"
         xmlns:views="using:ClassNex.Views"
+        xmlns:wd="using:AvaloniaFluentUI.Windowing"
         x:Class="ClassNex.Views.OobeWindow"
         Title="欢迎使用 ClassNEX"
+        Icon="/Assets/icon.ico"
+        TitleBarHeight="48"
+        IsTitleBarContentVisible="False"
         Width="1040" Height="660"
         MinWidth="880" MinHeight="560"
         WindowStartupLocation="CenterScreen">
+
+    <!-- 沉浸式标题栏 + 云母（与设置窗口/档案编辑器同一套：AppWindow 提供 Mica，
+         内容根节点不设不透明背景，云母才能透上来）。项目规则：以后所有页面都要这两样。 -->
 
     <Window.Styles>
         <!-- 超链接样式（照 Fluent 的 HyperlinkButton） -->
@@ -27,10 +34,6 @@
         <Style Selector="TextBlock.OobeBody">
             <Setter Property="FontSize" Value="15"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
-        </Style>
-        <Style Selector="TextBlock.OobeSection">
-            <Setter Property="FontSize" Value="20"/>
-            <Setter Property="Margin" Value="0,8,0,0"/>
         </Style>
         <!-- 主按钮（强调色实心）：AvaloniaFluentUI 的 Classes="accent" 在这个版本没生效，直接用 Fluent 主题资源铺 -->
         <Style Selector="Button.Primary">
@@ -60,25 +63,20 @@
     <Grid RowDefinitions="*,Auto">
         <Grid Grid.Row="0">
 
-            <!-- ==================== 第 1 页：欢迎（左：多语言问候 + 说明 + 协议链接 + 语言；右：教室插图） ==================== -->
-            <Grid x:Name="PageWelcome" ColumnDefinitions="*,Auto" Margin="56,44,0,0">
-                <StackPanel Grid.Column="0" Spacing="14" MaxWidth="520" HorizontalAlignment="Left">
+            <!-- ==================== 第 1 页：欢迎（左：多语言问候 + 说明 + 协议链接 + 语言；右：教室插图，向右下溢出被窗口裁掉约 1/3） ==================== -->
+            <Grid x:Name="PageWelcome" ColumnDefinitions="*,*">
+                <StackPanel Grid.Column="0" Spacing="14" Margin="56,16,24,0"
+                            VerticalAlignment="Center" HorizontalAlignment="Left" MaxWidth="470">
                     <TextBlock x:Name="GreetingText"
                                Text="你好"
                                FontFamily="Noto Serif SC, Source Han Serif SC, SimSun"
                                FontSize="46"/>
 
                     <TextBlock x:Name="WelcomeBody" Classes="OobeBody"
-                               Text="欢迎使用 ClassNEX。它会在教室大屏上显示课表、当前课程与上课提醒，所有数据都保存在本机。"/>
+                               Text="欢迎使用 ClassNEX，让我们开始吧"/>
 
-                    <StackPanel Spacing="8" Margin="0,4,0,0">
-                        <TextBlock x:Name="Bullet1" Classes="OobeBody"
-                                   Text="• 选择「同意并继续」即表示你同意 ClassNEX 在本机读写课表与设置数据。"/>
-                        <TextBlock x:Name="Bullet2" Classes="OobeBody"
-                                   Text="• 你的数据不会上传到任何服务器，也不会被收集用于其他用途。"/>
-                        <TextBlock x:Name="Bullet3" Classes="OobeBody"
-                                   Text="• 课表文件由你自己导入，应用只在本机解析与展示。"/>
-                    </StackPanel>
+                    <TextBlock x:Name="Bullet1" Classes="OobeBody"
+                               Text="• 选择「同意并继续」即表示你同意 ClassNEX 在本机读写课表与设置数据。"/>
 
                     <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
                         <Button x:Name="PrivacyLink" Classes="Link" Content="隐私政策"/>
@@ -95,15 +93,17 @@
                     </StackPanel>
                 </StackPanel>
 
-                <Border Grid.Column="1" Width="430" Margin="32,0,0,0"
-                        CornerRadius="8" ClipToBounds="True" VerticalAlignment="Center">
-                    <Image Source="avares://ClassNex/Assets/Oobe/Classroom.png" Stretch="Uniform"/>
-                </Border>
+                <!-- 插图：占右半，向右下溢出（负边距），被窗口裁掉约 1/3 —— 参照 Windows「语音访问」欢迎页 -->
+                <Image Grid.Column="1"
+                       Source="avares://ClassNex/Assets/Oobe/Classroom.png"
+                       Stretch="UniformToFill"
+                       HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                       Margin="16,-6,-150,-120"/>
             </Grid>
 
             <!-- ==================== 第 2 页：个性化设置 ==================== -->
-            <StackPanel x:Name="PagePreferences" IsVisible="False" Margin="56,44,56,0" Spacing="16" MaxWidth="620"
-                        HorizontalAlignment="Left">
+            <StackPanel x:Name="PagePreferences" IsVisible="False" Margin="56,16,56,0" Spacing="16" MaxWidth="620"
+                        HorizontalAlignment="Left" VerticalAlignment="Center">
                 <TextBlock x:Name="PreferencesTitle" Classes="OobeTitle" Text="个性化设置"/>
                 <TextBlock x:Name="PreferencesBody" Classes="OobeBody" Opacity="0.8"
                            Text="这些设置稍后都能在「应用设置」里修改。"/>
@@ -126,16 +126,16 @@
             </StackPanel>
 
             <!-- ==================== 第 3 页：账户（预留，用户要求先留空） ==================== -->
-            <StackPanel x:Name="PageAccount" IsVisible="False" Margin="56,44,56,0" Spacing="12" MaxWidth="620"
-                        HorizontalAlignment="Left">
+            <StackPanel x:Name="PageAccount" IsVisible="False" Margin="56,16,56,0" Spacing="12" MaxWidth="620"
+                        HorizontalAlignment="Left" VerticalAlignment="Center">
                 <TextBlock x:Name="AccountTitle" Classes="OobeTitle" Text="账户"/>
                 <TextBlock x:Name="AccountBody" Classes="OobeBody" Opacity="0.8"
                            Text="此页面预留：后续版本在这里提供账户登录与服务同步。"/>
             </StackPanel>
 
             <!-- ==================== 第 4 页：更多设置（预留） ==================== -->
-            <StackPanel x:Name="PageMore" IsVisible="False" Margin="56,44,56,0" Spacing="12" MaxWidth="620"
-                        HorizontalAlignment="Left">
+            <StackPanel x:Name="PageMore" IsVisible="False" Margin="56,16,56,0" Spacing="12" MaxWidth="620"
+                        HorizontalAlignment="Left" VerticalAlignment="Center">
                 <TextBlock x:Name="MoreTitle" Classes="OobeTitle" Text="更多设置"/>
                 <TextBlock x:Name="MoreBody" Classes="OobeBody" Opacity="0.8"
                            Text="此页面预留：后续版本继续补充。"/>
@@ -162,4 +162,4 @@
             </StackPanel>
         </Grid>
     </Grid>
-</Window>
+</wd:AppWindow>
