@@ -207,6 +207,54 @@ public sealed class NexVoiceService : IDisposable
         return new Grammar(builder) { Name = "nex-wake" };
     }
 
+    /// <summary>
+    /// 连续问答：不等唤醒词，直接切进听写状态听下一句（回答完之后调）。
+    /// </summary>
+    public void ListenForFollowUp()
+    {
+        if (!_listening || _engine is null || _dictating)
+            return;
+
+        _dictating = true;
+        try
+        {
+            if (_wakeGrammar is not null)
+                _engine.UnloadGrammar(_wakeGrammar);
+
+            _dictationGrammar ??= new DictationGrammar { Name = "nex-dictation" };
+            _engine.LoadGrammar(_dictationGrammar);
+        }
+        catch (Exception ex)
+        {
+            Log("进入追问模式失败：" + ex.Message);
+        }
+
+        ArmSilenceTimer();
+    }
+
+    /// <summary>回到只听唤醒词的状态。</summary>
+    public void BackToWakeWord()
+    {
+        if (!_listening || _engine is null)
+            return;
+
+        _dictating = false;
+        _hintTimer?.Dispose();
+        _resetTimer?.Dispose();
+
+        try
+        {
+            if (_dictationGrammar is not null)
+                _engine.UnloadGrammar(_dictationGrammar);
+            if (_wakeGrammar is not null)
+                _engine.LoadGrammar(_wakeGrammar);
+        }
+        catch
+        {
+            // 忽略
+        }
+    }
+
     private void OnSpeechRecognized(object? sender, SpeechRecognizedEventArgs e)
     {
         var text = e.Result?.Text?.Trim() ?? "";

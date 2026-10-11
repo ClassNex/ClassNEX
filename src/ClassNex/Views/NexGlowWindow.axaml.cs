@@ -77,11 +77,12 @@ public partial class NexGlowWindow : Window
 
     private void Step()
     {
-        _phase += 0.010;
+        // 转速：用户反馈原来太快了 —— 从每帧 0.010 降到 0.0035（一圈约 4.8 秒）
+        _phase += 0.0035;
         if (_phase > 1)
             _phase -= 1;
 
-        _breath += 0.045;
+        _breath += 0.016;
 
         // 渐变端点绕屏幕中心转一圈：光带看起来就在沿着边缘流动
         var angle = _phase * Math.PI * 2;
