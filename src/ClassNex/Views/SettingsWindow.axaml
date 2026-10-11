@@ -274,28 +274,33 @@
                                 </Style>
                             </StackPanel.Styles>
 
-                            <!-- 横幅：不要边框、不要圆角，左右直接顶到内容区边缘（照 FluentUI Gallery 的 hero） -->
-                            <Border Height="230" Margin="-32,0,-32,0" ClipToBounds="True">
+                            <!-- 横幅（照 FluentUI Gallery hero 重做）：
+                                 无边框、无圆角、通栏；问候语直接压在横幅左上；整张图拉伸铺满 -->
+                            <Border Height="300" Margin="-32,-12,-32,0" ClipToBounds="True">
                                 <Border.Background>
+                                    <!-- UniformToFill + 锚左：等比放大不裁掉左侧（不变形），
+                                        只裁掉右侧溢出的部分（Gallery 的 hero 也是裁切显示） -->
                                     <ImageBrush Source="/Assets/BannerWaves.png"
                                                 Stretch="UniformToFill"
-                                                AlignmentX="Right" AlignmentY="Center"/>
+                                                AlignmentX="Left" AlignmentY="Center"/>
                                 </Border.Background>
                                 <Grid>
-                                    <!-- 左侧一层柔和暗化，保证白色问候语在任何区域都可读 -->
+                                    <!-- 左上到中部一层柔和暗化，保证问候语可读 -->
                                     <Border>
                                         <Border.Background>
-                                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
-                                                <GradientStop Offset="0" Color="#99000000"/>
+                                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                                                <GradientStop Offset="0" Color="#8C000000"/>
                                                 <GradientStop Offset="0.55" Color="#33000000"/>
                                                 <GradientStop Offset="1" Color="#00000000"/>
                                             </LinearGradientBrush>
                                         </Border.Background>
                                     </Border>
-                                    <StackPanel Spacing="8" VerticalAlignment="Center" Margin="64,0,36,0">
+                                    <StackPanel Spacing="8"
+                                                VerticalAlignment="Top" HorizontalAlignment="Left"
+                                                Margin="64,44,36,0">
                                         <TextBlock x:Name="HomeGreetingText"
                                                    FontFamily="Noto Serif SC, Source Han Serif SC, SimSun"
-                                                   FontSize="38"
+                                                   FontSize="40"
                                                    Foreground="White"
                                                    TextTrimming="CharacterEllipsis"/>
                                         <TextBlock x:Name="HomeSubText" FontSize="14" Foreground="#E6FFFFFF"/>
