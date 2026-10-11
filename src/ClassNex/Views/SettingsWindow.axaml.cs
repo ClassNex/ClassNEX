@@ -731,6 +731,26 @@ public partial class SettingsWindow : AppWindow
                 timer.Start();
             };
 
+            NexEdgeBarCheck.IsCheckedChanged += (_, _) =>
+            {
+                if (_nexLoading)
+                    return;
+
+                AppServices.Settings.IsNexEdgeBarEnabled = NexEdgeBarCheck.IsChecked == true;
+                SettingsService.Save(AppServices.Settings);
+                AppServices.NexVoice?.RefreshEdgeBar();
+            };
+
+            NexEdgeBarSideCombo.SelectionChanged += (_, _) =>
+            {
+                if (_nexLoading)
+                    return;
+
+                AppServices.Settings.NexEdgeBarSide = NexEdgeBarSideCombo.SelectedIndex == 1 ? "left" : "right";
+                SettingsService.Save(AppServices.Settings);
+                AppServices.NexVoice?.RefreshEdgeBar();
+            };
+
             // 直接拉起 Windows 的语音设置页：整句听写需要在那里打开「在线语音识别」
             NexSpeechSettingsButton.Click += (_, _) => App.OpenWindowsSpeechSettings();
 
@@ -789,6 +809,8 @@ public partial class SettingsWindow : AppWindow
             NexSystemPromptBox.Text = s.NexSystemPrompt;
             NexPermissionCombo.SelectedIndex = (int)Services.NexIntelligence.NexPermissionNames.FromKey(s.NexPermission);
             NexVoiceWakeCheck.IsChecked = s.IsNexVoiceWakeEnabled;
+            NexEdgeBarCheck.IsChecked = s.IsNexEdgeBarEnabled;
+            NexEdgeBarSideCombo.SelectedIndex = s.NexEdgeBarSide == "left" ? 1 : 0;
             NexVoiceStatusText.Text = AppServices.NexVoice?.IsRunning == true ? "正在听「嘿 NEX」…" : "未启用";
             UpdateNexApiStateText();
         }

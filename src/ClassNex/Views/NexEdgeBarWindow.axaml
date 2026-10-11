@@ -1,0 +1,26 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="ClassNex.Views.NexEdgeBarWindow"
+        Title="NEX 唤醒条"
+        Width="14" Height="120"
+        Topmost="True"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        SystemDecorations="None"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        CanResize="False">
+    <!-- 吸附屏幕左右侧的半透明小白条：点一下 = 唤醒（同「嘿 NEX」） -->
+    <Border x:Name="Bar"
+            CornerRadius="7"
+            Background="#5CFFFFFF"
+            BorderThickness="1"
+            BorderBrush="#38FFFFFF"
+            Cursor="Hand">
+        <Border.Transitions>
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.15"/>
+            </Transitions>
+        </Border.Transitions>
+    </Border>
+</Window>

@@ -393,6 +393,17 @@
                                 <ui:SettingsExpander.Footer>
                                     <CheckBox x:Name="NexVoiceWakeCheck" Content="启用"/>
                                 </ui:SettingsExpander.Footer>
+                                <ui:SettingsExpanderItem Content="唤醒条" Description="屏幕左右侧贴一条半透明小白条，点一下等于喊「嘿 NEX」">
+                                    <ui:SettingsExpanderItem.Footer>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <CheckBox x:Name="NexEdgeBarCheck" Content="显示"/>
+                                            <ComboBox x:Name="NexEdgeBarSideCombo" Width="110">
+                                                <ComboBoxItem Content="右侧"/>
+                                                <ComboBoxItem Content="左侧"/>
+                                            </ComboBox>
+                                        </StackPanel>
+                                    </ui:SettingsExpanderItem.Footer>
+                                </ui:SettingsExpanderItem>
                                 <ui:SettingsExpanderItem Content="状态" Description="识别在本机离线进行，不上传麦克风音频">
                                     <ui:SettingsExpanderItem.Footer>
                                         <StackPanel Orientation="Horizontal" Spacing="10">

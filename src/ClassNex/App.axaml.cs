@@ -89,6 +89,9 @@ public partial class App : Application
                 DispatcherTimer.RunOnce(() => _nexVoice?.Start(), TimeSpan.FromSeconds(2));
             }
 
+            // 屏幕边缘的唤醒条（半透明小白条，点一下 = 喊唤醒词）
+            DispatcherTimer.RunOnce(() => _nexVoice?.RefreshEdgeBar(), TimeSpan.FromSeconds(3));
+
             // 处理 classnex:// Url 协议参数（第三方应用/网页调用本应用）
             HandleUrlProtocol(Environment.GetCommandLineArgs());
 

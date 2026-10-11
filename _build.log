@@ -1,12 +1,12 @@
 ﻿  正在确定要还原的项目…
   所有项目均是最新的，无法还原。
-E:\ClassNex\src\ClassNex\Services\NexVoiceCoordinator.cs(19,30): warning CS0649: 从未对字段“NexVoiceCoordinator._hideTimer”赋值，字段将一直保持其默认值 null [E:\ClassNex\src\ClassNex\ClassNex.csproj]
-  ClassNex -> E:\ClassNex\src\ClassNex\bin\Debug\net10.0-windows\ClassNex.dll
+E:\ClassNex\src\ClassNex\Views\NexEdgeBarWindow.axaml.cs(19,26): warning CS0108: “NexEdgeBarWindow.Activated”隐藏继承的成员“WindowBase.Activated”。如果是有意隐藏，请使用关键字 new。 [E:\ClassNex\src\ClassNex\ClassNex.csproj]
+  ClassNex -> E:\ClassNex\src\ClassNex\bin\Debug\net10.0-windows10.0.19041.0\ClassNex.dll
 
 已成功生成。
 
-E:\ClassNex\src\ClassNex\Services\NexVoiceCoordinator.cs(19,30): warning CS0649: 从未对字段“NexVoiceCoordinator._hideTimer”赋值，字段将一直保持其默认值 null [E:\ClassNex\src\ClassNex\ClassNex.csproj]
+E:\ClassNex\src\ClassNex\Views\NexEdgeBarWindow.axaml.cs(19,26): warning CS0108: “NexEdgeBarWindow.Activated”隐藏继承的成员“WindowBase.Activated”。如果是有意隐藏，请使用关键字 new。 [E:\ClassNex\src\ClassNex\ClassNex.csproj]
     1 个警告
     0 个错误
 
-已用时间 00:00:14.35
+已用时间 00:00:35.85

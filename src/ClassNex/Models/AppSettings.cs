@@ -156,6 +156,12 @@ public sealed class AppSettings
 
     /// <summary>是否启用「嘿 NEX」语音唤醒（需要麦克风）。</summary>
     public bool IsNexVoiceWakeEnabled { get; set; } = true;
+
+    /// <summary>是否显示屏幕边缘的唤醒条（半透明小白条，点一下等于喊唤醒词）。</summary>
+    public bool IsNexEdgeBarEnabled { get; set; } = true;
+
+    /// <summary>唤醒条贴哪一侧：left / right。</summary>
+    public string NexEdgeBarSide { get; set; } = "right";
 }
 
 /// <summary>

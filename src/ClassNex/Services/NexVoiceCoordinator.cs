@@ -282,6 +282,66 @@ public sealed class NexVoiceCoordinator : IDisposable
         StatusChanged?.Invoke("正在听「嘿 NEX」…");
     }
 
+    /// <summary>吸附在屏幕边缘的唤醒条（半透明小白条）。</summary>
+    private NexEdgeBarWindow? _edgeBar;
+
+    /// <summary>按设置显示/隐藏并摆好唤醒条。</summary>
+    public void RefreshEdgeBar()
+    {
+        var settings = AppServices.Settings;
+        var main = AppServices.MainWindow;
+
+        if (!settings.IsNexEdgeBarEnabled || main?.Screens.Primary is not { } screen)
+        {
+            _edgeBar?.Hide();
+            return;
+        }
+
+        _edgeBar ??= CreateEdgeBar();
+
+        _edgeBar.IsLeftSide = settings.NexEdgeBarSide == "left";
+        _edgeBar.UpdateWindowPos(screen, 1 / screen.Scaling);
+
+        if (!_edgeBar.IsVisible)
+            _edgeBar.Show();
+    }
+
+    private NexEdgeBarWindow CreateEdgeBar()
+    {
+        var bar = new NexEdgeBarWindow();
+        // 点小白条 = 说「嘿 NEX」：提示音 + 跑马灯 + 浮窗翻页等说话
+        bar.WakeRequested += () => Dispatcher.UIThread.Post(ActivateByClick);
+        return bar;
+    }
+
+    /// <summary>
+    /// 点击唤醒条唤醒（不经过麦克风唤醒词）：声音 + 跑马灯 + 浮窗显示「请讲」，
+    /// 并直接进入听写状态等用户说话。
+    /// </summary>
+    public void ActivateByClick()
+    {
+        NexChime.PlayWake();
+
+        var main = AppServices.MainWindow;
+        if (main is not null && !main.IsVisible)
+            main.Show();
+
+        ShowGlow();
+        main?.ShowNexPanel("请讲", true);
+
+        _followUpTimer?.Stop();
+        _voice.ListenForFollowUp();
+
+        // 20 秒没说话就收灯（和连续问答同一套收尾）
+        _followUpTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(20) };
+        _followUpTimer.Tick += (_, _) =>
+        {
+            _followUpTimer?.Stop();
+            HideEverything();
+        };
+        _followUpTimer.Start();
+    }
+
     public void Dispose()
     {
         _followUpTimer?.Stop();
