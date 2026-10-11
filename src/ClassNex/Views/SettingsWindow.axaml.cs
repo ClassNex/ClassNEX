@@ -82,71 +82,24 @@ public partial class SettingsWindow : AppWindow
         WireEvents();
         LoadFromSettings();
 
-        // 账户卡形态跟随左栏宽度：展开(~263 DIP) → 完整卡；折叠成图标栏(~28 DIP) → 只留小圆头像。
-        // 之前去可视树里找 NavigationView 内部的 SplitView 订阅它，**Loaded 时那个 SplitView 还没生成**，
-        // 于是订阅没挂上、折叠态永远不生效（头像还是 52 宽 → 溢出侧边栏被右侧内容区盖住）。
-        // 直接监听自己的宽度最稳：不依赖任何内部控件、不写任何导航状态。
+        // 左栏折叠 → 隐藏账户卡（照 Win11 设置的标准行为：折叠后只有 ☰ + 图标列，不放账户头像）。
+        // 之前的「头像缩进侧边栏」方案在这个库上渲染不稳定（像素实测：折叠态头像区域画出来
+        // 是一片背景色 / 右侧被内容区盖住），反复调位置也修不好 —— 与其和它斗，不如用标准行为。
         AccountPanel.SizeChanged += (_, e) => ApplyAccountCompact(e.NewSize.Width < 150);
     }
 
-    // ==================== 账户卡：左栏折叠时收缩（纯视觉，不碰导航状态） ====================
+    // ==================== 账户卡：左栏折叠时整卡隐藏（照 Win11 设置） ====================
 
     private bool _accountCompact;
-    private IDisposable? _accountTextTimer;
 
-    /// <summary>
-    /// compact=true：头像 52→36、名字/邮箱淡出后移出布局（缩进侧边栏，看得见且利落）；
-    /// compact=false：还原。
-    /// 只改 **头像尺寸 / 文字透明度** 两个重绘级属性（都带 180ms/140ms 过渡），
-    /// 宽度变化交给面板自己的折叠动画 → 快、顺、不错位。
-    /// </summary>
+    /// <summary>compact=true（左栏折叠成图标栏）→ 整张账户卡隐藏；展开 → 恢复。不碰任何导航状态。</summary>
     private void ApplyAccountCompact(bool compact)
     {
         if (_accountCompact == compact)
             return;
 
         _accountCompact = compact;
-
-        if (compact)
-        {
-            // 展开态为了呼吸感右移了 8 DIP，折叠时必须补回来，头像才和侧边栏图标列对齐
-            AccountShift.X = -6;
-            AccountAvatarRing.Width = 36;
-            AccountAvatarRing.Height = 36;
-            AccountAvatarRing.CornerRadius = new CornerRadius(18);
-            AccountAvatarRing.BorderThickness = new Thickness(2);
-            SetAccountTextVisible(false);
-        }
-        else
-        {
-            AccountShift.X = 0;
-            AccountAvatarRing.Width = 52;
-            AccountAvatarRing.Height = 52;
-            AccountAvatarRing.CornerRadius = new CornerRadius(26);
-            AccountAvatarRing.BorderThickness = new Thickness(3);
-            SetAccountTextVisible(true);
-        }
-    }
-
-    /// <summary>账户卡的渲染级位移（XAML 里 RenderTransform 的 TranslateTransform，x:Name 不生成字段，这里取）。</summary>
-    private TranslateTransform AccountShift => (TranslateTransform)AccountPanel.RenderTransform!;
-
-    /// <summary>折叠时文字先淡出、淡完再从布局移除（只设 Opacity=0 的话文字仍占宽，会把卡片撑开）。</summary>
-    private void SetAccountTextVisible(bool visible)
-    {
-        _accountTextTimer?.Dispose();
-
-        if (visible)
-        {
-            AccountTextHost.IsVisible = true;
-            AccountTextHost.Opacity = 1;
-            return;
-        }
-
-        AccountTextHost.Opacity = 0;
-        _accountTextTimer = DispatcherTimer.RunOnce(
-            () => AccountTextHost.IsVisible = false,
-            TimeSpan.FromMilliseconds(140));
+        AccountPanel.IsVisible = !compact;
     }
 
     /// <summary>
