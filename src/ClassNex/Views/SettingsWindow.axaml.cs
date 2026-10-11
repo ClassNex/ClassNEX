@@ -766,6 +766,87 @@ public partial class SettingsWindow : AppWindow
     private void OnOpenDataFolder(object? sender, RoutedEventArgs e)
         => OpenInExplorer(SettingsService.DataDirectory);
 
+    private void OnOpenLogsFolder(object? sender, RoutedEventArgs e)
+    {
+        SettingsService.EnsureDataDirectory();
+        OpenInExplorer(SettingsService.LogsDirectory);
+    }
+
+    private void OnOpenAppFolder(object? sender, RoutedEventArgs e)
+        => OpenInExplorer(AppContext.BaseDirectory);
+
+    // ---- 创建快捷方式（对照 CI 的「创建快捷方式…」子菜单） ----
+
+    private void OnCreateDesktopShortcut(object? sender, RoutedEventArgs e)
+        => CreateShortcut(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory));
+
+    private void OnCreateStartMenuShortcut(object? sender, RoutedEventArgs e)
+        => CreateShortcut(Environment.GetFolderPath(Environment.SpecialFolder.Programs));
+
+    private static void CreateShortcut(string dir)
+    {
+        try
+        {
+            var exe = Environment.ProcessPath;
+            if (string.IsNullOrWhiteSpace(exe) || string.IsNullOrWhiteSpace(dir))
+                return;
+
+            Directory.CreateDirectory(dir);
+            var type = Type.GetTypeFromProgID("WScript.Shell");
+            if (type is null)
+                return;
+
+            dynamic shell = Activator.CreateInstance(type)!;
+            dynamic link = shell.CreateShortcut(System.IO.Path.Combine(dir, "ClassNEX.lnk"));
+            link.TargetPath = exe;
+            link.WorkingDirectory = AppContext.BaseDirectory;
+            link.Save();
+        }
+        catch
+        {
+            // 忽略：无法创建快捷方式
+        }
+    }
+
+    /// <summary>导出诊断数据（对照 CI 的「导出诊断数据」）：桌面生成一个含设置、日志、版本信息与系统信息的文件夹。</summary>
+    private void OnExportDiagnostics(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            SettingsService.EnsureDataDirectory();
+
+            var dir = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+                $"ClassNEX-诊断数据-{DateTime.Now:yyyyMMdd-HHmmss}");
+            Directory.CreateDirectory(dir);
+
+            if (File.Exists(SettingsService.SettingsPath))
+                File.Copy(SettingsService.SettingsPath, System.IO.Path.Combine(dir, "Settings.json"), true);
+
+            if (Directory.Exists(SettingsService.LogsDirectory))
+            {
+                foreach (var file in Directory.GetFiles(SettingsService.LogsDirectory))
+                    File.Copy(file, System.IO.Path.Combine(dir, System.IO.Path.GetFileName(file)), true);
+            }
+
+            var version = typeof(App).Assembly
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "?";
+            File.WriteAllText(System.IO.Path.Combine(dir, "版本信息.txt"),
+                $"ClassNEX {version}{Environment.NewLine}" +
+                $"导出时间：{DateTime.Now:yyyy-MM-dd HH:mm:ss}{Environment.NewLine}" +
+                $"应用目录：{AppContext.BaseDirectory}{Environment.NewLine}" +
+                $"数据目录：{SettingsService.DataDirectory}{Environment.NewLine}" +
+                $"系统：{Environment.OSVersion}{Environment.NewLine}" +
+                $".NET：{Environment.Version}{Environment.NewLine}");
+
+            OpenInExplorer(dir);
+        }
+        catch
+        {
+            // 忽略：导出失败
+        }
+    }
+
     private void OnOpenLogFile(object? sender, RoutedEventArgs e)
     {
         SettingsService.EnsureDataDirectory();
