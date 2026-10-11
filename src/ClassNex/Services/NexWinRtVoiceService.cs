@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using ClassNex.Services.NexIntelligence;
 using Windows.Globalization;
 using Windows.Media.SpeechRecognition;
@@ -23,6 +24,8 @@ public sealed class NexWinRtVoiceService : INexVoiceService
     private bool _listening;
     private bool _dictating;
     private bool _starting;
+    private bool _wakeRunning;
+    private DispatcherTimer? _watchdog;
 
     public event Action? WakeWordDetected;
     public event Action<string>? SpeechRecognized;
@@ -66,14 +69,24 @@ public sealed class NexWinRtVoiceService : INexVoiceService
             _wakeRecognizer.ContinuousRecognitionSession.ResultGenerated += OnWakeResult;
             // 会话结束会带状态：麦克风不可用/被占用/无权限都会在这里体现（只挂 ResultGenerated 是查不出来的）
             _wakeRecognizer.ContinuousRecognitionSession.Completed += (_, e) =>
-                NexVoiceLog.Write($"唤醒会话结束：状态={e.Status}");
+            {
+                _wakeRunning = false;
+                NexVoiceLog.Write($"唤醒会话结束：状态={e.Status}（看门狗会自动拉起来）");
+            };
             _wakeRecognizer.ContinuousRecognitionSession.AutoStopSilenceTimeout = TimeSpan.FromMinutes(30);
             await _wakeRecognizer.ContinuousRecognitionSession.StartAsync();
+            _wakeRunning = true;
 
             _listening = true;
             NexVoiceLog.Write($"WinRT 语音已启动：语言 {language.LanguageTag}；可用语言 "
                 + string.Join("、", SupportedLanguages().Select(l => l.LanguageTag)));
             NexVoiceLog.Write($"麦克风访问状态：{CheckMicrophoneAccess()}");
+
+            // 看门狗：麦克风保持常开 —— 会话被系统停掉（静默超时/设备切换/瞬时错误）就自动拉起来
+            _watchdog ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(8) };
+            _watchdog.Tick -= OnWatchdogTick;
+            _watchdog.Tick += OnWatchdogTick;
+            _watchdog.Start();
             return true;
         }
         catch (Exception ex)
@@ -174,6 +187,7 @@ public sealed class NexWinRtVoiceService : INexVoiceService
 
     public void Stop()
     {
+        _watchdog?.Stop();
         try
         {
             _wakeRecognizer?.ContinuousRecognitionSession.StopAsync().AsTask().Wait(TimeSpan.FromSeconds(2));
@@ -214,22 +228,46 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         if (_dictating)
             return;
 
+        // ★ 先把听写识别器准备好再停唤醒会话：听写起不来（例如系统语音隐私政策没接受）时
+        //   唤醒会话必须原封不动继续跑，否则会永久失聪 —— 用户反馈「叫不起来」就是这个原因。
+        SpeechRecognizer dictation;
+        try
+        {
+            dictation = _dictationRecognizer ??= await CreateDictationRecognizerAsync();
+        }
+        catch (Exception ex)
+        {
+            NexVoiceLog.Write("准备听写识别器失败：" + ex.Message);
+            ErrorOccurred?.Invoke(DescribeSpeechError(ex));
+            return;
+        }
+
+        try
+        {
+            await dictation.ContinuousRecognitionSession.StartAsync();
+        }
+        catch (Exception ex)
+        {
+            NexVoiceLog.Write("启动听写会话失败：" + ex.Message);
+            ErrorOccurred?.Invoke(DescribeSpeechError(ex));
+            return;
+        }
+
+        // 听写确实起来了，才让出唤醒会话
         _dictating = true;
         WakeWordDetected?.Invoke();
 
         try
         {
-            if (_wakeRecognizer is not null)
+            if (_wakeRecognizer is not null && _wakeRunning)
+            {
                 await _wakeRecognizer.ContinuousRecognitionSession.StopAsync();
-
-            _dictationRecognizer ??= await CreateDictationRecognizerAsync();
-            await _dictationRecognizer.ContinuousRecognitionSession.StartAsync();
+                _wakeRunning = false;
+            }
         }
         catch (Exception ex)
         {
-            NexVoiceLog.Write("切到听写失败：" + ex.Message);
-            ErrorOccurred?.Invoke(DescribeSpeechError(ex));
-            _dictating = false;
+            NexVoiceLog.Write("暂停唤醒会话失败（不影响听写）：" + ex.Message);
         }
     }
 
@@ -291,6 +329,36 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         SpeechRecognized?.Invoke(text);
     }
 
+    /// <summary>
+    /// 看门狗：保证麦克风**一直开着**（用户要求）。
+    /// 待机状态下只要唤醒会话不在跑，就自动拉起来 —— 静默超时、设备切换、瞬时错误都能自愈。
+    /// </summary>
+    private void OnWatchdogTick(object? sender, EventArgs e)
+    {
+        if (!_listening || _dictating || _starting)
+            return;
+
+        _ = EnsureWakeSessionAsync();
+    }
+
+    private async Task EnsureWakeSessionAsync()
+    {
+        if (_wakeRunning || _wakeRecognizer is null)
+            return;
+
+        try
+        {
+            await _wakeRecognizer.ContinuousRecognitionSession.StartAsync();
+            _wakeRunning = true;
+            NexVoiceLog.Write("看门狗：唤醒会话已重新拉起，麦克风保持开启");
+        }
+        catch (Exception ex)
+        {
+            // 起不来通常是权限/隐私政策问题：不再刷屏，每轮记一次就够
+            NexVoiceLog.Write("看门狗拉起失败：" + ex.Message.Split('\n')[0]);
+        }
+    }
+
     /// <summary>连续问答：直接回到听写（不用再喊唤醒词）。</summary>
     public void ListenForFollowUp()
     {
@@ -313,13 +381,14 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         {
             if (_dictationRecognizer is not null)
                 await _dictationRecognizer.ContinuousRecognitionSession.StopAsync();
-            if (_wakeRecognizer is not null)
-                await _wakeRecognizer.ContinuousRecognitionSession.StartAsync();
         }
         catch (Exception ex)
         {
-            NexVoiceLog.Write("回到唤醒词监听失败：" + ex.Message);
+            NexVoiceLog.Write("停止听写会话失败（忽略）：" + ex.Message.Split('\n')[0]);
         }
+
+        // 唤醒会话不一定还活着（可能被系统停过）：交给看门狗兜底，这里先立刻试一次
+        await EnsureWakeSessionAsync();
     }
 
     public void Dispose() => Stop();
