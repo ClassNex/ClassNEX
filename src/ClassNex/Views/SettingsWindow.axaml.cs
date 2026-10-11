@@ -563,6 +563,13 @@ public partial class SettingsWindow : AppWindow
         // 调试页条目事件
         WireDebugPageEvents();
 
+        // 组件库：双击添加（用户要求「选中组件双击确认」；单击只选中 → 左侧出现强调色小竖线）
+        WidgetLibraryList.DoubleTapped += (_, _) =>
+        {
+            if (WidgetLibraryList.SelectedItem is WidgetTypeItem item)
+                AddWidget(item.Type);
+        };
+
         // 主页时钟（1 秒刷新）
         StartHomeClock();
     }
@@ -968,80 +975,14 @@ public partial class SettingsWindow : AppWindow
         }
     }
 
-    /// <summary>
-    /// 组件卡片背景色。要求与窗口的 Mica 云母协调，所以用**半透明**层：
-    /// 深色 = 白 10% / 浅色 = 白 70%（浅色值取自主题实测 CardBackgroundFillColorDefaultBrush=#b3ffffff）。
-    /// 注意：不能走 TryFindResource(key) —— 它返回的是**浅色**变体的值，会在深色界面里画出白色卡片（「发白」）。
-    /// </summary>
-    private static IBrush CardBackground() =>
-        new SolidColorBrush(Color.Parse(IsDarkTheme() ? "#1AFFFFFF" : "#B3FFFFFF"));
+    /// <summary>组件库条目（ListBox 绑定用；点击选中会出现 Fluent 左侧强调色小竖线）。</summary>
+    private sealed record WidgetTypeItem(string DisplayName, string Description, string Glyph, string Type);
 
-    private static IBrush CardBorder() =>
-        new SolidColorBrush(Color.Parse(IsDarkTheme() ? "#1FFFFFFF" : "#0F000000"));
-
-    /// <summary>组件库：每个组件类型一张卡片，双击添加。</summary>
     private void RefreshWidgetLibrary()
     {
-        WidgetLibraryPanel.Children.Clear();
-
-        foreach (var type in AppServices.Widgets.AvailableTypes)
-        {
-            // 卡片：定宽 + 文本区定宽，避免描述文字溢出到卡片外
-            const double cardWidth = 268;
-            const double textWidth = cardWidth - 28 - 32 - 12; // 左右内边距 + 图标 + 间距
-
-            var card = new Border
-            {
-                Width = cardWidth,
-                Margin = new Thickness(0, 0, 10, 10),
-                Padding = new Thickness(14, 10),
-                CornerRadius = new CornerRadius(6),
-                Background = CardBackground(),
-                BorderBrush = CardBorder(),
-                BorderThickness = new Thickness(1),
-                Cursor = new Cursor(StandardCursorType.Hand),
-                Child = new StackPanel
-                {
-                    Orientation = Orientation.Horizontal,
-                    Spacing = 12,
-                    Children =
-                    {
-                        new AvaloniaFluentUI.Controls.FontIcon
-                        {
-                            Glyph = type.Glyph,
-                            FontFamily = new Avalonia.Media.FontFamily("Segoe MDL2 Assets"),
-                            FontSize = 32,
-                            VerticalAlignment = VerticalAlignment.Center,
-                        },
-                        new StackPanel
-                        {
-                            Spacing = 3,
-                            Width = textWidth,
-                            Children =
-                            {
-                                new TextBlock
-                                {
-                                    Text = type.DisplayName,
-                                    FontSize = 14,
-                                    FontWeight = Avalonia.Media.FontWeight.SemiBold,
-                                },
-                                new TextBlock
-                                {
-                                    Text = type.Description,
-                                    FontSize = 11,
-                                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-                                    Opacity = 0.7,
-                                },
-                            },
-                        },
-                    },
-                },
-            };
-
-            // 双击确认添加（用户要求：选中组件双击确认）
-            card.DoubleTapped += (_, _) => AddWidget(type.Type);
-            WidgetLibraryPanel.Children.Add(card);
-        }
+        WidgetLibraryList.ItemsSource = AppServices.Widgets.AvailableTypes
+            .Select(t => new WidgetTypeItem(t.DisplayName, t.Description, t.Glyph, t.Type))
+            .ToList();
     }
 
     private void RefreshWidgetList()
