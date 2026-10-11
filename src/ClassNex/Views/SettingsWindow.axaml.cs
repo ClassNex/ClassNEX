@@ -120,9 +120,10 @@ public partial class SettingsWindow : AppWindow
         };
 
 #if DEBUG
-        // 调试：CLASSNEX_VERIFY_PANE_COMPACT=1 时直接折叠左栏，便于核对收缩动画的终态
+        // 调试：CLASSNEX_VERIFY_PANE_COMPACT=1 时**只切账户卡的视觉形态**（头像收缩/文字淡出/左移补偿），
+        // 绝不写 IsPaneOpen —— 之前写它会和 NavigationView 内部状态打架，把 ☰ 搞成点不开。
         if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_PANE_COMPACT") == "1")
-            _paneSplitView.IsPaneOpen = false;
+            ApplyAccountCompact(true);
 #endif
     }
 
