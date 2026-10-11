@@ -119,6 +119,17 @@ public sealed class AppSettings
         new WidgetConfig { Type = "date", IsEnabled = true, Order = 0 },
         new WidgetConfig { Type = "schedule", IsEnabled = true, Order = 1 },
     };
+
+    // ==================== 首次启动向导（OOBE） ====================
+
+    /// <summary>是否已完成首次启动向导。未完成时启动不显示浮窗，只显示向导。</summary>
+    public bool IsOobeCompleted { get; set; }
+
+    /// <summary>语言（BCP-47，如 zh-CN / en-US）；向导第一步可选。</summary>
+    public string Language { get; set; } = "zh-CN";
+
+    /// <summary>开学日期（课表按周次显示时用）。</summary>
+    public DateTime? SemesterStartDate { get; set; }
 }
 
 /// <summary>

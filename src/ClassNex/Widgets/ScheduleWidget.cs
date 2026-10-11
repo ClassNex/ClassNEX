@@ -86,6 +86,17 @@ public sealed class ScheduleWidget : WidgetBase
     {
         var now = ctx.Now.TimeOfDay;
 
+        // 还没导入课表（全新激活就是这个状态，用户要求新激活不带测试课表）
+        // → 显示「还未导入课程，前往编辑档案导入课表」，点一下直接打开档案编辑器
+        if (ctx.Profile.Schedules.Count == 0 && ctx.Profile.Subjects.Count == 0)
+        {
+            ClearCurrent();
+            CurrentProgress = null;
+            if (_root.Children.Count == 0)
+                _root.Children.Add(BuildImportHint());
+            return;
+        }
+
         // CI ScheduleComponent：当天无课 → PlaceholderTextNoClass
         if (ctx.Today.IsEmpty)
         {
@@ -159,11 +170,25 @@ public sealed class ScheduleWidget : WidgetBase
         }
     }
 
+    /// <summary>没有课表时的提示（可点击 → 打开档案编辑器导入课表）。</summary>
+    private Control BuildImportHint()
+    {
+        var panel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+
+        panel.Children.Add(Text("还未导入课程，前往编辑档案导入课表", Size(CiBody), White(0.92)));
+        panel.PointerPressed += (_, _) => App.OpenProfileEditor(0);
+
+        return panel;
+    }
+
     private void ClearCurrent()
     {
         _timeText = null;
-        _countdownPill = null;
-        _pillStroke = null;
+        _countdownPill = null;        _pillStroke = null;
         _pillText = null;
         _progress = null;
         _currentTitle = null;

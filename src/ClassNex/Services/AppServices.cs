@@ -42,8 +42,10 @@ public static class AppServices
         if (Math.Abs(Settings.BackgroundOpacity - 0.55) < 0.001)
             Settings.BackgroundOpacity = Styles.CiPalette.CardOpacity;
 
-        // 示例课表升级：仅当用户没有指定自定义课表文件时，重新播种并重建时间表
-        if (Settings.SampleSeedVersion < SampleSeedVersion)
+        // 示例课表升级：仅当用户没有指定自定义课表文件时，重新播种并重建时间表。
+        // ★ 全新安装（SampleSeedVersion 还是默认 0）不播种：用户要求「新激活不要带测试的课表文件」，
+        //   新装用户应该自己在首次启动向导之后导入课表，课表组件会显示空状态提示。
+        if (Settings.SampleSeedVersion > 0 && Settings.SampleSeedVersion < SampleSeedVersion)
         {
             if (string.IsNullOrWhiteSpace(Settings.TimetablePath))
             {

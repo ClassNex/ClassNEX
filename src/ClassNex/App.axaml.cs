@@ -19,6 +19,7 @@ public partial class App : Application
     private SettingsWindow? _settingsWindow;
     private ProfileEditorWindow? _profileEditor;
     private Views.TopmostEffectWindow? _effectWindow;
+    private Views.OobeWindow? _oobeWindow;
     private Services.NotificationService? _notificationService;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
@@ -40,12 +41,28 @@ public partial class App : Application
             ApplyTheme(AppServices.Settings.ThemeMode);
 
             _mainWindow = new MainWindow();
-            desktop.MainWindow = _mainWindow;
-            _mainWindow.Show();
 
-            if (!AppServices.Settings.IsMainWindowVisible)
+            if (!AppServices.Settings.IsOobeCompleted)
             {
-                Dispatcher.UIThread.Post(() => _mainWindow?.Hide(), DispatcherPriority.Background);
+                // 全新安装：先走首次启动向导，不显示课表浮窗（用户要求）。
+                // 向导走完会写 IsOobeCompleted 并重启应用，重启后走下面的正常分支显示浮窗。
+                // ★ 必须盯住主窗口的 Opened：Avalonia 会在框架初始化完成后自动 Show 掉
+                //   desktop.MainWindow 指向的窗口，只在启动时 Hide 一次是不够的。
+                _mainWindow.Opened += (_, _) => _mainWindow?.Hide();
+
+                _oobeWindow = new Views.OobeWindow();
+                desktop.MainWindow = _oobeWindow;
+                _oobeWindow.Show();
+            }
+            else
+            {
+                desktop.MainWindow = _mainWindow;
+                _mainWindow.Show();
+
+                if (!AppServices.Settings.IsMainWindowVisible)
+                {
+                    Dispatcher.UIThread.Post(() => _mainWindow?.Hide(), DispatcherPriority.Background);
+                }
             }
 
             // ============ 通知：CI 的全局水波纹（1:1 移植；ClassWidgets 灵动通知暂不接线） ============
@@ -150,6 +167,8 @@ public partial class App : Application
                             SaveWindowShot(_settingsWindow, "_shot_settings.png");
                         if (_profileEditor is not null)
                             SaveWindowShot(_profileEditor, "_shot_editor.png");
+                        if (_oobeWindow is not null)
+                            SaveWindowShot(_oobeWindow, "_shot_oobe.png");
                     };
                     shotTimer.Start();
                 }
@@ -471,6 +490,22 @@ public partial class App : Application
             app._mainWindow?.Hide();
 
         Lifetime?.Shutdown();
+    }
+
+    /// <summary>重启应用（首次启动向导完成、设置页「重启 ClassNEX」、托盘菜单「重启」用）。</summary>
+    public static void RestartApplication()
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(Environment.ProcessPath))
+                Process.Start(new ProcessStartInfo(Environment.ProcessPath) { UseShellExecute = true });
+        }
+        catch
+        {
+            // 忽略重启失败
+        }
+
+        ExitApp();
     }
 
     // ---------- 托盘事件 ----------

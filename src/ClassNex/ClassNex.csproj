@@ -27,6 +27,8 @@
     <AvaloniaResource Include="Assets\Fonts\*.ttf" />
     <!-- 主页横幅（从 ClassWidgets 2 测试版扒的轮播图） -->
     <AvaloniaResource Include="Assets\Banners\*.png" />
+    <!-- 首次启动向导（OOBE）插图 -->
+    <AvaloniaResource Include="Assets\Oobe\*.png" />
   </ItemGroup>
 
   <ItemGroup>
