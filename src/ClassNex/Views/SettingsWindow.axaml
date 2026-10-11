@@ -682,14 +682,12 @@
                                 <ui:SettingsExpander.IconSource>
                                     <ui:ImageIconSource Source="/Assets/icon.ico"/>
                                 </ui:SettingsExpander.IconSource>
-                                <ui:SettingsExpander.Footer>
-                                    <TextBlock x:Name="AboutVersionText" VerticalAlignment="Center"
-                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                               PointerPressed="OnVersionPointerPressed"
-                                               ToolTip.Tip="连点 10 次解锁调试菜单"/>
-                                </ui:SettingsExpander.Footer>
                                 <ui:SettingsExpander.Items>
                                     <StackPanel Spacing="12" Margin="0,4,0,0">
+                                        <!-- 版本号单独一行（用户要求：不要放在右上角的 Footer 里） -->
+                                        <TextBlock x:Name="AboutVersionText" FontSize="14"
+                                                   PointerPressed="OnVersionPointerPressed"
+                                                   ToolTip.Tip="连点 10 次解锁调试菜单"/>
                                         <Grid ColumnDefinitions="*,Auto">
                                             <StackPanel Spacing="2">
                                                 <TextBlock Text="Copyright (c) 2026 ClassNEX"/>
