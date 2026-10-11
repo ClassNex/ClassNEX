@@ -90,18 +90,48 @@ public partial class SettingsWindow : AppWindow
     // ==================== 账户卡：左栏折叠时切换成侧边栏小头像 ====================
 
     private bool _accountCompact;
+    private IDisposable? _compactTimer;
 
-    /// <summary>compact=true（左栏折叠成图标栏）→ 大卡片隐藏、PaneHeader 小头像显示；展开 → 反向。不碰任何导航状态。</summary>
+    /// <summary>账户卡的缩放（XAML 里 RenderTransform 的 ScaleTransform，x:Name 不生成字段，这里取）。</summary>
+    private ScaleTransform AvatarScale => (ScaleTransform)CompactAvatar.RenderTransform!;
+
+    /// <summary>
+    /// compact=true（左栏折叠成图标栏）→ 大卡片淡出、小头像淡入并轻微放大；
+    /// compact=false → 反向。带 180ms 过渡，快但看得见。不碰任何导航状态。
+    /// </summary>
     private void ApplyAccountCompact(bool compact)
     {
         if (_accountCompact == compact)
             return;
 
         _accountCompact = compact;
+        _compactTimer?.Dispose();
 
-        AccountPanel.IsVisible = !compact;
-        CompactSpacer.IsVisible = compact;
-        CompactAvatar.IsVisible = compact;
+        if (compact)
+        {
+            AccountPanel.IsVisible = false;
+
+            CompactSpacer.IsVisible = true;
+            CompactAvatar.IsVisible = true;
+            AvatarScale.ScaleX = 0.75;      // 先小一圈…
+            AvatarScale.ScaleY = 0.75;
+            CompactAvatar.Opacity = 1;      // …再放大淡入（过渡动画负责中间的帧）
+            AvatarScale.ScaleX = 1;
+            AvatarScale.ScaleY = 1;
+        }
+        else
+        {
+            CompactAvatar.Opacity = 0;
+            AvatarScale.ScaleX = 0.75;
+            AvatarScale.ScaleY = 0.75;
+            AccountPanel.IsVisible = true;
+
+            _compactTimer = DispatcherTimer.RunOnce(() =>
+            {
+                CompactAvatar.IsVisible = false;
+                CompactSpacer.IsVisible = false;
+            }, TimeSpan.FromMilliseconds(180));
+        }
     }
 
     /// <summary>
