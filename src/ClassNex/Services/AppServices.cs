@@ -21,6 +21,9 @@ public static class AppServices
     /// <summary>主窗口（悬浮课表）。由 App 在创建后注入，供通知服务取岛的中心/矩形。</summary>
     public static Views.MainWindow? MainWindow { get; set; }
 
+    /// <summary>全局通知服务（App 启动时注入；调试页触发提醒用）。</summary>
+    public static NotificationService? NotificationService { get; set; }
+
     /// <summary>应用设置发生变化。</summary>
     public static event Action? SettingsChanged;
 

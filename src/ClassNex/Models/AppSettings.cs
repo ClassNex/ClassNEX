@@ -107,6 +107,9 @@ public sealed class AppSettings
     /// <summary>启动时显示加载界面（浮窗骨架）。</summary>
     public bool ShowStartupSplash { get; set; } = true;
 
+    /// <summary>调试菜单已解锁（关于页点版本号 10 次启用；设置页底部出现「调试」页）。</summary>
+    public bool IsDebugOptionsEnabled { get; set; }
+
     /// <summary>已播种的内置示例课表版本。低于当前版本时会重新播种 data/timetable.yaml。</summary>
     public int SampleSeedVersion { get; set; }
 

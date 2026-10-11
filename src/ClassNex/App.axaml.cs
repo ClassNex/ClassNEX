@@ -59,6 +59,7 @@ public partial class App : Application
                 _effectWindow.UpdateWindowPos(primary, 1 / primary.Scaling, false);
 
             Services.AppServices.MainWindow = _mainWindow;
+            Services.AppServices.NotificationService = _notificationService;
             _notificationService.Start();
 
             // 处理 classnex:// Url 协议参数（第三方应用/网页调用本应用）

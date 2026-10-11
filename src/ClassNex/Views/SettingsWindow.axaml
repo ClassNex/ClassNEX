@@ -206,6 +206,12 @@
                         <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE946;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
+                <!-- 调试页：默认隐藏，在「关于」页连点版本号 10 次解锁（对照 CI AboutSettingsPage 的 DebugBorder） -->
+                <ui:NavigationViewItem x:Name="DebugNavItem" Content="调试" IsVisible="False">
+                    <ui:NavigationViewItem.IconSource>
+                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE7C4;" FontSize="16"/>
+                    </ui:NavigationViewItem.IconSource>
+                </ui:NavigationViewItem>
             </ui:NavigationView.MenuItems>
 
             <Grid RowDefinitions="Auto,*">
@@ -603,7 +609,9 @@
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <TextBlock x:Name="AboutVersionText" VerticalAlignment="Center"
-                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                               PointerPressed="OnVersionPointerPressed"
+                                               ToolTip.Tip="连点 10 次解锁调试菜单"/>
                                 </ui:SettingsExpander.Footer>
                                 <ui:SettingsExpander.Items>
                                     <StackPanel Spacing="12" Margin="0,4,0,0">
@@ -616,7 +624,7 @@
                                             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16"
                                                         VerticalAlignment="Center">
                                                 <Button Content="开放源代码许可" Click="OnOpenLicense"/>
-                                                <Button Content="隐私政策" Click="OnOpenLicense"/>
+                                                <Button Content="隐私政策" Click="OnOpenPrivacyPolicy"/>
                                             </StackPanel>
                                         </Grid>
                                         <Separator/>
@@ -631,6 +639,26 @@
                                         </Grid>
                                     </StackPanel>
                                 </ui:SettingsExpander.Items>
+                            </ui:SettingsExpander>
+                        </StackPanel>
+
+                        <!-- ==================== 调试（对照 CI DebugPage；默认隐藏，点关于页版本号 10 次解锁） ==================== -->
+                        <StackPanel x:Name="PageDebug" Spacing="10" IsVisible="False">
+                            <ui:InfoBar Severity="Error" Title="仅供调试"
+                                        Message="除非你知道自己在做什么，否则请不要使用下面的按钮。"
+                                        IsOpen="True" IsClosable="False"/>
+                            <ui:SettingsExpander Header="通知测试" Description="直接触发各类提醒，用于检查效果（不依赖当前课表状态）">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE838;"/>
+                                </ui:SettingsExpander.IconSource>
+                                <ui:SettingsExpanderItem x:Name="DebugTriggerClassOnItem" Content="触发上课提醒" IsClickEnabled="True"/>
+                                <ui:SettingsExpanderItem x:Name="DebugTriggerClassOffItem" Content="触发下课提醒" IsClickEnabled="True"/>
+                            </ui:SettingsExpander>
+                            <ui:SettingsExpander Header="调试菜单">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE7C4;"/>
+                                </ui:SettingsExpander.IconSource>
+                                <ui:SettingsExpanderItem x:Name="DebugCloseItem" Content="关闭调试菜单（隐藏本页）" IsClickEnabled="True"/>
                             </ui:SettingsExpander>
                         </StackPanel>
 

@@ -47,7 +47,7 @@ public partial class SettingsWindow : AppWindow
     }
 
     /// <summary>页面名（顺序与 NavView.MenuItems 一致，对照 CI 的 SettingsPageInfo.Name）。</summary>
-    private static readonly string[] PageNames = { "基本", "外观", "窗口", "组件", "提醒", "关于 ClassNEX", "账户" };
+    private static readonly string[] PageNames = { "基本", "外观", "窗口", "组件", "提醒", "关于 ClassNEX", "调试", "账户" };
 
     /// <summary>设置项索引（供顶栏「查找设置」搜索；Title = 设置项，PageIndex = 所属页面）。</summary>
     private static readonly (string Title, int PageIndex)[] SearchIndex =
@@ -458,7 +458,8 @@ public partial class SettingsWindow : AppWindow
             "appearance" => 1,
             "window" => 2,
             "widgets" => 3,
-            "about" => 4,
+            "about" => 5,
+            "debug" => 6,
             _ => 0,
         };
 
@@ -466,7 +467,8 @@ public partial class SettingsWindow : AppWindow
         if (page == "account")
         {
             PageGeneral.IsVisible = PageInterface.IsVisible = PageWindow.IsVisible =
-                PageWidgets.IsVisible = PageAbout.IsVisible = false;
+                PageWidgets.IsVisible = PageNotification.IsVisible = PageAbout.IsVisible =
+                PageDebug.IsVisible = false;
             PageAccount.IsVisible = true;
             PageTitleText.Text = "账户";
             return;
@@ -556,6 +558,9 @@ public partial class SettingsWindow : AppWindow
         };
 
         // ---- 课表 ----（「当前课表文件」一行已按用户要求移除，课表文件在档案编辑器里管理）
+
+        // 调试页条目事件
+        WireDebugPageEvents();
     }
 
     // ==================== 加载 ====================
@@ -596,6 +601,8 @@ public partial class SettingsWindow : AppWindow
         if (_widgets.Count > 0)
             WidgetList.SelectedIndex = 0;
 
+        RefreshDebugVisibility();
+
         _loading = false;
 
         NavView.SelectedItem = NavView.MenuItems[0];
@@ -622,6 +629,7 @@ public partial class SettingsWindow : AppWindow
         PageWidgets.IsVisible = index == 3;
         PageNotification.IsVisible = index == 4;
         PageAbout.IsVisible = index == 5;
+        PageDebug.IsVisible = index == 6;
         PageAccount.IsVisible = false;   // 账户页只从账户卡进入
 
         // 页面标题行（对照 CI 的 TitleContainer：页面名由外壳统一显示）
@@ -686,7 +694,7 @@ public partial class SettingsWindow : AppWindow
     // ==================== 更多选项 / 账号块 ====================
 
     private void OnOpenDataFolder(object? sender, RoutedEventArgs e)
-        => OpenInExplorer(System.IO.Path.GetDirectoryName(AppServices.TimetablePath));
+        => OpenInExplorer(SettingsService.DataDirectory);
 
     private void OnOpenLogFile(object? sender, RoutedEventArgs e)
     {
@@ -695,6 +703,68 @@ public partial class SettingsWindow : AppWindow
     }
 
     private void OnShowAbout(object? sender, RoutedEventArgs e) => NavigateTo("about");
+
+    // ==================== 关于页：连点版本号解锁调试（对照 CI AboutSettingsPage.DebugBorder） ====================
+
+    private int _versionClickCount;
+
+    /// <summary>关于页版本号连点 10 次 → 解锁「调试」页（出现在左栏底部）。</summary>
+    private void OnVersionPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        var s = AppServices.Settings;
+        if (s.IsDebugOptionsEnabled)
+            return;
+
+        _versionClickCount++;
+        if (_versionClickCount < 10)
+            return;
+
+        _versionClickCount = 0;
+        s.IsDebugOptionsEnabled = true;
+        AppServices.SaveSettings();
+        RefreshDebugVisibility();
+        NavigateTo("debug");
+    }
+
+    private void RefreshDebugVisibility() => DebugNavItem.IsVisible = AppServices.Settings.IsDebugOptionsEnabled;
+
+    private void OnDebugClose()
+    {
+        AppServices.Settings.IsDebugOptionsEnabled = false;
+        AppServices.SaveSettings();
+        RefreshDebugVisibility();
+        NavigateTo("about");
+    }
+
+    private void OnDebugTriggerClassOn() => AppServices.NotificationService?.DebugTriggerClassOn();
+
+    private void OnDebugTriggerClassOff() => AppServices.NotificationService?.DebugTriggerClassOff();
+
+    /// <summary>调试页三个条目的事件在代码里挂（AvaloniaFluentUI 的 SettingsExpanderItem.Click 在 XAML 里接方法名会编译失败）。</summary>
+    private void WireDebugPageEvents()
+    {
+        DebugTriggerClassOnItem.Click += (_, _) => OnDebugTriggerClassOn();
+        DebugTriggerClassOffItem.Click += (_, _) => OnDebugTriggerClassOff();
+        DebugCloseItem.Click += (_, _) => OnDebugClose();
+    }
+
+    private async void OnOpenPrivacyPolicy(object? sender, RoutedEventArgs e)
+    {
+        await new ContentDialog
+        {
+            Title = "隐私政策",
+            Content = new TextBlock
+            {
+                TextWrapping = TextWrapping.Wrap,
+                Text = "ClassNEX 是一款完全在本机运行的桌面课表悬浮窗。" +
+                       "课表、设置与账户信息（头像 / 昵称 / 邮箱，仅用于界面展示）全部保存在你自己的电脑上，不会上传到任何服务器。" +
+                       "应用联网的唯一用途是从 GitHub 获取开源代码与发布包。" +
+                       "我们不会收集、出售或与第三方共享你的任何数据。"
+            },
+            PrimaryButtonText = "知道了",
+            DefaultButton = ContentDialogButton.Primary
+        }.ShowAsync();
+    }
 
     private const string RepoUrl = "https://github.com/ClassNex/ClassNEX";
 
