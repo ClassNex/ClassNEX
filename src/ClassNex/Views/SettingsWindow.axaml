@@ -274,8 +274,8 @@
                                 </Style>
                             </StackPanel.Styles>
 
-                            <!-- 横幅：整条拉满内容区宽度（照 FluentUI Gallery 的 hero），问候语叠在左侧 -->
-                            <Border Height="230" CornerRadius="8" ClipToBounds="True">
+                            <!-- 横幅：不要边框、不要圆角，左右直接顶到内容区边缘（照 FluentUI Gallery 的 hero） -->
+                            <Border Height="230" Margin="-32,0,-32,0" ClipToBounds="True">
                                 <Border.Background>
                                     <ImageBrush Source="/Assets/BannerWaves.png"
                                                 Stretch="UniformToFill"
@@ -292,7 +292,7 @@
                                             </LinearGradientBrush>
                                         </Border.Background>
                                     </Border>
-                                    <StackPanel Spacing="8" VerticalAlignment="Center" Margin="36,0,36,0">
+                                    <StackPanel Spacing="8" VerticalAlignment="Center" Margin="64,0,36,0">
                                         <TextBlock x:Name="HomeGreetingText"
                                                    FontFamily="Noto Serif SC, Source Han Serif SC, SimSun"
                                                    FontSize="38"

@@ -429,7 +429,7 @@ public partial class App : Application
         AppServices.SaveSettings();
     }
 
-    public static void OpenSettings(string page = "general")
+    public static void OpenSettings(string page = "home")
     {
         if (Current is not App app)
             return;
