@@ -141,6 +141,8 @@ public partial class SettingsWindow : AppWindow
 
         if (compact)
         {
+            // 展开态为了呼吸感右移了 8 DIP，折叠时必须补回来，头像才和侧边栏图标列对齐
+            AccountShift.X = -6;
             AccountAvatarRing.Width = 36;
             AccountAvatarRing.Height = 36;
             AccountAvatarRing.CornerRadius = new CornerRadius(18);
@@ -149,6 +151,7 @@ public partial class SettingsWindow : AppWindow
         }
         else
         {
+            AccountShift.X = 0;
             AccountAvatarRing.Width = 52;
             AccountAvatarRing.Height = 52;
             AccountAvatarRing.CornerRadius = new CornerRadius(26);
@@ -156,6 +159,9 @@ public partial class SettingsWindow : AppWindow
             SetAccountTextVisible(true);
         }
     }
+
+    /// <summary>账户卡的渲染级位移（XAML 里 RenderTransform 的 TranslateTransform，x:Name 不生成字段，这里取）。</summary>
+    private TranslateTransform AccountShift => (TranslateTransform)AccountPanel.RenderTransform!;
 
     /// <summary>折叠时文字先淡出、淡完再从布局移除（只设 Opacity=0 的话文字仍占宽，会把卡片撑开）。</summary>
     private void SetAccountTextVisible(bool visible)

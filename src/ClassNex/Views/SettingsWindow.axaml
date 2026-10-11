@@ -103,7 +103,20 @@
                      （a11y 实测：☰=185 / 导航项=184 / 账户卡默认=242，物理像素）。
                      实测 -24 不裁、-30 会把头像左缘切掉 → 取 -12 并把卡内 left padding 归零（8→0），
                      头像左缘落在 ~218px ≈ 27 DIP：**不裁切**，且比默认位置左移约 24px。 -->
-                <StackPanel Spacing="8" Margin="14,6,6,10">
+                <StackPanel x:Name="AccountPanel" Spacing="8" Margin="14,6,6,10">
+                    <!-- 折叠态需要把整块往左补偿（展开态用户要的是偏右一点），
+                         用 RenderTransform 位移：只重绘、有过渡、蒙版跟着走，不触发重新布局 -->
+                    <StackPanel.RenderTransform>
+                        <TranslateTransform>
+                            <TranslateTransform.Transitions>
+                                <Transitions>
+                                    <DoubleTransition Property="X" Duration="0:0:0.15">
+                                        <DoubleTransition.Easing><CubicEaseOut/></DoubleTransition.Easing>
+                                    </DoubleTransition>
+                                </Transitions>
+                            </TranslateTransform.Transitions>
+                        </TranslateTransform>
+                    </StackPanel.RenderTransform>
                     <!-- 账户卡：照 FluentUI Gallery 的账户卡（IzumiPL/Avalonia-Fluent-UI samples/Gallery）
                          圆角卡片 + 带描环的 50 圆头像 + 名字 15 SemiBold + 邮箱 12.5/65% -->
                     <StackPanel.Styles>
