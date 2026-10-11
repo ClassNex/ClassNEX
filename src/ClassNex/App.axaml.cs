@@ -555,6 +555,22 @@ public partial class App : Application
         Lifetime?.Shutdown();
     }
 
+    /// <summary>
+    /// 打开 Windows 的语音设置页（ms-settings:privacy-speech）。
+    /// 整句语音听写需要用户在那里接受语音隐私政策/开启「在线语音识别」，否则 WinRT 识别会报 0x80045509。
+    /// </summary>
+    public static void OpenWindowsSpeechSettings()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo("ms-settings:privacy-speech") { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            Services.NexVoiceLog.Write("打开系统语音设置失败：" + ex.Message);
+        }
+    }
+
     /// <summary>打开 NEX Intelligence 对话框（设置页按钮 / 以后可以挂托盘、快捷键）。</summary>
     public static void OpenNexChat()
     {

@@ -400,6 +400,7 @@
                                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                             <Button x:Name="NexGlowTestButton" Content="测试跑马灯"/>
                                             <Button x:Name="NexMicTestButton" Content="测试麦克风"/>
+                                            <Button x:Name="NexSpeechSettingsButton" Content="打开系统语音设置"/>
                                         </StackPanel>
                                     </ui:SettingsExpanderItem.Footer>
                                 </ui:SettingsExpanderItem>

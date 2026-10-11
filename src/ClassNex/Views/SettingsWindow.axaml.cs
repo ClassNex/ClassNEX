@@ -731,6 +731,9 @@ public partial class SettingsWindow : AppWindow
                 timer.Start();
             };
 
+            // 直接拉起 Windows 的语音设置页：整句听写需要在那里打开「在线语音识别」
+            NexSpeechSettingsButton.Click += (_, _) => App.OpenWindowsSpeechSettings();
+
             NexMicTestButton.Click += async (_, _) =>
             {
                 NexVoiceStatusText.Text = "正在测试麦克风…（请对着麦克风说一句话）";
