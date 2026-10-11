@@ -11,7 +11,6 @@ using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.Styling;
 using Avalonia.Threading;
-using Avalonia.VisualTree;
 using ClassNex.Models;
 using ClassNex.Services;
 using ClassNex.Styles;
@@ -83,49 +82,17 @@ public partial class SettingsWindow : AppWindow
         WireEvents();
         LoadFromSettings();
 
-        // 折叠动画：等模板套用（内部 SplitView 出现）后**只订阅状态、不修改任何导航状态**
-        Loaded += (_, _) =>
-        {
-            if (_paneStateHooked)
-                return;
-            _paneStateHooked = true;
-            HookPaneState();
-        };
+        // 账户卡形态跟随左栏宽度：展开(~263 DIP) → 完整卡；折叠成图标栏(~28 DIP) → 只留小圆头像。
+        // 之前去可视树里找 NavigationView 内部的 SplitView 订阅它，**Loaded 时那个 SplitView 还没生成**，
+        // 于是订阅没挂上、折叠态永远不生效（头像还是 52 宽 → 溢出侧边栏被右侧内容区盖住）。
+        // 直接监听自己的宽度最稳：不依赖任何内部控件、不写任何导航状态。
+        AccountPanel.SizeChanged += (_, e) => ApplyAccountCompact(e.NewSize.Width < 150);
     }
 
     // ==================== 账户卡：左栏折叠时收缩（纯视觉，不碰导航状态） ====================
 
-    private SplitView? _paneSplitView;
     private bool _accountCompact;
-    private bool _paneStateHooked;
     private IDisposable? _accountTextTimer;
-
-    /// <summary>
-    /// 订阅左栏折叠结果（AvaloniaFluentUI 的 ☰ 改的是内部 SplitView 的 IsPaneOpen）。
-    /// **只读不写**：之前踩过坑 —— 强制写 IsPaneOpen、或订阅 PaneDisplayMode 去改状态，
-    /// 都会和 NavigationView 内部状态打架，导致 ☰ 点不开。
-    /// </summary>
-    private void HookPaneState()
-    {
-        _paneSplitView = NavView.GetVisualDescendants().OfType<SplitView>().FirstOrDefault();
-        if (_paneSplitView is null)
-            return;
-
-        ApplyAccountCompact(!_paneSplitView.IsPaneOpen);
-
-        _paneSplitView.PropertyChanged += (_, e) =>
-        {
-            if (e.Property == SplitView.IsPaneOpenProperty)
-                ApplyAccountCompact(!_paneSplitView.IsPaneOpen);
-        };
-
-#if DEBUG
-        // 调试：CLASSNEX_VERIFY_PANE_COMPACT=1 时**只切账户卡的视觉形态**（头像收缩/文字淡出/左移补偿），
-        // 绝不写 IsPaneOpen —— 之前写它会和 NavigationView 内部状态打架，把 ☰ 搞成点不开。
-        if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_PANE_COMPACT") == "1")
-            ApplyAccountCompact(true);
-#endif
-    }
 
     /// <summary>
     /// compact=true：头像 52→36、名字/邮箱淡出后移出布局（缩进侧边栏，看得见且利落）；
