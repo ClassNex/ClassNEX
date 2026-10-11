@@ -361,9 +361,10 @@ public partial class MainWindow : Window
     public void ShowNexPanel(string text, bool placeholder)
     {
         NexPanelText.Text = text;
-        NexPanelText.Foreground = (IBrush?)this.FindResource(
-            placeholder ? "TextFillColorSecondaryBrush" : "TextFillColorPrimaryBrush") ?? Brushes.White;
-        NexPanelText.Opacity = placeholder ? 0.72 : 1.0;
+        // 浮窗上的对话文字统一用白色（浮窗直接叠在桌面上，跟课表组件的白字一致）；
+        // 「请讲」这种占位提示更浅一点（降透明度）
+        NexPanelText.Foreground = Brushes.White;
+        NexPanelText.Opacity = placeholder ? 0.62 : 1.0;
 
         if (!_nexPanelActive)
         {

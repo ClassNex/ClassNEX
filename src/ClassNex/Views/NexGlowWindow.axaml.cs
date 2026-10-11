@@ -30,14 +30,12 @@ public partial class NexGlowWindow : Window
     };
 
     private readonly LinearGradientBrush _outerBrush = BuildBrush();
-    private readonly LinearGradientBrush _innerBrush = BuildBrush();
 
     public NexGlowWindow()
     {
         InitializeComponent();
 
         GlowOuter.BorderBrush = _outerBrush;
-        GlowInner.BorderBrush = _innerBrush;
 
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1000 / Fps) };
         _timer.Tick += (_, _) => Step();
@@ -89,13 +87,10 @@ public partial class NexGlowWindow : Window
 
         _outerBrush.StartPoint = new RelativePoint(0.5 - dx, 0.5 - dy, RelativeUnit.Relative);
         _outerBrush.EndPoint = new RelativePoint(0.5 + dx, 0.5 + dy, RelativeUnit.Relative);
-        _innerBrush.StartPoint = new RelativePoint(0.5 - dy, 0.5 - dx, RelativeUnit.Relative);
-        _innerBrush.EndPoint = new RelativePoint(0.5 + dy, 0.5 + dx, RelativeUnit.Relative);
 
         // 呼吸：整体明暗轻微起伏（0.72 ~ 1.0）
         var breath = 0.86 + 0.14 * Math.Sin(_breath);
-        GlowOuter.Opacity = 0.75 * breath;
-        GlowInner.Opacity = breath;
+        GlowOuter.Opacity = 0.8 * breath;
     }
 
     /// <summary>铺满某个屏幕（scale 传 1/dpiX，把物理像素换算成 DIP）。</summary>
