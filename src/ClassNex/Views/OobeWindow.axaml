@@ -63,10 +63,10 @@
     <Grid RowDefinitions="*,Auto">
         <Grid Grid.Row="0">
 
-            <!-- ==================== 第 1 页：欢迎（左：多语言问候 + 说明 + 协议链接 + 语言；右：教室插图，向右下溢出被窗口裁掉约 1/3） ==================== -->
-            <Grid x:Name="PageWelcome" ColumnDefinitions="*,*">
-                <StackPanel Grid.Column="0" Spacing="14" Margin="56,16,24,0"
-                            VerticalAlignment="Center" HorizontalAlignment="Left" MaxWidth="470">
+            <!-- ==================== 第 1 页：欢迎（左 3 : 右 2 —— 左边文字全给足，右边插图按比例完整显示、只轻微出血右边） ==================== -->
+            <Grid x:Name="PageWelcome" ColumnDefinitions="3*,2*">
+                <StackPanel Grid.Column="0" Spacing="14" Margin="56,16,32,0"
+                            VerticalAlignment="Center" HorizontalAlignment="Left" MaxWidth="560">
                     <TextBlock x:Name="GreetingText"
                                Text="你好"
                                FontFamily="Noto Serif SC, Source Han Serif SC, SimSun"
@@ -93,12 +93,14 @@
                     </StackPanel>
                 </StackPanel>
 
-                <!-- 插图：占右半，向右下溢出（负边距），被窗口裁掉约 1/3 —— 参照 Windows「语音访问」欢迎页 -->
+                <!-- 插图：占右 2/5，等比完整显示（Uniform，不裁切、不放大到压住左侧），
+                     只向右溢出一点点，被窗口右缘裁掉 -->
                 <Image Grid.Column="1"
                        Source="avares://ClassNex/Assets/Oobe/Classroom.png"
-                       Stretch="UniformToFill"
-                       HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-                       Margin="16,-6,-150,-120"/>
+                       Stretch="Uniform"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Margin="0,0,-40,0"
+                       MaxWidth="440"/>
             </Grid>
 
             <!-- ==================== 第 2 页：个性化设置 ==================== -->
