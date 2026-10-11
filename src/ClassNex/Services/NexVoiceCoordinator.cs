@@ -125,7 +125,8 @@ public sealed class NexVoiceCoordinator : IDisposable
         if (string.IsNullOrWhiteSpace(text))
             return;
 
-        Dispatcher.UIThread.Post(() => AppServices.MainWindow?.ShowNexPanel(text, true));
+        // 边说边显示：识别到多少就显示多少（白字，跟最终结果一致，不再用「请讲」的浅色占位样式）
+        Dispatcher.UIThread.Post(() => AppServices.MainWindow?.ShowNexPanel(text, false));
     }
 
     private void OnSpeechTimeout()

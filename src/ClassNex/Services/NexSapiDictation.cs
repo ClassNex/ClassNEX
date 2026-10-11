@@ -20,6 +20,9 @@ public sealed class NexSapiDictation : IDisposable
     /// <summary>听到一句话。</summary>
     public event Action<string>? Recognized;
 
+    /// <summary>正在说的中间结果（边说边显示用）。</summary>
+    public event Action<string>? Hypothesis;
+
     /// <summary>超时没听到。</summary>
     public event Action? TimedOut;
 
@@ -35,6 +38,13 @@ public sealed class NexSapiDictation : IDisposable
             _engine = new SpeechRecognitionEngine(new CultureInfo("zh-CN"));
             _engine.SetInputToDefaultAudioDevice();
             _engine.LoadGrammar(new DictationGrammar());
+
+            _engine.SpeechHypothesized += (_, e) =>
+            {
+                var partial = e.Result?.Text?.Trim();
+                if (!string.IsNullOrWhiteSpace(partial))
+                    Hypothesis?.Invoke(partial);
+            };
 
             _engine.SpeechRecognized += (_, e) =>
             {

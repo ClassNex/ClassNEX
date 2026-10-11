@@ -322,10 +322,14 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         _sapiDictation ??= new NexSapiDictation();
         _sapiDictation.Recognized -= OnSapiRecognized;
         _sapiDictation.TimedOut -= OnSapiTimedOut;
+        _sapiDictation.Hypothesis -= OnSapiHypothesis;
         _sapiDictation.Recognized += OnSapiRecognized;
         _sapiDictation.TimedOut += OnSapiTimedOut;
+        _sapiDictation.Hypothesis += OnSapiHypothesis;
         _sapiDictation.ListenOnce(DictationTimeoutSeconds);
     }
+
+    private void OnSapiHypothesis(string text) => SpeechHypothesized?.Invoke(text);
 
     private void OnSapiRecognized(string text)
     {
