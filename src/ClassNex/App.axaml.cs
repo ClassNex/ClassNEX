@@ -217,6 +217,8 @@ public partial class App : Application
                             SaveWindowShot(_oobeWindow, "_shot_oobe.png");
                         if (_nexChatWindow is not null)
                             SaveWindowShot(_nexChatWindow, "_shot_nex.png");
+                        if (_nexVoice?.GlowWindow is { IsVisible: true } glow)
+                            SaveWindowShot(glow, "_shot_glow.png");
                     };
                     shotTimer.Start();
                 }

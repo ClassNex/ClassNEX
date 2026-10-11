@@ -39,6 +39,9 @@ public partial class NexGlowWindow : Window
 
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1000 / Fps) };
         _timer.Tick += (_, _) => Step();
+
+        // 点屏幕任意位置 = 取消 AI 模式（所以这个窗口不能点击穿透）
+        PointerPressed += (_, _) => CancelRequested?.Invoke();
     }
 
     private static LinearGradientBrush BuildBrush()
@@ -88,10 +91,13 @@ public partial class NexGlowWindow : Window
         _outerBrush.StartPoint = new RelativePoint(0.5 - dx, 0.5 - dy, RelativeUnit.Relative);
         _outerBrush.EndPoint = new RelativePoint(0.5 + dx, 0.5 + dy, RelativeUnit.Relative);
 
-        // 呼吸：整体明暗轻微起伏（0.72 ~ 1.0）
+        // 呼吸：整体明暗轻微起伏（0.72 ~ 1.0）—— 第一版的幅度
         var breath = 0.86 + 0.14 * Math.Sin(_breath);
-        GlowOuter.Opacity = 0.8 * breath;
+        GlowOuter.Opacity = 0.75 * breath;
     }
+
+    /// <summary>用户点了屏幕任意位置（用来取消 AI 模式）。</summary>
+    public event Action? CancelRequested;
 
     /// <summary>铺满某个屏幕（scale 传 1/dpiX，把物理像素换算成 DIP）。</summary>
     public void UpdateWindowPos(Avalonia.Platform.Screen screen, double scale, bool useWorkingArea)

@@ -1,11 +1,9 @@
 ﻿  正在确定要还原的项目…
   所有项目均是最新的，无法还原。
-E:\ClassNex\src\ClassNex\Views/SettingsWindow.axaml(874,46,874,46): Avalonia error AVLN2000: Unable to resolve suitable regular or attached property Watermark on type Avalonia.Controls:Avalonia.Controls.ComboBox Line 874, position 46. [E:\ClassNex\src\ClassNex\ClassNex.csproj]
+  ClassNex -> E:\ClassNex\src\ClassNex\bin\Debug\net10.0-windows\ClassNex.dll
 
-生成失败。
-
-E:\ClassNex\src\ClassNex\Views/SettingsWindow.axaml(874,46,874,46): Avalonia error AVLN2000: Unable to resolve suitable regular or attached property Watermark on type Avalonia.Controls:Avalonia.Controls.ComboBox Line 874, position 46. [E:\ClassNex\src\ClassNex\ClassNex.csproj]
+已成功生成。
     0 个警告
-    1 个错误
+    0 个错误
 
-已用时间 00:00:09.35
+已用时间 00:00:08.68

@@ -10,13 +10,12 @@
         ShowInTaskbar="False"
         ShowActivated="False"
         CanResize="False">
-    <!-- 苹果智能那种「跑马灯」：屏幕四边流动的彩色光带。
-         用户要求：**不要贴着边框的细线**，只要流光 —— 所以只有一圈厚光带 + 大半径模糊，
-         让光从边缘漫进来，没有任何硬边。 -->
+    <!-- 跑马灯（滚回第一版的参数，只把那圈贴着屏幕边框的细线删掉）：
+         一圈厚光带 + 高斯模糊，边缘是一圈柔和的辉光，没有硬边、没有描边。 -->
     <Grid>
-        <Border x:Name="GlowOuter" Margin="18" CornerRadius="34" BorderThickness="22" Opacity="0.9">
+        <Border x:Name="GlowOuter" Margin="12" CornerRadius="26" BorderThickness="14" Opacity="0.9">
             <Border.Effect>
-                <BlurEffect Radius="52"/>
+                <BlurEffect Radius="34"/>
             </Border.Effect>
         </Border>
     </Grid>

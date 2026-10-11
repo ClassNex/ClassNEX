@@ -370,9 +370,11 @@ public partial class MainWindow : Window
         {
             _nexPanelActive = true;
 
-            // 视觉上和岛一致（同底色、同描边）
+            // 视觉上和岛一致（同底色、同描边）；同时把岛本身的背景藏起来，
+            // 否则会看到「两个框」（对话层 + 岛背景）叠在一起 —— 用户反馈过
             NexPanel.Background = IslandBackground.Background;
             NexPanel.BorderBrush = IslandBackground.BorderBrush;
+            IslandBackground.Opacity = 0;
             NexPanel.IsVisible = true;
 
             if (CardShift is { } card)
@@ -424,6 +426,9 @@ public partial class MainWindow : Window
                 return;
 
             NexPanel.IsVisible = false;
+
+            // 岛背景恢复（透明度取自设置，与 ApplyBackground 一致）
+            IslandBackground.Opacity = Math.Clamp(AppServices.Settings.BackgroundOpacity, 0.05, 1.0);
             SetIslandWidth(CardContent.Bounds.Width + IslandContentMargin * 2);
         }, TimeSpan.FromMilliseconds(280));
     }

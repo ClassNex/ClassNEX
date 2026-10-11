@@ -24,6 +24,9 @@ public sealed class NexVoiceCoordinator : IDisposable
 
     public bool IsRunning => _started;
 
+    /// <summary>跑马灯窗口（自检出图用）。</summary>
+    public NexGlowWindow? GlowWindow => _glow;
+
     /// <summary>启动语音唤醒（读设置里的开关）。</summary>
     public bool Start()
     {
@@ -153,21 +156,34 @@ public sealed class NexVoiceCoordinator : IDisposable
 
     // ==================== 跑马灯与浮窗 ====================
 
-    /// <summary>起跑马灯（全屏彩边）。</summary>
+    /// <summary>起跑马灯（全屏彩边）。此时窗口**不**点击穿透：点屏幕任意位置就是取消。</summary>
     public void ShowGlow()
     {
         var main = AppServices.MainWindow;
         if (main?.Screens.Primary is not { } screen)
             return;
 
-        _glow ??= new NexGlowWindow();
+        if (_glow is null)
+        {
+            _glow = new NexGlowWindow();
+            _glow.CancelRequested += () => Dispatcher.UIThread.Post(CancelAiMode);
+        }
+
         _glow.UpdateWindowPos(screen, 1 / screen.Scaling, false);
 
         if (!_glow.IsVisible)
             _glow.Show();
 
-        WindowsOverlay.SetClickThrough(_glow.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero, true);
+        // 关键：取消点击穿透，才能「点屏幕任意位置就退出 AI 模式」
+        WindowsOverlay.SetClickThrough(_glow.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero, false);
         _glow.Start();
+    }
+
+    /// <summary>用户点了屏幕任意位置 / 超时：退出 AI 模式（收灯 + 浮窗翻回课表）。</summary>
+    public void CancelAiMode()
+    {
+        _hideTimer?.Stop();
+        HideEverything();
     }
 
     private void HideEverything()
