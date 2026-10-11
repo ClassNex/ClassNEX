@@ -93,13 +93,17 @@
                     </StackPanel>
                 </StackPanel>
 
-                <!-- 插图：占右 2/5，放大铺满并向右下出血，被窗口右缘/下缘裁掉一部分
-                     （参照 Windows「语音访问」欢迎页那个大设备图；左侧栏宽固定 3:2，所以不会压到文字） -->
-                <Image Grid.Column="1"
-                       Source="avares://ClassNex/Assets/Oobe/Classroom.png"
-                       Stretch="UniformToFill"
-                       HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-                       Margin="12,-12,-90,-84"/>
+                <!-- 插图：跨两栏定位，左缘 445（红框左缘）→ 右缘顶到窗口边并出血，
+                     上下留 40 与左侧文字块对齐。用 Border+ImageBrush（AlignmentX=Left 保住设备左缘，
+                     裁切发生在右侧），子元素 Image 在这种跨栏定位下撑不开宽度。 -->
+                <Border Grid.Column="0" Grid.ColumnSpan="2"
+                        Margin="445,121,0,23" ClipToBounds="True">
+                    <Border.Background>
+                        <ImageBrush Source="avares://ClassNex/Assets/Oobe/Classroom.png"
+                                    Stretch="UniformToFill"
+                                    AlignmentX="Left" AlignmentY="Center"/>
+                    </Border.Background>
+                </Border>
             </Grid>
 
             <!-- ==================== 第 2 页：个性化设置 ==================== -->
