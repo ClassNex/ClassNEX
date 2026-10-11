@@ -162,15 +162,16 @@ public partial class App : Application
 
     public static FluentAvaloniaTheme? FluentTheme => (FluentAvaloniaTheme?)Current?.Styles[0];
 
-    /// <summary>把未处理异常写到程序目录下的 _crash.log（排查闪退用），并按「教学安全模式」处理。</summary>
+    /// <summary>把未处理异常写到数据目录 Logs\crash.log（排查闪退用），并按「教学安全模式」处理。</summary>
     private static void LogCrash(Exception? ex)
     {
         if (ex is null)
             return;
 
-        var path = Path.Combine(AppContext.BaseDirectory, "_crash.log");
+        var path = SettingsService.CrashLogPath;
         try
         {
+            Services.SettingsService.EnsureDataDirectory();
             File.AppendAllText(path, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {ex}\n\n");
         }
         catch

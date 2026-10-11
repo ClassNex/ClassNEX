@@ -698,8 +698,10 @@ public partial class SettingsWindow : AppWindow
 
     private void OnOpenLogFile(object? sender, RoutedEventArgs e)
     {
-        var log = System.IO.Path.Combine(AppContext.BaseDirectory, "_crash.log");
-        OpenInExplorer(System.IO.File.Exists(log) ? log : AppContext.BaseDirectory);
+        SettingsService.EnsureDataDirectory();
+        OpenInExplorer(System.IO.File.Exists(SettingsService.CrashLogPath)
+            ? SettingsService.CrashLogPath
+            : SettingsService.LogsDirectory);
     }
 
     private void OnShowAbout(object? sender, RoutedEventArgs e) => NavigateTo("about");
