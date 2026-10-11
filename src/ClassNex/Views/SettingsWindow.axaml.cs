@@ -684,6 +684,7 @@ public partial class SettingsWindow : AppWindow
     // ==================== NEX Intelligence（AI Agent 设置页） ====================
 
     private bool _nexEventsWired;
+    private bool _nexLoading;
 
     /// <summary>把设置里的值填进 NEX 页面控件（进入页面时调用）。</summary>
     private void RefreshNexPage()
@@ -706,21 +707,39 @@ public partial class SettingsWindow : AppWindow
             NexTestButton.Click += async (_, _) => await TestNexConnectionAsync();
         }
 
-        NexBaseUrlBox.Text = s.NexApiBaseUrl;
-        NexApiKeyBox.Text = s.NexApiKey;
-        NexSystemPromptBox.Text = s.NexSystemPrompt;
-        NexPermissionCombo.SelectedIndex = (int)Services.NexIntelligence.NexPermissionNames.FromKey(s.NexPermission);
+        // 填值期间不要触发保存：下拉框设 ItemsSource 会先触发一次 SelectionChanged，
+        // 那时 Text 还是空的，会把模型名写成空字符串（实测踩到过）
+        _nexLoading = true;
+        try
+        {
+            NexBaseUrlBox.Text = s.NexApiBaseUrl;
+            NexApiKeyBox.Text = s.NexApiKey;
+            NexSystemPromptBox.Text = s.NexSystemPrompt;
+            NexPermissionCombo.SelectedIndex = (int)Services.NexIntelligence.NexPermissionNames.FromKey(s.NexPermission);
 
-        NexModelCombo.ItemsSource = new[] { s.NexModel };
-        NexModelCombo.SelectedIndex = 0;
+            NexModelCombo.ItemsSource = new[] { s.NexModel };
+            NexModelCombo.SelectedIndex = 0;
+        }
+        finally
+        {
+            _nexLoading = false;
+        }
     }
 
     private void SaveNexSettings()
     {
+        if (_nexLoading)
+            return;
+
         var s = AppServices.Settings;
         s.NexApiBaseUrl = NexBaseUrlBox.Text?.Trim() ?? "";
         s.NexApiKey = NexApiKeyBox.Text?.Trim() ?? "";
-        s.NexModel = (NexModelCombo.SelectedItem as string) ?? NexModelCombo.Text?.Trim() ?? s.NexModel;
+
+        // 模型名只在拿到非空值时才覆盖，避免把已配置的模型清空
+        var model = (NexModelCombo.SelectedItem as string) ?? NexModelCombo.Text?.Trim();
+        if (!string.IsNullOrWhiteSpace(model))
+            s.NexModel = model;
+
         s.NexSystemPrompt = NexSystemPromptBox.Text ?? "";
         s.NexPermission = (NexPermissionCombo.SelectedIndex switch
         {
