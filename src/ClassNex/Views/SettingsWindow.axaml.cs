@@ -706,22 +706,22 @@ public partial class SettingsWindow : AppWindow
 
         // ---- 今天 ----
         HomeTodayPanel.Children.Clear();
-        HomeTodayPanel.Children.Add(HomeCard("\uE8A5", "当前课程",
+        HomeTodayPanel.Children.Add(HomeCard("\uE736", "当前课程",
             current is null ? "现在没有课" : $"{current.DisplayName}  {current.TimeRange}"
                 + (string.IsNullOrWhiteSpace(current.Detail) ? "" : $"\n{current.Detail}"), null));
-        HomeTodayPanel.Children.Add(HomeCard("\uE72C", "下一节课",
+        HomeTodayPanel.Children.Add(HomeCard("\uE76C", "下一节课",
             next is null ? "今天没有后续课程了" : $"{next.DisplayName}  {next.TimeRange}"
                 + (string.IsNullOrWhiteSpace(next.Detail) ? "" : $"\n{next.Detail}"), null));
         HomeTodayPanel.Children.Add(HomeCard("\uE787", "今日课程", $"{slots.Count} 节", null));
-        HomeTodayPanel.Children.Add(HomeCard("\uE9D9", "倒计时", countdown, null));
+        HomeTodayPanel.Children.Add(HomeCard("\uE916", "倒计时", countdown, null));
 
         // ---- 快捷操作 ----
         HomeActionsPanel.Children.Clear();
         HomeActionsPanel.Children.Add(HomeCard("\uE70F", "档案编辑器", "编辑课表与时间表",
             () => App.OpenProfileEditor(0)));
-        HomeActionsPanel.Children.Add(HomeCard("\uE838", "数据目录", SettingsService.DataDirectory,
+        HomeActionsPanel.Children.Add(HomeCard("\uE8B7", "数据目录", SettingsService.DataDirectory,
             () => OnOpenDataFolder(null, new RoutedEventArgs())));
-        HomeActionsPanel.Children.Add(HomeCard("\uE74D", "导出诊断数据", "设置 + 日志 + 版本信息",
+        HomeActionsPanel.Children.Add(HomeCard("\uE7C3", "导出诊断数据", "设置 + 日志 + 版本信息",
             () => OnExportDiagnostics(null, new RoutedEventArgs())));
         HomeActionsPanel.Children.Add(HomeCard("\uE713", "应用设置", "打开「基本」页",
             () => NavigateTo("general")));
@@ -729,13 +729,13 @@ public partial class SettingsWindow : AppWindow
         // ---- 状态 ----
         var s = AppServices.Settings;
         HomeStatusPanel.Children.Clear();
-        HomeStatusPanel.Children.Add(HomeCard("\uE7C4", "通知",
+        HomeStatusPanel.Children.Add(HomeCard("\uEA8F", "通知",
             s.AllowNotification ? "已开启" : "已关闭", () => NavigateTo("notification")));
         HomeStatusPanel.Children.Add(HomeCard("\uE945", "提醒效果",
             s.AllowNotificationEffect ? "水波纹已开启" : "水波纹已关闭", () => NavigateTo("notification")));
         HomeStatusPanel.Children.Add(HomeCard("\uE71D", "主界面组件",
             $"{s.Widgets.Count(w => w.IsEnabled)} 个已启用", () => NavigateTo("widgets")));
-        HomeStatusPanel.Children.Add(HomeCard("\uE80F", "应用版本",
+        HomeStatusPanel.Children.Add(HomeCard("\uE946", "应用版本",
             VersionText.Text ?? "?", () => NavigateTo("about")));
     }
 
