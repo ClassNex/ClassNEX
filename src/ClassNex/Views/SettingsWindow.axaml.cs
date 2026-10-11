@@ -47,7 +47,7 @@ public partial class SettingsWindow : AppWindow
     }
 
     /// <summary>页面名（顺序与 NavView.MenuItems 一致，对照 CI 的 SettingsPageInfo.Name）。</summary>
-    private static readonly string[] PageNames = { "基本", "外观", "窗口", "组件", "提醒", "关于 ClassNEX", "调试", "账户" };
+    private static readonly string[] PageNames = { "主页", "基本", "外观", "窗口", "组件", "提醒", "关于 ClassNEX", "调试", "账户" };
 
     /// <summary>设置项索引（供顶栏「查找设置」搜索；Title = 设置项，PageIndex = 所属页面）。</summary>
     private static readonly (string Title, int PageIndex)[] SearchIndex =
@@ -455,18 +455,19 @@ public partial class SettingsWindow : AppWindow
     {
         var index = page switch
         {
-            "appearance" => 1,
-            "window" => 2,
-            "widgets" => 3,
-            "about" => 5,
-            "debug" => 6,
+            "home" => 0,
+            "appearance" => 2,
+            "window" => 3,
+            "widgets" => 4,
+            "about" => 6,
+            "debug" => 7,
             _ => 0,
         };
 
         // 账户页不占导航位，从账户卡进入时直接切页
         if (page == "account")
         {
-            PageGeneral.IsVisible = PageInterface.IsVisible = PageWindow.IsVisible =
+            PageHome.IsVisible = PageGeneral.IsVisible = PageInterface.IsVisible = PageWindow.IsVisible =
                 PageWidgets.IsVisible = PageNotification.IsVisible = PageAbout.IsVisible =
                 PageDebug.IsVisible = false;
             PageAccount.IsVisible = true;
@@ -561,6 +562,67 @@ public partial class SettingsWindow : AppWindow
 
         // 调试页条目事件
         WireDebugPageEvents();
+
+        // 主页时钟（1 秒刷新）
+        StartHomeClock();
+    }
+
+    // ==================== 主页（CW2 风格仪表盘） ====================
+
+    private DispatcherTimer? _homeTimer;
+
+    private void StartHomeClock()
+    {
+        _homeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _homeTimer.Tick += (_, _) => RefreshHome();
+        _homeTimer.Start();
+        RefreshHome();
+    }
+
+    /// <summary>刷新主页：大时钟 + 日期 + 倒计时 + 今天接下来三节。</summary>
+    private void RefreshHome()
+    {
+        var now = DateTime.Now;
+        HomeClockText.Text = now.ToString("HH:mm:ss");
+        HomeDateText.Text = now.ToString("yyyy年M月d日 dddd");
+        var slots = AppServices.Time.GetTodaySlots(AppServices.Schedule.Profile, now);
+        HomeCountdownText.Text = AppServices.Time.GetCountdownText(slots, now.TimeOfDay);
+
+        HomeNextList.Children.Clear();
+        var upcoming = slots.Where(s => s.Start > now.TimeOfDay).Take(3).ToList();
+        if (upcoming.Count == 0)
+        {
+            HomeNextList.Children.Add(new TextBlock
+            {
+                Text = slots.Count == 0 ? "今天没有课程。" : "今日课程已结束",
+                FontSize = 14,
+                Opacity = 0.7,
+            });
+            return;
+        }
+
+        foreach (var s in upcoming)
+        {
+            var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("110,*") };
+            var time = new TextBlock
+            {
+                Text = s.TimeRange,
+                FontSize = 14,
+                Opacity = 0.65,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            var name = new TextBlock
+            {
+                Text = s.DisplayName + (string.IsNullOrWhiteSpace(s.Detail) ? "" : "  ·  " + s.Detail),
+                FontSize = 15,
+                VerticalAlignment = VerticalAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+            };
+            Grid.SetColumn(name, 1);
+            grid.Children.Add(time);
+            grid.Children.Add(name);
+            HomeNextList.Children.Add(grid);
+        }
     }
 
     // ==================== 加载 ====================
@@ -623,13 +685,14 @@ public partial class SettingsWindow : AppWindow
             _pageHistory.Add(_lastPageIndex);
         _lastPageIndex = index;
 
-        PageGeneral.IsVisible = index == 0;
-        PageInterface.IsVisible = index == 1;
-        PageWindow.IsVisible = index == 2;
-        PageWidgets.IsVisible = index == 3;
-        PageNotification.IsVisible = index == 4;
-        PageAbout.IsVisible = index == 5;
-        PageDebug.IsVisible = index == 6;
+        PageHome.IsVisible = index == 0;
+        PageGeneral.IsVisible = index == 1;
+        PageInterface.IsVisible = index == 2;
+        PageWindow.IsVisible = index == 3;
+        PageWidgets.IsVisible = index == 4;
+        PageNotification.IsVisible = index == 5;
+        PageAbout.IsVisible = index == 6;
+        PageDebug.IsVisible = index == 7;
         PageAccount.IsVisible = false;   // 账户页只从账户卡进入
 
         // 页面标题行（对照 CI 的 TitleContainer：页面名由外壳统一显示）

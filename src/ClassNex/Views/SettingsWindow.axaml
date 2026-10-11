@@ -175,6 +175,13 @@
             </ui:NavigationView.PaneCustomContent>
 
             <ui:NavigationView.MenuItems>
+                <!-- 主页（CW2 风格仪表盘）；主页与基本之间加轻分割（用户要求：有分割但不要太大） -->
+                <ui:NavigationViewItem Content="主页">
+                    <ui:NavigationViewItem.IconSource>
+                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE80F;" FontSize="16"/>
+                    </ui:NavigationViewItem.IconSource>
+                </ui:NavigationViewItem>
+                <ui:NavigationViewItemSeparator/>
                 <!-- 1:1 照 CI 的页序与页名（Internal 组）：基本 / 外观 / 窗口 / 组件；底部 = 关于 ClassNEX -->
                 <ui:NavigationViewItem Content="基本">
                     <ui:NavigationViewItem.IconSource>
@@ -219,6 +226,32 @@
                            Margin="32,24,32,0" HorizontalAlignment="Left"/>
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="32,12,32,24" Spacing="12" MaxWidth="880" HorizontalAlignment="Left">
+
+                        <!-- ==================== 主页（CW2 风格仪表盘） ==================== -->
+                        <StackPanel x:Name="PageHome" Spacing="12" IsVisible="False">
+                            <Border CornerRadius="8" Padding="28,24" BorderThickness="1"
+                                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Spacing="4" VerticalAlignment="Center">
+                                        <TextBlock x:Name="HomeClockText" FontSize="54"/>
+                                        <TextBlock x:Name="HomeDateText" FontSize="16" Opacity="0.75"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                        <TextBlock Text="倒计时" FontSize="12" Opacity="0.6" HorizontalAlignment="Right"/>
+                                        <TextBlock x:Name="HomeCountdownText" FontSize="22" HorizontalAlignment="Right"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                            <ui:SettingsExpander Header="今天接下来" IsExpanded="True">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE8A5;"/>
+                                </ui:SettingsExpander.IconSource>
+                                <ui:SettingsExpander.Items>
+                                    <StackPanel x:Name="HomeNextList" Spacing="4" Margin="0,4,0,4"/>
+                                </ui:SettingsExpander.Items>
+                            </ui:SettingsExpander>
+                        </StackPanel>
 
                         <!-- ==================== 提醒（1:1 照 CI ClassNotificationProviderSettingsControl.axaml） ==================== -->
                         <StackPanel x:Name="PageNotification" Spacing="12" IsVisible="False">
