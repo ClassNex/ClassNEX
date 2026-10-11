@@ -129,6 +129,34 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         return en ?? supported.FirstOrDefault() ?? SpeechRecognizer.SystemSpeechLanguage;
     }
 
+    /// <summary>
+    /// 列出录音设备与当前默认输入设备（排查「在听但听不到」：多半是 Windows 默认输入设备选错了，
+    /// 比如被虚拟声卡/模拟器占用，识别器听到的就是静音）。
+    /// </summary>
+    public static async Task<string> DescribeAudioDevicesAsync()
+    {
+        try
+        {
+            var devices = await Windows.Devices.Enumeration.DeviceInformation.FindAllAsync(
+                Windows.Devices.Enumeration.DeviceClass.AudioCapture);
+
+            var names = devices.Select(d => d.Name).ToList();
+
+            var defaultId = Windows.Media.Devices.MediaDevice.GetDefaultAudioCaptureId(
+                Windows.Media.Devices.AudioDeviceRole.Communications);
+            var defaultName = devices.FirstOrDefault(d => d.Id == defaultId)?.Name
+                              ?? devices.FirstOrDefault(d => d.Id == Windows.Media.Devices.MediaDevice.GetDefaultAudioCaptureId(
+                                  Windows.Media.Devices.AudioDeviceRole.Default))?.Name
+                              ?? "（取不到名字）";
+
+            return $"默认输入设备：{defaultName}；共 {names.Count} 个：" + string.Join("、", names);
+        }
+        catch (Exception ex)
+        {
+            return "枚举录音设备失败：" + ex.Message;
+        }
+    }
+
     /// <summary>查麦克风权限（桌面应用要在「设置 → 隐私和安全性 → 麦克风」里允许访问，否则拿到的是静音流）。</summary>
     public static string CheckMicrophoneAccess()
     {
@@ -156,7 +184,8 @@ public sealed class NexWinRtVoiceService : INexVoiceService
     public async Task<string> TestMicrophoneAsync()
     {
         var access = CheckMicrophoneAccess();
-        NexVoiceLog.Write($"麦克风测试开始：权限={access}");
+        var devices = await DescribeAudioDevicesAsync();
+        NexVoiceLog.Write($"麦克风测试开始：权限={access}；{devices}");
 
         try
         {
@@ -174,8 +203,8 @@ public sealed class NexWinRtVoiceService : INexVoiceService
                 SpeechRecognitionResultStatus.Success => $"听到：「{result.Text}」（权限 {access}）",
                 SpeechRecognitionResultStatus.AudioQualityFailure => $"音频质量太差，没听清（权限 {access}）",
                 SpeechRecognitionResultStatus.MicrophoneUnavailable => $"麦克风不可用 —— 请到「设置 → 隐私和安全性 → 麦克风」允许桌面应用访问（当前权限 {access}）",
-                SpeechRecognitionResultStatus.UserCanceled => "没有听到声音（超时）",
-                _ => $"结果：{result.Status}（权限 {access}）",
+                SpeechRecognitionResultStatus.UserCanceled => $"没有听到声音（超时）—— {devices}",
+                _ => $"结果：{result.Status}（权限 {access}）—— {devices}",
             };
         }
         catch (Exception ex)

@@ -734,6 +734,22 @@ public partial class SettingsWindow : AppWindow
             // 直接拉起 Windows 的语音设置页：整句听写需要在那里打开「在线语音识别」
             NexSpeechSettingsButton.Click += (_, _) => App.OpenWindowsSpeechSettings();
 
+            // 声音设置：多半是默认输入设备选错了（虚拟声卡/模拟器抢了默认），在这页改
+            NexSoundSettingsButton.Click += (_, _) =>
+            {
+                try
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("ms-settings:sound")
+                    {
+                        UseShellExecute = true,
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Services.NexVoiceLog.Write("打开声音设置失败：" + ex.Message);
+                }
+            };
+
             NexMicTestButton.Click += async (_, _) =>
             {
                 NexVoiceStatusText.Text = "正在测试麦克风…（请对着麦克风说一句话）";
