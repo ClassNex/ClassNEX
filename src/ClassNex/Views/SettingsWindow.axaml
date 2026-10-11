@@ -289,25 +289,40 @@
                                 </Style>
                             </StackPanel.Styles>
 
-                            <!-- 问候语（思源宋体，主题色；横幅已删） -->
-                            <StackPanel Spacing="4" Margin="0,4,0,0">
-                                <TextBlock x:Name="HomeGreetingText"
-                                           FontFamily="Noto Serif SC, Source Han Serif SC, SimSun"
-                                           FontSize="34"
-                                           TextTrimming="CharacterEllipsis"/>
-                                <TextBlock x:Name="HomeSubText" FontSize="14" Opacity="0.7"/>
-                            </StackPanel>
+                            <!-- 横幅：1:1 照微软 WinUI Gallery 的 Controls/HomePage/HomePageHeader.xaml
+                                 ① 上方 OpacityMask 用竖直渐变做蒙版：0~0.75 完全不透明 → 0.85~1 全透明
+                                    （底部"化"进页面背景，所以没有硬边框/硬下沿）
+                                 ② 里面 Grid 底色 #020B20，Image 上移 100（裁掉顶部）+ Opacity 0.8 + UniformToFill
+                                 ③ 问候语叠在横幅左侧（官方为 Margin="36,48,0,0"） -->
+                            <Panel Height="320" Margin="-32,-12,-32,0">
+                                <Panel.OpacityMask>
+                                    <LinearGradientBrush StartPoint="50%,0%" EndPoint="50%,100%">
+                                        <GradientStop Offset="0" Color="#FF000000"/>
+                                        <GradientStop Offset="0.75" Color="#FF000000"/>
+                                        <GradientStop Offset="0.85" Color="#00000000"/>
+                                        <GradientStop Offset="1" Color="#00000000"/>
+                                    </LinearGradientBrush>
+                                </Panel.OpacityMask>
 
-                            <!-- 横幅轮播（照 CW2 测试版首页：HorizontalFlipView 900x450 圆角8 + PipsPager 圆点，自动轮播） -->
-                            <Border CornerRadius="8" ClipToBounds="True" Height="230" Margin="-32,0,-32,0">
-                                <Carousel x:Name="HomeBannerCarousel">
-                                    <Carousel.PageTransition>
-                                        <CrossFade Duration="0:0:0.4"/>
-                                    </Carousel.PageTransition>
-                                </Carousel>
-                            </Border>
-                            <StackPanel x:Name="HomeBannerDots" Orientation="Horizontal" Spacing="6"
-                                        HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                <Panel Background="#020B20">
+                                    <Image Source="avares://ClassNex/Assets/Banners/cw2.png"
+                                           Stretch="UniformToFill"
+                                           Opacity="0.8"
+                                           Margin="0,-100,0,0"
+                                           VerticalAlignment="Top"/>
+                                </Panel>
+
+                                <StackPanel Orientation="Vertical" Spacing="4"
+                                            Margin="36,44,0,0" VerticalAlignment="Top"
+                                            HorizontalAlignment="Left">
+                                    <TextBlock x:Name="HomeGreetingText"
+                                               FontFamily="Noto Serif SC, Source Han Serif SC, SimSun"
+                                               FontSize="34"
+                                               Foreground="White"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock x:Name="HomeSubText" FontSize="14" Foreground="#D9FFFFFF"/>
+                                </StackPanel>
+                            </Panel>
 
                             <TextBlock Text="今天" Classes="HomeSection"/>
                             <WrapPanel x:Name="HomeTodayPanel"/>
