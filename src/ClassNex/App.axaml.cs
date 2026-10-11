@@ -636,21 +636,38 @@ public partial class App : Application
             new Views.TrayMenuWindow.Item("\uE7E8", "退出", ExitApp),
         });
 
+        // ★ 先透明 + 先摆好大概位置，再 Show：
+        //   原来先 Show 后挪位置，窗口会先在默认位置（屏幕左上角）闪一下才跳到光标处
+        //   —— 用户反馈「打开托盘老是屏幕左边跳一下，看不清」。
+        var cursor = TryGetCursorPos(out var pt) ? pt : default;
+        var hasCursor = cursor != default;
+
+        menu.Opacity = 0;
+        if (hasCursor)
+        {
+            // 粗定位：菜单宽 240、每项约 38，先把它放到光标左下方，避免任何"跳到左上角"的痕迹
+            menu.Position = new PixelPoint(
+                Math.Max(0, cursor.X - 120),
+                Math.Max(0, cursor.Y - 320));
+        }
+
         menu.Show();
         menu.Activate();
 
-        if (TryGetCursorPos(out var pt))
+        // 布局完成后再精确对齐（此时才知道真实高度），然后淡入
+        Dispatcher.UIThread.Post(() =>
         {
-            // 等一次布局再定位（SizeToContent 的窗口此时才拿到真实尺寸）；菜单出现在光标左下，跟系统菜单一致
-            Dispatcher.UIThread.Post(() =>
+            if (hasCursor && menu.IsVisible)
             {
                 var w = menu.Bounds.Width > 0 ? menu.Bounds.Width : 240;
                 var h = menu.Bounds.Height > 0 ? menu.Bounds.Height : 320;
                 menu.Position = new PixelPoint(
-                    Math.Max(0, (int)(pt.X - w / 2)),
-                    Math.Max(0, (int)(pt.Y - h - 8)));
-            }, DispatcherPriority.Background);
-        }
+                    Math.Max(0, (int)(cursor.X - w / 2)),
+                    Math.Max(0, (int)(cursor.Y - h - 8)));
+            }
+
+            menu.Opacity = 1;
+        }, DispatcherPriority.Background);
 
         _trayMenu = menu;
         menu.Closed += (_, _) => _trayMenu = null;
