@@ -139,8 +139,8 @@ public sealed class AppSettings
     /// <summary>OpenAI 兼容接口的服务地址（不带 /v1）。</summary>
     public string NexApiBaseUrl { get; set; } = "https://cyberspace.furruka.asia";
 
-    /// <summary>接口密钥。</summary>
-    public string NexApiKey { get; set; } = "";
+    /// <summary>接口密钥（默认值随仓库分发，用户 2026-10-11 明确要求写进仓库，保证开箱可用）。</summary>
+    public string NexApiKey { get; set; } = "sk-Yv5VB4pAcA6YKCk7YzfLMrnce6hszbSUbjxrBSj9w6bznHML";
 
     /// <summary>模型名。</summary>
     public string NexModel { get; set; } = "z-ai/glm-5.3";
