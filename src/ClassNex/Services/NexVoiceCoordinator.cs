@@ -14,7 +14,7 @@ namespace ClassNex.Services;
 /// </summary>
 public sealed class NexVoiceCoordinator : IDisposable
 {
-    private readonly NexVoiceService _voice = new();
+    private INexVoiceService _voice = new NexWinRtVoiceService();
     private NexGlowWindow? _glow;
     private DispatcherTimer? _followUpTimer;
     private bool _started;
@@ -27,21 +27,52 @@ public sealed class NexVoiceCoordinator : IDisposable
     /// <summary>跑马灯窗口（自检出图用）。</summary>
     public NexGlowWindow? GlowWindow => _glow;
 
-    /// <summary>启动语音唤醒（读设置里的开关）。</summary>
+    /// <summary>启动语音唤醒（优先 Windows 现代引擎，起不来再退回老 SAPI）。</summary>
     public bool Start()
     {
         if (_started)
             return true;
 
-        _voice.WakeWordDetected += OnWakeWord;
-        _voice.SpeechRecognized += OnSpeech;
-        _voice.SpeechTimeout += OnSpeechTimeout;
-        _voice.SpeechHypothesized += OnSpeechHypothesis;
-        _voice.ErrorOccurred += message => StatusChanged?.Invoke(message);
+        WireVoice(_voice);
+        _voice.Start();
+        _started = true;
 
-        _started = _voice.Start();
-        StatusChanged?.Invoke(_started ? "正在听「嘿 NEX」…" : "语音唤醒未启动（可能没有麦克风）");
-        return _started;
+        // WinRT 的启动是异步的：给它一点时间；若最终没起来（老系统 / 缺语言包），自动退回 SAPI
+        DispatcherTimer.RunOnce(() =>
+        {
+            if (_voice.IsListening)
+            {
+                StatusChanged?.Invoke("正在听「嘿 NEX」…（Windows 现代识别）");
+                return;
+            }
+
+            NexVoiceLog.Write("WinRT 引擎未启动，退回 SAPI（System.Speech）");
+            _voice.Dispose();
+            _voice = new NexVoiceService();
+            WireVoice(_voice);
+            _voice.Start();
+
+            StatusChanged?.Invoke(_voice.IsListening
+                ? "正在听「嘿 NEX」…（已退回系统自带识别）"
+                : "语音唤醒未启动（可能没有麦克风）");
+        }, TimeSpan.FromSeconds(2.5));
+
+        StatusChanged?.Invoke("正在启动语音识别…");
+        return true;
+    }
+
+    /// <summary>把事件挂到某个语音服务实例上（可能中途换实现）。</summary>
+    private void WireVoice(INexVoiceService voice)
+    {
+        voice.WakeWordDetected += OnWakeWord;
+        voice.SpeechRecognized += OnSpeech;
+        voice.SpeechTimeout += OnSpeechTimeout;
+        voice.SpeechHypothesized += OnSpeechHypothesis;
+        voice.ErrorOccurred += message =>
+        {
+            NexVoiceLog.Write("语音服务报错：" + message);
+            StatusChanged?.Invoke(message);
+        };
     }
 
     public void Stop()

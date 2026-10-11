@@ -14,7 +14,7 @@ namespace ClassNex.Services;
 /// 两段式：平时只听唤醒词（语法识别，省电、误触少）；唤醒后切到听写语法收一句话，
 /// 若在超时时间内没听到内容就报 <see cref="SpeechTimeout"/>（界面上显示「请讲」）。
 /// </summary>
-public sealed class NexVoiceService : IDisposable
+public sealed class NexVoiceService : INexVoiceService
 {
     private SpeechRecognitionEngine? _engine;
     private Grammar? _wakeGrammar;
@@ -62,7 +62,7 @@ public sealed class NexVoiceService : IDisposable
     /// <summary>识别日志（排查"喊了没反应"用）。</summary>
     private static readonly object LogLock = new();
 
-    private static void Log(string message)
+    private static void LogLocal(string message)
     {
         try
         {
@@ -118,10 +118,10 @@ public sealed class NexVoiceService : IDisposable
         return false;
     }
 
-    public bool Start()
+    public void Start()
     {
         if (_listening)
-            return true;
+            return;
 
         try
         {
@@ -143,15 +143,13 @@ public sealed class NexVoiceService : IDisposable
 
             _engine.RecognizeAsync(RecognizeMode.Multiple);
             _listening = true;
-            Log($"语音唤醒已启动：引擎区域 {_engine.RecognizerInfo.Culture?.Name}，设备 {_engine.RecognizerInfo.Description}");
-            return true;
+            NexVoiceLog.Write($"SAPI 语音唤醒已启动：引擎区域 {_engine.RecognizerInfo.Culture?.Name}，设备 {_engine.RecognizerInfo.Description}");
         }
         catch (Exception ex)
         {
-            Log("启动失败：" + ex);
+            NexVoiceLog.Write("SAPI 启动失败：" + ex);
             ErrorOccurred?.Invoke("语音唤醒启动失败：" + ex.Message);
             Stop();
-            return false;
         }
     }
 
@@ -166,7 +164,7 @@ public sealed class NexVoiceService : IDisposable
             }
             catch (Exception ex)
             {
-                Log($"区域 {name} 的识别引擎不可用：{ex.Message}");
+                NexVoiceLog.Write($"区域 {name} 的识别引擎不可用：{ex.Message}");
             }
         }
 
@@ -226,7 +224,7 @@ public sealed class NexVoiceService : IDisposable
         }
         catch (Exception ex)
         {
-            Log("进入追问模式失败：" + ex.Message);
+            NexVoiceLog.Write("进入追问模式失败：" + ex.Message);
         }
 
         ArmSilenceTimer();
@@ -280,7 +278,7 @@ public sealed class NexVoiceService : IDisposable
             }
 
             var matched = alternates.FirstOrDefault(LooksLikeWake);
-            Log($"唤醒候选：{string.Join(" | ", alternates)}（置信度 {e.Result?.Confidence:0.00}）"
+            NexVoiceLog.Write($"唤醒候选：{string.Join(" | ", alternates)}（置信度 {e.Result?.Confidence:0.00}）"
                 + (matched is null ? " → 未命中" : $" → 命中「{matched}」"));
 
             if (matched is null && (e.Result?.Confidence ?? 0) < 0.3f)

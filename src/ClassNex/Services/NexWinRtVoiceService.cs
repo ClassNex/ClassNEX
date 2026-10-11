@@ -1,0 +1,251 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using ClassNex.Services.NexIntelligence;
+using Windows.Globalization;
+using Windows.Media.SpeechRecognition;
+
+namespace ClassNex.Services;
+
+/// <summary>
+/// 用 Windows 现代语音识别（WinRT <see cref="SpeechRecognizer"/>）实现唤醒 + 听写。
+/// 比老 SAPI（Microsoft Speech Recognizer 8.0）识别率高得多，而且：
+/// · 唤醒阶段用**列表约束**（词表只有唤醒词变体）—— 你说「NEX」只会被映射到词表里最接近的那条，几乎不会认错；
+/// · 听写阶段用**听写约束**（自然语言），可以整句识别中文问题；
+/// · 全程离线，音频不出本机。
+/// 两个约束不能同时生效，所以准备两个识别器实例：待机听唤醒词、唤醒后切听写。
+/// </summary>
+public sealed class NexWinRtVoiceService : INexVoiceService
+{
+    private SpeechRecognizer? _wakeRecognizer;
+    private SpeechRecognizer? _dictationRecognizer;
+    private bool _listening;
+    private bool _dictating;
+    private bool _starting;
+
+    public event Action? WakeWordDetected;
+    public event Action<string>? SpeechRecognized;
+    public event Action? SpeechTimeout;
+    public event Action<string>? SpeechHypothesized;
+    public event Action<string>? ErrorOccurred;
+
+    public bool IsListening => _listening;
+
+    public int DictationTimeoutSeconds { get; set; } = 10;
+
+    /// <summary>唤醒词词表（列表约束用；连读、带前缀、逐字母、中文谐音都放进去）。</summary>
+    private static readonly string[] WakePhrases =
+    {
+        "nex", "next", "nexus", "necks",
+        "hey nex", "hey next", "hi nex", "ok nex", "okay nex",
+        "嘿 nex", "嗨 nex", "你好 nex",
+        "内克斯", "耐克斯", "奈克斯", "尼克丝", "尼克斯",
+        "n e x", "en ee ex",
+    };
+
+    public async Task<bool> StartAsync()
+    {
+        if (_listening || _starting)
+            return _listening;
+
+        _starting = true;
+        try
+        {
+            var language = PickLanguage();
+
+            _wakeRecognizer = new SpeechRecognizer(language);
+            _wakeRecognizer.Constraints.Add(new SpeechRecognitionListConstraint(WakePhrases, "wake"));
+            var compile = await _wakeRecognizer.CompileConstraintsAsync();
+            if (compile.Status != SpeechRecognitionResultStatus.Success)
+            {
+                ErrorOccurred?.Invoke("唤醒词表编译失败：" + compile.Status);
+                return false;
+            }
+
+            _wakeRecognizer.ContinuousRecognitionSession.ResultGenerated += OnWakeResult;
+            _wakeRecognizer.ContinuousRecognitionSession.AutoStopSilenceTimeout = TimeSpan.FromMinutes(30);
+            await _wakeRecognizer.ContinuousRecognitionSession.StartAsync();
+
+            _listening = true;
+            NexVoiceLog.Write($"WinRT 语音已启动：语言 {language.LanguageTag}；可用语言 "
+                + string.Join("、", SupportedLanguages().Select(l => l.LanguageTag)));
+            return true;
+        }
+        catch (Exception ex)
+        {
+            NexVoiceLog.Write("WinRT 启动失败：" + ex);
+            ErrorOccurred?.Invoke("语音识别启动失败：" + ex.Message);
+            return false;
+        }
+        finally
+        {
+            _starting = false;
+        }
+    }
+
+    public void Start()
+    {
+        _ = StartAsync();
+    }
+
+    /// <summary>系统支持的识别语言（列表约束用 SupportedGrammarLanguages，听写用 SupportedTopicLanguages）。</summary>
+    private static IReadOnlyList<Language> SupportedLanguages()
+    {
+        var grammar = SpeechRecognizer.SupportedGrammarLanguages;
+        if (grammar is { Count: > 0 })
+            return grammar.ToList();
+
+        var topic = SpeechRecognizer.SupportedTopicLanguages;
+        return topic is { Count: > 0 } ? topic.ToList() : new List<Language> { SpeechRecognizer.SystemSpeechLanguage };
+    }
+
+    /// <summary>优先中文（用户说的是中文问题），没有就退到英文，再没有就用系统默认。</summary>
+    private static Language PickLanguage()
+    {
+        var supported = SupportedLanguages();
+        var zh = supported.FirstOrDefault(l => l.LanguageTag.StartsWith("zh", StringComparison.OrdinalIgnoreCase));
+        if (zh is not null)
+            return zh;
+
+        var en = supported.FirstOrDefault(l => l.LanguageTag.StartsWith("en", StringComparison.OrdinalIgnoreCase));
+        return en ?? supported.FirstOrDefault() ?? SpeechRecognizer.SystemSpeechLanguage;
+    }
+
+    public void Stop()
+    {
+        try
+        {
+            _wakeRecognizer?.ContinuousRecognitionSession.StopAsync().AsTask().Wait(TimeSpan.FromSeconds(2));
+            _dictationRecognizer?.ContinuousRecognitionSession.StopAsync().AsTask().Wait(TimeSpan.FromSeconds(2));
+        }
+        catch
+        {
+            // 忽略
+        }
+
+        _wakeRecognizer?.Dispose();
+        _dictationRecognizer?.Dispose();
+        _wakeRecognizer = null;
+        _dictationRecognizer = null;
+        _listening = false;
+        _dictating = false;
+    }
+
+    // ==================== 唤醒 ====================
+
+    private void OnWakeResult(SpeechContinuousRecognitionSession sender, SpeechContinuousRecognitionResultGeneratedEventArgs args)
+    {
+        var text = args.Result?.Text?.Trim();
+        if (string.IsNullOrWhiteSpace(text))
+            return;
+
+        NexVoiceLog.Write($"WinRT 唤醒候选：{text}（置信度 {args.Result?.Confidence}）");
+        if (args.Result?.Confidence == SpeechRecognitionConfidence.Rejected)
+            return;
+
+        _ = StartDictationAsync();
+    }
+
+    // ==================== 听写 ====================
+
+    private async Task StartDictationAsync()
+    {
+        if (_dictating)
+            return;
+
+        _dictating = true;
+        WakeWordDetected?.Invoke();
+
+        try
+        {
+            if (_wakeRecognizer is not null)
+                await _wakeRecognizer.ContinuousRecognitionSession.StopAsync();
+
+            _dictationRecognizer ??= await CreateDictationRecognizerAsync();
+            await _dictationRecognizer.ContinuousRecognitionSession.StartAsync();
+        }
+        catch (Exception ex)
+        {
+            NexVoiceLog.Write("切到听写失败：" + ex.Message);
+            ErrorOccurred?.Invoke("切换听写失败：" + ex.Message);
+            _dictating = false;
+        }
+    }
+
+    private async Task<SpeechRecognizer> CreateDictationRecognizerAsync()
+    {
+        var language = PickLanguage();
+        var recognizer = new SpeechRecognizer(language);
+        recognizer.Constraints.Add(new SpeechRecognitionTopicConstraint(SpeechRecognitionScenario.Dictation, "dictation"));
+        var compile = await recognizer.CompileConstraintsAsync();
+        if (compile.Status != SpeechRecognitionResultStatus.Success)
+            NexVoiceLog.Write("听写约束编译状态：" + compile.Status);
+
+        recognizer.ContinuousRecognitionSession.ResultGenerated += OnDictationResult;
+        recognizer.ContinuousRecognitionSession.AutoStopSilenceTimeout = TimeSpan.FromSeconds(DictationTimeoutSeconds);
+        recognizer.HypothesisGenerated += (_, e) =>
+        {
+            if (_dictating && !string.IsNullOrWhiteSpace(e.Hypothesis?.Text))
+                SpeechHypothesized?.Invoke(e.Hypothesis.Text);
+        };
+        recognizer.ContinuousRecognitionSession.Completed += (_, _) =>
+        {
+            // 静默超时结束：提示「请讲」并回到听唤醒词
+            if (_dictating)
+            {
+                SpeechTimeout?.Invoke();
+                _ = BackToWakeWordAsync();
+            }
+        };
+
+        return recognizer;
+    }
+
+    private void OnDictationResult(SpeechContinuousRecognitionSession sender, SpeechContinuousRecognitionResultGeneratedEventArgs args)
+    {
+        if (!_dictating)
+            return;
+
+        var text = args.Result?.Text?.Trim();
+        if (string.IsNullOrWhiteSpace(text) || args.Result?.Confidence == SpeechRecognitionConfidence.Rejected)
+            return;
+
+        NexVoiceLog.Write($"WinRT 听写：{text}（置信度 {args.Result?.Confidence}）");
+        _dictating = false;
+        SpeechRecognized?.Invoke(text);
+    }
+
+    /// <summary>连续问答：直接回到听写（不用再喊唤醒词）。</summary>
+    public void ListenForFollowUp()
+    {
+        if (!_listening || _dictating)
+            return;
+
+        _ = StartDictationAsync();
+    }
+
+    /// <summary>回到只听唤醒词。</summary>
+    public void BackToWakeWord()
+    {
+        _ = BackToWakeWordAsync();
+    }
+
+    private async Task BackToWakeWordAsync()
+    {
+        _dictating = false;
+        try
+        {
+            if (_dictationRecognizer is not null)
+                await _dictationRecognizer.ContinuousRecognitionSession.StopAsync();
+            if (_wakeRecognizer is not null)
+                await _wakeRecognizer.ContinuousRecognitionSession.StartAsync();
+        }
+        catch (Exception ex)
+        {
+            NexVoiceLog.Write("回到唤醒词监听失败：" + ex.Message);
+        }
+    }
+
+    public void Dispose() => Stop();
+}
