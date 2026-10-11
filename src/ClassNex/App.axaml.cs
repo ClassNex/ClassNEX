@@ -20,6 +20,7 @@ public partial class App : Application
     private ProfileEditorWindow? _profileEditor;
     private Views.TopmostEffectWindow? _effectWindow;
     private Views.OobeWindow? _oobeWindow;
+    private Views.NexChatWindow? _nexChatWindow;
     private Services.NotificationService? _notificationService;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
@@ -153,11 +154,31 @@ public partial class App : Application
                     Dispatcher.UIThread.Post(() => _mainWindow?.EnterEditMode(), DispatcherPriority.Background);
                 }
 
+                // CLASSNEX_VERIFY_NEX=<文本>：打开 NEX 对话框并自动发一条消息（核对流式/思考/工具调用）
+                var nexProbe = Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_NEX");
+                if (!string.IsNullOrWhiteSpace(nexProbe))
+                {
+                    var probeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+                    probeTimer.Tick += (_, _) =>
+                    {
+                        probeTimer.Stop();
+                        OpenNexChat();
+                        Dispatcher.UIThread.Post(
+                            () => _nexChatWindow?.VerifySend(nexProbe),
+                            DispatcherPriority.Background);
+                    };
+                    probeTimer.Start();
+                }
+
                 // 设 CLASSNEX_VERIFY_SHOT=1：等布局稳定后把已存在的窗口各自渲染成 PNG，
                 // 供开发期核对排版（RenderTargetBitmap 直接渲染视觉树，不受其它窗口遮挡影响）
                 if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_SHOT") == "1")
                 {
-                    var shotTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+                    // 等布局稳定后把已存在的窗口各自渲染成 PNG；
+                    // 有 NEX 自检（CLASSNEX_VERIFY_NEX）时多等一会儿，好让对话跑完再出图。
+                    var shotDelay = string.IsNullOrWhiteSpace(
+                        Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_NEX")) ? 3 : 22;
+                    var shotTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(shotDelay) };
                     shotTimer.Tick += (_, _) =>
                     {
                         shotTimer.Stop();
@@ -169,6 +190,8 @@ public partial class App : Application
                             SaveWindowShot(_profileEditor, "_shot_editor.png");
                         if (_oobeWindow is not null)
                             SaveWindowShot(_oobeWindow, "_shot_oobe.png");
+                        if (_nexChatWindow is not null)
+                            SaveWindowShot(_nexChatWindow, "_shot_nex.png");
                     };
                     shotTimer.Start();
                 }
@@ -492,9 +515,25 @@ public partial class App : Application
         Lifetime?.Shutdown();
     }
 
-    /// <summary>重启应用（首次启动向导完成、设置页「重启 ClassNEX」、托盘菜单「重启」用）。</summary>
-    public static void RestartApplication()
+    /// <summary>打开 NEX Intelligence 对话框（设置页按钮 / 以后可以挂托盘、快捷键）。</summary>
+    public static void OpenNexChat()
     {
+        if (Current is not App app)
+            return;
+
+        if (app._nexChatWindow is { IsVisible: true } existing)
+        {
+            existing.Activate();
+            return;
+        }
+
+        app._nexChatWindow = new Views.NexChatWindow();
+        app._nexChatWindow.Show();
+        app._nexChatWindow.Activate();
+    }
+
+    /// <summary>重启应用（首次启动向导完成、设置页「重启 ClassNEX」、托盘菜单「重启」用）。</summary>
+    public static void RestartApplication()    {
         try
         {
             if (!string.IsNullOrEmpty(Environment.ProcessPath))

@@ -47,7 +47,7 @@ public partial class SettingsWindow : AppWindow
     }
 
     /// <summary>页面名（顺序与 NavView.MenuItems 一致，对照 CI 的 SettingsPageInfo.Name）。</summary>
-    private static readonly string[] PageNames = { "主页", "基本", "外观", "窗口", "组件", "提醒", "关于 ClassNEX", "调试", "账户" };
+    private static readonly string[] PageNames = { "主页", "基本", "外观", "窗口", "组件", "NEX Intelligence", "提醒", "关于 ClassNEX", "调试", "账户" };
 
     /// <summary>设置项索引（供顶栏「查找设置」搜索；Title = 设置项，PageIndex = 所属页面）。</summary>
     private static readonly (string Title, int PageIndex)[] SearchIndex =
@@ -460,9 +460,10 @@ public partial class SettingsWindow : AppWindow
             "appearance" => 2,
             "window" => 3,
             "widgets" => 4,
-            "notification" => 5,
-            "about" => 6,
-            "debug" => 7,
+            "nex" => 5,
+            "notification" => 6,
+            "about" => 7,
+            "debug" => 8,
             _ => 0,
         };
 
@@ -471,7 +472,7 @@ public partial class SettingsWindow : AppWindow
         {
             PageHome.IsVisible = PageGeneral.IsVisible = PageInterface.IsVisible = PageWindow.IsVisible =
                 PageWidgets.IsVisible = PageNotification.IsVisible = PageAbout.IsVisible =
-                PageDebug.IsVisible = false;
+                PageDebug.IsVisible = PageNex.IsVisible = false;
             PageAccount.IsVisible = true;
             PageTitleText.Text = "账户";
             return;
@@ -664,9 +665,10 @@ public partial class SettingsWindow : AppWindow
         PageInterface.IsVisible = index == 2;
         PageWindow.IsVisible = index == 3;
         PageWidgets.IsVisible = index == 4;
-        PageNotification.IsVisible = index == 5;
-        PageAbout.IsVisible = index == 6;
-        PageDebug.IsVisible = index == 7;
+        PageNex.IsVisible = index == 5;
+        PageNotification.IsVisible = index == 6;
+        PageAbout.IsVisible = index == 7;
+        PageDebug.IsVisible = index == 8;
         PageAccount.IsVisible = false;   // 账户页只从账户卡进入
 
         // 页面标题行（对照 CI 的 TitleContainer：页面名由外壳统一显示）
@@ -674,6 +676,103 @@ public partial class SettingsWindow : AppWindow
 
         if (index == 0)
             RefreshHomeGreeting();
+
+        if (index == 5)
+            RefreshNexPage();
+    }
+
+    // ==================== NEX Intelligence（AI Agent 设置页） ====================
+
+    private bool _nexEventsWired;
+
+    /// <summary>把设置里的值填进 NEX 页面控件（进入页面时调用）。</summary>
+    private void RefreshNexPage()
+    {
+        var s = AppServices.Settings;
+
+        if (!_nexEventsWired)
+        {
+            _nexEventsWired = true;
+
+            NexBaseUrlBox.TextChanged += (_, _) => SaveNexSettings();
+            NexApiKeyBox.TextChanged += (_, _) => SaveNexSettings();
+            NexModelCombo.SelectionChanged += (_, _) => SaveNexSettings();
+            NexModelCombo.LostFocus += (_, _) => SaveNexSettings();
+            NexSystemPromptBox.TextChanged += (_, _) => SaveNexSettings();
+            NexPermissionCombo.SelectionChanged += (_, _) => SaveNexSettings();
+
+            NexOpenChatButton.Click += (_, _) => App.OpenNexChat();
+            NexFetchModelsButton.Click += async (_, _) => await FetchModelsAsync();
+            NexTestButton.Click += async (_, _) => await TestNexConnectionAsync();
+        }
+
+        NexBaseUrlBox.Text = s.NexApiBaseUrl;
+        NexApiKeyBox.Text = s.NexApiKey;
+        NexSystemPromptBox.Text = s.NexSystemPrompt;
+        NexPermissionCombo.SelectedIndex = (int)Services.NexIntelligence.NexPermissionNames.FromKey(s.NexPermission);
+
+        NexModelCombo.ItemsSource = new[] { s.NexModel };
+        NexModelCombo.SelectedIndex = 0;
+    }
+
+    private void SaveNexSettings()
+    {
+        var s = AppServices.Settings;
+        s.NexApiBaseUrl = NexBaseUrlBox.Text?.Trim() ?? "";
+        s.NexApiKey = NexApiKeyBox.Text?.Trim() ?? "";
+        s.NexModel = (NexModelCombo.SelectedItem as string) ?? NexModelCombo.Text?.Trim() ?? s.NexModel;
+        s.NexSystemPrompt = NexSystemPromptBox.Text ?? "";
+        s.NexPermission = (NexPermissionCombo.SelectedIndex switch
+        {
+            1 => "workspace",
+            2 => "full",
+            _ => "readonly",
+        });
+
+        SettingsService.Save(s);
+    }
+
+    /// <summary>从接口拉模型列表填进下拉框。</summary>
+    private async Task FetchModelsAsync()
+    {
+        SaveNexSettings();
+        NexStatusText.Text = "正在拉取模型列表…";
+
+        try
+        {
+            var models = await Services.NexIntelligence.NexModelCatalog.FetchAsync(
+                AppServices.Settings.NexApiBaseUrl, AppServices.Settings.NexApiKey);
+
+            NexModelCombo.ItemsSource = models;
+            var current = AppServices.Settings.NexModel;
+            NexModelCombo.SelectedItem = models.Contains(current) ? current : models.FirstOrDefault();
+            NexStatusText.Text = $"拉到 {models.Count} 个模型。";
+        }
+        catch (Exception ex)
+        {
+            NexStatusText.Text = "拉取失败：" + ex.Message;
+        }
+    }
+
+    /// <summary>测一次最小请求，确认地址/密钥/模型可用。</summary>
+    private async Task TestNexConnectionAsync()
+    {
+        SaveNexSettings();
+        NexStatusText.Text = "正在测试…";
+
+        try
+        {
+            var reply = await Services.NexIntelligence.NexModelCatalog.TestAsync(
+                AppServices.Settings.NexApiBaseUrl,
+                AppServices.Settings.NexApiKey,
+                AppServices.Settings.NexModel);
+
+            NexStatusText.Text = "连接正常，模型回复：" + reply;
+        }
+        catch (Exception ex)
+        {
+            NexStatusText.Text = "测试失败：" + ex.Message;
+        }
     }
 
     // ==================== 主页（照 FluentUI Gallery 首页：问候 + 横幅 + 分组卡片） ====================
@@ -864,6 +963,11 @@ public partial class SettingsWindow : AppWindow
                 return;
 
             Directory.CreateDirectory(dir);
+
+            // WScript.Shell 只在 Windows 上存在（CA1416）：显式判平台，避免分析器告警
+            if (!OperatingSystem.IsWindows())
+                return;
+
             var type = Type.GetTypeFromProgID("WScript.Shell");
             if (type is null)
                 return;

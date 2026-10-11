@@ -1,0 +1,109 @@
+<wd:AppWindow xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="using:AvaloniaFluentUI.Controls"
+        xmlns:wd="using:AvaloniaFluentUI.Windowing"
+        x:Class="ClassNex.Views.NexChatWindow"
+        Title="NEX Intelligence"
+        Icon="/Assets/icon.ico"
+        TitleBarHeight="48"
+        IsTitleBarContentVisible="False"
+        Width="980" Height="720"
+        MinWidth="720" MinHeight="520"
+        WindowStartupLocation="CenterScreen">
+
+    <!-- 沉浸式标题栏 + 云母（项目规则：所有页面都要） -->
+
+    <Window.Styles>
+        <!-- 用户消息气泡 -->
+        <Style Selector="Border.UserBubble">
+            <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="14,10"/>
+            <Setter Property="MaxWidth" Value="620"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+        </Style>
+        <!-- 助手消息：无背景，靠左侧 -->
+        <Style Selector="SelectableTextBlock.ChatText">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="MaxWidth" Value="720"/>
+        </Style>
+        <!-- 工具卡片 -->
+        <Style Selector="Border.ToolCard">
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Margin" Value="0,2,0,2"/>
+            <Setter Property="MaxWidth" Value="720"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}"/>
+        </Style>
+        <Style Selector="Button.Primary">
+            <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="18,8"/>
+        </Style>
+        <Style Selector="Button.Primary:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentFillColorSecondaryBrush}"/>
+        </Style>
+        <!-- 思考块（折叠） -->
+        <Style Selector="Button.ThinkingHeader">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="48,*,Auto">
+
+        <!-- ============ 顶栏（沉浸标题栏那一行；最后一列留给系统按钮） ============ -->
+        <Border Grid.Row="0" Height="48" Padding="14,0" BorderThickness="0">
+            <Grid ColumnDefinitions="Auto,*,Auto,152">
+                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <ui:FontIcon Glyph="&#xE734;" FontFamily="Segoe MDL2 Assets" FontSize="16"/>
+                    <TextBlock Text="NEX Intelligence" FontSize="14" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="权限" FontSize="13" VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                    <ComboBox x:Name="PermissionCombo" Width="160">
+                        <ComboBoxItem Content="仅可查看"/>
+                        <ComboBoxItem Content="工作区内修改"/>
+                        <ComboBoxItem Content="完全权限"/>
+                    </ComboBox>
+                    <Button x:Name="NewChatButton" Content="新对话"/>
+                    <Button x:Name="SettingsButton" Content="设置"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ============ 消息区 ============ -->
+        <ScrollViewer Grid.Row="1" x:Name="MessageScroll" VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <StackPanel x:Name="MessagePanel" Margin="24,6,24,6" Spacing="12"/>
+        </ScrollViewer>
+
+        <!-- ============ 输入区 ============ -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="24,6,24,18">
+            <TextBox x:Name="InputBox"
+                     AcceptsReturn="True"
+                     TextWrapping="Wrap"
+                     MinHeight="46" MaxHeight="170"
+                     CornerRadius="8"
+                     VerticalContentAlignment="Center"
+                     Watermark="给 NEX 发消息…（Enter 发送，Shift+Enter 换行）"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
+                        VerticalAlignment="Bottom" Margin="12,0,0,0">
+                <Button x:Name="StopButton" Content="停止" IsVisible="False" MinWidth="76"/>
+                <Button x:Name="SendButton" Content="发送" Classes="Primary" MinWidth="88"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</wd:AppWindow>

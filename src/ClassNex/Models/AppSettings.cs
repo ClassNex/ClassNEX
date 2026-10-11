@@ -130,6 +130,26 @@ public sealed class AppSettings
 
     /// <summary>开学日期（课表按周次显示时用）。</summary>
     public DateTime? SemesterStartDate { get; set; }
+
+    // ==================== NEX Intelligence（AI Agent） ====================
+
+    /// <summary>是否启用 NEX Intelligence（关闭后导航项不显示）。</summary>
+    public bool IsNexIntelligenceEnabled { get; set; } = true;
+
+    /// <summary>OpenAI 兼容接口的服务地址（不带 /v1）。</summary>
+    public string NexApiBaseUrl { get; set; } = "https://cyberspace.furruka.asia";
+
+    /// <summary>接口密钥。</summary>
+    public string NexApiKey { get; set; } = "";
+
+    /// <summary>模型名。</summary>
+    public string NexModel { get; set; } = "z-ai/glm-5.3";
+
+    /// <summary>默认权限档位：readonly（仅可查看）/ workspace（工作区内修改）/ full（完全权限）。</summary>
+    public string NexPermission { get; set; } = "readonly";
+
+    /// <summary>自定义系统提示词（留空用内置的）。</summary>
+    public string NexSystemPrompt { get; set; } = "";
 }
 
 /// <summary>
