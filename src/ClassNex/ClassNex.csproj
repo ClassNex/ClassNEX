@@ -25,8 +25,8 @@
     <AvaloniaResource Include="Assets\avatar.png" />
     <!-- 内置小米 MiSans 字体（免费商用授权，授权文件见 Assets\Fonts\LICENSE.txt） -->
     <AvaloniaResource Include="Assets\Fonts\*.ttf" />
-    <!-- 主页横幅背景（从 FluentUI Gallery 提取的波浪图） -->
-    <AvaloniaResource Include="Assets\BannerWaves.png" />
+    <!-- 主页横幅（从 ClassWidgets 2 测试版扒的轮播图） -->
+    <AvaloniaResource Include="Assets\Banners\*.png" />
   </ItemGroup>
 
   <ItemGroup>

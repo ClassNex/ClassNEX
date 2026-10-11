@@ -272,41 +272,42 @@
                                     <Setter Property="FontSize" Value="20"/>
                                     <Setter Property="Margin" Value="0,8,0,2"/>
                                 </Style>
+                                <!-- 横幅圆点（PipsPager 同款）：普通 = 8x8 灰点；选中 = 18x8 强调色小胶囊 -->
+                                <Style Selector="Ellipse.BannerDot">
+                                    <Setter Property="Width" Value="8"/>
+                                    <Setter Property="Height" Value="8"/>
+                                    <Setter Property="Fill" Value="{DynamicResource ControlStrongStrokeColorDefaultBrush}"/>
+                                    <Setter Property="Transitions">
+                                        <Transitions>
+                                            <DoubleTransition Property="Width" Duration="0:0:0.15"/>
+                                        </Transitions>
+                                    </Setter>
+                                </Style>
+                                <Style Selector="Ellipse.BannerDot.Active">
+                                    <Setter Property="Width" Value="18"/>
+                                    <Setter Property="Fill" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+                                </Style>
                             </StackPanel.Styles>
 
-                            <!-- 横幅（照 FluentUI Gallery hero 重做）：
-                                 无边框、无圆角、通栏；问候语直接压在横幅左上；整张图拉伸铺满 -->
-                            <Border Height="300" Margin="-32,-12,-32,0" ClipToBounds="True">
-                                <Border.Background>
-                                    <!-- UniformToFill + 锚左：等比放大不裁掉左侧（不变形），
-                                        只裁掉右侧溢出的部分（Gallery 的 hero 也是裁切显示） -->
-                                    <ImageBrush Source="/Assets/BannerWaves.png"
-                                                Stretch="UniformToFill"
-                                                AlignmentX="Left" AlignmentY="Center"/>
-                                </Border.Background>
-                                <Grid>
-                                    <!-- 左上到中部一层柔和暗化，保证问候语可读 -->
-                                    <Border>
-                                        <Border.Background>
-                                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                                                <GradientStop Offset="0" Color="#8C000000"/>
-                                                <GradientStop Offset="0.55" Color="#33000000"/>
-                                                <GradientStop Offset="1" Color="#00000000"/>
-                                            </LinearGradientBrush>
-                                        </Border.Background>
-                                    </Border>
-                                    <StackPanel Spacing="8"
-                                                VerticalAlignment="Top" HorizontalAlignment="Left"
-                                                Margin="64,44,36,0">
-                                        <TextBlock x:Name="HomeGreetingText"
-                                                   FontFamily="Noto Serif SC, Source Han Serif SC, SimSun"
-                                                   FontSize="40"
-                                                   Foreground="White"
-                                                   TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock x:Name="HomeSubText" FontSize="14" Foreground="#E6FFFFFF"/>
-                                    </StackPanel>
-                                </Grid>
+                            <!-- 问候语（思源宋体，主题色；横幅已删） -->
+                            <StackPanel Spacing="4" Margin="0,4,0,0">
+                                <TextBlock x:Name="HomeGreetingText"
+                                           FontFamily="Noto Serif SC, Source Han Serif SC, SimSun"
+                                           FontSize="34"
+                                           TextTrimming="CharacterEllipsis"/>
+                                <TextBlock x:Name="HomeSubText" FontSize="14" Opacity="0.7"/>
+                            </StackPanel>
+
+                            <!-- 横幅轮播（照 CW2 测试版首页：HorizontalFlipView 900x450 圆角8 + PipsPager 圆点，自动轮播） -->
+                            <Border CornerRadius="8" ClipToBounds="True" Height="230" Margin="-32,0,-32,0">
+                                <Carousel x:Name="HomeBannerCarousel">
+                                    <Carousel.PageTransition>
+                                        <CrossFade Duration="0:0:0.4"/>
+                                    </Carousel.PageTransition>
+                                </Carousel>
                             </Border>
+                            <StackPanel x:Name="HomeBannerDots" Orientation="Horizontal" Spacing="6"
+                                        HorizontalAlignment="Center" Margin="0,2,0,0"/>
 
                             <TextBlock Text="今天" Classes="HomeSection"/>
                             <WrapPanel x:Name="HomeTodayPanel"/>
