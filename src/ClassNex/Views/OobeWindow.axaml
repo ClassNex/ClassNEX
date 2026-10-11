@@ -76,7 +76,7 @@
                                Text="欢迎使用 ClassNEX，让我们开始吧"/>
 
                     <TextBlock x:Name="Bullet1" Classes="OobeBody"
-                               Text="• 选择「同意并继续」即表示你同意 ClassNEX 在本机读写课表与设置数据。"/>
+                               Text="• 选择「同意并继续」即表示您同意隐私政策。"/>
 
                     <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
                         <Button x:Name="PrivacyLink" Classes="Link" Content="隐私政策"/>
@@ -93,14 +93,13 @@
                     </StackPanel>
                 </StackPanel>
 
-                <!-- 插图：占右 2/5，等比完整显示（Uniform，不裁切、不放大到压住左侧），
-                     只向右溢出一点点，被窗口右缘裁掉 -->
+                <!-- 插图：占右 2/5，放大铺满并向右下出血，被窗口右缘/下缘裁掉一部分
+                     （参照 Windows「语音访问」欢迎页那个大设备图；左侧栏宽固定 3:2，所以不会压到文字） -->
                 <Image Grid.Column="1"
                        Source="avares://ClassNex/Assets/Oobe/Classroom.png"
-                       Stretch="Uniform"
-                       HorizontalAlignment="Center" VerticalAlignment="Center"
-                       Margin="0,0,-40,0"
-                       MaxWidth="440"/>
+                       Stretch="UniformToFill"
+                       HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                       Margin="12,-12,-90,-84"/>
             </Grid>
 
             <!-- ==================== 第 2 页：个性化设置 ==================== -->

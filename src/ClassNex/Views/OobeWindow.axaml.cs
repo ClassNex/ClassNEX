@@ -157,7 +157,7 @@ public partial class OobeWindow : AppWindow
         if (_isEnglish)
         {
             WelcomeBody.Text = "Welcome to ClassNEX — let's get started";
-            Bullet1.Text = "• Selecting \"Agree and continue\" lets ClassNEX read and write timetable and settings data on this device.";
+            Bullet1.Text = "• Selecting \"Agree and continue\" means you accept the privacy policy.";
             PrivacyLink.Content = "Privacy policy";
             LicenseLink.Content = "License (GPL-3.0)";
             LanguageLabel.Text = "Language";
@@ -183,7 +183,7 @@ public partial class OobeWindow : AppWindow
         else
         {
             WelcomeBody.Text = "欢迎使用 ClassNEX，让我们开始吧";
-            Bullet1.Text = "• 选择「同意并继续」即表示你同意 ClassNEX 在本机读写课表与设置数据。";
+            Bullet1.Text = "• 选择「同意并继续」即表示您同意隐私政策。";
             PrivacyLink.Content = "隐私政策";
             LicenseLink.Content = "开源许可（GPL-3.0）";
             LanguageLabel.Text = "选择语言";
