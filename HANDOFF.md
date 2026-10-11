@@ -185,8 +185,15 @@ E:\ClassNex\ClassIsland_app_windows_x64_full_folder (2)\
 - **调课页**：占位，未实现
 
 ### 其它
-- 系统托盘（显示/隐藏主界面、编辑档案、应用设置、退出）
-- CSES YAML 课表导入/导出；内置 24 科目 / 7 天 / 每天 11 节的示例课表
+- **NEX Intelligence（内置 AI Agent，2026-10-11 新增）**
+  - 设置里新增「NEX Intelligence」页（导航项在「组件」之后）+ 独立对话窗（沉浸标题栏 + 云母）
+  - 代码在 `Services\NexIntelligence\`：`NexAiClient`（OpenAI 兼容 /v1/chat/completions，流式 SSE；增量为 `delta.content` 与 `delta.reasoning_content`，工具调用分片在 `delta.tool_calls` 里按 index 拼装）、`NexAgent`（一轮 = 发消息 → 流式收正文/思考 → 执行工具 → 回填 → 继续，最多 8 轮）、`NexAgentTools`（六个工具：读应用状态/读课表/列目录/读文件/写文件/执行命令）、`NexModelCatalog`（拉模型列表/测连接）
+  - 权限三档：**仅可查看**（只读工具）/ **工作区内修改**（可写 `SettingsService.DataDirectory` 里的文件）/ **完全权限**（任意路径 + `run_command`）。对话框顶栏随时切换，设置页设默认档
+  - ⚠️ **接口密钥绝不写进源码/仓库**（仓库是公开的）：只在设置页填写，落盘到本机 `data\Settings.json`；新机器要重新填一次
+  - 自检：`CLASSNEX_VERIFY_NEX=<文本>` 打开对话框并自动发一条消息；出图看 `_shot_nex.png`
+- 首次启动向导（OOBE，五页）：多语言问候 + 隐私/许可链接 + 语言选择 + 外观/开学日期/开机自启动 + 账户与更多设置预留页 + 烟花完成页；走完向导前不显示浮窗
+- 系统托盘（左键弹菜单：显示/隐藏主界面、编辑档案、加载课表、换课、编辑主界面、应用设置、重启、退出）
+- CSES YAML 课表导入/导出；**新激活不再内置示例课表**（示例课表只在老安装升级时播种，打包时还要删掉 `Assets\timetable.yaml`）
 - 内置 **MiSans**（小米字体，免费商用，授权见 `Assets\Fonts\LICENSE.txt`；Regular/Bold 两字重）
   ⚠️ MiSans 官方 ttf 的 OS/2 `usWeightClass` 是**非标准值**（Regular=330 / Bold=630），
   Avalonia 按 50 步进匹配字重会全部回退成 Bold。本项目已把这两个文件修补为 400/700 并重算
