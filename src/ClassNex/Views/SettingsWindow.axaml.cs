@@ -82,24 +82,26 @@ public partial class SettingsWindow : AppWindow
         WireEvents();
         LoadFromSettings();
 
-        // 左栏折叠 → 隐藏账户卡（照 Win11 设置的标准行为：折叠后只有 ☰ + 图标列，不放账户头像）。
-        // 之前的「头像缩进侧边栏」方案在这个库上渲染不稳定（像素实测：折叠态头像区域画出来
-        // 是一片背景色 / 右侧被内容区盖住），反复调位置也修不好 —— 与其和它斗，不如用标准行为。
+        // 左栏折叠 → 大账户卡隐藏，换成一个放在 PaneHeader 里的小圆头像（缩进侧边栏，不消失）。
+        // 之前 PaneCustomContent 里的头像在折叠态渲染不稳（黑块/被盖），所以小头像放 PaneHeader。
         AccountPanel.SizeChanged += (_, e) => ApplyAccountCompact(e.NewSize.Width < 150);
     }
 
-    // ==================== 账户卡：左栏折叠时整卡隐藏（照 Win11 设置） ====================
+    // ==================== 账户卡：左栏折叠时切换成侧边栏小头像 ====================
 
     private bool _accountCompact;
 
-    /// <summary>compact=true（左栏折叠成图标栏）→ 整张账户卡隐藏；展开 → 恢复。不碰任何导航状态。</summary>
+    /// <summary>compact=true（左栏折叠成图标栏）→ 大卡片隐藏、PaneHeader 小头像显示；展开 → 反向。不碰任何导航状态。</summary>
     private void ApplyAccountCompact(bool compact)
     {
         if (_accountCompact == compact)
             return;
 
         _accountCompact = compact;
+
         AccountPanel.IsVisible = !compact;
+        CompactSpacer.IsVisible = compact;
+        CompactAvatar.IsVisible = compact;
     }
 
     /// <summary>
@@ -224,6 +226,7 @@ public partial class SettingsWindow : AppWindow
         {
             AccountAvatarRing.BorderBrush = new SolidColorBrush(solid.Color);
             AccountPageAvatarRing.BorderBrush = new SolidColorBrush(solid.Color);
+            CompactAvatar.BorderBrush = new SolidColorBrush(solid.Color);
         }
 
         RefreshAvatarImages();
@@ -337,6 +340,7 @@ public partial class SettingsWindow : AppWindow
 
             AccountAvatarRing.Background = brush;
             AccountPageAvatarRing.Background = brush;
+            CompactAvatar.Background = brush;
         }
         catch (Exception ex)
         {
