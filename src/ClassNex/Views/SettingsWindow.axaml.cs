@@ -112,11 +112,12 @@ public partial class SettingsWindow : AppWindow
             // 所以头像必须 ≤26 DIP 才能真正装下 —— 36/32 都会溢出被右缘裁掉。取 24。
             // 左边距 11：框变成 11..46（宽 35），头像 11..35 落在里面不被裁，
             // 且中心在 23 DIP —— 正好是侧边栏图标列的中心（a11y 实测导航项中心 214px ≈ 23 DIP）。
-            AccountPanel.Margin = new Thickness(11, 6, 2, 10);
+            // 边距 11+2 = 13 → 框宽 48-13 = 35 DIP，所以头像放到 32 也装得下（中心仍取 23 → 左边距 7）。
+            AccountPanel.Margin = new Thickness(7, 6, 2, 10);
             AccountShift.X = 0;
-            AccountAvatarRing.Width = 24;
-            AccountAvatarRing.Height = 24;
-            AccountAvatarRing.CornerRadius = new CornerRadius(12);
+            AccountAvatarRing.Width = 32;
+            AccountAvatarRing.Height = 32;
+            AccountAvatarRing.CornerRadius = new CornerRadius(16);
             AccountAvatarRing.BorderThickness = new Thickness(2);
             AccountTextHost.Opacity = 0;
             AccountTextHost.IsHitTestVisible = false;
