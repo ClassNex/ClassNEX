@@ -701,6 +701,39 @@ public partial class SettingsWindow : AppWindow
 
             NexOpenChatButton.Click += (_, _) => App.OpenNexChat();
 
+            NexVoiceWakeCheck.IsCheckedChanged += (_, _) =>
+            {
+                if (_nexLoading)
+                    return;
+
+                var on = NexVoiceWakeCheck.IsChecked == true;
+                AppServices.Settings.IsNexVoiceWakeEnabled = on;
+                SettingsService.Save(AppServices.Settings);
+
+                if (on)
+                    AppServices.NexVoice?.Start();
+                else
+                    AppServices.NexVoice?.Stop();
+            };
+
+            NexGlowTestButton.Click += (_, _) =>
+            {
+                // 手动演示一次「跑马灯 + 浮窗翻页」：不需要麦克风也能看效果
+                AppServices.NexVoice?.ShowGlow();
+                AppServices.MainWindow?.ShowNexPanel("请讲", true);
+                var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3.5) };
+                timer.Tick += (_, _) =>
+                {
+                    timer.Stop();
+                    AppServices.NexVoice?.ShowGlow();     // 再次点亮以刷新，然后收起
+                    AppServices.MainWindow?.HideNexPanel();
+                };
+                timer.Start();
+            };
+
+            AppServices.NexVoice?.StatusChanged += status =>
+                Dispatcher.UIThread.Post(() => NexVoiceStatusText.Text = status);
+
             NexSystemPromptBox.TextChanged += (_, _) => SaveNexSettings();
             NexPermissionCombo.SelectionChanged += (_, _) => SaveNexSettings();
 
@@ -727,6 +760,8 @@ public partial class SettingsWindow : AppWindow
         {
             NexSystemPromptBox.Text = s.NexSystemPrompt;
             NexPermissionCombo.SelectedIndex = (int)Services.NexIntelligence.NexPermissionNames.FromKey(s.NexPermission);
+            NexVoiceWakeCheck.IsChecked = s.IsNexVoiceWakeEnabled;
+            NexVoiceStatusText.Text = AppServices.NexVoice?.IsRunning == true ? "正在听「嘿 NEX」…" : "未启用";
             UpdateNexApiStateText();
         }
         finally

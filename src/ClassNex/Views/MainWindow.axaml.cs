@@ -346,12 +346,92 @@ public partial class MainWindow : Window
         SetIslandWidth(CardContent.Bounds.Width + IslandContentMargin * 2);
     }
 
+    // ==================== NEX 对话层（语音唤醒：课表上翻 → 对话文字翻上来） ====================
+
+    private bool _nexPanelActive;
+
+    private TranslateTransform? CardShift => CardContent.RenderTransform as TranslateTransform;
+
+    private TranslateTransform? NexShift => NexPanel.RenderTransform as TranslateTransform;
+
+    /// <summary>
+    /// 显示对话层。<paramref name="placeholder"/> = true 表示还没听到内容，
+    /// 用浅一点的字体显示「请讲」（次要色 + 降透明度）。
+    /// </summary>
+    public void ShowNexPanel(string text, bool placeholder)
+    {
+        NexPanelText.Text = text;
+        NexPanelText.Foreground = (IBrush?)this.FindResource(
+            placeholder ? "TextFillColorSecondaryBrush" : "TextFillColorPrimaryBrush") ?? Brushes.White;
+        NexPanelText.Opacity = placeholder ? 0.72 : 1.0;
+
+        if (!_nexPanelActive)
+        {
+            _nexPanelActive = true;
+
+            // 视觉上和岛一致（同底色、同描边）
+            NexPanel.Background = IslandBackground.Background;
+            NexPanel.BorderBrush = IslandBackground.BorderBrush;
+            NexPanel.IsVisible = true;
+
+            if (CardShift is { } card)
+                card.Y = 0;
+            if (NexShift is { } nex)
+                nex.Y = 24;
+            NexPanel.Opacity = 0;
+
+            Dispatcher.UIThread.Post(() =>
+            {
+                // 课表向上翻出去
+                if (CardShift is { } c)
+                    c.Y = -26;
+                CardContent.Opacity = 0;
+
+                // 对话层从下面翻上来
+                if (NexShift is { } n)
+                    n.Y = 0;
+                NexPanel.Opacity = 1;
+
+                SetIslandWidth(NexPanel.Bounds.Width + IslandContentMargin * 2);
+            }, DispatcherPriority.Background);
+        }
+        else
+        {
+            SetIslandWidth(NexPanel.Bounds.Width + IslandContentMargin * 2);
+        }
+    }
+
+    /// <summary>收起对话层、课表翻回来。</summary>
+    public void HideNexPanel()
+    {
+        if (!_nexPanelActive)
+            return;
+
+        _nexPanelActive = false;
+
+        if (NexShift is { } n)
+            n.Y = 24;
+        NexPanel.Opacity = 0;
+
+        if (CardShift is { } c)
+            c.Y = 0;
+        CardContent.Opacity = 1;
+
+        DispatcherTimer.RunOnce(() =>
+        {
+            if (_nexPanelActive)
+                return;
+
+            NexPanel.IsVisible = false;
+            SetIslandWidth(CardContent.Bounds.Width + IslandContentMargin * 2);
+        }, TimeSpan.FromMilliseconds(280));
+    }
+
     /// <summary>
     /// 启动占位骨架：组件还没加载出来时先显示占位块（一小块 + 一长块），
     /// 岛宽会跟着骨架宽度生长（CardContent.SizeChanged 驱动）。
     /// </summary>
-    private void ShowSkeleton()
-    {
+    private void ShowSkeleton()    {
         var brush = CiPalette.SkeletonBrush();
         SkeletonBlock1.Background = brush;
         SkeletonBlock2.Background = brush;

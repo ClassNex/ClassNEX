@@ -81,6 +81,9 @@
                                     MinWidth="20"
                                     Background="Transparent"
                                     HorizontalAlignment="Center">
+                                <Border.RenderTransform>
+                                    <TranslateTransform/>
+                                </Border.RenderTransform>
                                 <Border.Transitions>
                                     <Transitions>
                                         <DoubleTransition Property="Opacity" Duration="0:0:0.2">
@@ -111,6 +114,28 @@
                                         <Border x:Name="SkeletonBlock2" Width="620" Height="24" CornerRadius="6"/>
                                     </StackPanel>
                                 </Grid>
+                            </Border>
+
+                            <!-- NEX 对话层：语音唤醒时课表向上翻出去、这块从下面翻上来显示对话文字。
+                                 「请讲」用浅一点的字体（次要色 + 降透明度）。 -->
+                            <Border x:Name="NexPanel"
+                                    Height="40"
+                                    Margin="12,0"
+                                    MinWidth="240" MaxWidth="820"
+                                    CornerRadius="8"
+                                    BorderThickness="1"
+                                    IsVisible="False"
+                                    Opacity="0"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center">
+                                <Border.RenderTransform>
+                                    <TranslateTransform/>
+                                </Border.RenderTransform>
+                                <TextBlock x:Name="NexPanelText"
+                                           Margin="18,0"
+                                           FontSize="17"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"/>
                             </Border>
 
                             <!-- CI OverlayMask：重要通知时盖在岛上的遮罩 + 大字提示

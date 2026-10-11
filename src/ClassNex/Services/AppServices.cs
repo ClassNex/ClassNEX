@@ -24,6 +24,9 @@ public static class AppServices
     /// <summary>全局通知服务（App 启动时注入；调试页触发提醒用）。</summary>
     public static NotificationService? NotificationService { get; set; }
 
+    /// <summary>NEX 语音唤醒协调器（App 启动时注入；设置页开关与「测试跑马灯」用）。</summary>
+    public static NexVoiceCoordinator? NexVoice { get; set; }
+
     /// <summary>应用设置发生变化。</summary>
     public static event Action? SettingsChanged;
 

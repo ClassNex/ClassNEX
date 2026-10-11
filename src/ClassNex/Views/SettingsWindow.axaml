@@ -385,6 +385,25 @@
                                 </ui:SettingsExpanderItem>
                             </ui:SettingsExpander>
 
+                            <ui:SettingsExpander Header="语音唤醒"
+                                                 Description="对着麦克风说「嘿 NEX」或「NEX」即可唤醒：响起提示音、屏幕四周亮起跑马灯，浮窗课表向上翻页变成对话。">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE720;"/>
+                                </ui:SettingsExpander.IconSource>
+                                <ui:SettingsExpander.Footer>
+                                    <CheckBox x:Name="NexVoiceWakeCheck" Content="启用"/>
+                                </ui:SettingsExpander.Footer>
+                                <ui:SettingsExpanderItem Content="状态" Description="识别在本机离线进行，不上传麦克风音频">
+                                    <ui:SettingsExpanderItem.Footer>
+                                        <StackPanel Orientation="Horizontal" Spacing="10">
+                                            <TextBlock x:Name="NexVoiceStatusText" VerticalAlignment="Center" FontSize="13"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                            <Button x:Name="NexGlowTestButton" Content="测试跑马灯"/>
+                                        </StackPanel>
+                                    </ui:SettingsExpanderItem.Footer>
+                                </ui:SettingsExpanderItem>
+                            </ui:SettingsExpander>
+
                             <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,0">
                                 <Button x:Name="NexOpenChatButton" Content="打开 NEX 对话框" Classes="Primary" MinWidth="150"/>
                             </StackPanel>

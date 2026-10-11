@@ -153,6 +153,9 @@ public sealed class AppSettings
 
     /// <summary>自定义系统提示词（留空用内置的）。</summary>
     public string NexSystemPrompt { get; set; } = "";
+
+    /// <summary>是否启用「嘿 NEX」语音唤醒（需要麦克风）。</summary>
+    public bool IsNexVoiceWakeEnabled { get; set; } = true;
 }
 
 /// <summary>

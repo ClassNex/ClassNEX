@@ -1,0 +1,24 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="ClassNex.Views.NexGlowWindow"
+        Title="NEX 跑马灯"
+        Width="1" Height="1"
+        Topmost="True"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        SystemDecorations="None"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        CanResize="False">
+    <!-- 苹果智能那种「跑马灯」：屏幕四边一圈流动的彩色光带。
+         两圈叠出辉光：外圈厚 + 高斯模糊（BlurEffect），内圈细亮。
+         颜色沿对角线缓慢流动（代码里每帧改渐变端点），整体带轻微呼吸。 -->
+    <Grid>
+        <Border x:Name="GlowOuter" Margin="12" CornerRadius="26" BorderThickness="14" Opacity="0.9">
+            <Border.Effect>
+                <BlurEffect Radius="34"/>
+            </Border.Effect>
+        </Border>
+        <Border x:Name="GlowInner" Margin="8" CornerRadius="22" BorderThickness="3"/>
+    </Grid>
+</Window>

@@ -21,6 +21,7 @@ public partial class App : Application
     private Views.TopmostEffectWindow? _effectWindow;
     private Views.OobeWindow? _oobeWindow;
     private Views.NexChatWindow? _nexChatWindow;
+    private Services.NexVoiceCoordinator? _nexVoice;
     private Services.NotificationService? _notificationService;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
@@ -79,6 +80,14 @@ public partial class App : Application
             Services.AppServices.MainWindow = _mainWindow;
             Services.AppServices.NotificationService = _notificationService;
             _notificationService.Start();
+
+            // NEX 语音唤醒（「嘿 NEX」→ 提示音 + 跑马灯 + 浮窗翻页变对话）
+            _nexVoice = new Services.NexVoiceCoordinator();
+            Services.AppServices.NexVoice = _nexVoice;
+            if (AppServices.Settings.IsNexVoiceWakeEnabled)
+            {
+                DispatcherTimer.RunOnce(() => _nexVoice?.Start(), TimeSpan.FromSeconds(2));
+            }
 
             // 处理 classnex:// Url 协议参数（第三方应用/网页调用本应用）
             HandleUrlProtocol(Environment.GetCommandLineArgs());
@@ -148,6 +157,19 @@ public partial class App : Application
                     }, DispatcherPriority.Background);
                 }
 
+                // CLASSNEX_VERIFY_WAKE=<问题>：模拟一次语音唤醒（提示音 + 跑马灯 + 浮窗翻页 + 提问）
+                var wakeProbe = Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_WAKE");
+                if (!string.IsNullOrWhiteSpace(wakeProbe))
+                {
+                    var wakeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
+                    wakeTimer.Tick += (_, _) =>
+                    {
+                        wakeTimer.Stop();
+                        _nexVoice?.SimulateWake(wakeProbe);
+                    };
+                    wakeTimer.Start();
+                }
+
                 // CLASSNEX_VERIFY_EDITMODE=1：启动后直接进入编辑模式（核对组件工具条排版）
                 if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_EDITMODE") == "1")
                 {
@@ -177,7 +199,10 @@ public partial class App : Application
                     // 等布局稳定后把已存在的窗口各自渲染成 PNG；
                     // 有 NEX 自检（CLASSNEX_VERIFY_NEX）时多等一会儿，好让对话跑完再出图。
                     var shotDelay = string.IsNullOrWhiteSpace(
-                        Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_NEX")) ? 3 : 22;
+                        Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_NEX"))
+                        && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_WAKE"))
+                            ? 3
+                            : 22;
                     var shotTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(shotDelay) };
                     shotTimer.Tick += (_, _) =>
                     {
