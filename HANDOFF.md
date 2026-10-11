@@ -198,6 +198,8 @@ E:\ClassNex\ClassIsland_app_windows_x64_full_folder (2)\
 
 | 优先级 | 功能 | 说明 |
 | --- | --- | --- |
+| P0 | **🖼 首次启动向导的插图换掉** | 现在用的是希沃白板那张照片（用户 2026-10-11 明确：**下个版本替换掉**）。位置在「欢迎」页右侧（`OobeWindow.axaml` 里 `Border + ImageBrush`，`Margin="445,121,0,23"`），换成官方设备渲染图或插画 |
+| P1 | **🖼 主页横幅换掉** | 现在挂的是「我们需要新的横幅」占位图（从外部参考项目扒的），用户要求**过几天再专门做**（2026-10-11 挂起）。要照微软 WinUI Gallery 的 `HomePageHeader` 那套（渐变蒙版把底部化进背景）重做视觉 |
 | P0 | **设置/组件页继续对齐 CI** | 现在结构已照 CI（SettingsExpander 行 + 横向组件条 + 组件库/组件设置标签），还差 CI 的「高级设置 / 行设置」两个标签、拖拽排序 |
 | P0 | **调课 / 临时调课** | CI 的 `IsSwapMode: true`；只覆盖某一天，不动基础课表 |
 | P0 | **明日课表** | CI `TomorrowScheduleShowType`；能顺带把主界面宽度拉到 CI 的水平 |
@@ -324,25 +326,26 @@ dotnet build src\ClassNex\ClassNex.csproj -c Debug
 ```
 目标：**0 错误 0 警告**（一直是这个标准）。产物在 `bin\Debug\net10.0\`。
 
-### 出测试包（**自包含**，免装运行时，~120MB → zip ~55MB）
+### 出测试包（**自包含**，免装运行时，~137MB → zip ~67MB）
 ```powershell
-$out = "E:\ClassNex\build\ClassNEX-26w41c-Alpha-win-x64"
+$out = "E:\ClassNex\build\ClassNEX-26w41f-Alpha-win-x64"
 dotnet publish src\ClassNex\ClassNex.csproj -c Release -r win-x64 --self-contained true `
   -p:DebugType=none -o $out
 Remove-Item "$out\data" -Recurse -Force          # ⚠️ 必删，否则把本机配置/课表打进去
+Remove-Item "$out\Assets\timetable.yaml" -Force  # ⚠️ 必删：用户要求「新激活不要带测试的课表文件」
 Remove-Item "$out\使用说明.txt" -Force -ErrorAction SilentlyContinue   # 用户不要使用说明
-Compress-Archive -Path "$out\*" -DestinationPath "E:\ClassNex\build\ClassNEX-26w41c-Alpha-win-x64.zip"
+Compress-Archive -Path "$out\*" -DestinationPath "E:\ClassNex\build\ClassNEX-26w41f-Alpha-win-x64.zip"
 ```
 
 ### 发布到 GitHub Releases（一条命令）
 `_tools\gh_release.py` 会自动：删同名旧 release → 建预发布 → 上传 zip。
 ```powershell
-git tag -f 26w41c_Alpha ; git push -f origin 26w41c_Alpha
+git tag -f 26w41f_Alpha ; git push -f origin 26w41f_Alpha
 $cred = "protocol=https`nhost=github.com`n" | git credential fill
 $env:GITHUB_TOKEN = ($cred | Select-String '^password=').Line.Substring(9)
 $env:HTTPS_PROXY="http://127.0.0.1:7890"; $env:HTTP_PROXY=$env:HTTPS_PROXY
-$env:GH_TAG="26w41c_Alpha"; $env:GH_TITLE="ClassNEX 26w41c_Alpha"
-python _tools\gh_release.py "E:\ClassNex\build\ClassNEX-26w41c-Alpha-win-x64.zip"
+$env:GH_TAG="26w41f_Alpha"; $env:GH_TITLE="ClassNEX 26w41f_Alpha"
+python _tools\gh_release.py "E:\ClassNex\build\ClassNEX-26w41f-Alpha-win-x64.zip"
 ```
 - 发布说明取自 `RELEASE_NOTES.md`
 - ⚠️ **RELEASE_NOTES.md 只写「这一次」的更新**，不要带上一版（用户明确要求）
@@ -357,7 +360,7 @@ python _tools\gh_release.py "E:\ClassNex\build\ClassNEX-26w41c-Alpha-win-x64.zip
   **警告块之后直接写「## 更新内容」**，中间不要再加 NOTE 版本头；**也不要写「打包信息」段**（用户要求：说明文档 = 警告块 + 更新内容，仅此）
   **发布说明里不要提到 CI / ClassIsland**，也不要用内部控件类名（RippleEffect 等），用功能语言描述
 - ⚠️ **不要自己打包上传**，用户说打包才打包（他还没说完就别发）
-- 历史发布 `26w41a/b/c_Alpha` 都保留，别删
+- 历史发布 `26w41a` ~ `26w41f_Alpha` 都保留，别删
 
 ---
 
@@ -370,7 +373,7 @@ python _tools\gh_release.py "E:\ClassNex\build\ClassNEX-26w41c-Alpha-win-x64.zip
 - `WW` = 该年的第几周（ISO 周号）
 - `a` = 当周发布的第几个快照（a、b、c…）
 
-当前：**`26w41c`** = 2026 年第 41 周的第 3 个快照（`26w41a`/`26w41b`/`26w41c` 都已发布为预发布）。
+当前：**`26w41f`** = 2026 年第 41 周的第 6 个快照（`26w41a` ~ `26w41f` 都已发布为预发布；26w41f 于 2026-10-11 发布）。
 
 落地方式：
 - `ClassNex.csproj` → `<InformationalVersion>26w41a</InformationalVersion>`
