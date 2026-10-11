@@ -92,13 +92,12 @@ public partial class SettingsWindow : AppWindow
     // ==================== 账户卡：左栏折叠时收缩（纯视觉，不碰导航状态） ====================
 
     private bool _accountCompact;
-    private IDisposable? _accountTextTimer;
 
     /// <summary>
-    /// compact=true：头像 52→36、名字/邮箱淡出后移出布局（缩进侧边栏，看得见且利落）；
+    /// compact=true：内容框边距收紧（14→2，让框够宽装下头像）、头像 52→36、文字纯透明度淡出；
     /// compact=false：还原。
-    /// 只改 **头像尺寸 / 文字透明度** 两个重绘级属性（都带 180ms/140ms 过渡），
-    /// 宽度变化交给面板自己的折叠动画 → 快、顺、不错位。
+    /// 关键：**全程不动任何布局开关**（不切 IsVisible —— 那会在动画中途引起布局突变，就是一抖一抖的来源），
+    /// 只改「头像尺寸 / 文字透明度」两个重绘级属性（都带 150ms 过渡）。
     /// </summary>
     private void ApplyAccountCompact(bool compact)
     {
@@ -109,45 +108,32 @@ public partial class SettingsWindow : AppWindow
 
         if (compact)
         {
-            // 展开态为了呼吸感右移了 8 DIP，折叠时必须补回来，头像才和侧边栏图标列对齐
-            AccountShift.X = -6;
-            AccountAvatarRing.Width = 32;
-            AccountAvatarRing.Height = 32;
-            AccountAvatarRing.CornerRadius = new CornerRadius(16);
+            // 折叠态内容框实测只有 ~27 DIP 宽（WinUI 紧凑面板的内容宽度），
+            // 所以头像必须 ≤26 DIP 才能真正装下 —— 36/32 都会溢出被右缘裁掉。取 24。
+            AccountPanel.Margin = new Thickness(2, 6, 2, 10);
+            AccountShift.X = 0;
+            AccountAvatarRing.Width = 24;
+            AccountAvatarRing.Height = 24;
+            AccountAvatarRing.CornerRadius = new CornerRadius(12);
             AccountAvatarRing.BorderThickness = new Thickness(2);
-            SetAccountTextVisible(false);
+            AccountTextHost.Opacity = 0;
+            AccountTextHost.IsHitTestVisible = false;
         }
         else
         {
+            AccountPanel.Margin = new Thickness(14, 6, 6, 10);
             AccountShift.X = 0;
             AccountAvatarRing.Width = 52;
             AccountAvatarRing.Height = 52;
             AccountAvatarRing.CornerRadius = new CornerRadius(26);
             AccountAvatarRing.BorderThickness = new Thickness(3);
-            SetAccountTextVisible(true);
+            AccountTextHost.Opacity = 1;
+            AccountTextHost.IsHitTestVisible = true;
         }
     }
 
     /// <summary>账户卡的渲染级位移（XAML 里 RenderTransform 的 TranslateTransform，x:Name 不生成字段，这里取）。</summary>
     private TranslateTransform AccountShift => (TranslateTransform)AccountPanel.RenderTransform!;
-
-    /// <summary>折叠时文字先淡出、淡完再从布局移除（只设 Opacity=0 的话文字仍占宽，会把卡片撑开）。</summary>
-    private void SetAccountTextVisible(bool visible)
-    {
-        _accountTextTimer?.Dispose();
-
-        if (visible)
-        {
-            AccountTextHost.IsVisible = true;
-            AccountTextHost.Opacity = 1;
-            return;
-        }
-
-        AccountTextHost.Opacity = 0;
-        _accountTextTimer = DispatcherTimer.RunOnce(
-            () => AccountTextHost.IsVisible = false,
-            TimeSpan.FromMilliseconds(140));
-    }
 
     /// <summary>
     /// Mica 云母背景 + 沉浸式标题栏（照 CI 的 <c>MyWindow.OnLoaded</c>：
