@@ -572,6 +572,16 @@ public partial class SettingsWindow : AppWindow
 #if DEBUG
         VerifyDialogHook();
 #endif
+
+        // 主页问候：每 60 秒刷新（只在主页可见时更新，避免无谓刷新）
+        RefreshHomeGreeting();
+        _homeGreetingTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
+        _homeGreetingTimer.Tick += (_, _) =>
+        {
+            if (PageHome.IsVisible)
+                RefreshHomeGreeting();
+        };
+        _homeGreetingTimer.Start();
     }
 
     // 主页（PageHome）目前按用户要求留空白，内容待设计。
@@ -649,6 +659,31 @@ public partial class SettingsWindow : AppWindow
 
         // 页面标题行（对照 CI 的 TitleContainer：页面名由外壳统一显示）
         PageTitleText.Text = PageNames[Math.Clamp(index, 0, PageNames.Length - 1)];
+
+        if (index == 0)
+            RefreshHomeGreeting();
+    }
+
+    // ==================== 主页问候（思源宋体：早上好 / 中午好 / 晚上好 + 用户名） ====================
+
+    private DispatcherTimer? _homeGreetingTimer;
+
+    /// <summary>按当前时间给问候语，拼上账户里设置的用户名。</summary>
+    private void RefreshHomeGreeting()
+    {
+        var name = string.IsNullOrWhiteSpace(AppServices.Settings.UserName)
+            ? "同学"
+            : AppServices.Settings.UserName.Trim();
+
+        var hour = DateTime.Now.Hour;
+        var greeting = hour switch
+        {
+            >= 5 and < 11 => "早上好",
+            >= 11 and < 17 => "中午好",
+            _ => "晚上好",
+        };
+
+        HomeGreetingText.Text = $"{greeting}，{name}";
     }
 
     // ==================== 顶栏搜索（查找设置） ====================

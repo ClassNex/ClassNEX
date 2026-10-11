@@ -246,8 +246,35 @@
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="32,12,32,24" Spacing="12" MaxWidth="880" HorizontalAlignment="Left">
 
-                        <!-- ==================== 主页（内容待设计：用户要求先留空白） ==================== -->
-                        <StackPanel x:Name="PageHome" Spacing="12" IsVisible="False"/>
+                        <!-- ==================== 主页（横幅 + 思源宋体问候） ==================== -->
+                        <StackPanel x:Name="PageHome" Spacing="12" IsVisible="False">
+                            <Border CornerRadius="8" Height="200">
+                                <!-- 用 Background 画图片：圆角一定会被裁剪（子元素 Image 不一定） -->
+                                <Border.Background>
+                                    <ImageBrush Source="/Assets/BannerWaves.png"
+                                                Stretch="UniformToFill"
+                                                AlignmentX="Center" AlignmentY="Center"/>
+                                </Border.Background>
+                                <Grid>
+                                    <!-- 底部一层柔和暗化，保证白字在彩色横幅上可读 -->
+                                    <Border>
+                                        <Border.Background>
+                                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                                                <GradientStop Offset="0.4" Color="#00000000"/>
+                                                <GradientStop Offset="1" Color="#73000000"/>
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                    </Border>
+                                    <TextBlock x:Name="HomeGreetingText"
+                                               FontFamily="Noto Serif SC, Source Han Serif SC, SimSun"
+                                               FontSize="34"
+                                               Foreground="White"
+                                               Margin="28,0,28,26"
+                                               VerticalAlignment="Bottom"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
 
                         <!-- ==================== 提醒（1:1 照 CI ClassNotificationProviderSettingsControl.axaml） ==================== -->
                         <StackPanel x:Name="PageNotification" Spacing="12" IsVisible="False">
