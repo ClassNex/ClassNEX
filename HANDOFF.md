@@ -373,6 +373,9 @@ python _tools\gh_release.py "E:\ClassNex\build\ClassNEX-26w41f-Alpha-win-x64.zip
 
 ## 8. 版本号
 
+**例外（一次性）**：`26.0Beta1` —— 2026-10-11 用户要求把当次发布对外改叫 26.0Beta1；**之后的版本继续用 `YYwWWa_Alpha`**。
+- 落地：`InformationalVersion` 直接写 `26.0Beta1`，产物名 `ClassNEX-26.0Beta1-win-x64.zip`，tag `26.0Beta1`
+- 该版发布说明的警告块仍是原样照抄（含 26.0 那句），没有跟着改名
 **测试版命名规则：`YYwWWa`**（按发布日期，与 Minecraft 快照同款）
 
 - `YY` = 年份后两位（26 = 2026）
