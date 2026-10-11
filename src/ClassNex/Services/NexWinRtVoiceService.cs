@@ -25,6 +25,9 @@ public sealed class NexWinRtVoiceService : INexVoiceService
     private bool _dictating;
     private bool _starting;
     private bool _wakeRunning;
+    private bool _dictationProbed;
+    private bool _sapiOnly;
+    private NexSapiDictation? _sapiDictation;
     private DispatcherTimer? _watchdog;
 
     public event Action? WakeWordDetected;
@@ -257,8 +260,24 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         if (_dictating)
             return;
 
-        // ★ 先把听写识别器准备好再停唤醒会话：听写起不来（例如系统语音隐私政策没接受）时
-        //   唤醒会话必须原封不动继续跑，否则会永久失聪 —— 用户反馈「叫不起来」就是这个原因。
+        // ★ 关键：WinRT 听写需要系统已接受「语音隐私政策」。没接受时不仅听写会被拒，
+        //   而且被拒之后整个语音栈会拒绝后续识别 —— 连唤醒都会一起死掉
+        //   （用户反馈「第一次之后永远叫不起来」就是这个）。所以先探一次，不行就整条改走 SAPI。
+        if (!_sapiOnly && !_dictationProbed)
+        {
+            _dictationProbed = true;
+            _sapiOnly = !await ProbeWinRtDictationAsync();
+            NexVoiceLog.Write(_sapiOnly
+                ? "WinRT 听写不可用（系统语音政策未接受）→ 听写改走 SAPI，唤醒继续用 WinRT"
+                : "WinRT 听写可用，走现代引擎");
+        }
+
+        if (_sapiOnly)
+        {
+            StartSapiDictation();
+            return;
+        }
+
         SpeechRecognizer dictation;
         try
         {
@@ -266,8 +285,9 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         }
         catch (Exception ex)
         {
-            NexVoiceLog.Write("准备听写识别器失败：" + ex.Message);
-            ErrorOccurred?.Invoke(DescribeSpeechError(ex));
+            NexVoiceLog.Write("准备听写识别器失败，改走 SAPI：" + ex.Message);
+            _sapiOnly = true;
+            StartSapiDictation();
             return;
         }
 
@@ -277,15 +297,52 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         }
         catch (Exception ex)
         {
-            NexVoiceLog.Write("启动听写会话失败：" + ex.Message);
-            ErrorOccurred?.Invoke(DescribeSpeechError(ex));
+            NexVoiceLog.Write("启动 WinRT 听写失败，改走 SAPI：" + ex.Message);
+            _sapiOnly = true;
+            StartSapiDictation();
             return;
         }
 
-        // 听写确实起来了，才让出唤醒会话
         _dictating = true;
         WakeWordDetected?.Invoke();
 
+        // 听写起来了，让出麦克风（两个识别器同时抢麦会互相干扰）
+        await PauseWakeSessionAsync();
+    }
+
+    /// <summary>用 SAPI 收一句话（不需要系统语音政策）。唤醒会话先让出来，听完再拉起来。</summary>
+    private void StartSapiDictation()
+    {
+        _dictating = true;
+        WakeWordDetected?.Invoke();
+
+        // 让出麦克风：SAPI 和 WinRT 同时抢麦会互相干扰
+        _ = PauseWakeSessionAsync();
+
+        _sapiDictation ??= new NexSapiDictation();
+        _sapiDictation.Recognized -= OnSapiRecognized;
+        _sapiDictation.TimedOut -= OnSapiTimedOut;
+        _sapiDictation.Recognized += OnSapiRecognized;
+        _sapiDictation.TimedOut += OnSapiTimedOut;
+        _sapiDictation.ListenOnce(DictationTimeoutSeconds);
+    }
+
+    private void OnSapiRecognized(string text)
+    {
+        _dictating = false;
+        SpeechRecognized?.Invoke(text);
+        _ = BackToWakeWordAsync();
+    }
+
+    private void OnSapiTimedOut()
+    {
+        _dictating = false;
+        SpeechTimeout?.Invoke();
+        _ = BackToWakeWordAsync();
+    }
+
+    private async Task PauseWakeSessionAsync()
+    {
         try
         {
             if (_wakeRecognizer is not null && _wakeRunning)
@@ -296,7 +353,35 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         }
         catch (Exception ex)
         {
-            NexVoiceLog.Write("暂停唤醒会话失败（不影响听写）：" + ex.Message);
+            NexVoiceLog.Write("暂停唤醒会话失败（不影响听写）：" + ex.Message.Split('\n')[0]);
+            _wakeRunning = false;
+        }
+    }
+
+    /// <summary>测试 WinRT 听写是否可用（系统语音政策是否已接受）。</summary>
+    private async Task<bool> ProbeWinRtDictationAsync()
+    {
+        try
+        {
+            var language = PickLanguage();
+            using var probe = new SpeechRecognizer(language);
+            probe.Constraints.Add(new SpeechRecognitionTopicConstraint(SpeechRecognitionScenario.Dictation, "probe"));
+            var compile = await probe.CompileConstraintsAsync();
+            if (compile.Status != SpeechRecognitionResultStatus.Success)
+            {
+                NexVoiceLog.Write("WinRT 听写探针：约束编译失败 " + compile.Status);
+                return false;
+            }
+
+            // 不真的听，只启动/停止一次：政策没接受时 StartAsync 就会抛
+            await probe.ContinuousRecognitionSession.StartAsync();
+            await probe.ContinuousRecognitionSession.StopAsync();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            NexVoiceLog.Write("WinRT 听写探针失败：" + ex.Message.Split('\n')[0]);
+            return false;
         }
     }
 
@@ -406,6 +491,9 @@ public sealed class NexWinRtVoiceService : INexVoiceService
     private async Task BackToWakeWordAsync()
     {
         _dictating = false;
+
+        _sapiDictation?.Stop();
+
         try
         {
             if (_dictationRecognizer is not null)
