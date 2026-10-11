@@ -752,6 +752,7 @@ public partial class SettingsWindow : AppWindow
                     Glyph = glyph,
                     FontFamily = new FontFamily("Segoe MDL2 Assets"),
                     FontSize = 24,
+                    HorizontalAlignment = HorizontalAlignment.Left,
                 },
                 new TextBlock { Text = title, FontSize = 15 },
                 new TextBlock
