@@ -805,7 +805,7 @@ public partial class SettingsWindow : AppWindow
     // ==================== 关于页：连点版本号解锁调试（对照 CI AboutSettingsPage.DebugBorder） ====================
 
     /// <summary>启用调试菜单时必须手打一遍的免责声明（对照 CI 的验证文本）。</summary>
-    private const string DebugUnlockPhrase = "我知晓我所做的行为开发者不对对此负责";
+    private const string DebugUnlockPhrase = "我知晓我所做的行为开发者不对此负责";
 
     private int _versionClickCount;
 
