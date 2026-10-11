@@ -132,10 +132,27 @@
                         <StackPanel Orientation="Horizontal" Spacing="12">
                             <!-- 头像：用 Border 的 Background 画图片 —— Background 一定会被圆角裁剪，
                                  子元素 Image 则不一定（之前就出现了「四个角」的问题）。
-                                 图片/描环颜色都在代码里设置（图片可在账户页自己上传） -->
+                                 图片/描环颜色都在代码里设置（图片可在账户页自己上传）。
+                                 52↔36 走过渡动画（左边栏折叠时缩进侧边栏） -->
                             <Border x:Name="AccountAvatarRing" Width="52" Height="52" CornerRadius="26"
-                                    BorderThickness="3"/>
-                            <StackPanel VerticalAlignment="Center" Spacing="3">
+                                    BorderThickness="3">
+                                <Border.Transitions>
+                                    <Transitions>
+                                        <DoubleTransition Property="Width" Duration="0:0:0.18">
+                                            <DoubleTransition.Easing><CubicEaseOut/></DoubleTransition.Easing>
+                                        </DoubleTransition>
+                                        <DoubleTransition Property="Height" Duration="0:0:0.18">
+                                            <DoubleTransition.Easing><CubicEaseOut/></DoubleTransition.Easing>
+                                        </DoubleTransition>
+                                    </Transitions>
+                                </Border.Transitions>
+                            </Border>
+                            <StackPanel x:Name="AccountTextHost" VerticalAlignment="Center" Spacing="3">
+                                <StackPanel.Transitions>
+                                    <Transitions>
+                                        <DoubleTransition Property="Opacity" Duration="0:0:0.14"/>
+                                    </Transitions>
+                                </StackPanel.Transitions>
                                 <TextBlock x:Name="AccountNameText" FontSize="17"/>
                                 <TextBlock x:Name="AccountEmailText" FontSize="13" Opacity="0.7"/>
                             </StackPanel>

@@ -11,6 +11,7 @@ using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using ClassNex.Models;
 using ClassNex.Services;
 using ClassNex.Styles;
@@ -81,6 +82,97 @@ public partial class SettingsWindow : AppWindow
         InitShell();
         WireEvents();
         LoadFromSettings();
+
+        // 折叠动画：等模板套用（内部 SplitView 出现）后**只订阅状态、不修改任何导航状态**
+        Loaded += (_, _) =>
+        {
+            if (_paneStateHooked)
+                return;
+            _paneStateHooked = true;
+            HookPaneState();
+        };
+    }
+
+    // ==================== 账户卡：左栏折叠时收缩（纯视觉，不碰导航状态） ====================
+
+    private SplitView? _paneSplitView;
+    private bool _accountCompact;
+    private bool _paneStateHooked;
+    private IDisposable? _accountTextTimer;
+
+    /// <summary>
+    /// 订阅左栏折叠结果（AvaloniaFluentUI 的 ☰ 改的是内部 SplitView 的 IsPaneOpen）。
+    /// **只读不写**：之前踩过坑 —— 强制写 IsPaneOpen、或订阅 PaneDisplayMode 去改状态，
+    /// 都会和 NavigationView 内部状态打架，导致 ☰ 点不开。
+    /// </summary>
+    private void HookPaneState()
+    {
+        _paneSplitView = NavView.GetVisualDescendants().OfType<SplitView>().FirstOrDefault();
+        if (_paneSplitView is null)
+            return;
+
+        ApplyAccountCompact(!_paneSplitView.IsPaneOpen);
+
+        _paneSplitView.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == SplitView.IsPaneOpenProperty)
+                ApplyAccountCompact(!_paneSplitView.IsPaneOpen);
+        };
+
+#if DEBUG
+        // 调试：CLASSNEX_VERIFY_PANE_COMPACT=1 时直接折叠左栏，便于核对收缩动画的终态
+        if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_PANE_COMPACT") == "1")
+            _paneSplitView.IsPaneOpen = false;
+#endif
+    }
+
+    /// <summary>
+    /// compact=true：头像 52→36、名字/邮箱淡出后移出布局（缩进侧边栏，看得见且利落）；
+    /// compact=false：还原。
+    /// 只改 **头像尺寸 / 文字透明度** 两个重绘级属性（都带 180ms/140ms 过渡），
+    /// 宽度变化交给面板自己的折叠动画 → 快、顺、不错位。
+    /// </summary>
+    private void ApplyAccountCompact(bool compact)
+    {
+        if (_accountCompact == compact)
+            return;
+
+        _accountCompact = compact;
+
+        if (compact)
+        {
+            AccountAvatarRing.Width = 36;
+            AccountAvatarRing.Height = 36;
+            AccountAvatarRing.CornerRadius = new CornerRadius(18);
+            AccountAvatarRing.BorderThickness = new Thickness(2);
+            SetAccountTextVisible(false);
+        }
+        else
+        {
+            AccountAvatarRing.Width = 52;
+            AccountAvatarRing.Height = 52;
+            AccountAvatarRing.CornerRadius = new CornerRadius(26);
+            AccountAvatarRing.BorderThickness = new Thickness(3);
+            SetAccountTextVisible(true);
+        }
+    }
+
+    /// <summary>折叠时文字先淡出、淡完再从布局移除（只设 Opacity=0 的话文字仍占宽，会把卡片撑开）。</summary>
+    private void SetAccountTextVisible(bool visible)
+    {
+        _accountTextTimer?.Dispose();
+
+        if (visible)
+        {
+            AccountTextHost.IsVisible = true;
+            AccountTextHost.Opacity = 1;
+            return;
+        }
+
+        AccountTextHost.Opacity = 0;
+        _accountTextTimer = DispatcherTimer.RunOnce(
+            () => AccountTextHost.IsVisible = false,
+            TimeSpan.FromMilliseconds(140));
     }
 
     /// <summary>
