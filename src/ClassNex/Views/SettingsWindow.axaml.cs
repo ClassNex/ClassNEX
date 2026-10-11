@@ -456,9 +456,11 @@ public partial class SettingsWindow : AppWindow
         var index = page switch
         {
             "home" => 0,
+            "general" => 1,
             "appearance" => 2,
             "window" => 3,
             "widgets" => 4,
+            "notification" => 5,
             "about" => 6,
             "debug" => 7,
             _ => 0,
@@ -475,8 +477,18 @@ public partial class SettingsWindow : AppWindow
             return;
         }
 
-        if (index < NavView.MenuItems.Count)
-            NavView.SelectedItem = NavView.MenuItems[index];
+        // 按页面名找导航项再选中 —— 不能按 MenuItems[i] 取：主页与基本之间有一个分隔符，
+        // 会把后面的索引整体顶偏一位（之前的隐性 bug）。
+        var targetName = PageNames[Math.Clamp(index, 0, PageNames.Length - 1)];
+        foreach (var item in NavView.MenuItems)
+        {
+            if (item is NavigationViewItem navItem &&
+                string.Equals(navItem.Content as string, targetName, StringComparison.Ordinal))
+            {
+                NavView.SelectedItem = navItem;
+                return;
+            }
+        }
     }
 
     private void WireEvents()
@@ -664,19 +676,19 @@ public partial class SettingsWindow : AppWindow
             RefreshHomeGreeting();
     }
 
-    // ==================== 主页问候（思源宋体：早上好 / 中午好 / 晚上好 + 用户名） ====================
+    // ==================== 主页（照 FluentUI Gallery 首页：问候 + 横幅 + 分组卡片） ====================
 
     private DispatcherTimer? _homeGreetingTimer;
 
-    /// <summary>按当前时间给问候语，拼上账户里设置的用户名。</summary>
+    /// <summary>按当前时间给问候语（早上好 / 中午好 / 晚上好），并刷新主页各卡片。</summary>
     private void RefreshHomeGreeting()
     {
         var name = string.IsNullOrWhiteSpace(AppServices.Settings.UserName)
             ? "同学"
             : AppServices.Settings.UserName.Trim();
 
-        var hour = DateTime.Now.Hour;
-        var greeting = hour switch
+        var now = DateTime.Now;
+        var greeting = now.Hour switch
         {
             >= 5 and < 11 => "早上好",
             >= 11 and < 17 => "中午好",
@@ -684,6 +696,85 @@ public partial class SettingsWindow : AppWindow
         };
 
         HomeGreetingText.Text = $"{greeting}，{name}";
+
+        var slots = AppServices.Time.GetTodaySlots(AppServices.Schedule.Profile, now);
+        var current = AppServices.Time.GetCurrentCourse(slots, now.TimeOfDay);
+        var next = AppServices.Time.GetNextCourse(slots, now.TimeOfDay);
+        var countdown = AppServices.Time.GetCountdownText(slots, now.TimeOfDay);
+        HomeSubText.Text = $"{now:yyyy年M月d日 dddd} · 今日 {slots.Count} 节课"
+            + (current is null && next is null ? "" : $" · {countdown}");
+
+        // ---- 今天 ----
+        HomeTodayPanel.Children.Clear();
+        HomeTodayPanel.Children.Add(HomeCard("\uE8A5", "当前课程",
+            current is null ? "现在没有课" : $"{current.DisplayName}  {current.TimeRange}"
+                + (string.IsNullOrWhiteSpace(current.Detail) ? "" : $"\n{current.Detail}"), null));
+        HomeTodayPanel.Children.Add(HomeCard("\uE72C", "下一节课",
+            next is null ? "今天没有后续课程了" : $"{next.DisplayName}  {next.TimeRange}"
+                + (string.IsNullOrWhiteSpace(next.Detail) ? "" : $"\n{next.Detail}"), null));
+        HomeTodayPanel.Children.Add(HomeCard("\uE787", "今日课程", $"{slots.Count} 节", null));
+        HomeTodayPanel.Children.Add(HomeCard("\uE9D9", "倒计时", countdown, null));
+
+        // ---- 快捷操作 ----
+        HomeActionsPanel.Children.Clear();
+        HomeActionsPanel.Children.Add(HomeCard("\uE70F", "档案编辑器", "编辑课表与时间表",
+            () => App.OpenProfileEditor(0)));
+        HomeActionsPanel.Children.Add(HomeCard("\uE838", "数据目录", SettingsService.DataDirectory,
+            () => OnOpenDataFolder(null, new RoutedEventArgs())));
+        HomeActionsPanel.Children.Add(HomeCard("\uE74D", "导出诊断数据", "设置 + 日志 + 版本信息",
+            () => OnExportDiagnostics(null, new RoutedEventArgs())));
+        HomeActionsPanel.Children.Add(HomeCard("\uE713", "应用设置", "打开「基本」页",
+            () => NavigateTo("general")));
+
+        // ---- 状态 ----
+        var s = AppServices.Settings;
+        HomeStatusPanel.Children.Clear();
+        HomeStatusPanel.Children.Add(HomeCard("\uE7C4", "通知",
+            s.AllowNotification ? "已开启" : "已关闭", () => NavigateTo("notification")));
+        HomeStatusPanel.Children.Add(HomeCard("\uE945", "提醒效果",
+            s.AllowNotificationEffect ? "水波纹已开启" : "水波纹已关闭", () => NavigateTo("notification")));
+        HomeStatusPanel.Children.Add(HomeCard("\uE71D", "主界面组件",
+            $"{s.Widgets.Count(w => w.IsEnabled)} 个已启用", () => NavigateTo("widgets")));
+        HomeStatusPanel.Children.Add(HomeCard("\uE80F", "应用版本",
+            VersionText.Text ?? "?", () => NavigateTo("about")));
+    }
+
+    /// <summary>主页卡片（图标 + 标题 + 描述；有点击动作时鼠标变手形）。样式见 XAML 的 Border.HomeCard。</summary>
+    private static Border HomeCard(string glyph, string title, string subtitle, Action? onClick)
+    {
+        var panel = new StackPanel
+        {
+            Spacing = 6,
+            Children =
+            {
+                new AvaloniaFluentUI.Controls.FontIcon
+                {
+                    Glyph = glyph,
+                    FontFamily = new FontFamily("Segoe MDL2 Assets"),
+                    FontSize = 24,
+                },
+                new TextBlock { Text = title, FontSize = 15 },
+                new TextBlock
+                {
+                    Text = subtitle,
+                    FontSize = 12,
+                    Opacity = 0.7,
+                    TextWrapping = TextWrapping.Wrap,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                },
+            },
+        };
+
+        var card = new Border { Child = panel };
+        card.Classes.Add("HomeCard");
+
+        if (onClick is not null)
+        {
+            card.Cursor = new Cursor(StandardCursorType.Hand);
+            card.PointerPressed += (_, _) => onClick();
+        }
+
+        return card;
     }
 
     // ==================== 顶栏搜索（查找设置） ====================

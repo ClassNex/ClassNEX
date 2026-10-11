@@ -246,34 +246,61 @@
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="32,12,32,24" Spacing="12" MaxWidth="880" HorizontalAlignment="Left">
 
-                        <!-- ==================== 主页（横幅 + 思源宋体问候） ==================== -->
-                        <StackPanel x:Name="PageHome" Spacing="12" IsVisible="False">
-                            <Border CornerRadius="8" Height="200">
-                                <!-- 用 Background 画图片：圆角一定会被裁剪（子元素 Image 不一定） -->
-                                <Border.Background>
-                                    <ImageBrush Source="/Assets/BannerWaves.png"
-                                                Stretch="UniformToFill"
-                                                AlignmentX="Center" AlignmentY="Center"/>
-                                </Border.Background>
-                                <Grid>
-                                    <!-- 底部一层柔和暗化，保证白字在彩色横幅上可读 -->
-                                    <Border>
-                                        <Border.Background>
-                                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                                                <GradientStop Offset="0.4" Color="#00000000"/>
-                                                <GradientStop Offset="1" Color="#73000000"/>
-                                            </LinearGradientBrush>
-                                        </Border.Background>
-                                    </Border>
+                        <!-- ==================== 主页（照 FluentUI Gallery 首页：横幅 + 分组卡片） ==================== -->
+                        <StackPanel x:Name="PageHome" Spacing="18" IsVisible="False">
+                            <StackPanel.Styles>
+                                <!-- 卡片样式（代码里用 Classes="HomeCard" 套用；走 DynamicResource 才不会踩「浅色变体」的坑） -->
+                                <Style Selector="Border.HomeCard">
+                                    <Setter Property="CornerRadius" Value="6"/>
+                                    <Setter Property="BorderThickness" Value="1"/>
+                                    <Setter Property="Padding" Value="16,14"/>
+                                    <Setter Property="Margin" Value="0,0,12,12"/>
+                                    <Setter Property="Width" Value="252"/>
+                                    <Setter Property="MinHeight" Value="112"/>
+                                    <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}"/>
+                                    <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}"/>
+                                    <Setter Property="Transitions">
+                                        <Transitions>
+                                            <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                                        </Transitions>
+                                    </Setter>
+                                </Style>
+                                <Style Selector="Border.HomeCard:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorSecondaryBrush}"/>
+                                </Style>
+                                <Style Selector="TextBlock.HomeSection">
+                                    <Setter Property="FontSize" Value="20"/>
+                                    <Setter Property="Margin" Value="0,8,0,2"/>
+                                </Style>
+                            </StackPanel.Styles>
+
+                            <!-- 顶部：左边问候语（思源宋体），右边横幅 -->
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Spacing="8" VerticalAlignment="Bottom">
                                     <TextBlock x:Name="HomeGreetingText"
                                                FontFamily="Noto Serif SC, Source Han Serif SC, SimSun"
-                                               FontSize="34"
-                                               Foreground="White"
-                                               Margin="28,0,28,26"
-                                               VerticalAlignment="Bottom"
+                                               FontSize="36"
                                                TextTrimming="CharacterEllipsis"/>
-                                </Grid>
-                            </Border>
+                                    <TextBlock x:Name="HomeSubText" FontSize="14" Opacity="0.7"/>
+                                </StackPanel>
+                                <Border Grid.Column="1" Width="380" Height="170" CornerRadius="8"
+                                        Margin="24,0,0,0">
+                                    <Border.Background>
+                                        <ImageBrush Source="/Assets/BannerWaves.png"
+                                                    Stretch="UniformToFill"
+                                                    AlignmentX="Center" AlignmentY="Center"/>
+                                    </Border.Background>
+                                </Border>
+                            </Grid>
+
+                            <TextBlock Text="今天" Classes="HomeSection"/>
+                            <WrapPanel x:Name="HomeTodayPanel"/>
+
+                            <TextBlock Text="快捷操作" Classes="HomeSection"/>
+                            <WrapPanel x:Name="HomeActionsPanel"/>
+
+                            <TextBlock Text="状态" Classes="HomeSection"/>
+                            <WrapPanel x:Name="HomeStatusPanel"/>
                         </StackPanel>
 
                         <!-- ==================== 提醒（1:1 照 CI ClassNotificationProviderSettingsControl.axaml） ==================== -->
