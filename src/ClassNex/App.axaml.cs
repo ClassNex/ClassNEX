@@ -475,62 +475,111 @@ public partial class App : Application
 
     // ---------- 托盘事件 ----------
 
+    private Views.TrayMenuWindow? _trayMenu;
+
+    /// <summary>
+    /// 托盘左键 → 弹出 Fluent 菜单（用户要求：左键点开、不要右键弹菜单）。
+    /// 原生托盘菜单只能由右键触发，所以这里自己画一个无边框菜单窗；再点一次收起。
+    /// </summary>
     private void OnTrayIconClick(object? sender, EventArgs e)
     {
-        switch (AppServices.Settings.TrayClickBehavior)
+        if (_trayMenu is { } openMenu)
         {
-            case 1:
-                OpenSettings();
-                break;
-            case 2:
-                OpenProfileEditor();
-                break;
-            default:
-                ToggleMainWindow();
-                break;
+            openMenu.Close();
+            _trayMenu = null;
+            return;
+        }
+
+        var menu = new Views.TrayMenuWindow();
+        menu.Build(new[]
+        {
+            new Views.TrayMenuWindow.Item("\uE7C4", "显示 / 隐藏主界面", ToggleMainWindow),
+            Views.TrayMenuWindow.Separator,
+            new Views.TrayMenuWindow.Item("\uE70F", "编辑档案…", () => OpenProfileEditor(0)),
+            new Views.TrayMenuWindow.Item("\uE8B7", "加载课表…", () => _ = LoadTimetableFromMenuAsync()),
+            new Views.TrayMenuWindow.Item("\uE8AB", "换课…", () => OpenProfileEditor(3)),
+            Views.TrayMenuWindow.Separator,
+            new Views.TrayMenuWindow.Item("\uE71D", "编辑主界面…", () => OpenSettings("interface")),
+            new Views.TrayMenuWindow.Item("\uE713", "应用设置…", () => OpenSettings()),
+            Views.TrayMenuWindow.Separator,
+            new Views.TrayMenuWindow.Item("\uE777", "重启 ClassNEX", RestartApp),
+            new Views.TrayMenuWindow.Item("\uE7E8", "退出", ExitApp),
+        });
+
+        menu.Show();
+        menu.Activate();
+
+        if (TryGetCursorPos(out var pt))
+        {
+            // 等一次布局再定位（SizeToContent 的窗口此时才拿到真实尺寸）；菜单出现在光标左下，跟系统菜单一致
+            Dispatcher.UIThread.Post(() =>
+            {
+                var w = menu.Bounds.Width > 0 ? menu.Bounds.Width : 240;
+                var h = menu.Bounds.Height > 0 ? menu.Bounds.Height : 320;
+                menu.Position = new PixelPoint(
+                    Math.Max(0, (int)(pt.X - w / 2)),
+                    Math.Max(0, (int)(pt.Y - h - 8)));
+            }, DispatcherPriority.Background);
+        }
+
+        _trayMenu = menu;
+        menu.Closed += (_, _) => _trayMenu = null;
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool GetCursorPos(out CursorPoint point);
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct CursorPoint
+    {
+        public int X;
+        public int Y;
+    }
+
+    private static bool TryGetCursorPos(out PixelPoint point)
+    {
+        point = default;
+        try
+        {
+            if (!OperatingSystem.IsWindows() || !GetCursorPos(out var p))
+                return false;
+
+            point = new PixelPoint(p.X, p.Y);
+            return true;
+        }
+        catch
+        {
+            return false;
         }
     }
 
-    private void OnTrayToggleMainWindow(object? sender, EventArgs e) => ToggleMainWindow();
+    /// <summary>重启 / 退出（托盘菜单用；原来是 NativeMenuItem 的事件处理器）。</summary>
+    private void RestartApp()
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(Environment.ProcessPath))
+                Process.Start(new ProcessStartInfo(Environment.ProcessPath) { UseShellExecute = true });
+        }
+        catch
+        {
+            // 忽略
+        }
 
-    private void OnTrayEditProfile(object? sender, EventArgs e) => OpenProfileEditor(0);
+        ExitApp();
+    }
 
-    private void OnTrayChangeClass(object? sender, EventArgs e) => OpenProfileEditor(3);
-
-    private void OnTrayEditMainWindow(object? sender, EventArgs e) => OpenSettings("interface");
-
-    private void OnTrayOpenSettings(object? sender, EventArgs e) => OpenSettings();
-
-    private async void OnTrayLoadTimetable(object? sender, EventArgs e)
+    /// <summary>托盘菜单「加载课表…」。</summary>
+    private async Task LoadTimetableFromMenuAsync()
     {
         var owner = _mainWindow ?? Lifetime?.MainWindow;
         if (owner is null)
             return;
 
-        var path = await FilePickerHelper.PickTimetableAsync(owner);
+        var path = await Services.FilePickerHelper.PickTimetableAsync(owner);
         if (path is null)
             return;
 
-        AppServices.LoadTimetable(path);
+        Services.AppServices.LoadTimetable(path);
     }
-
-    private void OnTrayRestart(object? sender, EventArgs e)
-    {
-        var exe = Environment.ProcessPath;
-        if (!string.IsNullOrWhiteSpace(exe))
-        {
-            try
-            {
-                Process.Start(new ProcessStartInfo(exe) { UseShellExecute = true });
-            }
-            catch
-            {
-                // 忽略重启失败
-            }
-        }
-
-        Lifetime?.Shutdown();
-    }
-
-    private void OnTrayExit(object? sender, EventArgs e) => ExitApp();
 }

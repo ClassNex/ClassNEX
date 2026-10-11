@@ -41,28 +41,12 @@
       本应用因此保持一致，不写死颜色。
     -->
 
-    <!-- 系统托盘图标与菜单 -->
+    <!-- 系统托盘图标（左键弹出 Fluent 菜单窗；不再挂 NativeMenu，避免右键弹菜单） -->
     <TrayIcon.Icons>
         <TrayIcons>
             <TrayIcon Icon="/Assets/icon.ico"
                       ToolTipText="ClassNex 课表"
-                      Clicked="OnTrayIconClick">
-                <TrayIcon.Menu>
-                    <NativeMenu>
-                        <NativeMenuItem Header="显示 / 隐藏主界面" Click="OnTrayToggleMainWindow"/>
-                        <NativeMenuItemSeparator/>
-                        <NativeMenuItem Header="编辑档案…" Click="OnTrayEditProfile"/>
-                        <NativeMenuItem Header="加载课表…" Click="OnTrayLoadTimetable"/>
-                        <NativeMenuItem Header="换课…" Click="OnTrayChangeClass"/>
-                        <NativeMenuItemSeparator/>
-                        <NativeMenuItem Header="编辑主界面…" Click="OnTrayEditMainWindow"/>
-                        <NativeMenuItem Header="应用设置…" Click="OnTrayOpenSettings"/>
-                        <NativeMenuItemSeparator/>
-                        <NativeMenuItem Header="重启" Click="OnTrayRestart"/>
-                        <NativeMenuItem Header="退出" Click="OnTrayExit"/>
-                    </NativeMenu>
-                </TrayIcon.Menu>
-            </TrayIcon>
+                      Clicked="OnTrayIconClick"/>
         </TrayIcons>
     </TrayIcon.Icons>
 
