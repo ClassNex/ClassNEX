@@ -679,6 +679,10 @@ public partial class SettingsWindow : AppWindow
 
         if (index == 5)
             RefreshNexPage();
+
+        // 调试页里有 NEX 的接口配置（密钥只在这里填，普通界面不显示）
+        if (index == 8)
+            RefreshNexApiFields();
     }
 
     // ==================== NEX Intelligence（AI Agent 设置页） ====================
@@ -686,7 +690,7 @@ public partial class SettingsWindow : AppWindow
     private bool _nexEventsWired;
     private bool _nexLoading;
 
-    /// <summary>把设置里的值填进 NEX 页面控件（进入页面时调用）。</summary>
+    /// <summary>NEX 设置页（权限 / 提示词 / 打开对话框）。接口配置在调试页，见 RefreshNexApiFields。</summary>
     private void RefreshNexPage()
     {
         var s = AppServices.Settings;
@@ -695,30 +699,35 @@ public partial class SettingsWindow : AppWindow
         {
             _nexEventsWired = true;
 
-            NexBaseUrlBox.TextChanged += (_, _) => SaveNexSettings();
-            NexApiKeyBox.TextChanged += (_, _) => SaveNexSettings();
-            NexModelCombo.SelectionChanged += (_, _) => SaveNexSettings();
-            NexModelCombo.LostFocus += (_, _) => SaveNexSettings();
+            NexOpenChatButton.Click += (_, _) => App.OpenNexChat();
+
             NexSystemPromptBox.TextChanged += (_, _) => SaveNexSettings();
             NexPermissionCombo.SelectionChanged += (_, _) => SaveNexSettings();
 
-            NexOpenChatButton.Click += (_, _) => App.OpenNexChat();
+            // 调试页里的接口配置
+            NexBaseUrlBox.TextChanged += (_, _) => SaveNexApiFields();
+            NexApiKeyBox.TextChanged += (_, _) => SaveNexApiFields();
+            NexModelCombo.SelectionChanged += (_, _) => SaveNexApiFields();
+            NexModelCombo.LostFocus += (_, _) => SaveNexApiFields();
             NexFetchModelsButton.Click += async (_, _) => await FetchModelsAsync();
             NexTestButton.Click += async (_, _) => await TestNexConnectionAsync();
+            NexResetButton.Click += (_, _) =>
+            {
+                AppServices.Settings.NexApiBaseUrl = "";
+                AppServices.Settings.NexApiKey = "";
+                AppServices.Settings.NexModel = "";
+                SettingsService.Save(AppServices.Settings);
+                RefreshNexApiFields();
+                NexStatusText.Text = "已恢复内置接口。";
+            };
         }
 
-        // 填值期间不要触发保存：下拉框设 ItemsSource 会先触发一次 SelectionChanged，
-        // 那时 Text 还是空的，会把模型名写成空字符串（实测踩到过）
         _nexLoading = true;
         try
         {
-            NexBaseUrlBox.Text = s.NexApiBaseUrl;
-            NexApiKeyBox.Text = s.NexApiKey;
             NexSystemPromptBox.Text = s.NexSystemPrompt;
             NexPermissionCombo.SelectedIndex = (int)Services.NexIntelligence.NexPermissionNames.FromKey(s.NexPermission);
-
-            NexModelCombo.ItemsSource = new[] { s.NexModel };
-            NexModelCombo.SelectedIndex = 0;
+            UpdateNexApiStateText();
         }
         finally
         {
@@ -726,7 +735,41 @@ public partial class SettingsWindow : AppWindow
         }
     }
 
-    private void SaveNexSettings()
+    /// <summary>主页上那行「当前接口」状态：只说明用的是内置还是自定义，不显示密钥明文。</summary>
+    private void UpdateNexApiStateText()
+    {
+        var s = AppServices.Settings;
+        var usingBuiltIn = Services.NexIntelligence.NexConfig.IsUsingBuiltInKey(s);
+        var model = Services.NexIntelligence.NexConfig.ResolveModel(s);
+        NexApiStateText.Text = usingBuiltIn
+            ? $"内置接口 · {model}"
+            : $"自定义接口 · {model}";
+        NexApiStateItem.Description = usingBuiltIn
+            ? "正在使用内置接口（密钥不出现在界面上）"
+            : "正在使用你自己填写的接口配置";
+    }
+
+    /// <summary>填调试页里的接口三件套（密钥框永远留空，不回显内置密钥）。</summary>
+    private void RefreshNexApiFields()
+    {
+        var s = AppServices.Settings;
+
+        _nexLoading = true;
+        try
+        {
+            NexBaseUrlBox.Text = s.NexApiBaseUrl;
+            NexApiKeyBox.Text = s.NexApiKey;              // 只可能是用户自己填的，内置密钥不回显
+            NexModelCombo.ItemsSource = new[] { Services.NexIntelligence.NexConfig.ResolveModel(s) };
+            NexModelCombo.SelectedIndex = 0;
+            NexModelCombo.Text = Services.NexIntelligence.NexConfig.ResolveModel(s);
+        }
+        finally
+        {
+            _nexLoading = false;
+        }
+    }
+
+    private void SaveNexApiFields()
     {
         if (_nexLoading)
             return;
@@ -735,11 +778,22 @@ public partial class SettingsWindow : AppWindow
         s.NexApiBaseUrl = NexBaseUrlBox.Text?.Trim() ?? "";
         s.NexApiKey = NexApiKeyBox.Text?.Trim() ?? "";
 
-        // 模型名只在拿到非空值时才覆盖，避免把已配置的模型清空
         var model = (NexModelCombo.SelectedItem as string) ?? NexModelCombo.Text?.Trim();
-        if (!string.IsNullOrWhiteSpace(model))
+        if (string.IsNullOrWhiteSpace(model) || model == Services.NexIntelligence.NexConfig.BuiltInModel)
+            s.NexModel = "";                              // 等于内置就存空，保持「留空=内置」
+        else
             s.NexModel = model;
 
+        SettingsService.Save(s);
+        UpdateNexApiStateText();
+    }
+
+    private void SaveNexSettings()
+    {
+        if (_nexLoading)
+            return;
+
+        var s = AppServices.Settings;
         s.NexSystemPrompt = NexSystemPromptBox.Text ?? "";
         s.NexPermission = (NexPermissionCombo.SelectedIndex switch
         {
@@ -751,19 +805,21 @@ public partial class SettingsWindow : AppWindow
         SettingsService.Save(s);
     }
 
-    /// <summary>从接口拉模型列表填进下拉框。</summary>
+    /// <summary>从接口拉模型列表填进下拉框（用当前生效的地址与密钥）。</summary>
     private async Task FetchModelsAsync()
     {
-        SaveNexSettings();
+        SaveNexApiFields();
         NexStatusText.Text = "正在拉取模型列表…";
 
         try
         {
+            var s = AppServices.Settings;
             var models = await Services.NexIntelligence.NexModelCatalog.FetchAsync(
-                AppServices.Settings.NexApiBaseUrl, AppServices.Settings.NexApiKey);
+                Services.NexIntelligence.NexConfig.ResolveBaseUrl(s),
+                Services.NexIntelligence.NexConfig.ResolveApiKey(s));
 
             NexModelCombo.ItemsSource = models;
-            var current = AppServices.Settings.NexModel;
+            var current = Services.NexIntelligence.NexConfig.ResolveModel(s);
             NexModelCombo.SelectedItem = models.Contains(current) ? current : models.FirstOrDefault();
             NexStatusText.Text = $"拉到 {models.Count} 个模型。";
         }
@@ -776,15 +832,16 @@ public partial class SettingsWindow : AppWindow
     /// <summary>测一次最小请求，确认地址/密钥/模型可用。</summary>
     private async Task TestNexConnectionAsync()
     {
-        SaveNexSettings();
+        SaveNexApiFields();
         NexStatusText.Text = "正在测试…";
 
         try
         {
+            var s = AppServices.Settings;
             var reply = await Services.NexIntelligence.NexModelCatalog.TestAsync(
-                AppServices.Settings.NexApiBaseUrl,
-                AppServices.Settings.NexApiKey,
-                AppServices.Settings.NexModel);
+                Services.NexIntelligence.NexConfig.ResolveBaseUrl(s),
+                Services.NexIntelligence.NexConfig.ResolveApiKey(s),
+                Services.NexIntelligence.NexConfig.ResolveModel(s));
 
             NexStatusText.Text = "连接正常，模型回复：" + reply;
         }

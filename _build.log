@@ -1,14 +1,11 @@
 ﻿  正在确定要还原的项目…
   所有项目均是最新的，无法还原。
-E:\ClassNex\src\ClassNex\Services\NexIntelligence\NexAiClient.cs(55,17): warning CA2024: 不要在异步方法中使用 ‘reader.EndOfStream’ (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2024) [E:\ClassNex\src\ClassNex\ClassNex.csproj]
-E:\ClassNex\src\ClassNex\Views\SettingsWindow.axaml.cs(966,24): warning CA1416: 可在所有平台上访问此调用站点。"Type.GetTypeFromProgID(string)" 仅在 'windows' 上受支持。 (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1416) [E:\ClassNex\src\ClassNex\ClassNex.csproj]
-  ClassNex -> E:\ClassNex\src\ClassNex\bin\Debug\net10.0\ClassNex.dll
+E:\ClassNex\src\ClassNex\Views/SettingsWindow.axaml(874,46,874,46): Avalonia error AVLN2000: Unable to resolve suitable regular or attached property Watermark on type Avalonia.Controls:Avalonia.Controls.ComboBox Line 874, position 46. [E:\ClassNex\src\ClassNex\ClassNex.csproj]
 
-已成功生成。
+生成失败。
 
-E:\ClassNex\src\ClassNex\Services\NexIntelligence\NexAiClient.cs(55,17): warning CA2024: 不要在异步方法中使用 ‘reader.EndOfStream’ (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2024) [E:\ClassNex\src\ClassNex\ClassNex.csproj]
-E:\ClassNex\src\ClassNex\Views\SettingsWindow.axaml.cs(966,24): warning CA1416: 可在所有平台上访问此调用站点。"Type.GetTypeFromProgID(string)" 仅在 'windows' 上受支持。 (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1416) [E:\ClassNex\src\ClassNex\ClassNex.csproj]
-    2 个警告
-    0 个错误
+E:\ClassNex\src\ClassNex\Views/SettingsWindow.axaml(874,46,874,46): Avalonia error AVLN2000: Unable to resolve suitable regular or attached property Watermark on type Avalonia.Controls:Avalonia.Controls.ComboBox Line 874, position 46. [E:\ClassNex\src\ClassNex\ClassNex.csproj]
+    0 个警告
+    1 个错误
 
-已用时间 00:00:19.20
+已用时间 00:00:09.35

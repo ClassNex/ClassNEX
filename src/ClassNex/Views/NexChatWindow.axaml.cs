@@ -162,8 +162,9 @@ public partial class NexChatWindow : AppWindow
 
     private void ShowWelcome()
     {
-        var model = AppServices.Settings.NexModel;
-        AddNotice($"我是 NEX，可以帮你查课表、看应用状态、也可以按权限读写文件。当前模型：{model}（在「应用设置 → NEX Intelligence」里可以改）。", false);
+        var model = NexConfig.ResolveModel(AppServices.Settings);
+        var keyNote = NexConfig.IsUsingBuiltInKey(AppServices.Settings) ? "内置接口" : "自定义接口";
+        AddNotice($"我是 NEX，可以帮你查课表、看应用状态、也可以按权限读写文件。当前使用{keyNote}，模型：{model}。", false);
     }
 
     private void AddUserBubble(string text)
