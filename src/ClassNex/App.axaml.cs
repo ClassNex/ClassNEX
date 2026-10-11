@@ -170,6 +170,19 @@ public partial class App : Application
                     wakeTimer.Start();
                 }
 
+                // CLASSNEX_VERIFY_MIC=1：自检麦克风（权限 + 一次性识别），结果写 nex-voice.log
+                if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_MIC") == "1")
+                {
+                    var micTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
+                    micTimer.Tick += async (_, _) =>
+                    {
+                        micTimer.Stop();
+                        var result = _nexVoice is null ? "语音服务没起来" : await _nexVoice.TestMicrophoneAsync();
+                        Services.NexVoiceLog.Write("【自检】麦克风：" + result);
+                    };
+                    micTimer.Start();
+                }
+
                 // CLASSNEX_VERIFY_EDITMODE=1：启动后直接进入编辑模式（核对组件工具条排版）
                 if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_EDITMODE") == "1")
                 {

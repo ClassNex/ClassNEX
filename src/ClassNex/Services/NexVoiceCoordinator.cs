@@ -27,6 +27,22 @@ public sealed class NexVoiceCoordinator : IDisposable
     /// <summary>跑马灯窗口（自检出图用）。</summary>
     public NexGlowWindow? GlowWindow => _glow;
 
+    /// <summary>测试麦克风（设置页按钮）：直接返回能不能听到、听到了什么、权限是什么状态。</summary>
+    public async Task<string> TestMicrophoneAsync()
+    {
+        if (_voice is NexWinRtVoiceService winrt)
+            return await winrt.TestMicrophoneAsync();
+
+        return "当前用的是系统自带识别（SAPI），没有内置的麦克风自检。";
+    }
+
+    /// <summary>当前用的语音引擎名字（设置页显示）。</summary>
+    public string EngineName => _voice switch
+    {
+        NexWinRtVoiceService => "Windows 现代识别",
+        _ => "系统自带识别（SAPI）",
+    };
+
     /// <summary>启动语音唤醒（优先 Windows 现代引擎，起不来再退回老 SAPI）。</summary>
     public bool Start()
     {

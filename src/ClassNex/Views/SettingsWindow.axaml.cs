@@ -731,6 +731,15 @@ public partial class SettingsWindow : AppWindow
                 timer.Start();
             };
 
+            NexMicTestButton.Click += async (_, _) =>
+            {
+                NexVoiceStatusText.Text = "正在测试麦克风…（请对着麦克风说一句话）";
+                var result = AppServices.NexVoice is null
+                    ? "语音唤醒没启用"
+                    : await AppServices.NexVoice.TestMicrophoneAsync();
+                NexVoiceStatusText.Text = result;
+            };
+
             AppServices.NexVoice?.StatusChanged += status =>
                 Dispatcher.UIThread.Post(() => NexVoiceStatusText.Text = status);
 

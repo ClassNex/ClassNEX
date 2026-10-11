@@ -64,12 +64,16 @@ public sealed class NexWinRtVoiceService : INexVoiceService
             }
 
             _wakeRecognizer.ContinuousRecognitionSession.ResultGenerated += OnWakeResult;
+            // 会话结束会带状态：麦克风不可用/被占用/无权限都会在这里体现（只挂 ResultGenerated 是查不出来的）
+            _wakeRecognizer.ContinuousRecognitionSession.Completed += (_, e) =>
+                NexVoiceLog.Write($"唤醒会话结束：状态={e.Status}");
             _wakeRecognizer.ContinuousRecognitionSession.AutoStopSilenceTimeout = TimeSpan.FromMinutes(30);
             await _wakeRecognizer.ContinuousRecognitionSession.StartAsync();
 
             _listening = true;
             NexVoiceLog.Write($"WinRT 语音已启动：语言 {language.LanguageTag}；可用语言 "
                 + string.Join("、", SupportedLanguages().Select(l => l.LanguageTag)));
+            NexVoiceLog.Write($"麦克风访问状态：{CheckMicrophoneAccess()}");
             return true;
         }
         catch (Exception ex)
@@ -110,6 +114,62 @@ public sealed class NexWinRtVoiceService : INexVoiceService
 
         var en = supported.FirstOrDefault(l => l.LanguageTag.StartsWith("en", StringComparison.OrdinalIgnoreCase));
         return en ?? supported.FirstOrDefault() ?? SpeechRecognizer.SystemSpeechLanguage;
+    }
+
+    /// <summary>查麦克风权限（桌面应用要在「设置 → 隐私和安全性 → 麦克风」里允许访问，否则拿到的是静音流）。</summary>
+    public static string CheckMicrophoneAccess()
+    {
+        try
+        {
+            var capability = Windows.Security.Authorization.AppCapabilityAccess.AppCapability.Create("microphone");
+            return capability.CheckAccess() switch
+            {
+                Windows.Security.Authorization.AppCapabilityAccess.AppCapabilityAccessStatus.Allowed => "已允许",
+                Windows.Security.Authorization.AppCapabilityAccess.AppCapabilityAccessStatus.DeniedByUser => "被用户拒绝",
+                Windows.Security.Authorization.AppCapabilityAccess.AppCapabilityAccessStatus.DeniedBySystem => "被系统策略拒绝",
+                var other => other.ToString() ?? "未知",
+            };
+        }
+        catch (Exception ex)
+        {
+            return "查询失败：" + ex.Message;
+        }
+    }
+
+    /// <summary>
+    /// 测试麦克风：做一次一次性识别（最长 5 秒），返回听到的内容。
+    /// 设置页「测试麦克风」按钮用它 —— 能直接看出是权限问题、设备问题还是识别问题。
+    /// </summary>
+    public async Task<string> TestMicrophoneAsync()
+    {
+        var access = CheckMicrophoneAccess();
+        NexVoiceLog.Write($"麦克风测试开始：权限={access}");
+
+        try
+        {
+            var language = PickLanguage();
+            using var recognizer = new SpeechRecognizer(language);
+            recognizer.Constraints.Add(new SpeechRecognitionTopicConstraint(SpeechRecognitionScenario.Dictation, "test"));
+            var compile = await recognizer.CompileConstraintsAsync();
+            if (compile.Status != SpeechRecognitionResultStatus.Success)
+                return $"约束编译失败：{compile.Status}";
+
+            var result = await recognizer.RecognizeAsync();
+            NexVoiceLog.Write($"麦克风测试结果：{result.Status} / 「{result.Text}」");
+            return result.Status switch
+            {
+                SpeechRecognitionResultStatus.Success => $"听到：「{result.Text}」（权限 {access}）",
+                SpeechRecognitionResultStatus.AudioQualityFailure => $"音频质量太差，没听清（权限 {access}）",
+                SpeechRecognitionResultStatus.MicrophoneUnavailable => $"麦克风不可用 —— 请到「设置 → 隐私和安全性 → 麦克风」允许桌面应用访问（当前权限 {access}）",
+                SpeechRecognitionResultStatus.UserCanceled => "没有听到声音（超时）",
+                _ => $"结果：{result.Status}（权限 {access}）",
+            };
+        }
+        catch (Exception ex)
+        {
+            NexVoiceLog.Write("麦克风测试异常：" + ex);
+            return DescribeSpeechError(ex);
+        }
     }
 
     public void Stop()
@@ -168,9 +228,24 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         catch (Exception ex)
         {
             NexVoiceLog.Write("切到听写失败：" + ex.Message);
-            ErrorOccurred?.Invoke("切换听写失败：" + ex.Message);
+            ErrorOccurred?.Invoke(DescribeSpeechError(ex));
             _dictating = false;
         }
+    }
+
+    /// <summary>
+    /// 把 WinRT 的语音错误翻译成用户能照做的提示。
+    /// 0x80045509 = 系统语音隐私政策还没接受 —— Windows 不允许整句识别，但列表约束（唤醒词）不受影响。
+    /// </summary>
+    private static string DescribeSpeechError(Exception ex)
+    {
+        if (ex.Message.Contains("privacy policy", StringComparison.OrdinalIgnoreCase)
+            || ex.Message.Contains("0x80045509"))
+        {
+            return "需要先开启系统语音识别：设置 → 隐私和安全性 → 语音 → 打开「在线语音识别」，然后重启应用（唤醒词不受影响，只有整句听写需要它）。";
+        }
+
+        return "听写出错：" + ex.Message;
     }
 
     private async Task<SpeechRecognizer> CreateDictationRecognizerAsync()
