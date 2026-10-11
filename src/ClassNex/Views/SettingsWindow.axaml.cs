@@ -569,68 +569,10 @@ public partial class SettingsWindow : AppWindow
             if (WidgetLibraryList.SelectedItem is WidgetTypeItem item)
                 AddWidget(item.Type);
         };
-
-        // 主页时钟（1 秒刷新）
-        StartHomeClock();
     }
 
-    // ==================== 主页（CW2 风格仪表盘） ====================
+    // 主页（PageHome）目前按用户要求留空白，内容待设计。
 
-    private DispatcherTimer? _homeTimer;
-
-    private void StartHomeClock()
-    {
-        _homeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-        _homeTimer.Tick += (_, _) => RefreshHome();
-        _homeTimer.Start();
-        RefreshHome();
-    }
-
-    /// <summary>刷新主页：大时钟 + 日期 + 倒计时 + 今天接下来三节。</summary>
-    private void RefreshHome()
-    {
-        var now = DateTime.Now;
-        HomeClockText.Text = now.ToString("HH:mm:ss");
-        HomeDateText.Text = now.ToString("yyyy年M月d日 dddd");
-        var slots = AppServices.Time.GetTodaySlots(AppServices.Schedule.Profile, now);
-        HomeCountdownText.Text = AppServices.Time.GetCountdownText(slots, now.TimeOfDay);
-
-        HomeNextList.Children.Clear();
-        var upcoming = slots.Where(s => s.Start > now.TimeOfDay).Take(3).ToList();
-        if (upcoming.Count == 0)
-        {
-            HomeNextList.Children.Add(new TextBlock
-            {
-                Text = slots.Count == 0 ? "今天没有课程。" : "今日课程已结束",
-                FontSize = 14,
-                Opacity = 0.7,
-            });
-            return;
-        }
-
-        foreach (var s in upcoming)
-        {
-            var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("110,*") };
-            var time = new TextBlock
-            {
-                Text = s.TimeRange,
-                FontSize = 14,
-                Opacity = 0.65,
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-            var name = new TextBlock
-            {
-                Text = s.DisplayName + (string.IsNullOrWhiteSpace(s.Detail) ? "" : "  ·  " + s.Detail),
-                FontSize = 15,
-                VerticalAlignment = VerticalAlignment.Center,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-            };
-            Grid.SetColumn(name, 1);
-            grid.Children.Add(time);
-            grid.Children.Add(name);
-            HomeNextList.Children.Add(grid);
-        }
-    }
 
     // ==================== 加载 ====================
 
