@@ -286,8 +286,9 @@
                                 <Border Grid.Column="1" Width="380" Height="170" CornerRadius="8"
                                         Margin="24,0,0,0">
                                     <Border.Background>
+                                        <!-- Fill：图片拉伸铺满整块（不裁切、不按比例留边）—— 用户要求「这一块拉伸」 -->
                                         <ImageBrush Source="/Assets/BannerWaves.png"
-                                                    Stretch="UniformToFill"
+                                                    Stretch="Fill"
                                                     AlignmentX="Center" AlignmentY="Center"/>
                                     </Border.Background>
                                 </Border>
