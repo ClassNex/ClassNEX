@@ -28,6 +28,7 @@ public sealed class NexWinRtVoiceService : INexVoiceService
     private bool _dictationProbed;
     private bool _sapiOnly;
     private NexSapiDictation? _sapiDictation;
+    private DateTime _lastWakeActivityUtc = DateTime.UtcNow;
     private DispatcherTimer? _watchdog;
 
     public event Action? WakeWordDetected;
@@ -79,6 +80,7 @@ public sealed class NexWinRtVoiceService : INexVoiceService
             _wakeRecognizer.ContinuousRecognitionSession.AutoStopSilenceTimeout = TimeSpan.FromMinutes(30);
             await _wakeRecognizer.ContinuousRecognitionSession.StartAsync();
             _wakeRunning = true;
+            _lastWakeActivityUtc = DateTime.UtcNow;
 
             _listening = true;
             NexVoiceLog.Write($"WinRT 语音已启动：语言 {language.LanguageTag}；可用语言 "
@@ -247,6 +249,7 @@ public sealed class NexWinRtVoiceService : INexVoiceService
             return;
 
         NexVoiceLog.Write($"WinRT 唤醒候选：{text}（置信度 {args.Result?.Confidence}）");
+        _lastWakeActivityUtc = DateTime.UtcNow;
         if (args.Result?.Confidence == SpeechRecognitionConfidence.Rejected)
             return;
 
@@ -448,15 +451,64 @@ public sealed class NexWinRtVoiceService : INexVoiceService
     }
 
     /// <summary>
-    /// 看门狗：保证麦克风**一直开着**（用户要求）。
-    /// 待机状态下只要唤醒会话不在跑，就自动拉起来 —— 静默超时、设备切换、瞬时错误都能自愈。
+    /// 看门狗：保证麦克风**一直开着**（用户要求），并且长时间闲置后能自愈。
+    /// WinRT 的连续识别有个已知行为：会话看着还在跑，但闲置久了就不再收到音频（「时间久了叫不起来」）。
+    /// 所以这里三层兜底：① 会话不在跑 → 拉起来；② 超过 4 分钟没有任何识别活动 → 停+启刷新音频管道；
+    /// ③ 刷新也无效 → 整个重建识别器。
     /// </summary>
     private void OnWatchdogTick(object? sender, EventArgs e)
     {
         if (!_listening || _dictating || _starting)
             return;
 
-        _ = EnsureWakeSessionAsync();
+        if (!_wakeRunning)
+        {
+            _ = EnsureWakeSessionAsync();
+            return;
+        }
+
+        var idle = DateTime.UtcNow - _lastWakeActivityUtc;
+        if (idle < TimeSpan.FromMinutes(4))
+            return;
+
+        // 看着在跑但太久没任何动静：先刷一次（停+启），再不行就重建
+        _ = RefreshWakeSessionAsync();
+    }
+
+    private async Task RefreshWakeSessionAsync()
+    {
+        if (_wakeRecognizer is null)
+            return;
+
+        try
+        {
+            await _wakeRecognizer.ContinuousRecognitionSession.StopAsync();
+            _wakeRunning = false;
+            await _wakeRecognizer.ContinuousRecognitionSession.StartAsync();
+            _wakeRunning = true;
+            _lastWakeActivityUtc = DateTime.UtcNow;
+            NexVoiceLog.Write("看门狗：闲置较久，已刷新唤醒会话（音频管道重启）");
+            return;
+        }
+        catch (Exception ex)
+        {
+            NexVoiceLog.Write("看门狗刷新失败，准备重建识别器：" + ex.Message.Split('\n')[0]);
+        }
+
+        // 刷新失败：整只重建
+        try
+        {
+            _wakeRecognizer.Dispose();
+            _wakeRecognizer = null;
+            _wakeRunning = false;
+            _listening = false;
+            await StartAsync();
+            NexVoiceLog.Write("看门狗：已重建语音识别器");
+        }
+        catch (Exception ex)
+        {
+            NexVoiceLog.Write("看门狗重建失败：" + ex.Message.Split('\n')[0]);
+        }
     }
 
     private async Task EnsureWakeSessionAsync()
@@ -468,6 +520,7 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         {
             await _wakeRecognizer.ContinuousRecognitionSession.StartAsync();
             _wakeRunning = true;
+            _lastWakeActivityUtc = DateTime.UtcNow;
             NexVoiceLog.Write("看门狗：唤醒会话已重新拉起，麦克风保持开启");
         }
         catch (Exception ex)
