@@ -9,7 +9,9 @@
         IsTitleBarContentVisible="False"
         Width="980" Height="720"
         MinWidth="720" MinHeight="520"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        Background="Transparent"
+        TransparencyLevelHint="Mica, AcrylicBlur, Blur, Transparent">
 
     <!-- 沉浸式标题栏 + 云母（项目规则：所有页面都要） -->
 

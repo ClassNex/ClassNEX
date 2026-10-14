@@ -671,19 +671,28 @@ public partial class SettingsWindow : AppWindow
         PageDebug.IsVisible = index == 8;
         PageAccount.IsVisible = false;   // 账户页只从账户卡进入
 
-        // 页面入场动画：照 CI 的做法（根节点初始 Opacity=0，导航时加 anim 类触发关键帧动画），
-        // 动效取 Fluent 入场规范（淡入 + 轻微上移 14px，250ms 减速曲线）。
+        // 页面入场动画：照 CI 的做法（根节点初始 Opacity=0，导航时加 anim 类触发关键帧动画，仅淡入），
+        // 位移用 TranslateTransform + DoubleTransition（关键帧里动 RenderTransform 会崩，见 XAML 注释）。
         // 先移除再加，保证每次切页都重新播放。
         PageScroll.Classes.Remove("anim");
+        if (PageScroll.RenderTransform is TranslateTransform shift)
+            shift.Y = 14;
+
         _ = Dispatcher.UIThread.InvokeAsync(
-            () => PageScroll.Classes.Add("anim"),
+            () =>
+            {
+                PageScroll.Classes.Add("anim");
+                if (PageScroll.RenderTransform is TranslateTransform s)
+                    s.Y = 0;
+            },
             DispatcherPriority.Background);
 
         // 兜底：万一动画被打断，保证页面最终一定是可见状态（不能出现空白页）
         DispatcherTimer.RunOnce(() =>
         {
             PageScroll.Opacity = 1;
-            PageScroll.RenderTransform = null;
+            if (PageScroll.RenderTransform is TranslateTransform s)
+                s.Y = 0;
         }, TimeSpan.FromMilliseconds(400));
 
         // 页面标题行（对照 CI 的 TitleContainer：页面名由外壳统一显示）
