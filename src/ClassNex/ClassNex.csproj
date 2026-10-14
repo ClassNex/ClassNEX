@@ -36,6 +36,8 @@
     <AvaloniaResource Include="Assets\Oobe\*.png" />
     <!-- NEX 的 Sparkle 图标 -->
     <AvaloniaResource Include="Assets\NexAi.png" />
+    <!-- 唤醒提示音（用户提供的 wav，跑马灯动画时播放） -->
+    <AvaloniaResource Include="Assets\NexWake.wav" />
   </ItemGroup>
 
   <ItemGroup>
