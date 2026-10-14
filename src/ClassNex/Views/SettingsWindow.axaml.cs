@@ -586,6 +586,19 @@ public partial class SettingsWindow : AppWindow
         VerifyDialogHook();
 #endif
 
+#if DEBUG
+        // 自检：切页后 60ms / 900ms 各抓一帧，用来验证入场动画到底有没有在播
+        if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
+        {
+            DispatcherTimer.RunOnce(() =>
+            {
+                NavigateTo("appearance");   // 切页（会触发 SwitchPage 与入场动画）
+                DispatcherTimer.RunOnce(() => SaveShot("_anim_early.png"), TimeSpan.FromMilliseconds(60));
+                DispatcherTimer.RunOnce(() => SaveShot("_anim_late.png"), TimeSpan.FromMilliseconds(900));
+            }, TimeSpan.FromSeconds(4));
+        }
+#endif
+
         // 主页问候：每 60 秒刷新（只在主页可见时更新，避免无谓刷新）
         RefreshHomeGreeting();
         _homeGreetingTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
@@ -671,20 +684,8 @@ public partial class SettingsWindow : AppWindow
         PageDebug.IsVisible = index == 8;
         PageAccount.IsVisible = false;   // 账户页只从账户卡进入
 
-        // 页面入场动画：照 Fluent 的页面导航规范做**滑动**（SlideNavigationTransition，只滑不淡，
-        // 用户明确要求不要淡出）。位移走 TranslateTransform 的 DoubleTransition —— 纯合成器操作，
-        // 不重排不重绘，所以不卡；而 Opacity 动画会让整页每帧离屏合成，实测很卡，故不用。
-        if (PageScroll.RenderTransform is TranslateTransform shift)
-        {
-            shift.Y = 28;   // 从下方 28 滑入（Fluent 的 FromBottom 效果）
-
-            _ = Dispatcher.UIThread.InvokeAsync(
-                () => shift.Y = 0,
-                DispatcherPriority.Background);
-
-            // 兜底：万一补间被打断，保证停在正确位置
-            DispatcherTimer.RunOnce(() => shift.Y = 0, TimeSpan.FromMilliseconds(500));
-        }
+        // 页面滑动入场：自己补间（见 PlayPageEntrance —— Avalonia 的 Transition/Animation 实测都不播）
+        PlayPageEntrance();
 
         // 页面标题行（对照 CI 的 TitleContainer：页面名由外壳统一显示）
         PageTitleText.Text = PageNames[Math.Clamp(index, 0, PageNames.Length - 1)];
@@ -1112,6 +1113,83 @@ public partial class SettingsWindow : AppWindow
 
     private void OnOpenDataFolder(object? sender, RoutedEventArgs e)
         => OpenInExplorer(SettingsService.DataDirectory);
+
+    // ==================== 页面滑动入场（自己补间） ====================
+
+    private DispatcherTimer? _pageAnimTimer;
+
+    /// <summary>
+    /// 页面滑动入场：照 Fluent 的 SlideNavigationTransition（FromBottom，只滑不淡）。
+    /// ★ 不用 Avalonia 的 Transition / 关键帧 Animation —— 实测两条路都不播
+    ///   （Transition 挂在 ScrollViewer 上写 "TranslateTransform.Y" 无效；挂在 TranslateTransform 上写 "Y"
+    ///    在窗口里也不触发；关键帧动 RenderTransform 更是直接抛异常把窗口搞崩）。
+    ///   这里自己按 16ms 步进补间，确定性最高，也最省（纯位移，不重排不重绘）。
+    /// </summary>
+    private void PlayPageEntrance()
+    {
+        if (PageScroll.RenderTransform is not TranslateTransform shift)
+            return;
+
+        _pageAnimTimer?.Stop();
+
+        const double from = 28;      // 从下方 28 滑入
+        const int durationMs = 320;  // Fluent 标准时长
+
+        shift.Y = from;
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
+        _pageAnimTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+        _pageAnimTimer.Tick += (_, _) =>
+        {
+            var t = Math.Clamp(sw.Elapsed.TotalMilliseconds / durationMs, 0, 1);
+            var eased = 1 - Math.Pow(1 - t, 3);   // 减速曲线（近似 Fluent 的 CubicEaseOut）
+            shift.Y = from * (1 - eased);
+
+            if (t >= 1)
+            {
+                shift.Y = 0;
+                _pageAnimTimer?.Stop();
+            }
+        };
+        _pageAnimTimer.Start();
+    }
+
+    /// <summary>自检用：把当前窗口渲染成 PNG（验证动画是否真的在播）。</summary>
+    private void SaveShot(string fileName)
+    {
+        try
+        {
+            var w = (int)Math.Ceiling(Bounds.Width);
+            var h = (int)Math.Ceiling(Bounds.Height);
+            if (w <= 0 || h <= 0)
+                return;
+
+            var target = new Avalonia.Media.Imaging.RenderTargetBitmap(
+                new Avalonia.PixelSize(w, h), new Avalonia.Vector(96, 96));
+            target.Render(this);
+            target.Save(System.IO.Path.Combine(AppContext.BaseDirectory, fileName));
+            target.Dispose();
+        }
+        catch (Exception ex)
+        {
+            LogCrashSafe(ex);
+        }
+    }
+
+    private static void LogCrashSafe(Exception ex)
+    {
+        try
+        {
+            var dir = System.IO.Path.Combine(SettingsService.DataDirectory, "Logs");
+            System.IO.Directory.CreateDirectory(dir);
+            System.IO.File.AppendAllText(System.IO.Path.Combine(dir, "crash.log"),
+                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] SaveShot: {ex}{Environment.NewLine}");
+        }
+        catch
+        {
+            // 忽略
+        }
+    }
 
     /// <summary>顶栏「⋯」菜单里的「NEX Intelligence…」：打开 NEX 对话框。</summary>
     private void OnOpenNexChat(object? sender, RoutedEventArgs e) => App.OpenNexChat();

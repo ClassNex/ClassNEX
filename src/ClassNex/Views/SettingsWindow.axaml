@@ -270,19 +270,22 @@
                 <TextBlock x:Name="PageTitleText" Grid.Row="0" FontSize="28"
                            Margin="32,24,32,0" HorizontalAlignment="Left"/>
                 <ScrollViewer x:Name="PageScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                    <!-- 页面滑动入场：位移用 TranslateTransform + DoubleTransition（Avalonia 支持且流畅） -->
+                    <!-- 页面滑动入场（Fluent 的 SlideNavigationTransition / FromBottom）：
+                         ★ 补间必须挂在 TranslateTransform 自己身上、属性写 Y —— 挂在 ScrollViewer 上写
+                           "TranslateTransform.Y" 是无效的（Avalonia 只认该对象自己的属性），实测动画完全不播。 -->
                     <ScrollViewer.RenderTransform>
-                        <TranslateTransform/>
+                        <TranslateTransform>
+                            <TranslateTransform.Transitions>
+                                <Transitions>
+                                    <DoubleTransition Property="Y" Duration="0:0:0.32">
+                                        <DoubleTransition.Easing>
+                                            <CubicEaseOut/>
+                                        </DoubleTransition.Easing>
+                                    </DoubleTransition>
+                                </Transitions>
+                            </TranslateTransform.Transitions>
+                        </TranslateTransform>
                     </ScrollViewer.RenderTransform>
-                    <ScrollViewer.Transitions>
-                        <Transitions>
-                            <DoubleTransition Property="TranslateTransform.Y" Duration="0:0:0.32">
-                                <DoubleTransition.Easing>
-                                    <CubicEaseOut/>
-                                </DoubleTransition.Easing>
-                            </DoubleTransition>
-                        </Transitions>
-                    </ScrollViewer.Transitions>
                     <StackPanel Margin="32,12,32,24" Spacing="12" MaxWidth="880" HorizontalAlignment="Left">
 
                         <!-- ==================== 主页（照 FluentUI Gallery 首页：横幅 + 分组卡片） ==================== -->
