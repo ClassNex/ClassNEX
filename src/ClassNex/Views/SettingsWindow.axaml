@@ -26,7 +26,7 @@
         <Grid.Styles>
             <Style Selector="ScrollViewer.anim">
                 <Style.Animations>
-                    <Animation Duration="0:0:0.25" FillMode="Both" Easing="0.1,0.9,0.2,1">
+                    <Animation Duration="0:0:0.2" FillMode="Both">
                         <KeyFrame Cue="0%">
                             <Setter Property="Opacity" Value="0"/>
                         </KeyFrame>
@@ -269,18 +269,6 @@
                 <TextBlock x:Name="PageTitleText" Grid.Row="0" FontSize="28"
                            Margin="32,24,32,0" HorizontalAlignment="Left"/>
                 <ScrollViewer x:Name="PageScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                    <ScrollViewer.RenderTransform>
-                        <TranslateTransform/>
-                    </ScrollViewer.RenderTransform>
-                    <ScrollViewer.Transitions>
-                        <Transitions>
-                            <DoubleTransition Property="TranslateTransform.Y" Duration="0:0:0.25">
-                                <DoubleTransition.Easing>
-                                    <CubicEaseOut/>
-                                </DoubleTransition.Easing>
-                            </DoubleTransition>
-                        </Transitions>
-                    </ScrollViewer.Transitions>
                     <StackPanel Margin="32,12,32,24" Spacing="12" MaxWidth="880" HorizontalAlignment="Left">
 
                         <!-- ==================== 主页（照 FluentUI Gallery 首页：横幅 + 分组卡片） ==================== -->

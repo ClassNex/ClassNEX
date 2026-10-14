@@ -16,7 +16,37 @@
     <!-- 沉浸式标题栏 + 云母（项目规则：所有页面都要） -->
 
     <Window.Styles>
-        <!-- 用户消息气泡 -->
+        <!-- ============ 文字：全部走 Fluent 主题资源（DynamicResource），
+             不要在代码里用 FindResource —— 那个拿到的是浅色主题画刷，深色下会变成黑字（实测踩过）。 ============ -->
+        <Style Selector="SelectableTextBlock.ChatText">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="MaxWidth" Value="720"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+        </Style>
+        <Style Selector="SelectableTextBlock.Hint">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="MaxWidth" Value="720"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.ToolTitle">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.ToolDetail">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="MaxWidth" Value="660"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.ToolStatus">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="MaxWidth" Value="660"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
+        </Style>
+        <!-- 用户消息气泡：强调色底 + 反色文字（Fluent 的标准做法） -->
         <Style Selector="Border.UserBubble">
             <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
             <Setter Property="CornerRadius" Value="8"/>
@@ -24,11 +54,10 @@
             <Setter Property="MaxWidth" Value="620"/>
             <Setter Property="HorizontalAlignment" Value="Right"/>
         </Style>
-        <!-- 助手消息：无背景，靠左侧 -->
-        <Style Selector="SelectableTextBlock.ChatText">
+        <Style Selector="Border.UserBubble SelectableTextBlock">
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="MaxWidth" Value="720"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}"/>
         </Style>
         <!-- 工具卡片 -->
         <Style Selector="Border.ToolCard">
@@ -41,15 +70,20 @@
             <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}"/>
         </Style>
-        <Style Selector="Button.Primary">
-            <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="CornerRadius" Value="4"/>
-            <Setter Property="Padding" Value="18,8"/>
+        <!-- 提示条（普通 / 警告） -->
+        <Style Selector="Border.Notice">
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="14,10"/>
+            <Setter Property="MaxWidth" Value="720"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}"/>
         </Style>
-        <Style Selector="Button.Primary:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource AccentFillColorSecondaryBrush}"/>
+        <Style Selector="Border.NoticeWarn">
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="14,10"/>
+            <Setter Property="MaxWidth" Value="720"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="Background" Value="{DynamicResource SystemFillColorCautionBackgroundBrush}"/>
         </Style>
         <!-- 思考块（折叠） -->
         <Style Selector="Button.ThinkingHeader">
@@ -59,6 +93,16 @@
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
             <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.Primary">
+            <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="18,8"/>
+        </Style>
+        <Style Selector="Button.Primary:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentFillColorSecondaryBrush}"/>
         </Style>
     </Window.Styles>
 

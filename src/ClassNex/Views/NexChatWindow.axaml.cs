@@ -169,15 +169,11 @@ public partial class NexChatWindow : AppWindow
 
     private void AddUserBubble(string text)
     {
+        // 配色交给 XAML 样式（Border.UserBubble = 强调色底 + 反色字）。
+        // 代码里不再 FindResource：它返回的是浅色主题画刷，深色下会变成黑字（实测踩过）。
         var bubble = new Border
         {
-            Child = new SelectableTextBlock
-            {
-                Text = text,
-                TextWrapping = TextWrapping.Wrap,
-                FontSize = 14,
-                Foreground = (IBrush?)this.FindResource("TextOnAccentFillColorPrimaryBrush") ?? Brushes.White,
-            },
+            Child = new SelectableTextBlock { Text = text },
         };
         bubble.Classes.Add("UserBubble");
 
@@ -196,13 +192,10 @@ public partial class NexChatWindow : AppWindow
 
         _thinkingText = new SelectableTextBlock
         {
-            FontSize = 13,
-            TextWrapping = TextWrapping.Wrap,
-            MaxWidth = 720,
             IsVisible = false,
-            Foreground = (IBrush?)this.FindResource("TextFillColorSecondaryBrush") ?? Brushes.Gray,
             Margin = new Thickness(0, 4, 0, 0),
         };
+        _thinkingText.Classes.Add("Hint");   // 次要色（走主题资源，不要在代码里取画刷）
 
         _thinkingToggle = new Button { Content = "正在思考…", IsVisible = false };
         _thinkingToggle.Classes.Add("ThinkingHeader");
@@ -272,12 +265,8 @@ public partial class NexChatWindow : AppWindow
             MaxWidth = 660,
             Foreground = (IBrush?)this.FindResource("TextFillColorSecondaryBrush") ?? Brushes.Gray,
         };
-        var status = new TextBlock
-        {
-            Text = "执行中…",
-            FontSize = 12,
-            Foreground = (IBrush?)this.FindResource("TextFillColorSecondaryBrush") ?? Brushes.Gray,
-        };
+        var status = new TextBlock { Text = "执行中…" };
+        status.Classes.Add("ToolStatus");
 
         var card = new Border
         {
@@ -303,9 +292,11 @@ public partial class NexChatWindow : AppWindow
         if (panel.Children[2] is TextBlock status)
         {
             status.Text = (ok ? "已完成 · " : "未执行 · ") + Summarize(result);
-            status.Foreground = ok
-                ? (IBrush?)this.FindResource("TextFillColorSecondaryBrush") ?? Brushes.Gray
-                : new SolidColorBrush(Color.FromRgb(0xC4, 0x2B, 0x1C));
+            // 成功/失败都用 ToolStatus 样式（次要色）；失败时叠一个主题的严重色
+            status.Classes.Add("ToolStatus");
+            if (!ok)
+                status.Foreground = (IBrush?)this.FindResource("SystemFillColorCriticalBrush")
+                                    ?? new SolidColorBrush(Color.FromRgb(0xC4, 0x2B, 0x1C));
         }
 
         ScrollToEnd();
@@ -313,23 +304,15 @@ public partial class NexChatWindow : AppWindow
 
     private void AddNotice(string text, bool isWarning)
     {
+        // 背景色交给 XAML 样式（Notice = 卡片色 / NoticeWarn = 警告色），不在代码里取画刷
         var bar = new Border
         {
-            CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(14, 10),
-            MaxWidth = 720,
-            HorizontalAlignment = HorizontalAlignment.Left,
-            Background = (IBrush?)this.FindResource(
-                isWarning ? "SystemFillColorCautionBackgroundBrush" : "CardBackgroundFillColorDefaultBrush")
-                ?? new SolidColorBrush(Color.FromArgb(0x20, 0x80, 0x80, 0x80)),
-            Child = new SelectableTextBlock
-            {
-                Text = text,
-                FontSize = 13,
-                TextWrapping = TextWrapping.Wrap,
-                MaxWidth = 690,
-            },
+            Child = new SelectableTextBlock { Text = text },
         };
+        bar.Classes.Add(isWarning ? "NoticeWarn" : "Notice");
+
+        if (bar.Child is SelectableTextBlock body)
+            body.Classes.Add("Hint");
 
         MessagePanel.Children.Add(bar);
         ScrollToEnd();
