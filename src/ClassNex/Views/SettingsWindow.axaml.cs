@@ -1116,42 +1116,57 @@ public partial class SettingsWindow : AppWindow
 
     // ==================== 页面滑动入场（自己补间） ====================
 
-    private DispatcherTimer? _pageAnimTimer;
-
     /// <summary>
     /// 页面滑动入场：照 Fluent 的 SlideNavigationTransition（FromBottom，只滑不淡）。
-    /// ★ 不用 Avalonia 的 Transition / 关键帧 Animation —— 实测两条路都不播
-    ///   （Transition 挂在 ScrollViewer 上写 "TranslateTransform.Y" 无效；挂在 TranslateTransform 上写 "Y"
-    ///    在窗口里也不触发；关键帧动 RenderTransform 更是直接抛异常把窗口搞崩）。
-    ///   这里自己按 16ms 步进补间，确定性最高，也最省（纯位移，不重排不重绘）。
+    /// ★ 逐帧动画必须挂在**渲染帧**上，所以用 TopLevel.RequestAnimationFrame（vsync 驱动）：
+    ///   · DispatcherTimer 16ms —— 跟刷新率不对齐，看着一帧一帧的（用户反馈过）；
+    ///   · XAML 里挂 Transition —— 实测不播；
+    ///   · Animation 跑在 TranslateTransform 上 —— TransformAnimator 要求目标是 Visual，抛 InvalidCastException；
+    ///   · 关键帧里动 RenderTransform —— 报 No animator registered，直接崩窗口。
+    ///   所以：RequestAnimationFrame 每帧把 Y 从 28 补到 0（320ms，减速曲线），纯位移不重排不重绘。
     /// </summary>
     private void PlayPageEntrance()
     {
         if (PageScroll.RenderTransform is not TranslateTransform shift)
             return;
 
-        _pageAnimTimer?.Stop();
-
-        const double from = 28;      // 从下方 28 滑入
-        const int durationMs = 320;  // Fluent 标准时长
-
-        shift.Y = from;
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-
-        _pageAnimTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
-        _pageAnimTimer.Tick += (_, _) =>
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel is null)
         {
-            var t = Math.Clamp(sw.Elapsed.TotalMilliseconds / durationMs, 0, 1);
-            var eased = 1 - Math.Pow(1 - t, 3);   // 减速曲线（近似 Fluent 的 CubicEaseOut）
-            shift.Y = from * (1 - eased);
+            shift.Y = 0;
+            return;
+        }
 
-            if (t >= 1)
-            {
-                shift.Y = 0;
-                _pageAnimTimer?.Stop();
-            }
-        };
-        _pageAnimTimer.Start();
+        const double from = 28;
+        const double durationMs = 320;
+
+        var started = DateTime.UtcNow;
+        shift.Y = from;
+
+        void Step(TimeSpan _)
+        {
+            var elapsed = (DateTime.UtcNow - started).TotalMilliseconds;
+            var t = Math.Clamp(elapsed / durationMs, 0, 1);
+            var eased = 1 - Math.Pow(1 - t, 3);   // 减速曲线（近似 Fluent 的 CubicEaseOut）
+
+            if (PageScroll.RenderTransform is TranslateTransform s)
+                s.Y = from * (1 - eased);
+
+            if (t < 1)
+                topLevel.RequestAnimationFrame(Step);   // 下一帧继续
+            else if (PageScroll.RenderTransform is TranslateTransform done)
+                done.Y = 0;
+        }
+
+        topLevel.RequestAnimationFrame(Step);
+
+        // 兜底：窗口不产生渲染帧时（离屏自检、最小化）RequestAnimationFrame 不会回调，
+        // 这条定时器保证页面最终一定停在正确位置，绝不留在偏移状态。
+        DispatcherTimer.RunOnce(() =>
+        {
+            if (PageScroll.RenderTransform is TranslateTransform s && Math.Abs(s.Y) > 0.5)
+                s.Y = 0;
+        }, TimeSpan.FromMilliseconds(600));
     }
 
     /// <summary>自检用：把当前窗口渲染成 PNG（验证动画是否真的在播）。</summary>
