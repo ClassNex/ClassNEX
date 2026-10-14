@@ -17,8 +17,8 @@ public partial class TrayMenuWindow : Window
         Deactivated += (_, _) => Close();
     }
 
-    /// <summary>菜单项：图标 + 文字 + 点击动作。</summary>
-    public sealed record Item(string Glyph, string Header, Action Action);
+    /// <summary>菜单项：图标 + 文字 + 点击动作。IconFont 留空用 Segoe MDL2。</summary>
+    public sealed record Item(string Glyph, string Header, Action Action, string? IconFont = null);
 
     /// <summary>分隔线标记。</summary>
     public static Item Separator { get; } = new("", "-", () => { });
@@ -51,7 +51,7 @@ public partial class TrayMenuWindow : Window
                     new AvaloniaFluentUI.Controls.FontIcon
                     {
                         Glyph = item.Glyph,
-                        FontFamily = new FontFamily("Segoe MDL2 Assets"),
+                        FontFamily = new FontFamily(item.IconFont ?? "Segoe MDL2 Assets"),
                         FontSize = 14,
                         Width = 16,
                         VerticalAlignment = VerticalAlignment.Center,

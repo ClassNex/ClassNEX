@@ -202,7 +202,7 @@ public sealed class NexVoiceCoordinator : IDisposable
         }
         finally
         {
-            NexChime.PlayDone();
+            // 用户要求：AI 相关流程里只有唤醒那一声（用户 wav），回答完不再播别的提示音
             Dispatcher.UIThread.Post(BeginFollowUp);
         }
     }

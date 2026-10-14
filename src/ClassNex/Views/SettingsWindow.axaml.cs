@@ -1130,20 +1130,17 @@ public partial class SettingsWindow : AppWindow
         if (PageScroll.RenderTransform is not TranslateTransform shift)
             return;
 
-        var topLevel = TopLevel.GetTopLevel(this);
-        if (topLevel is null)
-        {
-            shift.Y = 0;
-            return;
-        }
-
         const double from = 28;
         const double durationMs = 320;
 
         var started = DateTime.UtcNow;
         shift.Y = from;
 
-        void Step(TimeSpan _)
+        // 纯 DispatcherTimer 8ms 步进（这一版实测量出过 26px 位移、确认在播）。
+        // RequestAnimationFrame 依赖渲染帧：离屏/最小化时不回调，还会因 TopLevel 判空提前退出
+        // —— 所以这里不依赖它，只用定时器，保证任何环境都动。
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(8) };
+        timer.Tick += (_, _) =>
         {
             var elapsed = (DateTime.UtcNow - started).TotalMilliseconds;
             var t = Math.Clamp(elapsed / durationMs, 0, 1);
@@ -1152,21 +1149,22 @@ public partial class SettingsWindow : AppWindow
             if (PageScroll.RenderTransform is TranslateTransform s)
                 s.Y = from * (1 - eased);
 
-            if (t < 1)
-                topLevel.RequestAnimationFrame(Step);   // 下一帧继续
-            else if (PageScroll.RenderTransform is TranslateTransform done)
-                done.Y = 0;
-        }
+            if (t >= 1)
+            {
+                timer.Stop();
+                if (PageScroll.RenderTransform is TranslateTransform done)
+                    done.Y = 0;
+            }
+        };
+        timer.Start();
 
-        topLevel.RequestAnimationFrame(Step);
-
-        // 兜底：窗口不产生渲染帧时（离屏自检、最小化）RequestAnimationFrame 不会回调，
-        // 这条定时器保证页面最终一定停在正确位置，绝不留在偏移状态。
+        // 兜底：无论发生什么，动画时长结束后保证停在 0
         DispatcherTimer.RunOnce(() =>
         {
-            if (PageScroll.RenderTransform is TranslateTransform s && Math.Abs(s.Y) > 0.5)
+            timer.Stop();
+            if (PageScroll.RenderTransform is TranslateTransform s)
                 s.Y = 0;
-        }, TimeSpan.FromMilliseconds(600));
+        }, TimeSpan.FromMilliseconds(durationMs + 200));
     }
 
     /// <summary>自检用：把当前窗口渲染成 PNG（验证动画是否真的在播）。</summary>

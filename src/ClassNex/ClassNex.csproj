@@ -26,6 +26,8 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\icon.ico" />
+    <!-- 托盘图标（Fluent sparkle 白字多尺寸 ico） -->
+    <AvaloniaResource Include="Assets\TrayNex.ico" />
     <!-- Win11 默认账户头像（取自 C:\ProgramData\Microsoft\User Account Pictures\user.png） -->
     <AvaloniaResource Include="Assets\avatar.png" />
     <!-- 内置小米 MiSans 字体（免费商用授权，授权文件见 Assets\Fonts\LICENSE.txt） -->
