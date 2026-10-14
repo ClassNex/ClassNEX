@@ -23,10 +23,44 @@ public static class NexChime
     private static byte[]? _cached;
     private static GCHandle _pinned;
 
-    /// <summary>播放唤醒提示音（合成一次后缓存）。</summary>
+    private static byte[]? _userWave;
+
+    /// <summary>
+    /// 播放唤醒提示音：**优先用用户提供的 Assets\NexWake.wav**（跑马灯动画一起播）；
+    /// 读不到资源才退回代码合成的双音提示音（兜底，保证不会没声音）。
+    /// </summary>
     public static void PlayWake()
     {
+        try
+        {
+            var data = LoadUserWave();
+            if (data is not null)
+            {
+                Play(data, cached: true);
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            NexVoiceLog.Write("读取唤醒音失败，改用合成音：" + ex.Message);
+        }
+
         Play(BuildWake(), cached: true);
+    }
+
+    /// <summary>读一次 Assets\NexWake.wav 并缓存（AvaloniaResource，avares URI）。</summary>
+    private static byte[]? LoadUserWave()
+    {
+        if (_userWave is not null)
+            return _userWave;
+
+        using var stream = Avalonia.Platform.AssetLoader.Open(
+            new Uri("avares://ClassNex/Assets/NexWake.wav"));
+        using var ms = new MemoryStream();
+        stream.CopyTo(ms);
+        _userWave = ms.ToArray();
+        NexVoiceLog.Write($"唤醒音已加载（用户 wav）：{_userWave.Length} 字节");
+        return _userWave;
     }
 
     /// <summary>播放「听到了/结束」的短音。</summary>

@@ -160,6 +160,12 @@ public partial class App : Application
                     }, DispatcherPriority.Background);
                 }
 
+                // CLASSNEX_VERIFY_CHIME=1：直接播一次唤醒音（验证用户 wav 有没有加载/发声）
+                if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_CHIME") == "1")
+                {
+                    DispatcherTimer.RunOnce(() => Services.NexChime.PlayWake(), TimeSpan.FromSeconds(2));
+                }
+
                 // CLASSNEX_VERIFY_WAKE=<问题>：模拟一次语音唤醒（提示音 + 跑马灯 + 浮窗翻页 + 提问）
                 var wakeProbe = Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_WAKE");
                 if (!string.IsNullOrWhiteSpace(wakeProbe))
