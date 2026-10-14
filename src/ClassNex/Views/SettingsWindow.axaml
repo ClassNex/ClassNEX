@@ -18,6 +18,25 @@
          顶栏(48) + NavigationView(PaneHeader 账户块 + MenuItems 图标) + 页面标题行 + 页面。
          每个设置项 = SettingsExpander(IconSource + Header + Description + Footer 常显控件)。 -->
     <Grid RowDefinitions="48,*">
+        <!-- 页面入场动画：照 CI 的做法（Views/WelcomePages/WelcomePage.axaml）——
+             根节点初始 Opacity=0，导航时由代码加上 anim 类触发关键帧动画；
+             动效本身取 Fluent 的入场规范：淡入 + 轻微上移（14px → 0），250ms 减速曲线。 -->
+        <Grid.Styles>
+            <Style Selector="ScrollViewer.anim">
+                <Style.Animations>
+                    <Animation Duration="0:0:0.25" FillMode="Both" Easing="0.1,0.9,0.2,1">
+                        <KeyFrame Cue="0%">
+                            <Setter Property="Opacity" Value="0"/>
+                            <Setter Property="RenderTransform" Value="translate(0px, 14px)"/>
+                        </KeyFrame>
+                        <KeyFrame Cue="100%">
+                            <Setter Property="Opacity" Value="1"/>
+                            <Setter Property="RenderTransform" Value="translate(0px, 0px)"/>
+                        </KeyFrame>
+                    </Animation>
+                </Style.Animations>
+            </Style>
+        </Grid.Styles>
         <!-- ============ 顶栏（CI：Border Height=48；不要下面那条浅线） ============ -->
         <Border Grid.Row="0" Height="48" BorderThickness="0">
             <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="14,0,0,0">
@@ -72,7 +91,8 @@
                                     </MenuItem>
                                 </MenuItem>
                                 <Separator/>
-                                <MenuItem Header="日志…" Click="OnOpenLogFile">
+                                <MenuItem Header="NEX Intelligence…" Click="OnOpenNexChat"/>
+                        <MenuItem Header="日志…" Click="OnOpenLogFile">
                                     <MenuItem.Icon><ui:FontIcon Glyph="&#xE9D9;"/></MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="导出诊断数据…" Click="OnExportDiagnostics">
@@ -248,7 +268,7 @@
             <Grid RowDefinitions="Auto,*">
                 <TextBlock x:Name="PageTitleText" Grid.Row="0" FontSize="28"
                            Margin="32,24,32,0" HorizontalAlignment="Left"/>
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <ScrollViewer x:Name="PageScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="32,12,32,24" Spacing="12" MaxWidth="880" HorizontalAlignment="Left">
 
                         <!-- ==================== 主页（照 FluentUI Gallery 首页：横幅 + 分组卡片） ==================== -->

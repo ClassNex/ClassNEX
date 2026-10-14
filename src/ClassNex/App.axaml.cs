@@ -635,6 +635,9 @@ public partial class App : Application
             new Views.TrayMenuWindow.Item("\uE71D", "编辑主界面…", () => OpenSettings("interface")),
             new Views.TrayMenuWindow.Item("\uE713", "应用设置…", () => OpenSettings()),
             Views.TrayMenuWindow.Separator,
+            // 和「编辑档案…」并列：NEX 对话框也是独立窗口，从菜单直接打开
+            new Views.TrayMenuWindow.Item("\uE734", "NEX Intelligence…", OpenNexChat),
+            Views.TrayMenuWindow.Separator,
             new Views.TrayMenuWindow.Item("\uE777", "重启 ClassNEX", RestartApp),
             new Views.TrayMenuWindow.Item("\uE7E8", "退出", ExitApp),
         });

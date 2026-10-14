@@ -671,6 +671,21 @@ public partial class SettingsWindow : AppWindow
         PageDebug.IsVisible = index == 8;
         PageAccount.IsVisible = false;   // 账户页只从账户卡进入
 
+        // 页面入场动画：照 CI 的做法（根节点初始 Opacity=0，导航时加 anim 类触发关键帧动画），
+        // 动效取 Fluent 入场规范（淡入 + 轻微上移 14px，250ms 减速曲线）。
+        // 先移除再加，保证每次切页都重新播放。
+        PageScroll.Classes.Remove("anim");
+        _ = Dispatcher.UIThread.InvokeAsync(
+            () => PageScroll.Classes.Add("anim"),
+            DispatcherPriority.Background);
+
+        // 兜底：万一动画被打断，保证页面最终一定是可见状态（不能出现空白页）
+        DispatcherTimer.RunOnce(() =>
+        {
+            PageScroll.Opacity = 1;
+            PageScroll.RenderTransform = null;
+        }, TimeSpan.FromMilliseconds(400));
+
         // 页面标题行（对照 CI 的 TitleContainer：页面名由外壳统一显示）
         PageTitleText.Text = PageNames[Math.Clamp(index, 0, PageNames.Length - 1)];
 
@@ -1097,6 +1112,9 @@ public partial class SettingsWindow : AppWindow
 
     private void OnOpenDataFolder(object? sender, RoutedEventArgs e)
         => OpenInExplorer(SettingsService.DataDirectory);
+
+    /// <summary>顶栏「⋯」菜单里的「NEX Intelligence…」：打开 NEX 对话框。</summary>
+    private void OnOpenNexChat(object? sender, RoutedEventArgs e) => App.OpenNexChat();
 
     private void OnOpenLogsFolder(object? sender, RoutedEventArgs e)
     {
