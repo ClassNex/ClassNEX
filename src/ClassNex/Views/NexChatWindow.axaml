@@ -112,7 +112,9 @@
         <Border Grid.Row="0" Height="48" Padding="14,0" BorderThickness="0">
             <Grid ColumnDefinitions="Auto,*,Auto,152">
                 <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                    <ui:FontIcon Glyph="&#xE734;" FontFamily="Segoe MDL2 Assets" FontSize="16"/>
+                    <!-- NEX 的 Sparkle 图标（用户指定） -->
+                    <Image Source="avares://ClassNex/Assets/NexAi.png" Width="18" Height="18"
+                           VerticalAlignment="Center"/>
                     <TextBlock Text="NEX Intelligence" FontSize="14" VerticalAlignment="Center"/>
                 </StackPanel>
 

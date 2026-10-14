@@ -34,6 +34,8 @@
     <AvaloniaResource Include="Assets\Banners\*.png" />
     <!-- 首次启动向导（OOBE）插图 -->
     <AvaloniaResource Include="Assets\Oobe\*.png" />
+    <!-- NEX 的 Sparkle 图标 -->
+    <AvaloniaResource Include="Assets\NexAi.png" />
   </ItemGroup>
 
   <ItemGroup>

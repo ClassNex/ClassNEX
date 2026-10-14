@@ -671,16 +671,20 @@ public partial class SettingsWindow : AppWindow
         PageDebug.IsVisible = index == 8;
         PageAccount.IsVisible = false;   // 账户页只从账户卡进入
 
-        // 页面入场动画：照 CI 的做法（根节点初始 Opacity=0，导航时加 anim 类触发关键帧动画）。
-        // ★ 只做**纯淡入**，不做位移：位移会让整个滚动内容每帧重排/重绘，实测非常卡（用户反馈）。
-        //   纯 Opacity 是合成器层面的操作，200ms 下来是顺的。先移除再加，保证每次都重播。
-        PageScroll.Classes.Remove("anim");
-        _ = Dispatcher.UIThread.InvokeAsync(
-            () => PageScroll.Classes.Add("anim"),
-            DispatcherPriority.Background);
+        // 页面入场动画：照 Fluent 的页面导航规范做**滑动**（SlideNavigationTransition，只滑不淡，
+        // 用户明确要求不要淡出）。位移走 TranslateTransform 的 DoubleTransition —— 纯合成器操作，
+        // 不重排不重绘，所以不卡；而 Opacity 动画会让整页每帧离屏合成，实测很卡，故不用。
+        if (PageScroll.RenderTransform is TranslateTransform shift)
+        {
+            shift.Y = 28;   // 从下方 28 滑入（Fluent 的 FromBottom 效果）
 
-        // 兜底：万一动画被打断，保证页面最终可见（不能出现空白页）
-        DispatcherTimer.RunOnce(() => PageScroll.Opacity = 1, TimeSpan.FromMilliseconds(400));
+            _ = Dispatcher.UIThread.InvokeAsync(
+                () => shift.Y = 0,
+                DispatcherPriority.Background);
+
+            // 兜底：万一补间被打断，保证停在正确位置
+            DispatcherTimer.RunOnce(() => shift.Y = 0, TimeSpan.FromMilliseconds(500));
+        }
 
         // 页面标题行（对照 CI 的 TitleContainer：页面名由外壳统一显示）
         PageTitleText.Text = PageNames[Math.Clamp(index, 0, PageNames.Length - 1)];

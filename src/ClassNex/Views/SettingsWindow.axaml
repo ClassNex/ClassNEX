@@ -18,17 +18,17 @@
          顶栏(48) + NavigationView(PaneHeader 账户块 + MenuItems 图标) + 页面标题行 + 页面。
          每个设置项 = SettingsExpander(IconSource + Header + Description + Footer 常显控件)。 -->
     <Grid RowDefinitions="48,*">
-        <!-- 页面入场动画：照 CI 的做法（Views/WelcomePages/WelcomePage.axaml）——
-             根节点初始 Opacity=0，导航时由代码加上 anim 类触发关键帧动画，仅淡入。
-             ⚠️ 关键帧里**不能**动 RenderTransform：Avalonia 没有它的动画器，
-                会直接抛 "No animator registered for the property RenderTransform" 把窗口搞崩。
-                位移改用 TranslateTransform + DoubleTransition（这条 Avalonia 支持）。 -->
+        <!-- 页面入场动画：照 Fluent 的页面导航规范 —— SlideNavigationTransition（只滑不淡）。
+             ⚠️ 两条硬约束（都实测踩过）：
+               ① 关键帧里不能动 RenderTransform（Avalonia 无该属性动画器，直接抛异常把窗口搞崩）；
+               ② 不能对整页做 Opacity 动画（大子树每帧离屏合成，非常卡）。
+             所以：用 TranslateTransform + DoubleTransition 做纯位移（合成器层面，不重排不重绘）。 -->
         <Grid.Styles>
             <Style Selector="ScrollViewer.anim">
                 <Style.Animations>
-                    <Animation Duration="0:0:0.2" FillMode="Both">
+                    <Animation Duration="0:0:0.32" FillMode="Both" Easing="0.1,0.9,0.2,1">
                         <KeyFrame Cue="0%">
-                            <Setter Property="Opacity" Value="0"/>
+                            <Setter Property="Opacity" Value="1"/>
                         </KeyFrame>
                         <KeyFrame Cue="100%">
                             <Setter Property="Opacity" Value="1"/>
@@ -244,7 +244,8 @@
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="NEX Intelligence">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE734;" FontSize="16"/>
+                        <!-- NEX 的 Sparkle 图标（用户指定的那张） -->
+                        <ui:BitmapIconSource UriSource="avares://ClassNex/Assets/NexAi.png"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="提醒">
@@ -269,6 +270,19 @@
                 <TextBlock x:Name="PageTitleText" Grid.Row="0" FontSize="28"
                            Margin="32,24,32,0" HorizontalAlignment="Left"/>
                 <ScrollViewer x:Name="PageScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <!-- 页面滑动入场：位移用 TranslateTransform + DoubleTransition（Avalonia 支持且流畅） -->
+                    <ScrollViewer.RenderTransform>
+                        <TranslateTransform/>
+                    </ScrollViewer.RenderTransform>
+                    <ScrollViewer.Transitions>
+                        <Transitions>
+                            <DoubleTransition Property="TranslateTransform.Y" Duration="0:0:0.32">
+                                <DoubleTransition.Easing>
+                                    <CubicEaseOut/>
+                                </DoubleTransition.Easing>
+                            </DoubleTransition>
+                        </Transitions>
+                    </ScrollViewer.Transitions>
                     <StackPanel Margin="32,12,32,24" Spacing="12" MaxWidth="880" HorizontalAlignment="Left">
 
                         <!-- ==================== 主页（照 FluentUI Gallery 首页：横幅 + 分组卡片） ==================== -->
