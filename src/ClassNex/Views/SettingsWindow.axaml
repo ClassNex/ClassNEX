@@ -244,13 +244,14 @@
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="NEX Intelligence">
                     <ui:NavigationViewItem.IconSource>
-                        <!-- 官方 Fluent 图标 ic_fluent_sparkle_20_regular（U+F0F7）。
-                             ★ 字体必须写 avares:// 目录式引用：裸族名只查系统字体、命不中内嵌字体，
-                               那样会回退成别的字形，看着完全不是这个图标（踩过）。
-                             ★ 字号 22：按**墨迹面积（视觉重量）**对齐 —— PIL 实测其他导航项 MDL2 @16px
-                               平均墨迹 75px²，本字体 sparkle 在 22px 时 76px²（+2%），20px 只有 68px²（-9% 偏小），
-                               24px 起 90px²（+20% 偏大）。这是唯一看起来和其他图标一样大的值。 -->
-                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xF0F7;" FontSize="22"/>
+                        <!-- 自己画的 sparkle 矢量路径（两个四角星）：PathIconSource 会像 MDL2 字形一样
+                             撑满图标框并按前景色渲染，大小和其他导航项一致、深浅色都正确。
+                             之前用字体字形，NavigationView 的固定图标框会把稀疏的 sparkle 缩进去，改字号没用（踩过）。 -->
+                        <ui:PathIconSource>
+                            <ui:PathIconSource.Data>
+                                <StreamGeometry>M45,3 L53,35 L87,45 L53,55 L45,87 L37,55 L3,45 L37,35 Z M82,66 L86,78 L98,82 L86,86 L82,98 L78,86 L66,82 L78,78 Z</StreamGeometry>
+                            </ui:PathIconSource.Data>
+                        </ui:PathIconSource>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="提醒">
