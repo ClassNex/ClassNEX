@@ -10,32 +10,118 @@
         ShowInTaskbar="False"
         ShowActivated="False"
         CanResize="False">
-    <!-- 跑马灯：四条独立光带（上/下/左/右），
-         入场时按「从唤醒条那一侧，上下两条边一起向前推进，最后在对侧合拢」的绘制动画
-         （用户给的示意图：上下两条蓝线由触发侧向对侧延伸）。之后四条带子上的彩虹+彗星头持续流动。 -->
+    <!-- 跑马灯：四条独立光带。
+         性能要点（之前卡顿的根因，已去掉）：
+           ① 不再用 BlurEffect（全屏模糊极贵）——改用 OpacityMask 的渐变做柔边，视觉接近、开销几乎为零；
+           ② 入场不再改 Width/Height（会触发重排）——改用 RenderTransform 的缩放（合成器层面）。
+         出场顺序按用户要求：先上下（红箭头），再左右（蓝箭头）。 -->
     <Grid x:Name="Root">
-        <Border x:Name="TopStrip" Height="16" VerticalAlignment="Top" HorizontalAlignment="Right" Width="0">
-            <Border.Effect>
-                <BlurEffect Radius="26"/>
-            </Border.Effect>
-        </Border>
+        <!-- ===== 上 ===== -->
+        <Grid x:Name="TopHost" Height="18" VerticalAlignment="Top" RenderTransformOrigin="1,0.5">
+            <Grid.RenderTransform>
+                <ScaleTransform ScaleX="0"/>
+            </Grid.RenderTransform>
+            <Border>
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%" SpreadMethod="Repeat">
+                        <GradientStop Offset="0.00" Color="#5A9CFF"/>
+                        <GradientStop Offset="0.08" Color="#EAFFFFFF"/>
+                        <GradientStop Offset="0.16" Color="#9B6BFF"/>
+                        <GradientStop Offset="0.38" Color="#FF6BC8"/>
+                        <GradientStop Offset="0.60" Color="#FFA85A"/>
+                        <GradientStop Offset="0.80" Color="#4FE3C8"/>
+                        <GradientStop Offset="1.00" Color="#5A9CFF"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Border.OpacityMask>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Offset="0" Color="#00000000"/>
+                        <GradientStop Offset="0.45" Color="#FFFFFFFF"/>
+                        <GradientStop Offset="1" Color="#00000000"/>
+                    </LinearGradientBrush>
+                </Border.OpacityMask>
+            </Border>
+        </Grid>
 
-        <Border x:Name="BottomStrip" Height="16" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="0">
-            <Border.Effect>
-                <BlurEffect Radius="26"/>
-            </Border.Effect>
-        </Border>
+        <!-- ===== 下 ===== -->
+        <Grid x:Name="BottomHost" Height="18" VerticalAlignment="Bottom" RenderTransformOrigin="1,0.5">
+            <Grid.RenderTransform>
+                <ScaleTransform ScaleX="0"/>
+            </Grid.RenderTransform>
+            <Border>
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%" SpreadMethod="Repeat">
+                        <GradientStop Offset="0.00" Color="#5A9CFF"/>
+                        <GradientStop Offset="0.08" Color="#EAFFFFFF"/>
+                        <GradientStop Offset="0.16" Color="#9B6BFF"/>
+                        <GradientStop Offset="0.38" Color="#FF6BC8"/>
+                        <GradientStop Offset="0.60" Color="#FFA85A"/>
+                        <GradientStop Offset="0.80" Color="#4FE3C8"/>
+                        <GradientStop Offset="1.00" Color="#5A9CFF"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Border.OpacityMask>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Offset="0" Color="#00000000"/>
+                        <GradientStop Offset="0.55" Color="#FFFFFFFF"/>
+                        <GradientStop Offset="1" Color="#00000000"/>
+                    </LinearGradientBrush>
+                </Border.OpacityMask>
+            </Border>
+        </Grid>
 
-        <Border x:Name="RightStrip" Width="16" VerticalAlignment="Stretch" HorizontalAlignment="Right" Opacity="0">
-            <Border.Effect>
-                <BlurEffect Radius="26"/>
-            </Border.Effect>
-        </Border>
+        <!-- ===== 左 ===== -->
+        <Grid x:Name="LeftHost" Width="18" HorizontalAlignment="Left" RenderTransformOrigin="0.5,0.5" Opacity="0">
+            <Grid.RenderTransform>
+                <ScaleTransform ScaleY="0"/>
+            </Grid.RenderTransform>
+            <Border>
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="50%,0%" EndPoint="50%,100%" SpreadMethod="Repeat">
+                        <GradientStop Offset="0.00" Color="#5A9CFF"/>
+                        <GradientStop Offset="0.08" Color="#EAFFFFFF"/>
+                        <GradientStop Offset="0.16" Color="#9B6BFF"/>
+                        <GradientStop Offset="0.38" Color="#FF6BC8"/>
+                        <GradientStop Offset="0.60" Color="#FFA85A"/>
+                        <GradientStop Offset="0.80" Color="#4FE3C8"/>
+                        <GradientStop Offset="1.00" Color="#5A9CFF"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Border.OpacityMask>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                        <GradientStop Offset="0" Color="#00000000"/>
+                        <GradientStop Offset="0.45" Color="#FFFFFFFF"/>
+                        <GradientStop Offset="1" Color="#00000000"/>
+                    </LinearGradientBrush>
+                </Border.OpacityMask>
+            </Border>
+        </Grid>
 
-        <Border x:Name="LeftStrip" Width="16" VerticalAlignment="Center" HorizontalAlignment="Left" Height="0">
-            <Border.Effect>
-                <BlurEffect Radius="26"/>
-            </Border.Effect>
-        </Border>
+        <!-- ===== 右 ===== -->
+        <Grid x:Name="RightHost" Width="18" HorizontalAlignment="Right" RenderTransformOrigin="0.5,0.5" Opacity="0">
+            <Grid.RenderTransform>
+                <ScaleTransform ScaleY="0"/>
+            </Grid.RenderTransform>
+            <Border>
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="50%,0%" EndPoint="50%,100%" SpreadMethod="Repeat">
+                        <GradientStop Offset="0.00" Color="#5A9CFF"/>
+                        <GradientStop Offset="0.08" Color="#EAFFFFFF"/>
+                        <GradientStop Offset="0.16" Color="#9B6BFF"/>
+                        <GradientStop Offset="0.38" Color="#FF6BC8"/>
+                        <GradientStop Offset="0.60" Color="#FFA85A"/>
+                        <GradientStop Offset="0.80" Color="#4FE3C8"/>
+                        <GradientStop Offset="1.00" Color="#5A9CFF"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Border.OpacityMask>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                        <GradientStop Offset="0" Color="#00000000"/>
+                        <GradientStop Offset="0.55" Color="#FFFFFFFF"/>
+                        <GradientStop Offset="1" Color="#00000000"/>
+                    </LinearGradientBrush>
+                </Border.OpacityMask>
+            </Border>
+        </Grid>
     </Grid>
 </Window>
