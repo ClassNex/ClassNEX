@@ -246,7 +246,9 @@
                      那个框会把字体字形缩放，sparkle 字形稀疏、被压得只有别人 65%，改 IconSource 字号无效）。
                      图标 = Fluent UI 图标库官方 Sparkle（U+F0F7，内嵌 FluentSystemIcons-Resizable）。 -->
                 <ui:NavigationViewItem>
-                    <StackPanel Orientation="Horizontal" Spacing="10">
+                    <!-- 左移 8px：实测其他项图标中心 x=61，本项内容渲染后图标中心 x=69（右偏 8px），
+                         负边距拉回对齐（CLASSNEX_VERIFY_ICONS 渲染量像素得的值） -->
+                    <StackPanel Orientation="Horizontal" Spacing="10" Margin="-8,0,0,0">
                         <ui:FontIcon Glyph="&#xF0F7;"
                                      FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable"
                                      FontSize="18"
