@@ -18,6 +18,18 @@ public partial class NexGlowWindow : Window
     private double _phase;
     private double _breath;
 
+    /// <summary>入场进度（0→1，从侧边展开 + 淡入）。</summary>
+    private double _intro = 1;
+
+    /// <summary>退场中（淡出后隐藏）。</summary>
+    private bool _closing;
+
+    /// <summary>从哪一侧吸出（true=左边缘，false=右边缘）。</summary>
+    public bool StartFromLeft { get; set; }
+
+    /// <summary>Root 上的缩放变换（XAML 里 RenderTransform 内的命名控件不生成字段，从这里取）。</summary>
+    private ScaleTransform RootScale => (ScaleTransform)Root.RenderTransform!;
+
     /// <summary>渐变的色标（沿光带流动）。</summary>
     private static readonly Color[] Palette =
     {
@@ -79,24 +91,68 @@ public partial class NexGlowWindow : Window
         return brush;
     }
 
-    /// <summary>开始播放跑马灯。</summary>
+    /// <summary>开始播放跑马灯：从侧边「吸出」—— 光带由屏幕边缘向全屏展开 + 淡入（约 0.55 秒，减速曲线）。</summary>
     public void Start()
     {
         _phase = 0;
         _breath = 0;
+        _closing = false;
+        _intro = 0;
+
+        // 入场起点：整体缩在触发那一侧的边缘（像从唤醒条里被吸出来）
+        Root.Opacity = 0;
+        RootScale.ScaleX = 0.55;
+        RootScale.ScaleY = 0.55;
+        Root.RenderTransformOrigin = new RelativePoint(
+            StartFromLeft ? 0 : 1, 0.5, RelativeUnit.Relative);
+
         Step();
         _timer.Start();
     }
 
-    /// <summary>停止并隐藏。</summary>
+    /// <summary>停止：先淡出（约 0.25 秒）再隐藏，不再瞬间消失。</summary>
     public void StopGlow()
     {
-        _timer.Stop();
-        Hide();
+        if (!_timer.IsEnabled)
+        {
+            Hide();
+            return;
+        }
+
+        _closing = true;
     }
 
     private void Step()
     {
+        // 退场：淡出，透明度到 0 后隐藏
+        if (_closing)
+        {
+            Root.Opacity -= 0.06;
+            if (Root.Opacity <= 0.02)
+            {
+                Root.Opacity = 0;
+                _closing = false;
+                _timer.Stop();
+                Hide();
+            }
+
+            return;
+        }
+
+        // 入场：从侧边展开 + 淡入（0.55 秒，cubic ease-out）
+        if (_intro < 1)
+        {
+            _intro += 1 / (0.55 * Fps);
+            if (_intro > 1)
+                _intro = 1;
+
+            var e = 1 - Math.Pow(1 - _intro, 3);
+            Root.Opacity = e;
+            var s = 0.55 + 0.45 * e;
+            RootScale.ScaleX = s;
+            RootScale.ScaleY = s;
+        }
+
         // 转速：用户反馈原来太快了 —— 从每帧 0.010 降到 0.0035（一圈约 4.8 秒）
         _phase += 0.0035;
         if (_phase > 1)

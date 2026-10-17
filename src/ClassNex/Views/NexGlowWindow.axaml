@@ -12,8 +12,13 @@
         CanResize="False">
     <!-- 跑马灯（参照 Apple 智能的唤醒边缘光）：
          GlowOuter = 一圈彩虹色带（拖尾），GlowComet = 一截亮白彗星头（走在彩虹前面），
-         两层都绕屏幕中心旋转 —— 看起来就是「彗星头 + 彩虹拖尾」沿屏幕边缘流动。 -->
-    <Grid>
+         两层都绕屏幕中心旋转。Root 的缩放/透明度做「从侧边吸出」的入场与淡出退场（代码驱动）。 -->
+    <Grid x:Name="Root" Opacity="0">
+        <Grid.RenderTransform>
+            <!-- ScaleTransform 不是控件、不能挂 x:Name（AVLN2000）；代码里从 Root.RenderTransform 取 -->
+            <ScaleTransform/>
+        </Grid.RenderTransform>
+
         <Border x:Name="GlowOuter" Margin="12" CornerRadius="26" BorderThickness="14" Opacity="0.9">
             <Border.Effect>
                 <BlurEffect Radius="34"/>

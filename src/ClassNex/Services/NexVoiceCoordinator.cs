@@ -284,6 +284,9 @@ public sealed class NexVoiceCoordinator : IDisposable
             _glow.CancelRequested += () => Dispatcher.UIThread.Post(CancelAiMode);
         }
 
+        // 吸出方向：唤醒条贴哪侧就从哪侧边缘展开
+        _glow.StartFromLeft = AppServices.Settings.NexEdgeBarSide == "left";
+
         _glow.UpdateWindowPos(screen, 1 / screen.Scaling, false);
 
         if (!_glow.IsVisible)
