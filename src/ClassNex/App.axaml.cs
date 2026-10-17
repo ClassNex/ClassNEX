@@ -641,8 +641,10 @@ public partial class App : Application
             new Views.TrayMenuWindow.Item("\uE71D", "编辑主界面…", () => OpenSettings("interface")),
             new Views.TrayMenuWindow.Item("\uE713", "应用设置…", () => OpenSettings()),
             Views.TrayMenuWindow.Separator,
-            // 和「编辑档案…」并列：NEX 对话框也是独立窗口，从菜单直接打开；图标用官方 Fluent sparkle（U+F0F7）
-            new Views.TrayMenuWindow.Item("\uF0F7", "NEX Intelligence…", OpenNexChat, "FluentSystemIcons-Resizable"),
+            // 和「编辑档案…」并列：NEX 对话框也是独立窗口，从菜单直接打开；
+            // 图标 = 官方 Fluent sparkle（U+F0F7），字体必须 avares 目录式引用（裸族名命不中内嵌字体）
+            new Views.TrayMenuWindow.Item("\uF0F7", "NEX Intelligence…", OpenNexChat,
+                "avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable"),
             Views.TrayMenuWindow.Separator,
             new Views.TrayMenuWindow.Item("\uE777", "重启 ClassNEX", RestartApp),
             new Views.TrayMenuWindow.Item("\uE7E8", "退出", ExitApp),
