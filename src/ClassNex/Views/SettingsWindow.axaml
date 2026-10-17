@@ -246,8 +246,10 @@
                     <ui:NavigationViewItem.IconSource>
                         <!-- 官方 Fluent 图标 ic_fluent_sparkle_20_regular（U+F0F7）。
                              ★ 字体必须写 avares:// 目录式引用：裸族名只查系统字体、命不中内嵌字体，
-                               那样会回退成别的字形，看着完全不是这个图标（踩过）。 -->
-                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xF0F7;" FontSize="18"/>
+                               那样会回退成别的字形，看着完全不是这个图标（踩过）。
+                             ★ 字号 22：Fluent 图标字形在字身框里比 MDL2 小一圈，
+                               其他项是 MDL2 16px，这里要放大才「看起来一样大」。 -->
+                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xF0F7;" FontSize="22"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="提醒">
