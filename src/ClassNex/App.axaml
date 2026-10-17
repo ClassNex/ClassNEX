@@ -44,7 +44,7 @@
     <!-- 系统托盘图标（左键弹出 Fluent 菜单窗；不再挂 NativeMenu，避免右键弹菜单） -->
     <TrayIcon.Icons>
         <TrayIcons>
-            <TrayIcon Icon="/Assets/TrayNex.ico"
+            <TrayIcon Icon="/Assets/icon.ico"
                       ToolTipText="ClassNex 课表"
                       Clicked="OnTrayIconClick"/>
         </TrayIcons>
