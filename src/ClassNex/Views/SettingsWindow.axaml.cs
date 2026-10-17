@@ -588,7 +588,11 @@ public partial class SettingsWindow : AppWindow
 
 #if DEBUG
         // 自检：切页后 60ms / 900ms 各抓一帧，用来验证入场动画到底有没有在播
-        if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
+        if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ICONS") == "1")
+{
+    DispatcherTimer.RunOnce(() => SaveShot("_icons.png"), TimeSpan.FromSeconds(5));
+}
+if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         {
             DispatcherTimer.RunOnce(() =>
             {

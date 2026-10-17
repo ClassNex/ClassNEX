@@ -242,17 +242,17 @@
                         <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE71D;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
-                <ui:NavigationViewItem Content="NEX Intelligence">
-                    <ui:NavigationViewItem.IconSource>
-                        <!-- 自己画的 sparkle 矢量路径（两个四角星）：PathIconSource 会像 MDL2 字形一样
-                             撑满图标框并按前景色渲染，大小和其他导航项一致、深浅色都正确。
-                             之前用字体字形，NavigationView 的固定图标框会把稀疏的 sparkle 缩进去，改字号没用（踩过）。 -->
-                        <ui:PathIconSource>
-                            <ui:PathIconSource.Data>
-                                <StreamGeometry>M45,3 L53,35 L87,45 L53,55 L45,87 L37,55 L3,45 L37,35 Z M82,66 L86,78 L98,82 L86,86 L82,98 L78,86 L66,82 L78,78 Z</StreamGeometry>
-                            </ui:PathIconSource.Data>
-                        </ui:PathIconSource>
-                    </ui:NavigationViewItem.IconSource>
+                <!-- NEX：图标放进 Content 里按自然尺寸渲染（绕开 NavigationView 的固定图标框——
+                     那个框会把字体字形缩放，sparkle 字形稀疏、被压得只有别人 65%，改 IconSource 字号无效）。
+                     图标 = Fluent UI 图标库官方 Sparkle（U+F0F7，内嵌 FluentSystemIcons-Resizable）。 -->
+                <ui:NavigationViewItem>
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <ui:FontIcon Glyph="&#xF0F7;"
+                                     FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable"
+                                     FontSize="18"
+                                     VerticalAlignment="Center"/>
+                        <TextBlock Text="NEX Intelligence" VerticalAlignment="Center"/>
+                    </StackPanel>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="提醒">
                     <ui:NavigationViewItem.IconSource>
