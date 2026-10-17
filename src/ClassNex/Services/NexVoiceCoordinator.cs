@@ -104,12 +104,25 @@ public sealed class NexVoiceCoordinator : IDisposable
 
     // ==================== 事件 ====================
 
+    /// <summary>本次 AI 会话是否还在进行（浮窗可见）。取消/超时后为 false，
+    /// 期间任何迟到的流式回答、错误、追问收尾一律丢弃 —— 修复「点屏幕退出后回答还在往浮窗写、面板又弹出来」。</summary>
+    private bool _active;
+
     private void OnWakeWord()
     {
         NexChime.PlayWake();
 
         Dispatcher.UIThread.Post(() =>
         {
+            // 重复触发：已经亮着跑马灯时再喊唤醒词 = 重新开始一次会话（清掉旧上下文/旧计时）
+            if (_glow?.IsVisible == true)
+            {
+                _followUpTimer?.Stop();
+                _sessionAgent = null;
+            }
+
+            _active = true;
+
             // 主界面可能是隐藏状态：唤醒时直接亮出来
             var main = AppServices.MainWindow;
             if (main is not null && !main.IsVisible)
@@ -180,17 +193,27 @@ public sealed class NexVoiceCoordinator : IDisposable
 
         agent.DeltaReceived += delta =>
         {
-            if (string.IsNullOrEmpty(delta.Content))
+            if (string.IsNullOrEmpty(delta.Content) || !_active)
                 return;
 
             buffer.Append(delta.Content);
             thinkingShown = false;
             var text = buffer.ToString();
-            Dispatcher.UIThread.Post(() => AppServices.MainWindow?.ShowNexPanel(text, false));
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (!_active)
+                    return;
+
+                AppServices.MainWindow?.ShowNexPanel(text, false);
+            });
         };
 
         agent.ErrorOccurred += message =>
-            Dispatcher.UIThread.Post(() => AppServices.MainWindow?.ShowNexPanel("出错：" + message, true));
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (_active)
+                    AppServices.MainWindow?.ShowNexPanel("出错：" + message, true);
+            });
 
         try
         {
@@ -203,13 +226,20 @@ public sealed class NexVoiceCoordinator : IDisposable
         finally
         {
             // 用户要求：AI 相关流程里只有唤醒那一声（用户 wav），回答完不再播别的提示音
-            Dispatcher.UIThread.Post(BeginFollowUp);
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (_active)
+                    BeginFollowUp();
+            });
         }
     }
 
     /// <summary>回答完不退出：继续听下一句（连续问答），静默一段时间才收灯。</summary>
     private void BeginFollowUp()
     {
+        if (!_active)
+            return;
+
         _followUpTimer?.Stop();
 
         // 回到「听写」状态，不用再喊唤醒词
@@ -267,12 +297,14 @@ public sealed class NexVoiceCoordinator : IDisposable
     /// <summary>用户点了屏幕任意位置 / 超时：退出 AI 模式（收灯 + 浮窗翻回课表）。</summary>
     public void CancelAiMode()
     {
+        _active = false;
         _followUpTimer?.Stop();
         HideEverything();
     }
 
     private void HideEverything()
     {
+        _active = false;
         _glow?.StopGlow();
         AppServices.MainWindow?.HideNexPanel();
         _voice.BackToWakeWord();
@@ -325,6 +357,15 @@ public sealed class NexVoiceCoordinator : IDisposable
         var main = AppServices.MainWindow;
         if (main is not null && !main.IsVisible)
             main.Show();
+
+        // 重复触发：会话已在进行时再点一次 = 重新开始（清掉旧上下文/旧计时），避免状态叠加
+        if (_glow?.IsVisible == true)
+        {
+            _followUpTimer?.Stop();
+            _sessionAgent = null;
+        }
+
+        _active = true;
 
         ShowGlow();
         main?.ShowNexPanel("请讲", true);

@@ -10,12 +10,19 @@
         ShowInTaskbar="False"
         ShowActivated="False"
         CanResize="False">
-    <!-- 跑马灯（滚回第一版的参数，只把那圈贴着屏幕边框的细线删掉）：
-         一圈厚光带 + 高斯模糊，边缘是一圈柔和的辉光，没有硬边、没有描边。 -->
+    <!-- 跑马灯（参照 Apple 智能的唤醒边缘光）：
+         GlowOuter = 一圈彩虹色带（拖尾），GlowComet = 一截亮白彗星头（走在彩虹前面），
+         两层都绕屏幕中心旋转 —— 看起来就是「彗星头 + 彩虹拖尾」沿屏幕边缘流动。 -->
     <Grid>
         <Border x:Name="GlowOuter" Margin="12" CornerRadius="26" BorderThickness="14" Opacity="0.9">
             <Border.Effect>
                 <BlurEffect Radius="34"/>
+            </Border.Effect>
+        </Border>
+
+        <Border x:Name="GlowComet" Margin="12" CornerRadius="26" BorderThickness="14" Opacity="0.8">
+            <Border.Effect>
+                <BlurEffect Radius="30"/>
             </Border.Effect>
         </Border>
     </Grid>

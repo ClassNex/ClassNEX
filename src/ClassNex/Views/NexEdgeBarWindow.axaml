@@ -10,13 +10,38 @@
         ShowInTaskbar="False"
         ShowActivated="False"
         CanResize="False">
-    <!-- 吸附屏幕左右侧的半透明小白条：点一下 = 唤醒（同「嘿 NEX」） -->
+    <!-- 吸附屏幕左右侧的半透明小白条：点一下 = 唤醒（同「嘿 NEX」）。
+         参照 Apple 智能 / OPPO 小布的流光：一条光带沿条身上下往复流动 + 呼吸。 -->
     <Border x:Name="Bar"
             CornerRadius="7"
             Background="#5CFFFFFF"
             BorderThickness="1"
             BorderBrush="#38FFFFFF"
             Cursor="Hand">
+        <Border.Clip>
+            <RectangleGeometry Rect="0,0,14,120"/>
+        </Border.Clip>
+
+        <!-- 流动的彗星光带（沿条身扫动；位移动画在代码里逐帧驱动） -->
+        <Border x:Name="Sweep"
+                Width="8" Height="36"
+                CornerRadius="4"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Top"
+                Opacity="0">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                    <GradientStop Offset="0.0" Color="#00FFFFFF"/>
+                    <GradientStop Offset="0.45" Color="#B4FFFFFF"/>
+                    <GradientStop Offset="0.75" Color="#F0FFFFFF"/>
+                    <GradientStop Offset="1.0" Color="#00FFFFFF"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            <Border.Effect>
+                <BlurEffect Radius="3"/>
+            </Border.Effect>
+        </Border>
+
         <Border.Transitions>
             <Transitions>
                 <DoubleTransition Property="Opacity" Duration="0:0:0.15"/>

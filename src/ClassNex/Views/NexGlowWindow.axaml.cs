@@ -31,17 +31,37 @@ public partial class NexGlowWindow : Window
 
     private readonly LinearGradientBrush _outerBrush = BuildBrush();
 
+    /// <summary>彗星头：一截亮白（轻微暖白），首尾全透明 —— 只有一小段亮斑，跟着彩虹走。</summary>
+    private readonly LinearGradientBrush _cometBrush = BuildCometBrush();
+
     public NexGlowWindow()
     {
         InitializeComponent();
 
         GlowOuter.BorderBrush = _outerBrush;
+        GlowComet.BorderBrush = _cometBrush;
 
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1000 / Fps) };
         _timer.Tick += (_, _) => Step();
 
         // 点屏幕任意位置 = 取消 AI 模式（所以这个窗口不能点击穿透）
         PointerPressed += (_, _) => CancelRequested?.Invoke();
+    }
+
+    private static LinearGradientBrush BuildCometBrush()
+    {
+        var brush = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+        };
+
+        // 彗星头：前 0.06 亮起、0.14 处渐隐，其余全透明（只占光带约 1/7 的一截亮斑）
+        brush.GradientStops.Add(new GradientStop(Color.FromArgb(0x00, 0xFF, 0xFF, 0xFF), 0.00));
+        brush.GradientStops.Add(new GradientStop(Color.FromArgb(0xE6, 0xFF, 0xF6, 0xEE), 0.05));
+        brush.GradientStops.Add(new GradientStop(Color.FromArgb(0x00, 0xFF, 0xFF, 0xFF), 0.16));
+
+        return brush;
     }
 
     private static LinearGradientBrush BuildBrush()
@@ -95,6 +115,17 @@ public partial class NexGlowWindow : Window
         // 呼吸：整体明暗轻微起伏（0.72 ~ 1.0）—— 第一版的幅度
         var breath = 0.86 + 0.14 * Math.Sin(_breath);
         GlowOuter.Opacity = 0.75 * breath;
+
+        // 彗星头：相位比彩虹超前约 1/12 圈 —— 亮头在前、彩虹尾在后
+        var cAngle = (_phase + 0.085) * Math.PI * 2;
+        var cdx = Math.Cos(cAngle) * 0.5;
+        var cdy = Math.Sin(cAngle) * 0.5;
+
+        _cometBrush.StartPoint = new RelativePoint(0.5 - cdx, 0.5 - cdy, RelativeUnit.Relative);
+        _cometBrush.EndPoint = new RelativePoint(0.5 + cdx, 0.5 + cdy, RelativeUnit.Relative);
+
+        // 彗星随呼吸同步明暗（比彩虹层略亮一个台阶）
+        GlowComet.Opacity = 0.72 * breath;
     }
 
     /// <summary>用户点了屏幕任意位置（用来取消 AI 模式）。</summary>
