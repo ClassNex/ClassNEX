@@ -10,24 +10,31 @@
         ShowInTaskbar="False"
         ShowActivated="False"
         CanResize="False">
-    <!-- 跑马灯（参照 Apple 智能的唤醒边缘光）：
-         GlowOuter = 一圈彩虹色带（拖尾），GlowComet = 一截亮白彗星头（走在彩虹前面），
-         两层都绕屏幕中心旋转。Root 的缩放/透明度做「从侧边吸出」的入场与淡出退场（代码驱动）。 -->
-    <Grid x:Name="Root" Opacity="0">
-        <Grid.RenderTransform>
-            <!-- ScaleTransform 不是控件、不能挂 x:Name（AVLN2000）；代码里从 Root.RenderTransform 取 -->
-            <ScaleTransform/>
-        </Grid.RenderTransform>
-
-        <Border x:Name="GlowOuter" Margin="12" CornerRadius="26" BorderThickness="14" Opacity="0.9">
+    <!-- 跑马灯：四条独立光带（上/下/左/右），
+         入场时按「从唤醒条那一侧，上下两条边一起向前推进，最后在对侧合拢」的绘制动画
+         （用户给的示意图：上下两条蓝线由触发侧向对侧延伸）。之后四条带子上的彩虹+彗星头持续流动。 -->
+    <Grid x:Name="Root">
+        <Border x:Name="TopStrip" Height="16" VerticalAlignment="Top" HorizontalAlignment="Right" Width="0">
             <Border.Effect>
-                <BlurEffect Radius="34"/>
+                <BlurEffect Radius="26"/>
             </Border.Effect>
         </Border>
 
-        <Border x:Name="GlowComet" Margin="12" CornerRadius="26" BorderThickness="14" Opacity="0.8">
+        <Border x:Name="BottomStrip" Height="16" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="0">
             <Border.Effect>
-                <BlurEffect Radius="30"/>
+                <BlurEffect Radius="26"/>
+            </Border.Effect>
+        </Border>
+
+        <Border x:Name="RightStrip" Width="16" VerticalAlignment="Stretch" HorizontalAlignment="Right" Opacity="0">
+            <Border.Effect>
+                <BlurEffect Radius="26"/>
+            </Border.Effect>
+        </Border>
+
+        <Border x:Name="LeftStrip" Width="16" VerticalAlignment="Center" HorizontalAlignment="Left" Height="0">
+            <Border.Effect>
+                <BlurEffect Radius="26"/>
             </Border.Effect>
         </Border>
     </Grid>

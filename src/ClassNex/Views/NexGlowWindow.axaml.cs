@@ -7,51 +7,47 @@ using Avalonia.Threading;
 namespace ClassNex.Views;
 
 /// <summary>
-/// 跑马灯窗口：全屏透明、置顶、点击穿透，屏幕四周一圈流动的彩色光带。
-/// 参考苹果智能（Apple Intelligence / Siri）唤醒时的边缘辉光，用两圈渐变描边 + 模糊叠出来。
+/// 跑马灯窗口：全屏透明、置顶，屏幕四周一圈流动的彩色光带（参照 Apple 智能 / OPPO 小布的唤醒边缘光）。
+///
+/// 结构：四条独立光带（上/下/左/右），每条自带「彩虹 + 亮白彗星头」的循环渐变并沿自身方向流动。
+/// 入场：从触发侧（唤醒条所在那侧）开始 —— 上下两条带同时朝对侧推进（宽 0→全宽），
+///       到边后对侧那条带上下合拢（高 0→全高），像把光框一笔画出来；触发侧那条带渐显。
+/// 退场：整体淡出后再隐藏。
 /// </summary>
 public partial class NexGlowWindow : Window
 {
     private const double Fps = 60;
+    private const double StripThickness = 16;
 
     private readonly DispatcherTimer _timer;
-    private double _phase;
-    private double _breath;
 
-    /// <summary>入场进度（0→1，从侧边展开 + 淡入）。</summary>
-    private double _intro = 1;
+    /// <summary>颜色流动的相位（0..1 循环，重复填充保证无缝）。</summary>
+    private double _flow;
 
-    /// <summary>退场中（淡出后隐藏）。</summary>
+    /// <summary>入场进度（宽/高推进）。</summary>
+    private double _draw;
+
+    /// <summary>退场中。</summary>
     private bool _closing;
 
-    /// <summary>从哪一侧吸出（true=左边缘，false=右边缘）。</summary>
+    private double _outroOpacity = 1;
+
+    /// <summary>从哪一侧流出来（true=左，false=右；跟随唤醒条贴边设置）。</summary>
     public bool StartFromLeft { get; set; }
 
-    /// <summary>Root 上的缩放变换（XAML 里 RenderTransform 内的命名控件不生成字段，从这里取）。</summary>
-    private ScaleTransform RootScale => (ScaleTransform)Root.RenderTransform!;
-
-    /// <summary>渐变的色标（沿光带流动）。</summary>
-    private static readonly Color[] Palette =
-    {
-        Color.FromRgb(0x5A, 0x9C, 0xFF),   // 蓝
-        Color.FromRgb(0x9B, 0x6B, 0xFF),   // 紫
-        Color.FromRgb(0xFF, 0x6B, 0xC8),   // 粉
-        Color.FromRgb(0xFF, 0xA8, 0x5A),   // 橙
-        Color.FromRgb(0x4F, 0xE3, 0xC8),   // 青
-        Color.FromRgb(0x5A, 0x9C, 0xFF),   // 回到蓝（首尾同色，循环不跳）
-    };
-
-    private readonly LinearGradientBrush _outerBrush = BuildBrush();
-
-    /// <summary>彗星头：一截亮白（轻微暖白），首尾全透明 —— 只有一小段亮斑，跟着彩虹走。</summary>
-    private readonly LinearGradientBrush _cometBrush = BuildCometBrush();
+    private readonly LinearGradientBrush _topBrush = BuildStripBrush(true);
+    private readonly LinearGradientBrush _bottomBrush = BuildStripBrush(true);
+    private readonly LinearGradientBrush _leftBrush = BuildStripBrush(false);
+    private readonly LinearGradientBrush _rightBrush = BuildStripBrush(false);
 
     public NexGlowWindow()
     {
         InitializeComponent();
 
-        GlowOuter.BorderBrush = _outerBrush;
-        GlowComet.BorderBrush = _cometBrush;
+        TopStrip.Background = _topBrush;
+        BottomStrip.Background = _bottomBrush;
+        LeftStrip.Background = _leftBrush;
+        RightStrip.Background = _rightBrush;
 
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1000 / Fps) };
         _timer.Tick += (_, _) => Step();
@@ -60,57 +56,71 @@ public partial class NexGlowWindow : Window
         PointerPressed += (_, _) => CancelRequested?.Invoke();
     }
 
-    private static LinearGradientBrush BuildCometBrush()
+    /// <summary>
+    /// 一条光带的渐变：彩虹色环 + 一段亮白彗星头；首尾同色 + Repeat 保证循环无缝。
+    /// horizontal=true 时沿 X 轴流，false 沿 Y 轴流。
+    /// </summary>
+    private static LinearGradientBrush BuildStripBrush(bool horizontal)
     {
         var brush = new LinearGradientBrush
         {
-            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-            EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
-        };
-
-        // 彗星头：前 0.06 亮起、0.14 处渐隐，其余全透明（只占光带约 1/7 的一截亮斑）
-        brush.GradientStops.Add(new GradientStop(Color.FromArgb(0x00, 0xFF, 0xFF, 0xFF), 0.00));
-        brush.GradientStops.Add(new GradientStop(Color.FromArgb(0xE6, 0xFF, 0xF6, 0xEE), 0.05));
-        brush.GradientStops.Add(new GradientStop(Color.FromArgb(0x00, 0xFF, 0xFF, 0xFF), 0.16));
-
-        return brush;
-    }
-
-    private static LinearGradientBrush BuildBrush()
-    {
-        var brush = new LinearGradientBrush
-        {
-            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-            EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+            StartPoint = new RelativePoint(horizontal ? 0 : 0.5, horizontal ? 0.5 : 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(horizontal ? 1 : 0.5, horizontal ? 0.5 : 1, RelativeUnit.Relative),
             SpreadMethod = GradientSpreadMethod.Repeat,
         };
 
-        for (var i = 0; i < Palette.Length; i++)
-            brush.GradientStops.Add(new GradientStop(Palette[i], i / (double)(Palette.Length - 1)));
+        void Stop(double offset, Color color) =>
+            brush.GradientStops.Add(new GradientStop(color, offset));
+
+        Stop(0.00, Color.FromRgb(0x5A, 0x9C, 0xFF));  // 蓝
+        Stop(0.08, Color.FromArgb(0xEA, 0xFF, 0xFF, 0xFF)); // 彗星头（近白）
+        Stop(0.16, Color.FromRgb(0x9B, 0x6B, 0xFF));  // 紫
+        Stop(0.38, Color.FromRgb(0xFF, 0x6B, 0xC8));  // 粉
+        Stop(0.60, Color.FromRgb(0xFF, 0xA8, 0x5A));  // 橙
+        Stop(0.80, Color.FromRgb(0x4F, 0xE3, 0xC8));  // 青
+        Stop(1.00, Color.FromRgb(0x5A, 0x9C, 0xFF));  // 回到蓝（无缝）
 
         return brush;
     }
 
-    /// <summary>开始播放跑马灯：从侧边「吸出」—— 光带由屏幕边缘向全屏展开 + 淡入（约 0.55 秒，减速曲线）。</summary>
+    /// <summary>开始：从触发侧画出光框（上下两边推进 → 对侧合拢），同时开始流动。</summary>
     public void Start()
     {
-        _phase = 0;
-        _breath = 0;
+        _flow = 0;
+        _draw = 0;
         _closing = false;
-        _intro = 0;
+        _outroOpacity = 1;
 
-        // 入场起点：整体缩在触发那一侧的边缘（像从唤醒条里被吸出来）
-        Root.Opacity = 0;
-        RootScale.ScaleX = 0.55;
-        RootScale.ScaleY = 0.55;
-        Root.RenderTransformOrigin = new RelativePoint(
-            StartFromLeft ? 0 : 1, 0.5, RelativeUnit.Relative);
+        Root.Opacity = 1;
+
+        // 触发侧那条带立刻贴边、其余从 0 开始画
+        var fromLeft = StartFromLeft;
+        TopStrip.HorizontalAlignment = fromLeft ? Avalonia.Layout.HorizontalAlignment.Left
+                                                : Avalonia.Layout.HorizontalAlignment.Right;
+        BottomStrip.HorizontalAlignment = TopStrip.HorizontalAlignment;
+
+        TopStrip.Width = 0;
+        BottomStrip.Width = 0;
+        LeftStrip.Height = 0;
+        RightStrip.Opacity = 0;
+
+        // 贴合屏幕边（DIP）
+        Width = GetScreenWidth();
+        Height = GetScreenHeight();
 
         Step();
         _timer.Start();
     }
 
-    /// <summary>停止：先淡出（约 0.25 秒）再隐藏，不再瞬间消失。</summary>
+    private double GetScreenWidth() => Screens.Primary is { } s
+        ? s.Bounds.Width / s.Scaling
+        : Bounds.Width;
+
+    private double GetScreenHeight() => Screens.Primary is { } s
+        ? s.Bounds.Height / s.Scaling
+        : Bounds.Height;
+
+    /// <summary>停止：整体淡出后隐藏。</summary>
     public void StopGlow()
     {
         if (!_timer.IsEnabled)
@@ -124,70 +134,73 @@ public partial class NexGlowWindow : Window
 
     private void Step()
     {
-        // 退场：淡出，透明度到 0 后隐藏
+        // 退场：淡出
         if (_closing)
         {
-            Root.Opacity -= 0.06;
-            if (Root.Opacity <= 0.02)
+            _outroOpacity -= 0.06;
+            if (_outroOpacity <= 0.02)
             {
                 Root.Opacity = 0;
                 _closing = false;
                 _timer.Stop();
                 Hide();
             }
+            else
+            {
+                Root.Opacity = _outroOpacity;
+            }
 
             return;
         }
 
-        // 入场：从侧边展开 + 淡入（0.55 秒，cubic ease-out）
-        if (_intro < 1)
-        {
-            _intro += 1 / (0.55 * Fps);
-            if (_intro > 1)
-                _intro = 1;
+        var w = GetScreenWidth();
+        var h = GetScreenHeight();
 
-            var e = 1 - Math.Pow(1 - _intro, 3);
-            Root.Opacity = e;
-            var s = 0.55 + 0.45 * e;
-            RootScale.ScaleX = s;
-            RootScale.ScaleY = s;
+        // ===== 入场：绘制光框 =====
+        if (_draw < 1)
+        {
+            // 前 62% 时间：上下两边从触发侧推进到对侧；后 38%：对侧那条带合拢 + 触发侧渐显
+            _draw += 1 / (0.95 * Fps);
+            if (_draw > 1)
+                _draw = 1;
+
+            var p1 = Math.Clamp(_draw / 0.62, 0, 1);      // 上/下推进
+            var e1 = 1 - Math.Pow(1 - p1, 3);
+            TopStrip.Width = w * e1;
+            BottomStrip.Width = w * e1;
+
+            var p2 = Math.Clamp((_draw - 0.55) / 0.45, 0, 1); // 对侧合拢
+            var e2 = 1 - Math.Pow(1 - p2, 3);
+            LeftStrip.Height = h * e2;
+
+            RightStrip.Opacity = e2;                        // 触发侧那条带随之渐显
         }
 
-        // 转速：用户反馈原来太快了 —— 从每帧 0.010 降到 0.0035（一圈约 4.8 秒）
-        _phase += 0.0035;
-        if (_phase > 1)
-            _phase -= 1;
+        // ===== 流动：渐变沿带子方向滚动（Repeat 填充 → 无缝） =====
+        _flow += 0.0035;
+        if (_flow > 1)
+            _flow -= 1;
 
-        _breath += 0.016;
+        var o = _flow;
+        _topBrush.StartPoint = new RelativePoint(o, 0.5, RelativeUnit.Relative);
+        _topBrush.EndPoint = new RelativePoint(o + 1, 0.5, RelativeUnit.Relative);
+        _bottomBrush.StartPoint = new RelativePoint(o, 0.5, RelativeUnit.Relative);
+        _bottomBrush.EndPoint = new RelativePoint(o + 1, 0.5, RelativeUnit.Relative);
 
-        // 渐变端点绕屏幕中心转一圈：光带看起来就在沿着边缘流动
-        var angle = _phase * Math.PI * 2;
-        var dx = Math.Cos(angle) * 0.5;
-        var dy = Math.Sin(angle) * 0.5;
+        _leftBrush.StartPoint = new RelativePoint(0.5, o, RelativeUnit.Relative);
+        _leftBrush.EndPoint = new RelativePoint(0.5, o + 1, RelativeUnit.Relative);
+        _rightBrush.StartPoint = new RelativePoint(0.5, o, RelativeUnit.Relative);
+        _rightBrush.EndPoint = new RelativePoint(0.5, o + 1, RelativeUnit.Relative);
 
-        _outerBrush.StartPoint = new RelativePoint(0.5 - dx, 0.5 - dy, RelativeUnit.Relative);
-        _outerBrush.EndPoint = new RelativePoint(0.5 + dx, 0.5 + dy, RelativeUnit.Relative);
-
-        // 呼吸：整体明暗轻微起伏（0.72 ~ 1.0）—— 第一版的幅度
-        var breath = 0.86 + 0.14 * Math.Sin(_breath);
-        GlowOuter.Opacity = 0.75 * breath;
-
-        // 彗星头：相位比彩虹超前约 1/12 圈 —— 亮头在前、彩虹尾在后
-        var cAngle = (_phase + 0.085) * Math.PI * 2;
-        var cdx = Math.Cos(cAngle) * 0.5;
-        var cdy = Math.Sin(cAngle) * 0.5;
-
-        _cometBrush.StartPoint = new RelativePoint(0.5 - cdx, 0.5 - cdy, RelativeUnit.Relative);
-        _cometBrush.EndPoint = new RelativePoint(0.5 + cdx, 0.5 + cdy, RelativeUnit.Relative);
-
-        // 彗星随呼吸同步明暗（比彩虹层略亮一个台阶）
-        GlowComet.Opacity = 0.72 * breath;
+        // 呼吸：整体明暗轻微起伏
+        var breath = 0.86 + 0.14 * Math.Sin(_flow * Math.PI * 2 * 6);
+        Root.Opacity = (0.78 + 0.12 * breath) * Math.Min(1, _draw * 1.4);
     }
 
     /// <summary>用户点了屏幕任意位置（用来取消 AI 模式）。</summary>
     public event Action? CancelRequested;
 
-    /// <summary>铺满某个屏幕（scale 传 1/dpiX，把物理像素换算成 DIP）。</summary>
+    /// <summary>铺满某个屏幕（scale 传 1/dpiX 把物理像素换算成 DIP）。</summary>
     public void UpdateWindowPos(Avalonia.Platform.Screen screen, double scale, bool useWorkingArea)
     {
         var area = useWorkingArea ? screen.WorkingArea : screen.Bounds;
