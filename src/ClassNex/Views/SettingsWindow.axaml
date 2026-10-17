@@ -242,19 +242,15 @@
                         <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE71D;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
-                <!-- NEX：图标放进 Content 里按自然尺寸渲染（绕开 NavigationView 的固定图标框——
-                     那个框会把字体字形缩放，sparkle 字形稀疏、被压得只有别人 65%，改 IconSource 字号无效）。
-                     图标 = Fluent UI 图标库官方 Sparkle（U+F0F7，内嵌 FluentSystemIcons-Resizable）。 -->
-                <ui:NavigationViewItem>
-                    <!-- 左移 8px：实测其他项图标中心 x=61，本项内容渲染后图标中心 x=69（右偏 8px），
-                         负边距拉回对齐（CLASSNEX_VERIFY_ICONS 渲染量像素得的值） -->
-                    <StackPanel Orientation="Horizontal" Spacing="10" Margin="-8,0,0,0">
-                        <ui:FontIcon Glyph="&#xF0F7;"
-                                     FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable"
-                                     FontSize="18"
-                                     VerticalAlignment="Center"/>
-                        <TextBlock Text="NEX Intelligence" VerticalAlignment="Center"/>
-                    </StackPanel>
+                <!-- NEX：标准结构（Content + IconSource，和上下项完全一致），对齐由模板保证。
+                     图标 = Fluent UI 图标库官方 Sparkle（U+F0F7，avares 引用内嵌字体）。
+                     之前「小」是因为裸族名命不中内嵌字体、回退成了别的符号（已修）；
+                     Content 方案的 -8px 边距 hack 对齐不可靠，弃用。 -->
+                <ui:NavigationViewItem Content="NEX Intelligence">
+                    <ui:NavigationViewItem.IconSource>
+                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable"
+                                           Glyph="&#xF0F7;" FontSize="18"/>
+                    </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="提醒">
                     <ui:NavigationViewItem.IconSource>
