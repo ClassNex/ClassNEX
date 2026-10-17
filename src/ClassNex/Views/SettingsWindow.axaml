@@ -247,10 +247,9 @@
                         <!-- 官方 Fluent 图标 ic_fluent_sparkle_20_regular（U+F0F7）。
                              ★ 字体必须写 avares:// 目录式引用：裸族名只查系统字体、命不中内嵌字体，
                                那样会回退成别的字形，看着完全不是这个图标（踩过）。
-                             ★ 字号 28：实测这个字体（FluentSystemIcons-Resizable）的字形只占字身框约 55%，
-                               而 Windows 设置/其他项用的 MDL2 字形占约 85%。要让「看起来一样大」，
-                               字号需按 85/55≈1.55 倍放大：MDL2 16px → 本图标 ≈ 25~28px。 -->
-                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xF0F7;" FontSize="28"/>
+                             ★ 字号 20：实测（PIL 量墨迹高度）其他导航项的 MDL2 图标在 16px 下墨迹高 14px，
+                               本字体 sparkle 在 20px 下墨迹高同样是 14px —— 视觉等大。偏大/偏小都会看出来。 -->
+                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xF0F7;" FontSize="20"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="提醒">

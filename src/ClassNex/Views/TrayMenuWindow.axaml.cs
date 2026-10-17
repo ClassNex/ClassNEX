@@ -50,12 +50,12 @@ public partial class TrayMenuWindow : Window
                 {
                     new AvaloniaFluentUI.Controls.FontIcon
                     {
-                        // Fluent 系字形只占字身框约 55%（MDL2 约 85%），字号要按 ~1.55 倍放大
-                        // 视觉大小才一致（MDL2 14px → 本图标 ~22px），图标位同步加宽避免裁切
+                        // 托盘菜单：回到上一版字号（20），图标位宽改回 16 与其他项一致，
+                        // 这样文字左缘对齐（宽度不一致会把文字顶偏，看着没对齐）
                         Glyph = item.Glyph,
                         FontFamily = new FontFamily(item.IconFont ?? "Segoe MDL2 Assets"),
-                        FontSize = item.IconFont is null ? 14 : 22,
-                        Width = item.IconFont is null ? 16 : 24,
+                        FontSize = item.IconFont is null ? 14 : 20,
+                        Width = 16,
                         VerticalAlignment = VerticalAlignment.Center,
                     },
                     new TextBlock { Text = item.Header, FontSize = 13, VerticalAlignment = VerticalAlignment.Center },
