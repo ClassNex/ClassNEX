@@ -15,8 +15,7 @@
     <AssemblyName>ClassNex</AssemblyName>
     <!-- 对外版本号（产品版本，显示在设置→关于与文件属性里） -->
     <Version>0.5.0</Version>
-    <!-- 一次性命名：本版对外叫 26.0Beta1（用户 2026-10-11 要求）；之后的版本继续用 YYwWWa_Alpha -->
-    <InformationalVersion>26.0Beta1</InformationalVersion>
+    <InformationalVersion>26w42a</InformationalVersion>
     <!-- 不要把 git 提交哈希附加到产品版本号后面 -->
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <!-- NU1903：Tmds.DBus.Protocol 是 Avalonia.Desktop 的 Linux D-Bus 传递依赖，win-x64 自包含不打包，屏蔽该审计告警 -->
