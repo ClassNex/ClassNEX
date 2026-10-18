@@ -960,26 +960,27 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
     private DispatcherTimer? _homeGreetingTimer;
 
-    /// <summary>主页问候：按当前时间给英文问候（Good morning / afternoon / evening），并刷新副标题。</summary>
+    /// <summary>主页问候：按时间给「早上好/中午好/晚上好」+ 名字。
+    /// 注意：只有**逗号**用英文逗号（用户明确要求），文字仍是中文、字体仍是原来的衬线字体。</summary>
     private void RefreshHomeGreeting()
     {
         var name = string.IsNullOrWhiteSpace(AppServices.Settings.UserName)
-            ? "there"
+            ? "同学"
             : AppServices.Settings.UserName.Trim();
 
         var now = DateTime.Now;
         var greeting = now.Hour switch
         {
-            >= 5 and < 11 => "Good morning",
-            >= 11 and < 17 => "Good afternoon",
-            _ => "Good evening",
+            >= 5 and < 11 => "早上好",
+            >= 11 and < 17 => "中午好",
+            _ => "晚上好",
         };
 
+        // 英文逗号后跟空格
         HomeGreetingText.Text = $"{greeting}, {name}";
 
         var slots = AppServices.Time.GetTodaySlots(AppServices.Schedule.Profile, now);
-        var day = now.ToString("dddd, MMMM d", System.Globalization.CultureInfo.GetCultureInfo("en-US"));
-        HomeSubText.Text = $"{day} · {slots.Count} " + (slots.Count == 1 ? "lesson" : "lessons") + " today";
+        HomeSubText.Text = $"{now:yyyy年M月d日 dddd} · 今日 {slots.Count} 节课";
     }
 
     // ==================== 顶栏搜索（查找设置） ====================

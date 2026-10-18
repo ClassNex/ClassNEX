@@ -217,29 +217,29 @@
                 <!-- 主页（CW2 风格仪表盘）；主页与基本之间加轻分割（用户要求：有分割但不要太大） -->
                 <ui:NavigationViewItem Content="主页">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE80F;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xEA32;" FontSize="20"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItemSeparator/>
                 <!-- 1:1 照 CI 的页序与页名（Internal 组）：基本 / 外观 / 窗口 / 组件；底部 = 关于 ClassNEX -->
                 <ui:NavigationViewItem Content="基本">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE713;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xF00F;" FontSize="20"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="外观">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE790;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE566;" FontSize="20"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="窗口">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE740;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xF5B7;" FontSize="20"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="组件">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE71D;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE9C1;" FontSize="20"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <!-- NEX：标准结构（Content + IconSource，和上下项完全一致），对齐由模板保证。
@@ -254,18 +254,18 @@
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="提醒">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE838;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE8EB;" FontSize="20"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="关于 ClassNEX">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE946;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xEA88;" FontSize="20"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <!-- 调试页：默认隐藏，在「关于」页连点版本号 10 次解锁（对照 CI AboutSettingsPage 的 DebugBorder） -->
                 <ui:NavigationViewItem x:Name="DebugNavItem" Content="调试" IsVisible="False">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE7C4;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE2F0;" FontSize="20"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
             </ui:NavigationView.MenuItems>
@@ -294,9 +294,10 @@
 
                         <!-- ==================== 主页 ====================
                              按需求精简：横幅已删、底下三组小卡片（今天/快捷操作/状态）已全部删除，
-                             只保留问候语（英文，随系统时间变化）+ 一行副标题。 -->
+                             只保留问候语（中文文字 + 英文逗号，字体与原来一致）+ 一行副标题。 -->
                         <StackPanel x:Name="PageHome" Spacing="6">
                             <TextBlock x:Name="HomeGreetingText"
+                                       FontFamily="Noto Serif SC, Source Han Serif SC, SimSun"
                                        FontSize="34"
                                        TextTrimming="CharacterEllipsis"/>
                             <TextBlock x:Name="HomeSubText"
@@ -312,7 +313,7 @@
                             <ui:SettingsExpander Header="接口"
                                                  Description="应用已内置可用的接口，开箱即可对话，无需配置。想换成你自己的接口/密钥，请到「调试」页设置（版本号连点 10 次解锁）。">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE968;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xEE9B;" FontSize="20"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpanderItem x:Name="NexApiStateItem" Content="当前接口" Description="正在使用内置接口">
                                     <ui:SettingsExpanderItem.Footer>
@@ -325,7 +326,7 @@
                             <ui:SettingsExpander Header="默认权限"
                                                  Description="打开对话框时的默认档位（对话框顶部随时可改）。仅可查看=只读；工作区内修改=可改应用数据目录里的文件；完全权限=任意路径 + 执行命令。">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE72E;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xEBAC;" FontSize="20"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <ComboBox x:Name="NexPermissionCombo" Width="180">
@@ -339,7 +340,7 @@
                             <ui:SettingsExpander Header="系统提示词"
                                                  Description="可选。留空用内置提示词（会带上应用状态、工作区与当前权限说明）。">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE70F;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE837;" FontSize="20"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpanderItem Content="自定义提示词">
                                     <ui:SettingsExpanderItem.Footer>
@@ -353,7 +354,7 @@
                             <ui:SettingsExpander Header="语音唤醒"
                                                  Description="对着麦克风说「嘿 NEX」或「NEX」即可唤醒：响起提示音、屏幕四周亮起跑马灯，浮窗课表向上翻页变成对话。">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE720;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xEC40;" FontSize="20"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <CheckBox x:Name="NexVoiceWakeCheck" Content="启用"/>
@@ -396,7 +397,7 @@
                             <ui:SettingsExpander Header="在课前准备时发出提醒"
                                                  Description="在上课前一段时间发出醒目提醒，提示做好上课准备。">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE916;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE508;" FontSize="20"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <CheckBox x:Name="PreparingEnabledCheck"/>
@@ -449,7 +450,7 @@
                             <ui:SettingsExpander Header="在上课时发出提醒"
                                                  Description="在上课时发出醒目提醒，提示已经上课。">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE8AB;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE02B;" FontSize="20"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <CheckBox x:Name="ClassOnEnabledCheck"/>
@@ -467,7 +468,7 @@
                             <ui:SettingsExpander Header="在下课时发出提醒"
                                                  Description="在下课时发出醒目提醒，提示已经下课。">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE7C4;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE2F0;" FontSize="20"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <CheckBox x:Name="ClassOffEnabledCheck"/>
@@ -485,7 +486,7 @@
                             <ui:SettingsExpander Header="显示科任老师名字"
                                                  Description="在显示课程相关的提醒时同时展示并播报对应科任老师的名字">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE77B;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xEDB3;" FontSize="20"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <CheckBox x:Name="ShowTeacherCheck"/>
@@ -599,7 +600,7 @@
 
                             <ui:SettingsExpander Header="主题" Description="跟随系统 / 浅色 / 深色">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE790;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE566;" FontSize="20"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <!-- 多选一的设置一律用下拉框（照 CI 的 SettingsExpander.Footer + ComboBox 写法） -->
@@ -613,7 +614,7 @@
 
                             <ui:SettingsExpander Header="主界面背景不透明度">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE71C;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE00D;" FontSize="20"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="12">
@@ -626,7 +627,7 @@
 
                             <ui:SettingsExpander Header="全局字号缩放">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE8D2;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xF38B;" FontSize="20"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="12">
@@ -640,7 +641,7 @@
                             <ui:SettingsExpander Header="主界面缩放"
                                                  Description="对应 CI 的「主界面缩放」（CI 默认 1.9），整体放大主界面">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE71E;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xF0F5;" FontSize="20"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="12">
@@ -661,7 +662,7 @@
 
                             <ui:SettingsExpander Header="组件排列方向">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE700;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE07D;" FontSize="20"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <ComboBox x:Name="OrientationCombo" HorizontalAlignment="Stretch">
@@ -674,7 +675,7 @@
                             <ui:SettingsExpander Header="鼠标穿透"
                                                  Description="开启后鼠标点击会直接落到主界面后方的窗口；鼠标移入主界面自动淡化">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE7C9;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE60D;" FontSize="20"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <CheckBox x:Name="ClickThroughSwitch"/>
@@ -830,14 +831,14 @@
                                         IsOpen="True" IsClosable="False"/>
                             <ui:SettingsExpander Header="通知测试" Description="直接触发各类提醒，用于检查效果（不依赖当前课表状态）">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE838;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE8EB;" FontSize="20"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpanderItem x:Name="DebugTriggerClassOnItem" Content="触发上课提醒" IsClickEnabled="True"/>
                                 <ui:SettingsExpanderItem x:Name="DebugTriggerClassOffItem" Content="触发下课提醒" IsClickEnabled="True"/>
                             </ui:SettingsExpander>
                             <ui:SettingsExpander Header="调试菜单">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE7C4;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE2F0;" FontSize="20"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpanderItem x:Name="DebugCloseItem" Content="关闭调试菜单（隐藏本页）" IsClickEnabled="True"/>
                             </ui:SettingsExpander>
@@ -846,7 +847,7 @@
                             <ui:SettingsExpander Header="NEX Intelligence 接口"
                                                  Description="留空则使用内置接口（开箱可用）。填入你自己的地址/密钥就会覆盖内置的；密钥框不会回显内置密钥明文。">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE968;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xEE9B;" FontSize="20"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpanderItem Content="服务地址" Description="留空 = 内置地址">
                                     <ui:SettingsExpanderItem.Footer>
@@ -898,7 +899,7 @@
 
                             <ui:SettingsExpander Header="头像" Description="支持 PNG / JPG / BMP / WebP，上传后会复制到应用数据目录">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE91B;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xEDD3;" FontSize="20"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="10">
@@ -910,7 +911,7 @@
 
                             <ui:SettingsExpander Header="用户名" Description="显示在账户区的名称">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE77B;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xEDB3;" FontSize="20"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <TextBox x:Name="UserNameBox" Width="300" Watermark="输入用户名"/>
@@ -919,7 +920,7 @@
 
                             <ui:SettingsExpander Header="邮箱" Description="显示在账户区的邮箱地址">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE715;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xEBBC;" FontSize="20"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <TextBox x:Name="EmailBox" Width="300" Watermark="输入邮箱"/>
