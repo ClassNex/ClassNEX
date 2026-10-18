@@ -960,102 +960,26 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
     private DispatcherTimer? _homeGreetingTimer;
 
-    /// <summary>按当前时间给问候语（早上好 / 中午好 / 晚上好），并刷新主页各卡片。</summary>
+    /// <summary>主页问候：按当前时间给英文问候（Good morning / afternoon / evening），并刷新副标题。</summary>
     private void RefreshHomeGreeting()
     {
         var name = string.IsNullOrWhiteSpace(AppServices.Settings.UserName)
-            ? "同学"
+            ? "there"
             : AppServices.Settings.UserName.Trim();
 
         var now = DateTime.Now;
         var greeting = now.Hour switch
         {
-            >= 5 and < 11 => "早上好",
-            >= 11 and < 17 => "中午好",
-            _ => "晚上好",
+            >= 5 and < 11 => "Good morning",
+            >= 11 and < 17 => "Good afternoon",
+            _ => "Good evening",
         };
 
-        HomeGreetingText.Text = $"{greeting}，{name}";
+        HomeGreetingText.Text = $"{greeting}, {name}";
 
         var slots = AppServices.Time.GetTodaySlots(AppServices.Schedule.Profile, now);
-        var current = AppServices.Time.GetCurrentCourse(slots, now.TimeOfDay);
-        var next = AppServices.Time.GetNextCourse(slots, now.TimeOfDay);
-        var countdown = AppServices.Time.GetCountdownText(slots, now.TimeOfDay);
-        HomeSubText.Text = $"{now:yyyy年M月d日 dddd} · 今日 {slots.Count} 节课"
-            + (current is null && next is null ? "" : $" · {countdown}");
-
-        // ---- 今天 ----
-        HomeTodayPanel.Children.Clear();
-        HomeTodayPanel.Children.Add(HomeCard("\uE736", "当前课程",
-            current is null ? "现在没有课" : $"{current.DisplayName}  {current.TimeRange}"
-                + (string.IsNullOrWhiteSpace(current.Detail) ? "" : $"\n{current.Detail}"), null));
-        HomeTodayPanel.Children.Add(HomeCard("\uE76C", "下一节课",
-            next is null ? "今天没有后续课程了" : $"{next.DisplayName}  {next.TimeRange}"
-                + (string.IsNullOrWhiteSpace(next.Detail) ? "" : $"\n{next.Detail}"), null));
-        HomeTodayPanel.Children.Add(HomeCard("\uE787", "今日课程", $"{slots.Count} 节", null));
-        HomeTodayPanel.Children.Add(HomeCard("\uE916", "倒计时", countdown, null));
-
-        // ---- 快捷操作 ----
-        HomeActionsPanel.Children.Clear();
-        HomeActionsPanel.Children.Add(HomeCard("\uE70F", "档案编辑器", "编辑课表与时间表",
-            () => App.OpenProfileEditor(0)));
-        HomeActionsPanel.Children.Add(HomeCard("\uE8B7", "数据目录", SettingsService.DataDirectory,
-            () => OnOpenDataFolder(null, new RoutedEventArgs())));
-        HomeActionsPanel.Children.Add(HomeCard("\uE7C3", "导出诊断数据", "设置 + 日志 + 版本信息",
-            () => OnExportDiagnostics(null, new RoutedEventArgs())));
-        HomeActionsPanel.Children.Add(HomeCard("\uE713", "应用设置", "打开「基本」页",
-            () => NavigateTo("general")));
-
-        // ---- 状态 ----
-        var s = AppServices.Settings;
-        HomeStatusPanel.Children.Clear();
-        HomeStatusPanel.Children.Add(HomeCard("\uEA8F", "通知",
-            s.AllowNotification ? "已开启" : "已关闭", () => NavigateTo("notification")));
-        HomeStatusPanel.Children.Add(HomeCard("\uE945", "提醒效果",
-            s.AllowNotificationEffect ? "水波纹已开启" : "水波纹已关闭", () => NavigateTo("notification")));
-        HomeStatusPanel.Children.Add(HomeCard("\uE71D", "主界面组件",
-            $"{s.Widgets.Count(w => w.IsEnabled)} 个已启用", () => NavigateTo("widgets")));
-        HomeStatusPanel.Children.Add(HomeCard("\uE946", "应用版本",
-            VersionText.Text ?? "?", () => NavigateTo("about")));
-    }
-
-    /// <summary>主页卡片（图标 + 标题 + 描述；有点击动作时鼠标变手形）。样式见 XAML 的 Border.HomeCard。</summary>
-    private static Border HomeCard(string glyph, string title, string subtitle, Action? onClick)
-    {
-        var panel = new StackPanel
-        {
-            Spacing = 6,
-            Children =
-            {
-                new AvaloniaFluentUI.Controls.FontIcon
-                {
-                    Glyph = glyph,
-                    FontFamily = new FontFamily("Segoe MDL2 Assets"),
-                    FontSize = 24,
-                    HorizontalAlignment = HorizontalAlignment.Left,
-                },
-                new TextBlock { Text = title, FontSize = 15 },
-                new TextBlock
-                {
-                    Text = subtitle,
-                    FontSize = 12,
-                    Opacity = 0.7,
-                    TextWrapping = TextWrapping.Wrap,
-                    TextTrimming = TextTrimming.CharacterEllipsis,
-                },
-            },
-        };
-
-        var card = new Border { Child = panel };
-        card.Classes.Add("HomeCard");
-
-        if (onClick is not null)
-        {
-            card.Cursor = new Cursor(StandardCursorType.Hand);
-            card.PointerPressed += (_, _) => onClick();
-        }
-
-        return card;
+        var day = now.ToString("dddd, MMMM d", System.Globalization.CultureInfo.GetCultureInfo("en-US"));
+        HomeSubText.Text = $"{day} · {slots.Count} " + (slots.Count == 1 ? "lesson" : "lessons") + " today";
     }
 
     // ==================== 顶栏搜索（查找设置） ====================
@@ -1629,65 +1553,64 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         _loading = false;
     }
 
-    /// <summary>「基本 → 行为」各项：载入 + 接线（开机自启/Url 协议会写注册表）。</summary>
+    // ui:ToggleSwitch 挂 x:Name 不会生成字段（实测），所以 XAML 里用命名 Border 包一层，这里取出来
+    private ToggleSwitch StartupToggle =>
+        (ToggleSwitch)StartupToggleHost.Child!;
+
+    private ToggleSwitch UrlProtocolToggle =>
+        (ToggleSwitch)UrlProtocolToggleHost.Child!;
+
+    private ToggleSwitch SafeModeToggle =>
+        (ToggleSwitch)SafeModeToggleHost.Child!;
+
+    /// <summary>「基本 → 行为」各项：载入 + 接线（开机自启/Url 协议会写注册表）。
+    /// 复选框已按需求换成开关（ui:ToggleSwitch），事件用 Checked/Unchecked（只在用户操作时触发）。</summary>
     private void LoadBehaviorSettings()
     {
         var s = AppServices.Settings;
 
-        StartupCheck.IsChecked = s.RunAtStartup;
-        UrlProtocolCheck.IsChecked = s.RegisterUrlProtocol;
-        WeekRotationBox.Value = Math.Clamp(s.WeekRotationOffset + 1, 1, 99);
-        SafeModeCheck.IsChecked = s.TeachingSafeMode;
+        StartupToggle.IsChecked = s.RunAtStartup;
+        UrlProtocolToggle.IsChecked = s.RegisterUrlProtocol;
+        SafeModeToggle.IsChecked = s.TeachingSafeMode;
         SafeModeCombo.SelectedIndex = Math.Clamp(s.CrashHandlingMode, 0, 2);
-        StartupSplashCheck.IsChecked = s.ShowStartupSplash;
 
-        StartupCheck.IsCheckedChanged += (_, _) =>
+        void WireStartup()
         {
             if (_loading)
                 return;
-            AppServices.Settings.RunAtStartup = StartupCheck.IsChecked == true;
+            AppServices.Settings.RunAtStartup = StartupToggle.IsChecked == true;
             AppServices.SaveSettings();
             StartupRegistry.SetRunAtStartup(AppServices.Settings.RunAtStartup);
-        };
+        }
 
-        UrlProtocolCheck.IsCheckedChanged += (_, _) =>
+        StartupToggle.IsCheckedChanged += (_, _) => WireStartup();
+
+        void WireUrl()
         {
             if (_loading)
                 return;
-            AppServices.Settings.RegisterUrlProtocol = UrlProtocolCheck.IsChecked == true;
+            AppServices.Settings.RegisterUrlProtocol = UrlProtocolToggle.IsChecked == true;
             AppServices.SaveSettings();
             StartupRegistry.SetUrlProtocol(AppServices.Settings.RegisterUrlProtocol);
-        };
+        }
 
-        WeekRotationBox.ValueChanged += (_, _) =>
+        UrlProtocolToggle.IsCheckedChanged += (_, _) => WireUrl();
+
+        void WireSafe()
         {
             if (_loading)
                 return;
-            AppServices.Settings.WeekRotationOffset = (int)Math.Clamp(WeekRotationBox.Value, 1, 99) - 1;
+            AppServices.Settings.TeachingSafeMode = SafeModeToggle.IsChecked == true;
             AppServices.SaveSettings();
-        };
+        }
 
-        SafeModeCheck.IsCheckedChanged += (_, _) =>
-        {
-            if (_loading)
-                return;
-            AppServices.Settings.TeachingSafeMode = SafeModeCheck.IsChecked == true;
-            AppServices.SaveSettings();
-        };
+        SafeModeToggle.IsCheckedChanged += (_, _) => WireSafe();
 
         SafeModeCombo.SelectionChanged += (_, _) =>
         {
             if (_loading)
                 return;
             AppServices.Settings.CrashHandlingMode = Math.Clamp(SafeModeCombo.SelectedIndex, 0, 2);
-            AppServices.SaveSettings();
-        };
-
-        StartupSplashCheck.IsCheckedChanged += (_, _) =>
-        {
-            if (_loading)
-                return;
-            AppServices.Settings.ShowStartupSplash = StartupSplashCheck.IsChecked == true;
             AppServices.SaveSettings();
         };
     }
