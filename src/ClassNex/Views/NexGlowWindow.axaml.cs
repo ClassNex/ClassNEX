@@ -156,21 +156,21 @@ public partial class NexGlowWindow : Window
         var w = GetScreenWidth();
         var h = GetScreenHeight();
 
-        // ===== 入场：先上下两条边（红箭头），再左右两条边（蓝箭头） =====
+        // ===== 入场：先上下出现，再左右出现（严格分两段，样式不动） =====
         if (_draw < 1)
         {
-            _draw += 1 / (1.15 * Fps);   // 整段约 1.15 秒
+            _draw += 1 / (1.1 * Fps);   // 整段约 1.1 秒
             if (_draw > 1)
                 _draw = 1;
 
-            // 阶段一（0 ~ 55%）：上下两条边从触发侧推进到对侧 —— 完全走完
-            var p1 = Math.Clamp(_draw / 0.55, 0, 1);
+            // 阶段一（0 ~ 50%）：上下两条边从触发侧推进到对侧，完全走完
+            var p1 = Math.Clamp(_draw / 0.5, 0, 1);
             var e1 = 1 - Math.Pow(1 - p1, 3);
             TopStrip.Width = w * e1;
             BottomStrip.Width = w * e1;
 
-            // 阶段二（58% ~ 100%）：上下到位后，左右两条边再一起合拢
-            var p2 = Math.Clamp((_draw - 0.58) / 0.42, 0, 1);
+            // 阶段二（55% ~ 100%）：上下到位之后，左右两条边才出现（从中间向上下合拢 + 渐显）
+            var p2 = Math.Clamp((_draw - 0.55) / 0.45, 0, 1);
             var e2 = 1 - Math.Pow(1 - p2, 3);
             LeftStrip.Height = h * e2;
             RightStrip.Height = h * e2;

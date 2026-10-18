@@ -14,27 +14,27 @@
          入场时按「从唤醒条那一侧，上下两条边一起向前推进，最后在对侧合拢」的绘制动画
          （用户给的示意图：上下两条蓝线由触发侧向对侧延伸）。之后四条带子上的彩虹+彗星头持续流动。 -->
     <Grid x:Name="Root">
-        <Border x:Name="TopStrip" Height="26" VerticalAlignment="Top" HorizontalAlignment="Right" Width="0">
+        <Border x:Name="TopStrip" Height="16" VerticalAlignment="Top" HorizontalAlignment="Right" Width="0">
             <Border.Effect>
-                <BlurEffect Radius="18"/>
+                <BlurEffect Radius="26"/>
             </Border.Effect>
         </Border>
 
-        <Border x:Name="BottomStrip" Height="26" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="0">
+        <Border x:Name="BottomStrip" Height="16" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="0">
             <Border.Effect>
-                <BlurEffect Radius="18"/>
+                <BlurEffect Radius="26"/>
             </Border.Effect>
         </Border>
 
-        <Border x:Name="RightStrip" Width="26" VerticalAlignment="Stretch" HorizontalAlignment="Right" Opacity="0">
+        <Border x:Name="RightStrip" Width="16" VerticalAlignment="Stretch" HorizontalAlignment="Right" Opacity="0">
             <Border.Effect>
-                <BlurEffect Radius="18"/>
+                <BlurEffect Radius="26"/>
             </Border.Effect>
         </Border>
 
-        <Border x:Name="LeftStrip" Width="26" VerticalAlignment="Center" HorizontalAlignment="Left" Height="0">
+        <Border x:Name="LeftStrip" Width="16" VerticalAlignment="Center" HorizontalAlignment="Left" Height="0">
             <Border.Effect>
-                <BlurEffect Radius="18"/>
+                <BlurEffect Radius="26"/>
             </Border.Effect>
         </Border>
     </Grid>
