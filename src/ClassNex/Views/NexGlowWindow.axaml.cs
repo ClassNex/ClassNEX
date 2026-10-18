@@ -93,15 +93,21 @@ public partial class NexGlowWindow : Window
 
         Root.Opacity = 1;
 
-        // 触发侧那条带立刻贴边、其余从 0 开始画
+        // 触发侧那条带从中间长出（贴边），对侧从底部往上长；其余从 0 开始画
         var fromLeft = StartFromLeft;
         TopStrip.HorizontalAlignment = fromLeft ? Avalonia.Layout.HorizontalAlignment.Left
                                                 : Avalonia.Layout.HorizontalAlignment.Right;
         BottomStrip.HorizontalAlignment = TopStrip.HorizontalAlignment;
 
+        // 触发侧：垂直方向从中间向上下长开（Center）；对侧：从下往上长（Bottom）
+        (fromLeft ? LeftStrip : RightStrip).VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center;
+        (fromLeft ? RightStrip : LeftStrip).VerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom;
+
         TopStrip.Width = 0;
         BottomStrip.Width = 0;
         LeftStrip.Height = 0;
+        RightStrip.Height = 0;
+        LeftStrip.Opacity = 0;
         RightStrip.Opacity = 0;
 
         // 贴合屏幕边（DIP）
@@ -153,29 +159,32 @@ public partial class NexGlowWindow : Window
             return;
         }
 
-        var w = GetScreenWidth();
-        var h = GetScreenHeight();
-
-        // ===== 入场：先上下出现，再左右出现（严格分两段，样式不动） =====
+        // ===== 入场（绕屏一笔画，样式不动）：
+        //   ① 右侧从中间向上下出现 → ② 上/下两条边从右往左出现 → ③ 左侧从下往上出现 =====
         if (_draw < 1)
         {
-            _draw += 1 / (1.1 * Fps);   // 整段约 1.1 秒
+            _draw += 1 / (1.35 * Fps);   // 整段约 1.35 秒
             if (_draw > 1)
                 _draw = 1;
 
-            // 阶段一（0 ~ 50%）：上下两条边从触发侧推进到对侧，完全走完
-            var p1 = Math.Clamp(_draw / 0.5, 0, 1);
-            var e1 = 1 - Math.Pow(1 - p1, 3);
-            TopStrip.Width = w * e1;
-            BottomStrip.Width = w * e1;
+            var fromLeft = StartFromLeft;
+            var trigger = fromLeft ? LeftStrip : RightStrip;   // 触发侧（右侧开始）
+            var far = fromLeft ? RightStrip : LeftStrip;       // 对侧（左侧收尾）
 
-            // 阶段二（55% ~ 100%）：上下到位之后，左右两条边才出现（从中间向上下合拢 + 渐显）
-            var p2 = Math.Clamp((_draw - 0.55) / 0.45, 0, 1);
-            var e2 = 1 - Math.Pow(1 - p2, 3);
-            LeftStrip.Height = h * e2;
-            RightStrip.Height = h * e2;
-            LeftStrip.Opacity = e2;
-            RightStrip.Opacity = e2;
+            // ① 触发侧：从中间向上下长开（0 ~ 28%）
+            var e1 = Ease(Math.Clamp(_draw / 0.28, 0, 1));
+            trigger.Height = GetScreenHeight() * e1;
+            trigger.Opacity = e1;
+
+            // ② 上/下：从触发侧向对侧推进（24% ~ 58%）
+            var e2 = Ease(Math.Clamp((_draw - 0.24) / 0.34, 0, 1));
+            TopStrip.Width = GetScreenWidth() * e2;
+            BottomStrip.Width = GetScreenWidth() * e2;
+
+            // ③ 对侧：从下往上长开（54% ~ 100%）
+            var e3 = Ease(Math.Clamp((_draw - 0.54) / 0.46, 0, 1));
+            far.Height = GetScreenHeight() * e3;
+            far.Opacity = e3;
         }
 
         // ===== 流动：渐变沿带子方向滚动（Repeat 填充 → 无缝） =====
@@ -198,6 +207,8 @@ public partial class NexGlowWindow : Window
         var breath = 0.86 + 0.14 * Math.Sin(_flow * Math.PI * 2 * 6);
         Root.Opacity = (0.78 + 0.12 * breath) * Math.Min(1, _draw * 1.4);
     }
+
+    private static double Ease(double t) => 1 - Math.Pow(1 - t, 3);   // cubic ease-out
 
     /// <summary>用户点了屏幕任意位置（用来取消 AI 模式）。</summary>
     public event Action? CancelRequested;
