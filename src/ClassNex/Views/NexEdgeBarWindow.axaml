@@ -10,8 +10,7 @@
         ShowInTaskbar="False"
         ShowActivated="False"
         CanResize="False">
-    <!-- 吸附屏幕左右侧的半透明小白条：点一下 = 唤醒（同「嘿 NEX」）。
-         参照 Apple 智能 / OPPO 小布的流光：一条光带沿条身上下往复流动 + 呼吸。 -->
+    
     <Border x:Name="Bar"
             CornerRadius="7"
             Background="#5CFFFFFF"
@@ -22,7 +21,7 @@
             <RectangleGeometry Rect="0,0,14,120"/>
         </Border.Clip>
 
-        <!-- 流动的彗星光带（沿条身扫动；位移动画在代码里逐帧驱动） -->
+        
         <Border x:Name="Sweep"
                 Width="8" Height="36"
                 CornerRadius="4"

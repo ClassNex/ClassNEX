@@ -2,20 +2,20 @@ using System.Runtime.InteropServices;
 
 namespace ClassNex.Services;
 
-/// <summary>
-/// Windows 桌面浮层辅助：
-///   - 点击穿透（WS_EX_TRANSPARENT）：鼠标点击直接落到后方的窗口/桌面
-///   - 全局光标位置轮询：因为穿透后窗口收不到鼠标消息，悬停判断只能靠轮询
-/// 非 Windows 平台下所有方法都安全空转。
-/// </summary>
+
+
+
+
+
+
 internal static class WindowsOverlay
 {
     private const int GwlExStyle = -20;
 
-    private const int WsExTransparent = 0x00000020; // 点击穿透
-    private const int WsExToolWindow = 0x00000080;  // 工具窗口：不出现在 Alt+Tab / 任务栏
-    private const int WsExLayered = 0x00080000;     // 分层窗口（与穿透配合）
-    private const int WsExNoActivate = 0x08000000;  // 不抢焦点
+    private const int WsExTransparent = 0x00000020; 
+    private const int WsExToolWindow = 0x00000080;  
+    private const int WsExLayered = 0x00080000;     
+    private const int WsExNoActivate = 0x08000000;  
 
     [StructLayout(LayoutKind.Sequential)]
     private struct Point
@@ -50,7 +50,7 @@ internal static class WindowsOverlay
             SetWindowLong32(hWnd, GwlExStyle, value.ToInt32());
     }
 
-    /// <summary>设置是否点击穿透（穿透后鼠标事件全部落向后方的窗口）。</summary>
+    
     public static void SetClickThrough(IntPtr hWnd, bool enabled)
     {
         if (!OperatingSystem.IsWindows() || hWnd == IntPtr.Zero)
@@ -69,15 +69,15 @@ internal static class WindowsOverlay
         }
         catch
         {
-            // 忽略：非 Windows 或句柄失效
+            
         }
     }
 
-    /// <summary>
-    /// 设置工具窗口样式（WS_EX_TOOLWINDOW）：
-    /// 与 CI 的 <c>WindowFeatures.ToolWindow</c> 等价 —— 主界面不会出现在 Alt+Tab 列表里，
-    /// 因此按 Alt+Tab 切换窗口时浮窗不会被隐藏/关闭。
-    /// </summary>
+    
+    
+    
+    
+    
     public static void SetToolWindow(IntPtr hWnd, bool enabled)
     {
         if (!OperatingSystem.IsWindows() || hWnd == IntPtr.Zero)
@@ -96,11 +96,11 @@ internal static class WindowsOverlay
         }
         catch
         {
-            // 忽略：非 Windows 或句柄失效
+            
         }
     }
 
-    /// <summary>取全局光标位置（物理像素）。</summary>
+    
     public static (int X, int Y)? GetCursorPosition()
     {
         if (!OperatingSystem.IsWindows())

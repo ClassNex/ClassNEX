@@ -20,23 +20,23 @@ using AvaloniaFluentUI.Windowing;
 
 namespace ClassNex.Views;
 
-/// <summary>
-/// 应用设置。全程使用 FluentAvalonia（FluentUI）控件：
-/// NavigationView（左侧导航）/ SettingsExpander（设置分组）/ ToggleSwitch（开关）/ FontIcon（图标）。
-/// </summary>
+
+
+
+
 public partial class SettingsWindow : AppWindow
 {
     private readonly ObservableCollection<WidgetItem> _widgets = new();
     private readonly ObservableCollection<SearchEntry> _searchEntries = new();
 
-    /// <summary>页面访问历史（供左上角返回箭头，照 Gallery 标题栏的 ← 行为）。</summary>
+    
     private readonly List<int> _pageHistory = new();
     private int _lastPageIndex = -1;
 
     private bool _loading;
     private WidgetItem? _currentWidget;
 
-    /// <summary>顶栏搜索的一条结果：设置项 + 所属页面。</summary>
+    
     private sealed class SearchEntry
     {
         public string Title { get; init; } = "";
@@ -46,10 +46,10 @@ public partial class SettingsWindow : AppWindow
         public int PageIndex { get; init; }
     }
 
-    /// <summary>页面名（顺序与 NavView.MenuItems 一致，对照 CI 的 SettingsPageInfo.Name）。</summary>
+    
     private static readonly string[] PageNames = { "主页", "基本", "外观", "窗口", "组件", "NEX Intelligence", "提醒", "关于 ClassNEX", "调试", "账户" };
 
-    /// <summary>设置项索引（供顶栏「查找设置」搜索；Title = 设置项，PageIndex = 所属页面）。</summary>
+    
     private static readonly (string Title, int PageIndex)[] SearchIndex =
     {
         ("单周开始日期", 0),
@@ -82,23 +82,23 @@ public partial class SettingsWindow : AppWindow
         WireEvents();
         LoadFromSettings();
 
-        // 账户卡形态跟随左栏宽度：展开(~263 DIP) → 完整卡；折叠成图标栏(~28 DIP) → 只留小圆头像。
-        // 之前去可视树里找 NavigationView 内部的 SplitView 订阅它，**Loaded 时那个 SplitView 还没生成**，
-        // 于是订阅没挂上、折叠态永远不生效（头像还是 52 宽 → 溢出侧边栏被右侧内容区盖住）。
-        // 直接监听自己的宽度最稳：不依赖任何内部控件、不写任何导航状态。
+        
+        
+        
+        
         AccountPanel.SizeChanged += (_, e) => ApplyAccountCompact(e.NewSize.Width < 150);
     }
 
-    // ==================== 账户卡：左栏折叠时收缩（纯视觉，不碰导航状态） ====================
+    
 
     private bool _accountCompact;
 
-    /// <summary>
-    /// compact=true：内容框边距收紧（14→2，让框够宽装下头像）、头像 52→36、文字纯透明度淡出；
-    /// compact=false：还原。
-    /// 关键：**全程不动任何布局开关**（不切 IsVisible —— 那会在动画中途引起布局突变，就是一抖一抖的来源），
-    /// 只改「头像尺寸 / 文字透明度」两个重绘级属性（都带 150ms 过渡）。
-    /// </summary>
+    
+    
+    
+    
+    
+    
     private void ApplyAccountCompact(bool compact)
     {
         if (_accountCompact == compact)
@@ -108,11 +108,11 @@ public partial class SettingsWindow : AppWindow
 
         if (compact)
         {
-            // 折叠态内容框实测只有 ~27 DIP 宽（WinUI 紧凑面板的内容宽度），
-            // 所以头像必须 ≤26 DIP 才能真正装下 —— 36/32 都会溢出被右缘裁掉。取 24。
-            // 左边距 11：框变成 11..46（宽 35），头像 11..35 落在里面不被裁，
-            // 且中心在 23 DIP —— 正好是侧边栏图标列的中心（a11y 实测导航项中心 214px ≈ 23 DIP）。
-            // 边距 11+2 = 13 → 框宽 48-13 = 35 DIP，所以头像放到 32 也装得下（中心仍取 23 → 左边距 7）。
+            
+            
+            
+            
+            
             AccountPanel.Margin = new Thickness(7, 6, 2, 10);
             AccountShift.X = 0;
             AccountAvatarRing.Width = 32;
@@ -135,23 +135,23 @@ public partial class SettingsWindow : AppWindow
         }
     }
 
-    /// <summary>账户卡的渲染级位移（XAML 里 RenderTransform 的 TranslateTransform，x:Name 不生成字段，这里取）。</summary>
+    
     private TranslateTransform AccountShift => (TranslateTransform)AccountPanel.RenderTransform!;
 
-    /// <summary>
-    /// Mica 云母背景 + 沉浸式标题栏（照 CI 的 <c>MyWindow.OnLoaded</c>：
-    /// Windows 11 21H2 / build 22000 及以上才启用，否则保持普通不透明背景）。
-    /// 根元素已是 <c>AvaloniaFluentUI.Windowing.AppWindow</c>：客户区扩展到标题栏，
-    /// 系统的最小化/最大化/关闭按钮直接画在右上角（顶栏第 4 列留了 140 宽避让）。
-    /// </summary>
+    
+    
+    
+    
+    
+    
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
 
-        // 顶栏在标题栏区域内，默认只用于拖动窗口 → 里面的按钮（返回 / 更多选项）收不到点击。
-        // TitleBarHitTestType 默认 Simple = 整条标题栏只做边界判定；改成 Complex 后
-        // 会用渲染器对可视元素做命中测试，标题栏里的控件即可交互（库文档原话：
-        // "Use this if you're using something like a TabView or NavigationView"）。
+        
+        
+        
+        
         try
         {
             if (TitleBar is { } bar)
@@ -161,7 +161,7 @@ public partial class SettingsWindow : AppWindow
         }
         catch
         {
-            // 忽略：不支持时保持默认
+            
         }
 
         try
@@ -182,11 +182,11 @@ public partial class SettingsWindow : AppWindow
         }
         catch
         {
-            // 忽略：不支持 Mica 时保持普通背景
+            
         }
     }
 
-    /// <summary>初始化外壳：顶栏版本号、导航栏账号块、顶栏搜索（对照 CI 的顶栏与用户给的系统设置截图）。</summary>
+    
     private void InitShell()
     {
         var version = typeof(SettingsWindow).Assembly
@@ -204,7 +204,7 @@ public partial class SettingsWindow : AppWindow
         SearchResults.ItemsSource = _searchEntries;
 
 #if DEBUG
-        // 自检：模拟「输入关键字 → 点搜索结果」全流程（设 CLASSNEX_VERIFY_SEARCH=1）
+        
         if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_SEARCH") == "1")
         {
             Dispatcher.UIThread.Post(() =>
@@ -241,7 +241,7 @@ public partial class SettingsWindow : AppWindow
 #endif
     }
 
-    /// <summary>账户区显示设置里的用户名与邮箱（照 FluentUI-Gallery 的账户卡：名称 + 邮箱）。</summary>
+    
     private void RefreshAccountName()
     {
         var name = AppServices.Settings.UserName;
@@ -254,7 +254,7 @@ public partial class SettingsWindow : AppWindow
         AccountPageNameText.Text = displayName;
         AccountPageEmailText.Text = displayEmail;
 
-        // 头像描环：直接取软件强调色（用户要求「框框的取色按照软件取色来」）
+        
         if (CiPalette.TryResource("AccentFillColorDefaultBrush", out var accentBrush) &&
             accentBrush is ISolidColorBrush solid)
         {
@@ -265,7 +265,7 @@ public partial class SettingsWindow : AppWindow
         RefreshAvatarImages();
     }
 
-    /// <summary>把颜色往白/黑方向混合（t=0 保持原色，t=1 变成 target）。</summary>
+    
     private static Color Mix(Color c, Color target, double t)
     {
         t = Math.Clamp(t, 0, 1);
@@ -275,7 +275,7 @@ public partial class SettingsWindow : AppWindow
             (byte)Math.Clamp(c.B + (target.B - c.B) * t, 0, 255));
     }
 
-    /// <summary>色相旋转（度）+ 饱和度倍数，用来从强调色派生出「第二色」。</summary>
+    
     private static Color RotateHue(Color c, double degrees, double satScale)
     {
         var r = c.R / 255.0;
@@ -304,7 +304,7 @@ public partial class SettingsWindow : AppWindow
             h += 1.0;
         s = Math.Clamp(s * satScale, 0, 1);
 
-        double R = l, G = l, B = l;   // 灰阶兜底
+        double R = l, G = l, B = l;   
         if (s > 1e-6)
         {
             var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
@@ -340,14 +340,14 @@ public partial class SettingsWindow : AppWindow
         NavigateTo("account");
     }
 
-    /// <summary>头像文件路径：上传后复制到 data/avatar.png；不存在时用内置头像。</summary>
+    
     private static string CustomAvatarPath =>
         System.IO.Path.Combine(AppContext.BaseDirectory, "data", "avatar.png");
 
     private const string DefaultAvatarUri = "avares://ClassNex/Assets/avatar.png";
 
-    /// <summary>按当前头像状态刷新两处头像（左栏账户卡 + 账户页大图）。
-    /// 用 Border.Background 的 ImageBrush 画图 —— Background 必被圆角裁剪，保证是正圆。</summary>
+    
+    
     private void RefreshAvatarImages()
     {
         try
@@ -380,7 +380,7 @@ public partial class SettingsWindow : AppWindow
         }
     }
 
-    /// <summary>更换头像：选图片 → 复制到 data/avatar.png → 立即刷新。</summary>
+    
     private async void OnChangeAvatar(object? sender, RoutedEventArgs e)
     {
         try
@@ -419,7 +419,7 @@ public partial class SettingsWindow : AppWindow
         }
     }
 
-    /// <summary>恢复默认头像：删除自定义文件并恢复内置头像。</summary>
+    
     private void OnResetAvatar(object? sender, RoutedEventArgs e)
     {
         try
@@ -435,7 +435,7 @@ public partial class SettingsWindow : AppWindow
         RefreshAvatarImages();
     }
 
-    /// <summary>左上角返回箭头：回到上一个页面。</summary>
+    
     private void OnNavigateBack(object? sender, RoutedEventArgs e)
     {
         if (_pageHistory.Count == 0)
@@ -450,7 +450,7 @@ public partial class SettingsWindow : AppWindow
         }
     }
 
-    /// <summary>导航到指定页面：basic / appearance / window / widgets / about / account。</summary>
+    
     public void NavigateTo(string page)
     {
         var index = page switch
@@ -467,7 +467,7 @@ public partial class SettingsWindow : AppWindow
             _ => 0,
         };
 
-        // 账户页不占导航位，从账户卡进入时直接切页
+        
         if (page == "account")
         {
             PageHome.IsVisible = PageGeneral.IsVisible = PageInterface.IsVisible = PageWindow.IsVisible =
@@ -478,8 +478,8 @@ public partial class SettingsWindow : AppWindow
             return;
         }
 
-        // 按页面名找导航项再选中 —— 不能按 MenuItems[i] 取：主页与基本之间有一个分隔符，
-        // 会把后面的索引整体顶偏一位（之前的隐性 bug）。
+        
+        
         var targetName = PageNames[Math.Clamp(index, 0, PageNames.Length - 1)];
         foreach (var item in NavView.MenuItems)
         {
@@ -494,13 +494,13 @@ public partial class SettingsWindow : AppWindow
 
     private void WireEvents()
     {
-        // ---- 顶栏「查找设置」搜索 ----
+        
         SearchBox.TextChanged += (_, _) => UpdateSearchResults();
         SearchResults.SelectionChanged += (_, _) => NavigateFromSearch();
 
         NavView.SelectionChanged += (_, _) => SwitchPage();
 
-        // ---- 通用 ----
+        
         SingleWeekStartPicker.PropertyChanged += (_, e) =>
         {
             if (!_loading && e.Property.Name == "SelectedDate")
@@ -508,7 +508,7 @@ public partial class SettingsWindow : AppWindow
         };
         TrayBehaviorCombo.SelectionChanged += (_, _) => ApplyGeneral();
 
-        // ---- 账户（用户名 / 邮箱）----
+        
         UserNameBox.TextChanged += (_, _) =>
         {
             if (_loading)
@@ -527,7 +527,7 @@ public partial class SettingsWindow : AppWindow
             RefreshAccountName();
         };
 
-        // ---- 界面（主题改成下拉框：多选一的设置一律用 ComboBox，照 CI 的写法）----
+        
         ThemeCombo.SelectionChanged += (_, _) =>
         {
             if (!_loading)
@@ -556,7 +556,7 @@ public partial class SettingsWindow : AppWindow
                 ApplyInterface();
         };
 
-        // ---- 主界面组件 ----
+        
         ResetWidgetButton.Click += (_, _) => ResetWidgets();
         WidgetList.SelectionChanged += (_, _) => SelectWidget();
 
@@ -571,12 +571,12 @@ public partial class SettingsWindow : AppWindow
                 ApplyWidgetEdit();
         };
 
-        // ---- 课表 ----（「当前课表文件」一行已按用户要求移除，课表文件在档案编辑器里管理）
+        
 
-        // 调试页条目事件
+        
         WireDebugPageEvents();
 
-        // 组件库：双击添加（用户要求「选中组件双击确认」；单击只选中 → 左侧出现强调色小竖线）
+        
         WidgetLibraryList.DoubleTapped += (_, _) =>
         {
             if (WidgetLibraryList.SelectedItem is WidgetTypeItem item)
@@ -587,7 +587,7 @@ public partial class SettingsWindow : AppWindow
 #endif
 
 #if DEBUG
-        // 自检：切页后 60ms / 900ms 各抓一帧，用来验证入场动画到底有没有在播
+        
         if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ICONS") == "1")
 {
     DispatcherTimer.RunOnce(() => SaveShot("_icons.png"), TimeSpan.FromSeconds(5));
@@ -596,14 +596,14 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         {
             DispatcherTimer.RunOnce(() =>
             {
-                NavigateTo("appearance");   // 切页（会触发 SwitchPage 与入场动画）
+                NavigateTo("appearance");   
                 DispatcherTimer.RunOnce(() => SaveShot("_anim_early.png"), TimeSpan.FromMilliseconds(60));
                 DispatcherTimer.RunOnce(() => SaveShot("_anim_late.png"), TimeSpan.FromMilliseconds(900));
             }, TimeSpan.FromSeconds(4));
         }
 #endif
 
-        // 主页问候：每 60 秒刷新（只在主页可见时更新，避免无谓刷新）
+        
         RefreshHomeGreeting();
         _homeGreetingTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
         _homeGreetingTimer.Tick += (_, _) =>
@@ -614,10 +614,10 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         _homeGreetingTimer.Start();
     }
 
-    // 主页（PageHome）目前按用户要求留空白，内容待设计。
+    
 
 
-    // ==================== 加载 ====================
+    
 
     private void LoadFromSettings()
     {
@@ -643,10 +643,10 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         OrientationCombo.SelectedIndex = s.Orientation == LayoutOrientation.Vertical ? 1 : 0;
         ClickThroughSwitch.IsChecked = s.IsClickThrough;
 
-        // 提醒设置（1:1 照 CI ClassNotificationSettings）
+        
         LoadNotificationSettings();
 
-        // 行为（开机自启 / Url 协议 / 学期开始时间周次 / 教学安全模式 / 启动加载界面）
+        
         LoadBehaviorSettings();
 
         RefreshWidgetLibrary();
@@ -665,14 +665,14 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
     private void SwitchPage()
     {
-        // AvaloniaFluentUI 的 NavigationView.SelectedItem 是内部包装对象，
-        // 不能靠 MenuItems.IndexOf(object) 找索引，改按 Content 字符串匹配。
+        
+        
         var name = (NavView.SelectedItem as NavigationViewItem)?.Content as string ?? "";
         var index = Array.IndexOf(PageNames, name);
         if (index < 0)
             index = 0;
 
-        // 记录页面历史（返回箭头用）
+        
         if (_lastPageIndex >= 0 && _lastPageIndex != index)
             _pageHistory.Add(_lastPageIndex);
         _lastPageIndex = index;
@@ -686,12 +686,12 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         PageNotification.IsVisible = index == 6;
         PageAbout.IsVisible = index == 7;
         PageDebug.IsVisible = index == 8;
-        PageAccount.IsVisible = false;   // 账户页只从账户卡进入
+        PageAccount.IsVisible = false;   
 
-        // 页面滑动入场：自己补间（见 PlayPageEntrance —— Avalonia 的 Transition/Animation 实测都不播）
+        
         PlayPageEntrance();
 
-        // 页面标题行（对照 CI 的 TitleContainer：页面名由外壳统一显示）
+        
         PageTitleText.Text = PageNames[Math.Clamp(index, 0, PageNames.Length - 1)];
 
         if (index == 0)
@@ -700,17 +700,17 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         if (index == 5)
             RefreshNexPage();
 
-        // 调试页里有 NEX 的接口配置（密钥只在这里填，普通界面不显示）
+        
         if (index == 8)
             RefreshNexApiFields();
     }
 
-    // ==================== NEX Intelligence（AI Agent 设置页） ====================
+    
 
     private bool _nexEventsWired;
     private bool _nexLoading;
 
-    /// <summary>NEX 设置页（权限 / 提示词 / 打开对话框）。接口配置在调试页，见 RefreshNexApiFields。</summary>
+    
     private void RefreshNexPage()
     {
         var s = AppServices.Settings;
@@ -738,14 +738,14 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
             NexGlowTestButton.Click += (_, _) =>
             {
-                // 手动演示一次「跑马灯 + 浮窗翻页」：不需要麦克风也能看效果
+                
                 AppServices.NexVoice?.ShowGlow();
                 AppServices.MainWindow?.ShowNexPanel("请讲", true);
                 var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3.5) };
                 timer.Tick += (_, _) =>
                 {
                     timer.Stop();
-                    AppServices.NexVoice?.ShowGlow();     // 再次点亮以刷新，然后收起
+                    AppServices.NexVoice?.ShowGlow();     
                     AppServices.MainWindow?.HideNexPanel();
                 };
                 timer.Start();
@@ -771,10 +771,10 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
                 AppServices.NexVoice?.RefreshEdgeBar();
             };
 
-            // 直接拉起 Windows 的语音设置页：整句听写需要在那里打开「在线语音识别」
+            
             NexSpeechSettingsButton.Click += (_, _) => App.OpenWindowsSpeechSettings();
 
-            // 声音设置：多半是默认输入设备选错了（虚拟声卡/模拟器抢了默认），在这页改
+            
             NexSoundSettingsButton.Click += (_, _) =>
             {
                 try
@@ -805,7 +805,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             NexSystemPromptBox.TextChanged += (_, _) => SaveNexSettings();
             NexPermissionCombo.SelectionChanged += (_, _) => SaveNexSettings();
 
-            // 调试页里的接口配置
+            
             NexBaseUrlBox.TextChanged += (_, _) => SaveNexApiFields();
             NexApiKeyBox.TextChanged += (_, _) => SaveNexApiFields();
             NexModelCombo.SelectionChanged += (_, _) => SaveNexApiFields();
@@ -840,7 +840,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         }
     }
 
-    /// <summary>主页上那行「当前接口」状态：只说明用的是内置还是自定义，不显示密钥明文。</summary>
+    
     private void UpdateNexApiStateText()
     {
         var s = AppServices.Settings;
@@ -854,7 +854,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             : "正在使用你自己填写的接口配置";
     }
 
-    /// <summary>填调试页里的接口三件套（密钥框永远留空，不回显内置密钥）。</summary>
+    
     private void RefreshNexApiFields()
     {
         var s = AppServices.Settings;
@@ -863,7 +863,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         try
         {
             NexBaseUrlBox.Text = s.NexApiBaseUrl;
-            NexApiKeyBox.Text = s.NexApiKey;              // 只可能是用户自己填的，内置密钥不回显
+            NexApiKeyBox.Text = s.NexApiKey;              
             NexModelCombo.ItemsSource = new[] { Services.NexIntelligence.NexConfig.ResolveModel(s) };
             NexModelCombo.SelectedIndex = 0;
             NexModelCombo.Text = Services.NexIntelligence.NexConfig.ResolveModel(s);
@@ -885,7 +885,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
         var model = (NexModelCombo.SelectedItem as string) ?? NexModelCombo.Text?.Trim();
         if (string.IsNullOrWhiteSpace(model) || model == Services.NexIntelligence.NexConfig.BuiltInModel)
-            s.NexModel = "";                              // 等于内置就存空，保持「留空=内置」
+            s.NexModel = "";                              
         else
             s.NexModel = model;
 
@@ -910,7 +910,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         SettingsService.Save(s);
     }
 
-    /// <summary>从接口拉模型列表填进下拉框（用当前生效的地址与密钥）。</summary>
+    
     private async Task FetchModelsAsync()
     {
         SaveNexApiFields();
@@ -934,7 +934,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         }
     }
 
-    /// <summary>测一次最小请求，确认地址/密钥/模型可用。</summary>
+    
     private async Task TestNexConnectionAsync()
     {
         SaveNexApiFields();
@@ -956,12 +956,12 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         }
     }
 
-    // ==================== 主页（照 FluentUI Gallery 首页：问候 + 横幅 + 分组卡片） ====================
+    
 
     private DispatcherTimer? _homeGreetingTimer;
 
-    /// <summary>主页问候：按时间给「早上好/中午好/晚上好」+ 名字。
-    /// 注意：只有**逗号**用英文逗号（用户明确要求），文字仍是中文、字体仍是原来的衬线字体。</summary>
+    
+    
     private void RefreshHomeGreeting()
     {
         var name = string.IsNullOrWhiteSpace(AppServices.Settings.UserName)
@@ -976,14 +976,14 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             _ => "晚上好",
         };
 
-        // 英文逗号后跟空格
+        
         HomeGreetingText.Text = $"{greeting}, {name}";
 
         var slots = AppServices.Time.GetTodaySlots(AppServices.Schedule.Profile, now);
         HomeSubText.Text = $"{now:yyyy年M月d日 dddd} · 今日 {slots.Count} 节课";
     }
 
-    // ==================== 顶栏搜索（查找设置） ====================
+    
 
     private void UpdateSearchResults()
     {
@@ -1017,9 +1017,9 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
         var pageIndex = entry.PageIndex;
 
-        // 关键：这里正处在 ListBox.SelectionChanged 事件内部，
-        // 直接清空 ItemsSource（_searchEntries）会让控件在处理选中后继续访问已移除的项 → 闪退。
-        // 因此把导航与清理都推迟到本次事件处理结束之后。
+        
+        
+        
         Dispatcher.UIThread.Post(() =>
         {
             try
@@ -1029,7 +1029,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             }
             catch
             {
-                // 忽略：导航失败不影响后续清理
+                
             }
 
             SearchResultsPanel.IsVisible = false;
@@ -1038,22 +1038,22 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         }, DispatcherPriority.Background);
     }
 
-    // ==================== 更多选项 / 账号块 ====================
+    
 
     private void OnOpenDataFolder(object? sender, RoutedEventArgs e)
         => OpenInExplorer(SettingsService.DataDirectory);
 
-    // ==================== 页面滑动入场（自己补间） ====================
+    
 
-    /// <summary>
-    /// 页面滑动入场：照 Fluent 的 SlideNavigationTransition（FromBottom，只滑不淡）。
-    /// ★ 逐帧动画必须挂在**渲染帧**上，所以用 TopLevel.RequestAnimationFrame（vsync 驱动）：
-    ///   · DispatcherTimer 16ms —— 跟刷新率不对齐，看着一帧一帧的（用户反馈过）；
-    ///   · XAML 里挂 Transition —— 实测不播；
-    ///   · Animation 跑在 TranslateTransform 上 —— TransformAnimator 要求目标是 Visual，抛 InvalidCastException；
-    ///   · 关键帧里动 RenderTransform —— 报 No animator registered，直接崩窗口。
-    ///   所以：RequestAnimationFrame 每帧把 Y 从 28 补到 0（320ms，减速曲线），纯位移不重排不重绘。
-    /// </summary>
+    
+    
+    
+    
+    
+    
+    
+    
+    
     private void PlayPageEntrance()
     {
         if (PageScroll.RenderTransform is not TranslateTransform shift)
@@ -1065,15 +1065,15 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         var started = DateTime.UtcNow;
         shift.Y = from;
 
-        // 纯 DispatcherTimer 8ms 步进（这一版实测量出过 26px 位移、确认在播）。
-        // RequestAnimationFrame 依赖渲染帧：离屏/最小化时不回调，还会因 TopLevel 判空提前退出
-        // —— 所以这里不依赖它，只用定时器，保证任何环境都动。
+        
+        
+        
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(8) };
         timer.Tick += (_, _) =>
         {
             var elapsed = (DateTime.UtcNow - started).TotalMilliseconds;
             var t = Math.Clamp(elapsed / durationMs, 0, 1);
-            var eased = 1 - Math.Pow(1 - t, 3);   // 减速曲线（近似 Fluent 的 CubicEaseOut）
+            var eased = 1 - Math.Pow(1 - t, 3);   
 
             if (PageScroll.RenderTransform is TranslateTransform s)
                 s.Y = from * (1 - eased);
@@ -1087,7 +1087,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         };
         timer.Start();
 
-        // 兜底：无论发生什么，动画时长结束后保证停在 0
+        
         DispatcherTimer.RunOnce(() =>
         {
             timer.Stop();
@@ -1096,7 +1096,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         }, TimeSpan.FromMilliseconds(durationMs + 200));
     }
 
-    /// <summary>自检用：把当前窗口渲染成 PNG（验证动画是否真的在播）。</summary>
+    
     private void SaveShot(string fileName)
     {
         try
@@ -1129,11 +1129,11 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         }
         catch
         {
-            // 忽略
+            
         }
     }
 
-    /// <summary>顶栏「⋯」菜单里的「NEX Intelligence…」：打开 NEX 对话框。</summary>
+    
     private void OnOpenNexChat(object? sender, RoutedEventArgs e) => App.OpenNexChat();
 
     private void OnOpenLogsFolder(object? sender, RoutedEventArgs e)
@@ -1145,7 +1145,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
     private void OnOpenAppFolder(object? sender, RoutedEventArgs e)
         => OpenInExplorer(AppContext.BaseDirectory);
 
-    // ---- 创建快捷方式（对照 CI 的「创建快捷方式…」子菜单） ----
+    
 
     private void OnCreateDesktopShortcut(object? sender, RoutedEventArgs e)
         => CreateShortcut(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory));
@@ -1163,7 +1163,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
             Directory.CreateDirectory(dir);
 
-            // WScript.Shell 只在 Windows 上存在（CA1416）：显式判平台，避免分析器告警
+            
             if (!OperatingSystem.IsWindows())
                 return;
 
@@ -1179,11 +1179,11 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         }
         catch
         {
-            // 忽略：无法创建快捷方式
+            
         }
     }
 
-    /// <summary>导出诊断数据（对照 CI 的「导出诊断数据」）：桌面生成一个含设置、日志、版本信息与系统信息的文件夹。</summary>
+    
     private void OnExportDiagnostics(object? sender, RoutedEventArgs e)
     {
         try
@@ -1218,7 +1218,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         }
         catch
         {
-            // 忽略：导出失败
+            
         }
     }
 
@@ -1232,14 +1232,14 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
     private void OnShowAbout(object? sender, RoutedEventArgs e) => NavigateTo("about");
 
-    // ==================== 关于页：连点版本号解锁调试（对照 CI AboutSettingsPage.DebugBorder） ====================
+    
 
-    /// <summary>启用调试菜单时必须手打一遍的免责声明（对照 CI 的验证文本）。</summary>
+    
     private const string DebugUnlockPhrase = "我知晓我所做的行为开发者不对此负责";
 
     private int _versionClickCount;
 
-    /// <summary>版本号连点 10 次 → 弹 Fluent 对话框、手打免责声明 → 解锁「调试」页（左栏底部）。</summary>
+    
     private async void OnVersionPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         var s = AppServices.Settings;
@@ -1252,7 +1252,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
         _versionClickCount = 0;
 
-        // 对照 CI：必须先输入确认文本，输入正确才解锁
+        
         if (!await ConfirmDebugUnlockAsync())
             return;
 
@@ -1262,7 +1262,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         NavigateTo("debug");
     }
 
-    /// <summary>启用调试菜单的确认对话框（Fluent ContentDialog）：要求手打 <see cref="DebugUnlockPhrase"/>。</summary>
+    
     private async Task<bool> ConfirmDebugUnlockAsync()
     {
         var input = new TextBox
@@ -1308,7 +1308,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         if (string.Equals(input.Text?.Trim(), DebugUnlockPhrase, StringComparison.Ordinal))
             return true;
 
-        // 输入不对：提示后不放行（对照 CI 的 ShowWarningToast）
+        
         await new ContentDialog
         {
             Title = "验证结果不正确",
@@ -1324,7 +1324,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
     }
 
 #if DEBUG
-    /// <summary>调试：CLASSNEX_VERIFY_DIALOG=1 时启动后自动弹出「启用调试菜单」对话框，便于核对样式。</summary>
+    
     private void VerifyDialogHook()
     {
         if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_DIALOG") != "1")
@@ -1348,7 +1348,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
     private void OnDebugTriggerClassOff() => AppServices.NotificationService?.DebugTriggerClassOff();
 
-    /// <summary>调试页三个条目的事件在代码里挂（AvaloniaFluentUI 的 SettingsExpanderItem.Click 在 XAML 里接方法名会编译失败）。</summary>
+    
     private void WireDebugPageEvents()
     {
         DebugTriggerClassOnItem.Click += (_, _) => OnDebugTriggerClassOn();
@@ -1391,7 +1391,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         }
         catch
         {
-            // 忽略：无法打开浏览器
+            
         }
     }
 
@@ -1406,7 +1406,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         }
         catch
         {
-            // 忽略：无法重启时仅退出
+            
         }
 
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
@@ -1424,11 +1424,11 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         }
         catch
         {
-            // 忽略：资源管理器启动失败
+            
         }
     }
 
-    // ==================== 通用 / 界面 ====================
+    
 
     private void ThemeChanged(string propertyName, bool? isChecked)
     {
@@ -1456,7 +1456,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             return;
 
         var s = AppServices.Settings;
-        // 下拉框：0=跟随系统 1=浅色 2=深色
+        
         s.ThemeMode = ThemeCombo.SelectedIndex switch
         {
             1 => "light",
@@ -1489,9 +1489,9 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         AppServices.SaveSettings();
     }
 
-    // ==================== 主界面组件 ====================
+    
 
-    /// <summary>当前是否深色主题（Default 时跟随系统）。</summary>
+    
     private static bool IsDarkTheme()
     {
         var variant = Application.Current?.ActualThemeVariant;
@@ -1511,7 +1511,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         }
     }
 
-    /// <summary>组件库条目（ListBox 绑定用；点击选中会出现 Fluent 左侧强调色小竖线）。</summary>
+    
     private sealed record WidgetTypeItem(string DisplayName, string Description, string Glyph, string Type);
 
     private void RefreshWidgetLibrary()
@@ -1543,7 +1543,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             WidgetFontSlider.Value = Math.Clamp(config.FontScale, 0.6, 2.0);
             WidgetFontValueText.Text = $"{config.FontScale:0.00}x";
 
-            // 重建该组件的**专属**设置项（每种组件一套，见 WidgetSettingsBuilder）
+            
             WidgetSettingsPanel.Children.Clear();
             foreach (var row in WidgetSettingsBuilder.Build(config, OnWidgetSettingChanged))
                 WidgetSettingsPanel.Children.Add(row);
@@ -1554,7 +1554,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         _loading = false;
     }
 
-    // ui:ToggleSwitch 挂 x:Name 不会生成字段（实测），所以 XAML 里用命名 Border 包一层，这里取出来
+    
     private ToggleSwitch StartupToggle =>
         (ToggleSwitch)StartupToggleHost.Child!;
 
@@ -1564,8 +1564,8 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
     private ToggleSwitch SafeModeToggle =>
         (ToggleSwitch)SafeModeToggleHost.Child!;
 
-    /// <summary>「基本 → 行为」各项：载入 + 接线（开机自启/Url 协议会写注册表）。
-    /// 复选框已按需求换成开关（ui:ToggleSwitch），事件用 Checked/Unchecked（只在用户操作时触发）。</summary>
+    
+    
     private void LoadBehaviorSettings()
     {
         var s = AppServices.Settings;
@@ -1616,7 +1616,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         };
     }
 
-    /// <summary>把设置里的提醒配置载入控件并挂事件（对照 CI ClassNotificationSettings 的字段与默认值）。</summary>
+    
     private void LoadNotificationSettings()
     {
         var n = AppServices.Settings.Notification;
@@ -1653,7 +1653,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         ClassOffOverlayBox.TextChanged += (_, _) => SaveNotificationSettings();
     }
 
-    /// <summary>把提醒设置控件写回设置并保存（值变化时调用）。</summary>
+    
     private void SaveNotificationSettings()
     {
         if (_loading)
@@ -1694,10 +1694,10 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         AppServices.Widgets.Save();
     }
 
-    /// <summary>
-    /// 组件**专属**设置变化后的回调（值已由 <see cref="WidgetSettingsBuilder"/> 直接写进 config）：
-    /// 刷新浮窗上该组件并落盘。
-    /// </summary>
+    
+    
+    
+    
     private void OnWidgetSettingChanged()
     {
         if (_loading || _currentWidget is null)
@@ -1736,10 +1736,10 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         WidgetList.SelectedItem = _widgets.FirstOrDefault(w => ReferenceEquals(w.Config, config));
     }
 
-    // 横向组件条「⋯」更多选项（CI 的 ComponentsOperationMenuFlyout）
+    
     private void OnWidgetItemMore(object? sender, RoutedEventArgs e)
     {
-        // 点「⋯」先把该项设为选中，后续菜单动作都作用于 _currentWidget
+        
         if (sender is Control { DataContext: WidgetItem item })
             WidgetList.SelectedItem = item;
     }
@@ -1758,7 +1758,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         SelectWidget();
     }
 
-    // ==================== 课表 ====================
+    
 
     private async void OnOpenTimetable(object? sender, RoutedEventArgs e)
     {

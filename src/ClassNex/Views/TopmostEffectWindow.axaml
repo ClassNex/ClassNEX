@@ -15,8 +15,7 @@
         ShowInTaskbar="False"
         ShowActivated="False"
         Loaded="Control_OnLoaded">
-    <!-- 1:1 移植自 CI（ClassIsland/Views/TopmostEffectWindow.axaml）：
-         全屏透明置顶窗口，承载全局特效（水波纹等），有特效时显示、播完隐藏。 -->
+    
     <Grid>
         <ItemsControl VerticalAlignment="Stretch"
                       HorizontalAlignment="Stretch"

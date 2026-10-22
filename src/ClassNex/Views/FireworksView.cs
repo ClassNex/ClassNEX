@@ -7,11 +7,11 @@ using Avalonia.Threading;
 
 namespace ClassNex.Views;
 
-/// <summary>
-/// 烟花动画（OOBE 完成页用）。
-/// Windows 那边的烟花是 Lottie/AnimatedVisualPlayer 的专有资源，Avalonia 没有对应控件，
-/// 所以这里用粒子模拟：底部定时发射火箭 → 升到高处炸开成一圈粒子 → 受重力下落并淡出。
-/// </summary>
+
+
+
+
+
 public sealed class FireworksView : Control
 {
     private sealed class Particle
@@ -28,7 +28,7 @@ public sealed class FireworksView : Control
 
     private static readonly Color[] Palette =
     {
-        Color.FromRgb(0x60, 0xCD, 0xFF),   // 强调蓝
+        Color.FromRgb(0x60, 0xCD, 0xFF),   
         Color.FromRgb(0xFF, 0xD1, 0x66),
         Color.FromRgb(0xFF, 0x8A, 0x80),
         Color.FromRgb(0xB4, 0xA0, 0xFF),
@@ -70,7 +70,7 @@ public sealed class FireworksView : Control
         if (w <= 1 || h <= 1)
             return;
 
-        // 发射节奏
+        
         _launchCooldown -= dt;
         if (_launchCooldown <= 0)
         {
@@ -83,7 +83,7 @@ public sealed class FireworksView : Control
             var p = _particles[i];
             p.X += p.Vx * dt;
             p.Y += p.Vy * dt;
-            p.Vy += 220 * dt;      // 重力
+            p.Vy += 220 * dt;      
             p.Vx *= 0.995;
             p.Life -= dt;
 
@@ -94,7 +94,7 @@ public sealed class FireworksView : Control
         InvalidateVisual();
     }
 
-    /// <summary>发射一枚火箭：上升时留一串尾迹粒子，到达顶点再炸开。</summary>
+    
     private void LaunchRocket(double w, double h)
     {
         var x = w * (0.12 + _random.NextDouble() * 0.76);
@@ -104,7 +104,7 @@ public sealed class FireworksView : Control
         var color = Palette[_random.Next(Palette.Length)];
         var explodeAt = h - (h - apex);
 
-        // 用一串小粒子模拟上升轨迹（每隔一小段一个）
+        
         var steps = 18;
         for (var i = 0; i < steps; i++)
         {
@@ -123,7 +123,7 @@ public sealed class FireworksView : Control
             });
         }
 
-        // 爆炸
+        
         var count = 70 + _random.Next(50);
         var speed = h * (0.30 + _random.NextDouble() * 0.22);
         for (var i = 0; i < count; i++)
@@ -152,7 +152,7 @@ public sealed class FireworksView : Control
         foreach (var p in _particles)
         {
             var t = Math.Clamp(p.Life / p.MaxLife, 0, 1);
-            var alpha = (byte)(255 * t * t);          // 尾段快速淡出
+            var alpha = (byte)(255 * t * t);          
             var brush = new SolidColorBrush(Color.FromArgb(alpha, p.Color.R, p.Color.G, p.Color.B));
             var r = p.Size * (0.4 + 0.6 * t);
             context.DrawEllipse(brush, null, new Point(p.X, p.Y), r, r);

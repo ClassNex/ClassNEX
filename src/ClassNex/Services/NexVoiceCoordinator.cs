@@ -8,10 +8,10 @@ using ClassNex.Views;
 
 namespace ClassNex.Services;
 
-/// <summary>
-/// 语音唤醒总协调：「嘿 NEX」被听到后 —— 播提示音 + 起跑马灯 + 浮窗课表上翻显示「请讲」，
-/// 听到问题就发给 NEX，把回答打回浮窗，最后收灯收面板。
-/// </summary>
+
+
+
+
 public sealed class NexVoiceCoordinator : IDisposable
 {
     private INexVoiceService _voice = new NexWinRtVoiceService();
@@ -19,15 +19,15 @@ public sealed class NexVoiceCoordinator : IDisposable
     private DispatcherTimer? _followUpTimer;
     private bool _started;
 
-    /// <summary>状态文本变化（设置页显示用）。</summary>
+    
     public event Action<string>? StatusChanged;
 
     public bool IsRunning => _started;
 
-    /// <summary>跑马灯窗口（自检出图用）。</summary>
+    
     public NexGlowWindow? GlowWindow => _glow;
 
-    /// <summary>测试麦克风（设置页按钮）：直接返回能不能听到、听到了什么、权限是什么状态。</summary>
+    
     public async Task<string> TestMicrophoneAsync()
     {
         if (_voice is NexWinRtVoiceService winrt)
@@ -36,14 +36,14 @@ public sealed class NexVoiceCoordinator : IDisposable
         return "当前用的是系统自带识别（SAPI），没有内置的麦克风自检。";
     }
 
-    /// <summary>当前用的语音引擎名字（设置页显示）。</summary>
+    
     public string EngineName => _voice switch
     {
         NexWinRtVoiceService => "Windows 现代识别",
         _ => "系统自带识别（SAPI）",
     };
 
-    /// <summary>启动语音唤醒（优先 Windows 现代引擎，起不来再退回老 SAPI）。</summary>
+    
     public bool Start()
     {
         if (_started)
@@ -53,7 +53,7 @@ public sealed class NexVoiceCoordinator : IDisposable
         _voice.Start();
         _started = true;
 
-        // WinRT 的启动是异步的：给它一点时间；若最终没起来（老系统 / 缺语言包），自动退回 SAPI
+        
         DispatcherTimer.RunOnce(() =>
         {
             if (_voice.IsListening)
@@ -77,7 +77,7 @@ public sealed class NexVoiceCoordinator : IDisposable
         return true;
     }
 
-    /// <summary>把事件挂到某个语音服务实例上（可能中途换实现）。</summary>
+    
     private void WireVoice(INexVoiceService voice)
     {
         voice.WakeWordDetected += OnWakeWord;
@@ -102,10 +102,10 @@ public sealed class NexVoiceCoordinator : IDisposable
         StatusChanged?.Invoke("语音唤醒已关闭");
     }
 
-    // ==================== 事件 ====================
+    
 
-    /// <summary>本次 AI 会话是否还在进行（浮窗可见）。取消/超时后为 false，
-    /// 期间任何迟到的流式回答、错误、追问收尾一律丢弃 —— 修复「点屏幕退出后回答还在往浮窗写、面板又弹出来」。</summary>
+    
+    
     private bool _active;
 
     private void OnWakeWord()
@@ -114,7 +114,7 @@ public sealed class NexVoiceCoordinator : IDisposable
 
         Dispatcher.UIThread.Post(() =>
         {
-            // 重复触发：已经亮着跑马灯时再喊唤醒词 = 重新开始一次会话（清掉旧上下文/旧计时）
+            
             if (_glow?.IsVisible == true)
             {
                 _followUpTimer?.Stop();
@@ -123,7 +123,7 @@ public sealed class NexVoiceCoordinator : IDisposable
 
             _active = true;
 
-            // 主界面可能是隐藏状态：唤醒时直接亮出来
+            
             var main = AppServices.MainWindow;
             if (main is not null && !main.IsVisible)
                 main.Show();
@@ -138,7 +138,7 @@ public sealed class NexVoiceCoordinator : IDisposable
         if (string.IsNullOrWhiteSpace(text))
             return;
 
-        // 边说边显示：识别到多少就显示多少（白字，跟最终结果一致，不再用「请讲」的浅色占位样式）
+        
         Dispatcher.UIThread.Post(() => AppServices.MainWindow?.ShowNexPanel(text, false));
     }
 
@@ -149,11 +149,11 @@ public sealed class NexVoiceCoordinator : IDisposable
 
     private void OnSpeech(string text)
     {
-        // 连续问答：上一轮的收尾计时取消，这次问题接着上次的上下文
+        
         _followUpTimer?.Stop();
 
-        // 先把听到的问题显示出来（白字），紧接着换成浅色的「思考中…」，
-        // 模型开始吐字后再用回答替换 —— 用户要求：思考时要有浅色文字替换掉问题
+        
+        
         Dispatcher.UIThread.Post(() => AppServices.MainWindow?.ShowNexPanel(text, false));
 
         DispatcherTimer.RunOnce(
@@ -163,9 +163,9 @@ public sealed class NexVoiceCoordinator : IDisposable
         _ = AskNexAsync(text);
     }
 
-    // ==================== 连续问答 ====================
+    
 
-    /// <summary>本次唤醒会话的 Agent（保留上下文，才能连续追问）。</summary>
+    
     private NexAgent? _sessionAgent;
 
     private NexAgent EnsureSessionAgent()
@@ -181,11 +181,11 @@ public sealed class NexVoiceCoordinator : IDisposable
         return _sessionAgent;
     }
 
-    // ==================== 问 NEX ====================
+    
 
     private async Task AskNexAsync(string question)
     {
-        // 同一次唤醒会话里复用同一个 Agent：上下文连续，可以接着追问
+        
         var agent = EnsureSessionAgent();
 
         var buffer = new StringBuilder();
@@ -219,13 +219,13 @@ public sealed class NexVoiceCoordinator : IDisposable
         {
             await agent.RunAsync(question, CancellationToken.None);
 
-            // 一句话都没吐出来：至少让用户知道它卡住了
+            
             if (thinkingShown)
                 Dispatcher.UIThread.Post(() => AppServices.MainWindow?.ShowNexPanel("没有收到回答，可以说「NEX」再试一次", true));
         }
         finally
         {
-            // 用户要求：AI 相关流程里只有唤醒那一声（用户 wav），回答完不再播别的提示音
+            
             Dispatcher.UIThread.Post(() =>
             {
                 if (_active)
@@ -234,7 +234,7 @@ public sealed class NexVoiceCoordinator : IDisposable
         }
     }
 
-    /// <summary>回答完不退出：继续听下一句（连续问答），静默一段时间才收灯。</summary>
+    
     private void BeginFollowUp()
     {
         if (!_active)
@@ -242,7 +242,7 @@ public sealed class NexVoiceCoordinator : IDisposable
 
         _followUpTimer?.Stop();
 
-        // 回到「听写」状态，不用再喊唤醒词
+        
         _voice.ListenForFollowUp();
         AppServices.MainWindow?.ShowNexPanel("请讲，还可以接着问…", true);
 
@@ -255,9 +255,9 @@ public sealed class NexVoiceCoordinator : IDisposable
         _followUpTimer.Start();
     }
 
-    // ==================== 自检 ====================
+    
 
-    /// <summary>自检用：不经过麦克风，直接模拟「听到唤醒词 → 听到问题」的完整流程。</summary>
+    
     public void SimulateWake(string question)
     {
         OnWakeWord();
@@ -269,9 +269,9 @@ public sealed class NexVoiceCoordinator : IDisposable
         }, TimeSpan.FromSeconds(2));
     }
 
-    // ==================== 跑马灯与浮窗 ====================
+    
 
-    /// <summary>起跑马灯（全屏彩边）。此时窗口**不**点击穿透：点屏幕任意位置就是取消。</summary>
+    
     public void ShowGlow()
     {
         var main = AppServices.MainWindow;
@@ -284,7 +284,7 @@ public sealed class NexVoiceCoordinator : IDisposable
             _glow.CancelRequested += () => Dispatcher.UIThread.Post(CancelAiMode);
         }
 
-        // 吸出方向：唤醒条贴哪侧就从哪侧边缘展开
+        
         _glow.StartFromLeft = AppServices.Settings.NexEdgeBarSide == "left";
 
         _glow.UpdateWindowPos(screen, 1 / screen.Scaling, false);
@@ -292,12 +292,12 @@ public sealed class NexVoiceCoordinator : IDisposable
         if (!_glow.IsVisible)
             _glow.Show();
 
-        // 关键：取消点击穿透，才能「点屏幕任意位置就退出 AI 模式」
+        
         WindowsOverlay.SetClickThrough(_glow.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero, false);
         _glow.Start();
     }
 
-    /// <summary>用户点了屏幕任意位置 / 超时：退出 AI 模式（收灯 + 浮窗翻回课表）。</summary>
+    
     public void CancelAiMode()
     {
         _active = false;
@@ -312,15 +312,15 @@ public sealed class NexVoiceCoordinator : IDisposable
         AppServices.MainWindow?.HideNexPanel();
         _voice.BackToWakeWord();
 
-        // 会话结束：清掉上下文，下次唤醒重新开始
+        
         _sessionAgent = null;
         StatusChanged?.Invoke("正在听「嘿 NEX」…");
     }
 
-    /// <summary>吸附在屏幕边缘的唤醒条（半透明小白条）。</summary>
+    
     private NexEdgeBarWindow? _edgeBar;
 
-    /// <summary>按设置显示/隐藏并摆好唤醒条。</summary>
+    
     public void RefreshEdgeBar()
     {
         var settings = AppServices.Settings;
@@ -344,15 +344,15 @@ public sealed class NexVoiceCoordinator : IDisposable
     private NexEdgeBarWindow CreateEdgeBar()
     {
         var bar = new NexEdgeBarWindow();
-        // 点小白条 = 说「嘿 NEX」：提示音 + 跑马灯 + 浮窗翻页等说话
+        
         bar.WakeRequested += () => Dispatcher.UIThread.Post(ActivateByClick);
         return bar;
     }
 
-    /// <summary>
-    /// 点击唤醒条唤醒（不经过麦克风唤醒词）：声音 + 跑马灯 + 浮窗显示「请讲」，
-    /// 并直接进入听写状态等用户说话。
-    /// </summary>
+    
+    
+    
+    
     public void ActivateByClick()
     {
         NexChime.PlayWake();
@@ -361,7 +361,7 @@ public sealed class NexVoiceCoordinator : IDisposable
         if (main is not null && !main.IsVisible)
             main.Show();
 
-        // 重复触发：会话已在进行时再点一次 = 重新开始（清掉旧上下文/旧计时），避免状态叠加
+        
         if (_glow?.IsVisible == true)
         {
             _followUpTimer?.Stop();
@@ -376,7 +376,7 @@ public sealed class NexVoiceCoordinator : IDisposable
         _followUpTimer?.Stop();
         _voice.ListenForFollowUp();
 
-        // 20 秒没说话就收灯（和连续问答同一套收尾）
+        
         _followUpTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(20) };
         _followUpTimer.Tick += (_, _) =>
         {

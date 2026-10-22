@@ -14,15 +14,9 @@
         MinWidth="900" MinHeight="560"
         WindowStartupLocation="CenterScreen">
 
-    <!-- 结构 1:1 对照 CI 的 Views/SettingsWindowNew.axaml + SettingPages/*：
-         顶栏(48) + NavigationView(PaneHeader 账户块 + MenuItems 图标) + 页面标题行 + 页面。
-         每个设置项 = SettingsExpander(IconSource + Header + Description + Footer 常显控件)。 -->
+    
     <Grid RowDefinitions="48,*">
-        <!-- 页面入场动画：照 Fluent 的页面导航规范 —— SlideNavigationTransition（只滑不淡）。
-             ⚠️ 两条硬约束（都实测踩过）：
-               ① 关键帧里不能动 RenderTransform（Avalonia 无该属性动画器，直接抛异常把窗口搞崩）；
-               ② 不能对整页做 Opacity 动画（大子树每帧离屏合成，非常卡）。
-             所以：用 TranslateTransform + DoubleTransition 做纯位移（合成器层面，不重排不重绘）。 -->
+        
         <Grid.Styles>
             <Style Selector="ScrollViewer.anim">
                 <Style.Animations>
@@ -37,11 +31,11 @@
                 </Style.Animations>
             </Style>
         </Grid.Styles>
-        <!-- ============ 顶栏（CI：Border Height=48；不要下面那条浅线） ============ -->
+        
         <Border Grid.Row="0" Height="48" BorderThickness="0">
             <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="14,0,0,0">
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <!-- 左上角返回箭头（照 Gallery 标题栏那个 ←） -->
+                    
                     <Button x:Name="BackButton" Theme="{StaticResource TransparentButton}"
                             Padding="6,4" VerticalAlignment="Center" ToolTip.Tip="返回上一页"
                             Click="OnNavigateBack">
@@ -52,7 +46,7 @@
                     <TextBlock Text="应用设置" FontSize="12" VerticalAlignment="Center" IsHitTestVisible="False"/>
                 </StackPanel>
 
-                <!-- Win11 设置同款：搜索框在顶栏居中偏右（用户要求再往右一点） -->
+                
                 <Border Grid.Column="1" Width="420" Height="32" CornerRadius="8" BorderThickness="1"
                         HorizontalAlignment="Center" VerticalAlignment="Center"
                         Margin="110,0,0,0"
@@ -79,7 +73,7 @@
                             VerticalAlignment="Center" ToolTip.Tip="更多选项…">
                         <ui:FontIcon Glyph="&#xE946;" FontSize="14"/>
                         <Button.Flyout>
-                            <!-- 照 CI SettingsWindowNew 的「更多选项」菜单（去掉集控/管理等 CI 专有项） -->
+                            
                             <MenuFlyout>
                                 <MenuItem Header="创建快捷方式…">
                                     <MenuItem.Icon><ui:FontIcon Glyph="&#xE71C;"/></MenuItem.Icon>
@@ -117,34 +111,24 @@
                     </Button>
                 </StackPanel>
 
-                <!-- 系统最小化/最大化/关闭按钮占位（沉浸式标题栏里它们画在右上角，实测 3×58≈174 逻辑，留 152 间距避免贴住） -->
+                
                 <Border Grid.Column="3" Width="152"/>
             </Grid>
         </Border>
 
-        <!-- ============ 主体导航 ============
-             Background 必须显式置空：NavigationView 自带不透明底色，会把窗口的 Mica 云母盖掉，
-             只有顶栏能透出云母（这就是「内容区没做到云母」的原因）。 -->
+        
         <ui:NavigationView Grid.Row="1" x:Name="NavView"
                            Background="Transparent"
                            PaneDisplayMode="Left" OpenPaneLength="283"
                            IsBackButtonVisible="False" IsSettingsVisible="False"
                            IsPaneToggleButtonVisible="True">
 
-            <!-- 账户卡放 PaneCustomContent（WinUI 里专门给「面板顶部自定义内容」的槽位）。
-                 不用 PaneHeader 的原因：模板会把 PaneHeader 推到 ☰ 按钮那一列右侧（内缩 ~48 DIP）
-                 且有裁剪边界 —— 负边距调回来就会把头像左缘切掉，怎么调都不对。
-                 PaneCustomContent 从面板左缘开始排：无负边距、不会被裁、能和 ☰ 对齐。 -->
+            
             <ui:NavigationView.PaneCustomContent>
-                <!-- 负左边距：a11y 实测 ☰=185 / 导航项=184 / 账户卡=204（物理），
-                     左移 15 DIP 让账户卡与 ☰、导航项左缘对齐；再多会被面板裁掉头像 -->
-                <!-- 说明：账户卡在 NavigationView 的 PaneHeader 里，而 PaneHeader 自身有一条内边距 + 裁剪边界
-                     （a11y 实测：☰=185 / 导航项=184 / 账户卡默认=242，物理像素）。
-                     实测 -24 不裁、-30 会把头像左缘切掉 → 取 -12 并把卡内 left padding 归零（8→0），
-                     头像左缘落在 ~218px ≈ 27 DIP：**不裁切**，且比默认位置左移约 24px。 -->
+                
+                
                 <StackPanel x:Name="AccountPanel" Spacing="8" Margin="14,6,6,10">
-                    <!-- 折叠态需要把整块往左补偿（展开态用户要的是偏右一点），
-                         用 RenderTransform 位移：只重绘、有过渡、蒙版跟着走，不触发重新布局 -->
+                    
                     <StackPanel.RenderTransform>
                         <TranslateTransform>
                             <TranslateTransform.Transitions>
@@ -156,8 +140,7 @@
                             </TranslateTransform.Transitions>
                         </TranslateTransform>
                     </StackPanel.RenderTransform>
-                    <!-- 账户卡：照 FluentUI Gallery 的账户卡（IzumiPL/Avalonia-Fluent-UI samples/Gallery）
-                         圆角卡片 + 带描环的 50 圆头像 + 名字 15 SemiBold + 邮箱 12.5/65% -->
+                    
                     <StackPanel.Styles>
                         <Style Selector="Button.AccountCard">
                             <Setter Property="Transitions">
@@ -174,18 +157,14 @@
                         </Style>
                     </StackPanel.Styles>
 
-                    <!-- 账户区（照 Gallery）：**默认无底色**，鼠标移入才出现高亮蒙版；
-                         Padding 归零 —— 让头像贴住卡片左缘，整体能再往左靠一点 -->
+                    
                     <Button x:Name="AccountButton" Classes="AccountCard"
                             Padding="0" CornerRadius="8"
                             Background="Transparent" BorderThickness="0"
                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                             Click="OnAccountClick" ToolTip.Tip="账户">
                         <StackPanel Orientation="Horizontal" Spacing="12">
-                            <!-- 头像：用 Border 的 Background 画图片 —— Background 一定会被圆角裁剪，
-                                 子元素 Image 则不一定（之前就出现了「四个角」的问题）。
-                                 图片/描环颜色都在代码里设置（图片可在账户页自己上传）。
-                                 52↔36 走过渡动画（左边栏折叠时缩进侧边栏） -->
+                            
                             <Border x:Name="AccountAvatarRing" Width="52" Height="52" CornerRadius="26"
                                     BorderThickness="3">
                                 <Border.Transitions>
@@ -214,14 +193,14 @@
             </ui:NavigationView.PaneCustomContent>
 
             <ui:NavigationView.MenuItems>
-                <!-- 主页（CW2 风格仪表盘）；主页与基本之间加轻分割（用户要求：有分割但不要太大） -->
+                
                 <ui:NavigationViewItem Content="主页">
                     <ui:NavigationViewItem.IconSource>
                         <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE80F;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItemSeparator/>
-                <!-- 1:1 照 CI 的页序与页名（Internal 组）：基本 / 外观 / 窗口 / 组件；底部 = 关于 ClassNEX -->
+                
                 <ui:NavigationViewItem Content="基本">
                     <ui:NavigationViewItem.IconSource>
                         <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE713;" FontSize="16"/>
@@ -242,10 +221,7 @@
                         <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE71D;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
-                <!-- NEX：标准结构（Content + IconSource，和上下项完全一致），对齐由模板保证。
-                     图标 = Fluent UI 图标库官方 Sparkle（U+F0F7，avares 引用内嵌字体）。
-                     之前「小」是因为裸族名命不中内嵌字体、回退成了别的符号（已修）；
-                     Content 方案的 -8px 边距 hack 对齐不可靠，弃用。 -->
+                
                 <ui:NavigationViewItem Content="NEX Intelligence">
                     <ui:NavigationViewItem.IconSource>
                         <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable"
@@ -262,7 +238,7 @@
                         <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE946;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
-                <!-- 调试页：默认隐藏，在「关于」页连点版本号 10 次解锁（对照 CI AboutSettingsPage 的 DebugBorder） -->
+                
                 <ui:NavigationViewItem x:Name="DebugNavItem" Content="调试" IsVisible="False">
                     <ui:NavigationViewItem.IconSource>
                         <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE7C4;" FontSize="16"/>
@@ -274,9 +250,7 @@
                 <TextBlock x:Name="PageTitleText" Grid.Row="0" FontSize="28"
                            Margin="32,24,32,0" HorizontalAlignment="Left"/>
                 <ScrollViewer x:Name="PageScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                    <!-- 页面滑动入场（Fluent 的 SlideNavigationTransition / FromBottom）：
-                         ★ 补间必须挂在 TranslateTransform 自己身上、属性写 Y —— 挂在 ScrollViewer 上写
-                           "TranslateTransform.Y" 是无效的（Avalonia 只认该对象自己的属性），实测动画完全不播。 -->
+                    
                     <ScrollViewer.RenderTransform>
                         <TranslateTransform>
                             <TranslateTransform.Transitions>
@@ -292,9 +266,7 @@
                     </ScrollViewer.RenderTransform>
                     <StackPanel Margin="32,12,32,24" Spacing="12" MaxWidth="880" HorizontalAlignment="Left">
 
-                        <!-- ==================== 主页 ====================
-                             按需求精简：横幅已删、底下三组小卡片（今天/快捷操作/状态）已全部删除，
-                             只保留问候语（英文，随系统时间变化）+ 一行副标题。 -->
+                        
                         <StackPanel x:Name="PageHome" Spacing="6">
                             <TextBlock x:Name="HomeGreetingText"
                                        FontFamily="Noto Serif SC, Source Han Serif SC, SimSun"
@@ -304,7 +276,7 @@
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                         </StackPanel>
 
-                        <!-- ==================== NEX Intelligence（AI Agent） ==================== -->
+                        
                         <StackPanel x:Name="PageNex" Spacing="12" IsVisible="False">
                             <ui:InfoBar Severity="Informational" IsOpen="True" IsClosable="False"
                                         Message="NEX 是内置的 AI 助手：能查课表、看应用状态，也能按你选的权限读写文件。对话内容会发送到接口服务商。"/>
@@ -388,7 +360,7 @@
                             </StackPanel>
                         </StackPanel>
 
-                        <!-- ==================== 提醒（1:1 照 CI ClassNotificationProviderSettingsControl.axaml） ==================== -->
+                        
                         <StackPanel x:Name="PageNotification" Spacing="12" IsVisible="False">
                             <ui:InfoBar Message="此处的设置可以在档案设置中被附加设置覆盖。"
                                         IsOpen="True" IsClosable="False"/>
@@ -493,7 +465,7 @@
                             </ui:SettingsExpander>
                         </StackPanel>
 
-                        <!-- ==================== 通用 ==================== -->
+                        
                         <StackPanel x:Name="PageGeneral" Spacing="10">
                             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,2">
                                 <ui:FontIcon Glyph="&#xE945;" FontSize="16" VerticalAlignment="Center" Opacity="0.85"/>
@@ -503,7 +475,7 @@
                             <ui:SettingsExpander Header="开机自启"
                                                  Description="在您的系统启动时自动运行本应用。">
                                 <ui:SettingsExpander.IconSource>
-                                    <!-- Fluent ApprovalsApp 16 Filled -->
+                                    
                                     <ui:PathIconSource>
                                         <ui:PathIconSource.Data>
                                             <StreamGeometry>M8.314.256a.75.75 0 1 0-1.128.988l.687.786A6.5 6.5 0 1 0 15 8.5v-.25a.75.75 0 1 0-1.5 0v.25a5 5 0 1 1-5.695-4.952l-.62.708a.75.75 0 1 0 1.13.988l1.75-2a.75.75 0 0 0 0-.988zm3.491 5.99a.75.75 0 0 1-.05 1.059l-2.75 2.5A.75.75 0 0 1 7.97 9.78L6.72 8.53a.75.75 0 0 1 1.06-1.06l.745.744l2.22-2.019a.75.75 0 0 1 1.06.05</StreamGeometry>
@@ -518,7 +490,7 @@
                             <ui:SettingsExpander Header="注册 Url 协议"
                                                  Description="允许第三方应用或网页通过 Url 协议 classnex:// 调用本应用的部分功能。">
                                 <ui:SettingsExpander.IconSource>
-                                    <!-- Fluent Apps 16 Filled -->
+                                    
                                     <ui:PathIconSource>
                                         <ui:PathIconSource.Data>
                                             <StreamGeometry>M11.81 2.45a1.5 1.5 0 0 0-2.12 0L7.961 4.175A1.5 1.5 0 0 0 6.497 3h-3a1.5 1.5 0 0 0-1.5 1.5v8c0 .51.255.96.644 1.231c.243.17.54.27.859.27h8a1.5 1.5 0 0 0 1.5-1.5v-3a1.5 1.5 0 0 0-1.125-1.452L13.58 6.34a1.5 1.5 0 0 0 0-2.121zM7.997 6.42L9.577 8h-1.58zm-1 1.58h-4V4.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5zm-3.786 4.91A.5.5 0 0 1 3 12.5V9h3.997v4h-3.5a.5.5 0 0 1-.286-.09m4.786.09V9H11.5a.5.5 0 0 1 .5.5v3a.5.5 0 0 1-.5.5z</StreamGeometry>
@@ -533,14 +505,14 @@
                             <ui:SettingsExpander Header="学期开始时间"
                                                  Description="设置学期首日，该日期将作为多周轮换课表的计算起点和每周的第一天。">
                                 <ui:SettingsExpander.IconSource>
-                                    <!-- Fluent Calendar 16 Filled -->
+                                    
                                     <ui:PathIconSource>
                                         <ui:PathIconSource.Data>
                                             <StreamGeometry>M14 11.5V6H2v5.5A2.5 2.5 0 0 0 4.5 14h7a2.5 2.5 0 0 0 2.5-2.5M5.997 8.248a.748.748 0 1 1-1.497 0a.748.748 0 0 1 1.497 0m0 2.5a.748.748 0 1 1-1.497 0a.748.748 0 0 1 1.497 0m2.752-2.5a.748.748 0 1 1-1.497 0a.748.748 0 0 1 1.497 0m0 2.5a.748.748 0 1 1-1.497 0a.748.748 0 0 1 1.497 0m2.748-2.5a.748.748 0 1 1-1.497 0a.748.748 0 0 1 1.497 0M14 4.5A2.5 2.5 0 0 0 11.5 2h-7A2.5 2.5 0 0 0 2 4.5V5h12z</StreamGeometry>
                                         </ui:PathIconSource.Data>
                                     </ui:PathIconSource>
                                 </ui:SettingsExpander.IconSource>
-                                <!-- 多周轮换偏移（右侧按钮 + Flyout）已按需求删除，只留日期选择 -->
+                                
                                 <ui:SettingsExpander.Footer>
                                     <CalendarDatePicker x:Name="SingleWeekStartPicker" Width="120"/>
                                 </ui:SettingsExpander.Footer>
@@ -549,7 +521,7 @@
                             <ui:SettingsExpander Header="点击托盘图标行为"
                                                  Description="鼠标左键点击本应用托盘图标时进行的操作。无论此设置处于何种选项，鼠标右键点击托盘图标总是会打开主菜单。">
                                 <ui:SettingsExpander.IconSource>
-                                    <!-- Fluent AppsList 20 Filled -->
+                                    
                                     <ui:PathIconSource>
                                         <ui:PathIconSource.Data>
                                             <StreamGeometry>M8 4.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5m0 6a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5m0 6a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5m-6-1A1.5 1.5 0 0 1 3.5 14h1A1.5 1.5 0 0 1 6 15.5v1A1.5 1.5 0 0 1 4.5 18h-1A1.5 1.5 0 0 1 2 16.5zm0-6A1.5 1.5 0 0 1 3.5 8h1A1.5 1.5 0 0 1 6 9.5v1A1.5 1.5 0 0 1 4.5 12h-1A1.5 1.5 0 0 1 2 10.5zm0-6A1.5 1.5 0 0 1 3.5 2h1A1.5 1.5 0 0 1 6 3.5v1A1.5 1.5 0 0 1 4.5 6h-1A1.5 1.5 0 0 1 2 4.5z</StreamGeometry>
@@ -568,7 +540,7 @@
                             <ui:SettingsExpander Header="教学安全模式"
                                                  Description="启用后，如果应用发生意外崩溃，将自动按照右侧选择的方法处理崩溃，以确保教学不受到影响。如果发生的是不可忽略的异常，应用将自动退出。您可以在日志记录中查看崩溃详情。">
                                 <ui:SettingsExpander.IconSource>
-                                    <!-- Fluent MalwareDetected 16 Filled -->
+                                    
                                     <ui:PathIconSource>
                                         <ui:PathIconSource.Data>
                                             <StreamGeometry>M7.647 2.146a.5.5 0 0 1 .708 0C9.595 3.39 10.969 4 12.5 4a.5.5 0 0 1 .5.5v3.001c0 3.219-1.641 5.406-4.842 6.473a.5.5 0 0 1-.316 0C4.642 12.907 3 10.72 3 7.501V4.5a.5.5 0 0 1 .5-.5c1.53 0 2.904-.611 4.147-1.854zM6.534 5.84a.5.5 0 0 0-.638.057l-.057.07a.5.5 0 0 0 .057.638L7.293 8L5.896 9.396l-.057.07a.5.5 0 0 0 .057.638l.07.057a.5.5 0 0 0 .638-.057L8 8.707l1.396 1.397l.07.057a.5.5 0 0 0 .638-.057l.057-.07a.5.5 0 0 0-.057-.638L8.707 8l1.397-1.396l.057-.07a.5.5 0 0 0-.057-.638l-.07-.057a.5.5 0 0 0-.638.057L8 7.293L6.604 5.896z</StreamGeometry>
@@ -587,10 +559,10 @@
                                 </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>
 
-                            <!-- 「显示启动加载界面」与底部消息条已按需求删除 -->
+                            
                         </StackPanel>
 
-                        <!-- ==================== 界面 ==================== -->
+                        
                         <StackPanel x:Name="PageInterface" Spacing="10" IsVisible="False">
                             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,2">
                                 <ui:FontIcon Glyph="&#xEC4A;" FontSize="16" VerticalAlignment="Center" Opacity="0.85"/>
@@ -602,7 +574,7 @@
                                     <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE790;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
-                                    <!-- 多选一的设置一律用下拉框（照 CI 的 SettingsExpander.Footer + ComboBox 写法） -->
+                                    
                                     <ComboBox x:Name="ThemeCombo" MinWidth="140">
                                         <ComboBoxItem Content="跟随系统"/>
                                         <ComboBoxItem Content="浅色"/>
@@ -652,7 +624,7 @@
                             </ui:SettingsExpander>
                         </StackPanel>
 
-                        <!-- ==================== 窗口（对照 CI WindowSettingsPage） ==================== -->
+                        
                         <StackPanel x:Name="PageWindow" Spacing="10" IsVisible="False">
                             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,2">
                                 <ui:FontIcon Glyph="&#xE740;" FontSize="16" VerticalAlignment="Center" Opacity="0.85"/>
@@ -682,7 +654,7 @@
                             </ui:SettingsExpander>
                         </StackPanel>
 
-                        <!-- ==================== 主界面组件 ==================== -->
+                        
                         <StackPanel x:Name="PageWidgets" Spacing="10" IsVisible="False">
                             <TextBlock Text="决定悬浮主界面上显示哪些内容。双击组件卡片添加；点组件右侧「⋯」上移/下移/删除。"
                                        Opacity="0.7" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,4"/>
@@ -722,8 +694,7 @@
                             <TabControl HorizontalContentAlignment="Stretch" Padding="0">
                                 <TabItem Header="组件库">
                                     <StackPanel Spacing="10" Margin="0,10,0,0">
-                                        <!-- 照 CI ComponentsSettingsPage 组件库：WrapPanel 的 ListBox，
-                                             条目=图标+名称+描述，选中项左侧出现 Fluent 强调色小竖线 -->
+                                        
                                         <ListBox x:Name="WidgetLibraryList" BorderThickness="0" Background="Transparent"
                                                  SelectionMode="Single" MinHeight="44">
                                             <ListBox.ItemsPanel>
@@ -770,9 +741,7 @@
                                                 </ui:SettingsExpander.Footer>
                                             </ui:SettingsExpander>
 
-                                            <!-- 组件**专属**设置：按选中组件的类型动态构建，
-                                                 对照 CI 的 Controls/Components/XxxComponentSettingsControl.axaml
-                                                 （CI 里 Date/Separator 等组件没有设置控件 → 这里也没有设置项） -->
+                                            
                                             <StackPanel x:Name="WidgetSettingsPanel" Spacing="8"/>
                                             <TextBlock x:Name="WidgetNoSettingsText"
                                                        Text="该组件没有专属设置。"
@@ -784,7 +753,7 @@
                             </TabControl>
                         </StackPanel>
 
-                        <!-- ==================== 关于（对照 CI AboutSettingsPage） ==================== -->
+                        
                         <StackPanel x:Name="PageAbout" Spacing="10" IsVisible="False">
                             <ui:SettingsExpander x:Name="AboutExpander" Header="ClassNEX" IsExpanded="True">
                                 <ui:SettingsExpander.IconSource>
@@ -792,7 +761,7 @@
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Items>
                                     <StackPanel Spacing="12" Margin="0,4,0,0">
-                                        <!-- 版本号单独一行（用户要求：不要放在右上角的 Footer 里） -->
+                                        
                                         <TextBlock x:Name="AboutVersionText" FontSize="14"
                                                    PointerPressed="OnVersionPointerPressed"
                                                    ToolTip.Tip="连点 10 次解锁调试菜单"/>
@@ -823,7 +792,7 @@
                             </ui:SettingsExpander>
                         </StackPanel>
 
-                        <!-- ==================== 调试（对照 CI DebugPage；默认隐藏，点关于页版本号 10 次解锁） ==================== -->
+                        
                         <StackPanel x:Name="PageDebug" Spacing="10" IsVisible="False">
                             <ui:InfoBar Severity="Error" Title="仅供调试"
                                         Message="除非你知道自己在做什么，否则请不要使用下面的按钮。"
@@ -842,7 +811,7 @@
                                 <ui:SettingsExpanderItem x:Name="DebugCloseItem" Content="关闭调试菜单（隐藏本页）" IsClickEnabled="True"/>
                             </ui:SettingsExpander>
 
-                            <!-- NEX 的接口配置只放在这里：普通界面不显示密钥，留空即自动使用内置接口 -->
+                            
                             <ui:SettingsExpander Header="NEX Intelligence 接口"
                                                  Description="留空则使用内置接口（开箱可用）。填入你自己的地址/密钥就会覆盖内置的；密钥框不会回显内置密钥明文。">
                                 <ui:SettingsExpander.IconSource>
@@ -879,14 +848,14 @@
                             </ui:SettingsExpander>
                         </StackPanel>
 
-                        <!-- ==================== 账户 ==================== -->
+                        
                         <StackPanel x:Name="PageAccount" Spacing="10" IsVisible="False">
-                            <!-- 账户卡：照 FluentUI-Gallery 账户页（Win11 默认头像 + 强调色圆环 + 名称 + 邮箱） -->
+                            
                             <Border CornerRadius="8" Padding="20" BorderThickness="1"
                                     BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                                     Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
                                 <StackPanel Orientation="Horizontal" Spacing="18">
-                                    <!-- 同上：用 Background 画头像，保证是正圆而不是四个角 -->
+                                    
                                     <Border x:Name="AccountPageAvatarRing" Width="88" Height="88" CornerRadius="44"
                                             BorderThickness="5"/>
                                     <StackPanel VerticalAlignment="Center" Spacing="4">
@@ -932,7 +901,7 @@
             </Grid>
         </ui:NavigationView>
 
-        <!-- 搜索结果：挂在顶栏搜索框正下方（Win11 设置同款下拉；放在导航之后 = 绘制在最上层） -->
+        
         <Border x:Name="SearchResultsPanel" Grid.Row="1" IsVisible="False" MaxHeight="300"
                 Width="420" HorizontalAlignment="Center" VerticalAlignment="Top"
                 Margin="0,4,0,0"

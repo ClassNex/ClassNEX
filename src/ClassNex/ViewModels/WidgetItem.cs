@@ -3,7 +3,7 @@ using ClassNex.Services;
 
 namespace ClassNex.ViewModels;
 
-/// <summary>组件列表项（供「主界面组件」设置页显示）。</summary>
+
 public sealed class WidgetItem : ViewModelBase
 {
     public WidgetItem(WidgetConfig config) => Config = config;
@@ -18,6 +18,6 @@ public sealed class WidgetItem : ViewModelBase
 
     public string DisplayText => $"{Name}";
 
-    /// <summary>触发列表文本刷新。</summary>
+    
     public void Refresh() => OnPropertyChanged(nameof(DisplayText));
 }

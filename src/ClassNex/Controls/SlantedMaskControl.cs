@@ -8,30 +8,30 @@ using Avalonia.Styling;
 
 namespace ClassNex.Controls;
 
-/// <summary>
-/// 1:1 移植自 CI（ClassIsland/Controls/SlantedMaskControl.cs）：
-/// 提醒面具的「斜切条纹」动画 —— 5 个斜切平行四边形从两边向中间交错展开（打开）
-/// 或从中间向两边收起（关闭）。打开：QuarticEaseOut；关闭：QuadraticEaseIn。
-/// 主界面按 CI FluentTheme 传 RegionDurationMs=360 / StageStaggerMs=120。
-/// </summary>
+
+
+
+
+
+
 public class SlantedMaskControl : Control
 {
-    // 填充色
+    
     public static readonly StyledProperty<IBrush?> FillProperty =
         AvaloniaProperty.Register<SlantedMaskControl, IBrush?>(nameof(Fill), Brushes.Black);
 
-    // 平行四边形高度
+    
     public static readonly StyledProperty<double> SlantedHeightProperty =
         AvaloniaProperty.Register<SlantedMaskControl, double>(nameof(SlantedHeight), 80.0);
 
-    // 动画参数（毫秒）
+    
     public static readonly StyledProperty<int> RegionDurationMsProperty =
         AvaloniaProperty.Register<SlantedMaskControl, int>(nameof(RegionDurationMs), 300);
 
     public static readonly StyledProperty<int> StageStaggerMsProperty =
         AvaloniaProperty.Register<SlantedMaskControl, int>(nameof(StageStaggerMs), 120);
 
-    // 五个可动画进度属性（StyledProperty -> 可由 Animation 驱动）
+    
     public static readonly StyledProperty<double> Region0ProgressProperty =
         AvaloniaProperty.Register<SlantedMaskControl, double>(nameof(Region0Progress), 0.0);
 
@@ -56,7 +56,7 @@ public class SlantedMaskControl : Control
         set => SetValue(IsOpenedProperty, value);
     }
 
-    // 属性封装
+    
     public IBrush? Fill
     {
         get => GetValue(FillProperty);
@@ -111,22 +111,22 @@ public class SlantedMaskControl : Control
         set => SetValue(Region4ProgressProperty, value);
     }
 
-    // 内部 cancellation 用于中断动画
+    
     private CancellationTokenSource? _cts;
 
-    // 固定 60°
+    
     private static readonly double Tan30 = Math.Tan(Math.PI / 3.0);
 
     public SlantedMaskControl()
     {
-        // 初始化为 closed
+        
         Region0Progress = Region1Progress = Region2Progress = Region3Progress = Region4Progress = 0.0;
     }
 
     static SlantedMaskControl()
     {
-        // 进度变化 → 重绘；IsOpened 变化 → 打开/收起动画
-        // （CI 用 System.Reactive 的 GetObservable+Subscribe，本项目没有该依赖，用等价的 Changed 订阅）
+        
+        
         Region0ProgressProperty.Changed.AddClassHandler<SlantedMaskControl>((o, _) => o.InvalidateVisual());
         Region1ProgressProperty.Changed.AddClassHandler<SlantedMaskControl>((o, _) => o.InvalidateVisual());
         Region2ProgressProperty.Changed.AddClassHandler<SlantedMaskControl>((o, _) => o.InvalidateVisual());
@@ -143,13 +143,13 @@ public class SlantedMaskControl : Control
 
     #region 公共 API：Open / Close
 
-    /// <summary>打开遮罩（两边 -&gt; 中间）</summary>
+    
     public async void Open()
     {
         await StartSequence(open: true);
     }
 
-    /// <summary>关闭遮罩（中间 -&gt; 两边）</summary>
+    
     public async void Close()
     {
         await StartSequence(open: false);
@@ -157,12 +157,12 @@ public class SlantedMaskControl : Control
 
     private async Task StartSequence(bool open)
     {
-        // 取消上一次动画
+        
         _cts?.Cancel();
         _cts = new CancellationTokenSource();
         var token = _cts.Token;
 
-        // 参数
+        
         int dur = Math.Max(1, RegionDurationMs);
         int stag = Math.Max(0, StageStaggerMs);
 
@@ -203,15 +203,15 @@ public class SlantedMaskControl : Control
         }
         catch (TaskCanceledException)
         {
-            // 忽略取消
+            
         }
         catch (OperationCanceledException)
         {
-            // 忽略取消
+            
         }
         finally
         {
-            // 最终修正值（避免插值残留）
+            
             if (!token.IsCancellationRequested)
             {
                 double finish = open ? 1.0 : 0.0;
@@ -247,7 +247,7 @@ public class SlantedMaskControl : Control
         return [kf0, kf1];
     }
 
-    // 辅助：根据 index 返回对应的 StyledProperty<double>
+    
     private static AvaloniaProperty<double> GetRegionProperty(int idx)
     {
         return idx switch
@@ -280,7 +280,7 @@ public class SlantedMaskControl : Control
 
         double totalW = size.Width + offset;
 
-        // 读取进度值（从属性）
+        
         double[] p =
         [
             Math.Clamp(Region0Progress, 0.0, 1.0),

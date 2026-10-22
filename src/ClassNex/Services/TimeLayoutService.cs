@@ -2,33 +2,33 @@ using ClassNex.Models;
 
 namespace ClassNex.Services;
 
-/// <summary>
-/// 时间表服务（白皮书 Models/TimeLayout.cs 的管理侧）：
-/// 节次的增删改查，并把时间改动同步到课表中使用该时段的课程。
-/// </summary>
+
+
+
+
 public interface ITimeLayoutService
 {
-    /// <summary>当前时间表。</summary>
+    
     TimeLayout Layout { get; }
 
     event Action? Changed;
 
-    /// <summary>时间表为空时，从课表反推一份。</summary>
+    
     void EnsureFromProfile(ScheduleProfile profile);
 
-    /// <summary>新增节次（按开始时间自动排序）。</summary>
+    
     void Add(ClassTime time);
 
-    /// <summary>删除节次。</summary>
+    
     void Remove(ClassTime time);
 
-    /// <summary>修改节次（时间变化会同步到课表）。</summary>
+    
     void Update(ClassTime original, ClassTime updated);
 
-    /// <summary>上移 / 下移（delta = -1 / +1）。</summary>
+    
     void Move(ClassTime time, int delta);
 
-    /// <summary>清空。</summary>
+    
     void Clear();
 
     void Save();
@@ -97,7 +97,7 @@ public sealed class TimeLayoutService : ITimeLayoutService
         if (index < 0 || target < 0 || target >= Layout.Times.Count)
             return;
 
-        // 交换开始时间，保持排序语义
+        
         var other = Layout.Times[target];
         (time.Start, time.End, other.Start, other.End) =
             (other.Start, other.End, time.Start, time.End);
@@ -118,7 +118,7 @@ public sealed class TimeLayoutService : ITimeLayoutService
         Changed?.Invoke();
     }
 
-    /// <summary>把「旧时段」的课程整体平移到「新时段」。</summary>
+    
     private void PropagateToCourses(string oldStart, string oldEnd, string newStart, string newEnd)
     {
         var changed = false;

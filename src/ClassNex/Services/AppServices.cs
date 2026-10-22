@@ -2,10 +2,10 @@ using ClassNex.Models;
 
 namespace ClassNex.Services;
 
-/// <summary>
-/// 应用组合根。集中持有五个服务：
-/// 设置、课表、时间、时间表、组件。
-/// </summary>
+
+
+
+
 public static class AppServices
 {
     public static AppSettings Settings { get; private set; } = new();
@@ -18,19 +18,19 @@ public static class AppServices
 
     public static IWidgetService Widgets { get; private set; } = null!;
 
-    /// <summary>主窗口（悬浮课表）。由 App 在创建后注入，供通知服务取岛的中心/矩形。</summary>
+    
     public static Views.MainWindow? MainWindow { get; set; }
 
-    /// <summary>全局通知服务（App 启动时注入；调试页触发提醒用）。</summary>
+    
     public static NotificationService? NotificationService { get; set; }
 
-    /// <summary>NEX 语音唤醒协调器（App 启动时注入；设置页开关与「测试跑马灯」用）。</summary>
+    
     public static NexVoiceCoordinator? NexVoice { get; set; }
 
-    /// <summary>应用设置发生变化。</summary>
+    
     public static event Action? SettingsChanged;
 
-    /// <summary>内置示例课表版本。改版示例数据时递增，用于让旧安装自动更新。</summary>
+    
     private const int SampleSeedVersion = 3;
 
     public static void Initialize()
@@ -41,13 +41,13 @@ public static class AppServices
         if (Settings.Widgets.Count == 0)
             Settings.Widgets = AppSettings.CreateDefaultWidgets();
 
-        // 迁移：旧版本默认 0.55 → 对齐 CI ComponentLayouts.BackgroundOpacity = 0.5
+        
         if (Math.Abs(Settings.BackgroundOpacity - 0.55) < 0.001)
             Settings.BackgroundOpacity = Styles.CiPalette.CardOpacity;
 
-        // 示例课表升级：仅当用户没有指定自定义课表文件时，重新播种并重建时间表。
-        // ★ 全新安装（SampleSeedVersion 还是默认 0）不播种：用户要求「新激活不要带测试的课表文件」，
-        //   新装用户应该自己在首次启动向导之后导入课表，课表组件会显示空状态提示。
+        
+        
+        
         if (Settings.SampleSeedVersion > 0 && Settings.SampleSeedVersion < SampleSeedVersion)
         {
             if (string.IsNullOrWhiteSpace(Settings.TimetablePath))
@@ -62,7 +62,7 @@ public static class AppServices
                 }
                 catch
                 {
-                    // 忽略播种失败
+                    
                 }
             }
 
@@ -75,14 +75,14 @@ public static class AppServices
         TimeLayout = new TimeLayoutService(() => Settings, Schedule);
         Widgets = new WidgetService(() => Settings);
 
-        // 课表加载后自动补全时间表
+        
         Schedule.ProfileChanged += () => TimeLayout.EnsureFromProfile(Schedule.Profile);
 
         Schedule.Load(ResolveTimetablePath());
         TimeLayout.EnsureFromProfile(Schedule.Profile);
     }
 
-    /// <summary>切换课表文件。</summary>
+    
     public static void LoadTimetable(string path)
     {
         Settings.TimetablePath = path;
@@ -90,7 +90,7 @@ public static class AppServices
         Schedule.Load(path);
     }
 
-    /// <summary>重新加载当前课表文件。</summary>
+    
     public static void ReloadTimetable()
     {
         Schedule.Reload();
@@ -107,7 +107,7 @@ public static class AppServices
 
     public static string TimetablePath => Schedule.FilePath;
 
-    /// <summary>确定当前课表文件；首次运行把内置示例复制到 data 目录。</summary>
+    
     private static string ResolveTimetablePath()
     {
         var storage = SettingsService.TimetableStoragePath;
@@ -122,7 +122,7 @@ public static class AppServices
                 }
                 catch
                 {
-                    // 忽略复制失败
+                    
                 }
             }
         }

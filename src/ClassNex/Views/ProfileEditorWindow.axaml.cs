@@ -15,14 +15,14 @@ using AvaloniaFluentUI.Windowing;
 
 namespace ClassNex.Views;
 
-/// <summary>
-/// 档案编辑器。课表页 1:1 复刻 CI 档案编辑器（图2）：
-///   CommandBar 工具栏 + 日期导航（2026/10/5 ← → 第N周）
-///   + 周课表网格（7 天列 × 时间点行，直接显示）
-///   + 右侧「编辑科目」面板（ListBox + WrapPanel，Fluent 控件）。
-/// 编辑模型：点格子选中（强调色描边）→ 点右侧科目 → 立即生效；
-/// 勾选「选完科目自动移动到下一个课程」后自动移到下一时间点。
-/// </summary>
+
+
+
+
+
+
+
+
 public partial class ProfileEditorWindow : AppWindow
 {
     private readonly List<string> _subjectNames = new();
@@ -41,7 +41,7 @@ public partial class ProfileEditorWindow : AppWindow
     {
         InitializeComponent();
 
-        // 初始化默认值要在事件接线之前，避免过早触发
+        
         ParityCombo.SelectedIndex = 0;
         AutoAdvanceCheck.IsChecked = true;
         _weekStart = DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek);
@@ -52,12 +52,12 @@ public partial class ProfileEditorWindow : AppWindow
         LoadAll();
     }
 
-    /// <summary>
-    /// 沉浸式标题栏 + Mica 云母（与设置窗口同一套做法，照 CI 的 <c>MyWindow.OnLoaded</c>）：
-    /// 根元素是 <c>AvaloniaFluentUI.Windowing.AppWindow</c>，客户区扩展到标题栏，
-    /// 系统最小化/最大化/关闭按钮画在应用右上角（顶栏第 4 列留了 152 宽避让）。
-    /// TitleBarHitTestType 必须设为 Complex，否则标题栏区域内的按钮收不到点击。
-    /// </summary>
+    
+    
+    
+    
+    
+    
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
@@ -71,7 +71,7 @@ public partial class ProfileEditorWindow : AppWindow
         }
         catch
         {
-            // 忽略：不支持时保持默认
+            
         }
 
         try
@@ -79,7 +79,7 @@ public partial class ProfileEditorWindow : AppWindow
             if (!OperatingSystem.IsWindows())
                 return;
 
-            // CI：Windows 11 21H2（build 22000）及以上才支持 Mica
+            
             if (Environment.OSVersion.Version < new Version(10, 0, 22000))
                 return;
 
@@ -93,18 +93,18 @@ public partial class ProfileEditorWindow : AppWindow
         }
         catch
         {
-            // 忽略：不支持 Mica 时保持普通背景
+            
         }
     }
 
-    /// <summary>切换到指定标签页（0=课表 / 1=时间表 / 2=科目 / 3=调课）。</summary>
+    
     public void SelectTab(int index)
     {
         if (index >= 0 && index < Tabs.ItemCount)
             Tabs.SelectedIndex = index;
     }
 
-    // ==================== 工具栏（CI CommandBar） ====================
+    
 
     private void BuildCommandBar()
     {
@@ -130,11 +130,11 @@ public partial class ProfileEditorWindow : AppWindow
 
     private void WireEvents()
     {
-        // 周课表选中（CI：单元格 :current → ScheduleDataGridSelectionChanged → SelectedClassInfo）
+        
         WeekGrid.SelectionChanged += (_, _) => UpdateSelectedCellFromGrid();
         WeekGrid.CurrentCellChanged += (_, _) => UpdateSelectedCellFromGrid();
 
-        // 日期导航（CI：← → 切换周）
+        
         PrevWeekButton.Click += (_, _) => ShiftWeek(-1);
         NextWeekButton.Click += (_, _) => ShiftWeek(1);
 
@@ -153,8 +153,8 @@ public partial class ProfileEditorWindow : AppWindow
                 RefreshPaletteHint();
         };
 
-        // 科目面板（CI 用 ListBox）：**每次点击都立即排课**（不能用 SelectionChanged——
-        // 已选中的科目再点不会触发，这正是之前「编辑不了」的原因）
+        
+        
         SubjectPaletteList.AddHandler(InputElement.PointerReleasedEvent, OnPalettePointerReleased,
             RoutingStrategies.Tunnel);
 
@@ -164,7 +164,7 @@ public partial class ProfileEditorWindow : AppWindow
             PaletteHintText.Text = "课表已保存。";
         };
 
-        // ---- 时间表 ----
+        
         AddTimeButton.Click += (_, _) => AddTime();
         RemoveTimeButton.Click += (_, _) => RemoveTime();
         MoveUpButton.Click += (_, _) => MoveTime(-1);
@@ -172,7 +172,7 @@ public partial class ProfileEditorWindow : AppWindow
         ResetTimeButton.Click += (_, _) => ResetTimeLayout();
         SaveTimeButton.Click += (_, _) => SaveTimeEdit();
 
-        // ---- 科目 ----
+        
         AddSubjectButton.Click += (_, _) => AddSubject();
         DeleteSubjectButton.Click += (_, _) => DeleteSubject();
         SaveSubjectsButton.Click += (_, _) =>
@@ -195,7 +195,7 @@ public partial class ProfileEditorWindow : AppWindow
         ReloadButton.Click += (_, _) => { AppServices.ReloadTimetable(); LoadAll(); };
     }
 
-    // ==================== 加载 ====================
+    
 
     private void LoadAll()
     {
@@ -224,7 +224,7 @@ public partial class ProfileEditorWindow : AppWindow
         _subjectNames.AddRange(AppServices.Schedule.Profile.Subjects.Select(s => s.Name));
     }
 
-    // ==================== 日期导航（CI：2026/10/5 ← → 第N周） ====================
+    
 
     private void ShiftWeek(int delta)
     {
@@ -242,7 +242,7 @@ public partial class ProfileEditorWindow : AppWindow
         NavWeekText.Text = $"第{System.Globalization.ISOWeek.GetWeekOfYear(monday)}周";
     }
 
-    // ==================== 课表网格：点格子选中 → 点科目排课（CI 编辑模型） ====================
+    
 
     private CourseRef? FindCourse(int day, string parity, string startCses)
     {
@@ -264,9 +264,9 @@ public partial class ProfileEditorWindow : AppWindow
         return null;
     }
 
-    // ==================== 周课表（CI ScheduleDataGrid：真 DataGrid） ====================
+    
 
-    /// <summary>刷新周课表（1:1 对应 CI ScheduleDataGrid.RefreshWeekScheduleRows）。</summary>
+    
     private void RenderTimetable()
     {
         _syncingGrid = true;
@@ -287,7 +287,7 @@ public partial class ProfileEditorWindow : AppWindow
         }
     }
 
-    /// <summary>列头：时间 + 周日~周六（星期 + 日期，CI 的 ScheduleDataGridColHeaderControl 形态）。</summary>
+    
     private void UpdateWeekHeaders()
     {
         if (WeekGrid.Columns.Count < 8)
@@ -325,7 +325,7 @@ public partial class ProfileEditorWindow : AppWindow
         }
     }
 
-    /// <summary>把当前选中的格子反映到 DataGrid 的选中行/当前列。</summary>
+    
     private void SyncSelectionToGrid()
     {
         if (_selectedCell is not { } cell)
@@ -351,7 +351,7 @@ public partial class ProfileEditorWindow : AppWindow
             WeekGrid.CurrentColumn = WeekGrid.Columns[column + 1];
     }
 
-    /// <summary>DataGrid 选中变化 → 更新当前编辑目标（CI 的 SelectedClassInfo）。</summary>
+    
     private void UpdateSelectedCellFromGrid()
     {
         if (_syncingGrid)
@@ -375,7 +375,7 @@ public partial class ProfileEditorWindow : AppWindow
         RefreshPalette();
     }
 
-    /// <summary>把科目写入选中的格子（CI 编辑模型：点科目 → 立即生效）。</summary>
+    
     private void AssignSubject(Subject subject)
     {
         if (_selectedCell is not { } cell)
@@ -431,7 +431,7 @@ public partial class ProfileEditorWindow : AppWindow
         RenderTimetable();
     }
 
-    /// <summary>选完科目自动移动到下一个课程：同一行往后，到底则换到下一天的第一行。</summary>
+    
     private CellTarget? NextCell(CellTarget current)
     {
         var times = AppServices.TimeLayout.Layout.Times
@@ -455,12 +455,12 @@ public partial class ProfileEditorWindow : AppWindow
         return new CellTarget(nextDay, ClassTime.ToCsesTime(times[0].Start), ClassTime.ToCsesTime(times[0].End));
     }
 
-    // ==================== 编辑科目面板（CI 右侧） ====================
+    
 
-    /// <summary>
-    /// 科目面板点击：从点击目标向上找带 Subject 数据上下文的控件 → 立即给选中格排课。
-    /// CI 也是在项容器上挂 PointerReleased（而不是用选中变化事件）。
-    /// </summary>
+    
+    
+    
+    
     private void OnPalettePointerReleased(object? sender, PointerReleasedEventArgs e)
     {
         if (_syncingPalette)
@@ -486,11 +486,11 @@ public partial class ProfileEditorWindow : AppWindow
 
     private void RefreshPalette()
     {
-        // ItemsSource 只在首次设置；之后仅同步选中项
+        
         if (!ReferenceEquals(SubjectPaletteList.ItemsSource, AppServices.Schedule.Profile.Subjects))
             SubjectPaletteList.ItemsSource = AppServices.Schedule.Profile.Subjects;
 
-        // 把面板选中项同步到「选中格子」的科目（CI：SelectedValue 绑定到 SelectedClassInfo.SubjectId）
+        
         Subject? current = null;
         if (_selectedCell is { } cell)
         {
@@ -522,7 +522,7 @@ public partial class ProfileEditorWindow : AppWindow
         }
     }
 
-    // ==================== 时间表 ====================
+    
 
     private void RefreshTimeline()
     {
@@ -694,7 +694,7 @@ public partial class ProfileEditorWindow : AppWindow
         RenderTimetable();
     }
 
-    // ==================== 科目 ====================
+    
 
     private void RefreshSubjectTable()
     {
@@ -819,7 +819,7 @@ public partial class ProfileEditorWindow : AppWindow
         RenderTimetable();
     }
 
-    // ==================== 顶部操作 ====================
+    
 
     private async void OnOpenTimetable(object? sender, RoutedEventArgs e)
     {

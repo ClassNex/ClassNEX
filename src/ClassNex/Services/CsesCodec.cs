@@ -5,7 +5,7 @@ using YamlDotNet.Serialization.NamingConventions;
 
 namespace ClassNex.Services;
 
-/// <summary>CSES（Course Schedule Exchange Schema）YAML 编解码。</summary>
+
 public static class CsesCodec
 {
     private static readonly IDeserializer Deserializer = new DeserializerBuilder()
@@ -33,6 +33,6 @@ public static class CsesCodec
         File.WriteAllText(path, Serializer.Serialize(profile), new UTF8Encoding(false));
     }
 
-    /// <summary>内置示例课表路径。</summary>
+    
     public static string SamplePath => Path.Combine(AppContext.BaseDirectory, "Assets", "timetable.yaml");
 }

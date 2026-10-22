@@ -15,16 +15,16 @@ using ClassNex.Services.NexIntelligence;
 
 namespace ClassNex.Views;
 
-/// <summary>
-/// NEX Intelligence 对话框：消息流 + 思考过程 + 工具调用卡片 + 权限选择器。
-/// 版式对齐常见聊天客户端（用户消息右侧强调色气泡、助手消息左侧纯文本、工具调用用卡片）。
-/// </summary>
+
+
+
+
 public partial class NexChatWindow : AppWindow
 {
     private readonly NexAgent _agent = new();
     private CancellationTokenSource? _cts;
 
-    // 当前正在流式输出的助手块
+    
     private StackPanel? _assistantBlock;
     private SelectableTextBlock? _bodyText;
     private SelectableTextBlock? _thinkingText;
@@ -93,7 +93,7 @@ public partial class NexChatWindow : AppWindow
 
         _agent.AssistantMessageCompleted += message => Dispatcher.UIThread.Post(() =>
         {
-            // 一轮输出结束：把思考块收起来，正文留在界面上
+            
             if (_thinkingToggle is not null && _thinkingText is not null && _thinkingText.Text?.Length > 0)
                 _thinkingToggle.Content = $"已思考（{_thinkingText.Text!.Length} 字）· 点击展开";
         });
@@ -101,10 +101,10 @@ public partial class NexChatWindow : AppWindow
         _agent.ErrorOccurred += message => Dispatcher.UIThread.Post(() => AddNotice("出错了：" + message, true));
     }
 
-    // ==================== 自检钩子（仅 Debug） ====================
+    
 
 #if DEBUG
-    /// <summary>自检用：填好输入框并立刻发一条消息（CLASSNEX_VERIFY_NEX 走这里）。</summary>
+    
     public void VerifySend(string text)
     {
         InputBox.Text = text;
@@ -112,7 +112,7 @@ public partial class NexChatWindow : AppWindow
     }
 #endif
 
-    // ==================== 发送 ====================
+    
 
     private async System.Threading.Tasks.Task SendAsync()
     {
@@ -158,7 +158,7 @@ public partial class NexChatWindow : AppWindow
         _thinkingToggle = null;
     }
 
-    // ==================== 界面构建 ====================
+    
 
     private void ShowWelcome()
     {
@@ -169,8 +169,8 @@ public partial class NexChatWindow : AppWindow
 
     private void AddUserBubble(string text)
     {
-        // 配色交给 XAML 样式（Border.UserBubble = 强调色底 + 反色字）。
-        // 代码里不再 FindResource：它返回的是浅色主题画刷，深色下会变成黑字（实测踩过）。
+        
+        
         var bubble = new Border
         {
             Child = new SelectableTextBlock { Text = text },
@@ -181,7 +181,7 @@ public partial class NexChatWindow : AppWindow
         ScrollToEnd();
     }
 
-    /// <summary>确保当前有一个助手块（思考区 + 正文区）。</summary>
+    
     private void EnsureAssistantBlock()
     {
         if (_assistantBlock is not null)
@@ -195,7 +195,7 @@ public partial class NexChatWindow : AppWindow
             IsVisible = false,
             Margin = new Thickness(0, 4, 0, 0),
         };
-        _thinkingText.Classes.Add("Hint");   // 次要色（走主题资源，不要在代码里取画刷）
+        _thinkingText.Classes.Add("Hint");   
 
         _thinkingToggle = new Button { Content = "正在思考…", IsVisible = false };
         _thinkingToggle.Classes.Add("ThinkingHeader");
@@ -277,8 +277,8 @@ public partial class NexChatWindow : AppWindow
         _toolCards[call.Id] = card;
         MessagePanel.Children.Add(card);
 
-        // 关键：工具卡片之后的内容要另起一块，否则下一轮的正文会追加到工具调用之前的那块里，
-        // 界面顺序就变成「正文 → 工具卡片」（实测就是这样）
+        
+        
         ResetAssistantBlock();
 
         ScrollToEnd();
@@ -292,7 +292,7 @@ public partial class NexChatWindow : AppWindow
         if (panel.Children[2] is TextBlock status)
         {
             status.Text = (ok ? "已完成 · " : "未执行 · ") + Summarize(result);
-            // 成功/失败都用 ToolStatus 样式（次要色）；失败时叠一个主题的严重色
+            
             status.Classes.Add("ToolStatus");
             if (!ok)
                 status.Foreground = (IBrush?)this.FindResource("SystemFillColorCriticalBrush")
@@ -304,7 +304,7 @@ public partial class NexChatWindow : AppWindow
 
     private void AddNotice(string text, bool isWarning)
     {
-        // 背景色交给 XAML 样式（Notice = 卡片色 / NoticeWarn = 警告色），不在代码里取画刷
+        
         var bar = new Border
         {
             Child = new SelectableTextBlock { Text = text },
@@ -323,7 +323,7 @@ public partial class NexChatWindow : AppWindow
         Dispatcher.UIThread.Post(() => MessageScroll.ScrollToEnd(), DispatcherPriority.Background);
     }
 
-    // ==================== 文案 ====================
+    
 
     private static string DescribeTool(string name) => name switch
     {
@@ -336,7 +336,7 @@ public partial class NexChatWindow : AppWindow
         _ => "调用工具",
     };
 
-    /// <summary>把参数 JSON 压成一行短摘要。</summary>
+    
     private static string Summarize(string text)
     {
         if (string.IsNullOrWhiteSpace(text))
@@ -364,7 +364,7 @@ public partial class NexChatWindow : AppWindow
             }
             catch (JsonException)
             {
-                // 保持原样
+                
             }
         }
 

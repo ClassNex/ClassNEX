@@ -14,11 +14,11 @@ using ClassNex.Services;
 
 namespace ClassNex.Views;
 
-/// <summary>
-/// 首次启动向导（OOBE）。全新安装第一次启动时显示，走完流程前不显示课表浮窗。
-/// 版式参照 Windows 的「语音访问」欢迎页：左侧文字与选项，右侧大插图（向右下溢出被裁），右下角主按钮。
-/// 窗口基类是 AvaloniaFluentUI 的 AppWindow（沉浸式标题栏 + 云母），必须与 XAML 根节点 wd:AppWindow 一致。
-/// </summary>
+
+
+
+
+
 public partial class OobeWindow : AppWindow
 {
     private const int PageCount = 5;
@@ -26,7 +26,7 @@ public partial class OobeWindow : AppWindow
     private int _page;
     private bool _isEnglish;
 
-    /// <summary>多语言问候轮换（OOBE 的经典做法）。</summary>
+    
     private static readonly string[] Greetings =
     {
         "你好", "Hello", "こんにちは", "안녕하세요", "Bonjour", "Hola",
@@ -42,7 +42,7 @@ public partial class OobeWindow : AppWindow
     {
         InitializeComponent();
 
-        // 问候语淡入淡出
+        
         GreetingText.Transitions = new Transitions
         {
             new DoubleTransition { Property = OpacityProperty, Duration = TimeSpan.FromMilliseconds(260) },
@@ -58,14 +58,14 @@ public partial class OobeWindow : AppWindow
         _greetingTimer.Start();
 
 #if DEBUG
-        // 自检：CLASSNEX_VERIFY_OOBE=<页码> 直接跳到向导某一页（核对排版用）
+        
         if (int.TryParse(Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_OOBE"), out var verifyPage))
             Dispatcher.UIThread.Post(() => SwitchPage(verifyPage), DispatcherPriority.Background);
 #endif
 
         Closing += (_, _) =>
         {
-            // 没走完流程就关掉向导：直接退出（下次启动还会进入向导）
+            
             if (!AppServices.Settings.IsOobeCompleted)
                 App.ExitApp();
         };
@@ -143,7 +143,7 @@ public partial class OobeWindow : AppWindow
         ApplyLanguage();
     }
 
-    /// <summary>默认开学日期：今年 9 月 1 日（若已过则取明年 9 月 1 日）。</summary>
+    
     private static DateTime DefaultSemesterStart()
     {
         var today = DateTime.Today;
@@ -151,7 +151,7 @@ public partial class OobeWindow : AppWindow
         return candidate < today ? candidate.AddYears(1) : candidate;
     }
 
-    /// <summary>切换语言：只覆盖向导自己的文案（应用其余部分的本地化后续再做）。</summary>
+    
     private void ApplyLanguage()
     {
         if (_isEnglish)
@@ -301,7 +301,7 @@ public partial class OobeWindow : AppWindow
         s.IsOobeCompleted = true;
         s.SemesterStartDate = SemesterPicker.SelectedDate?.Date;
         s.RunAtStartup = RunAtStartupCheck.IsChecked == true;
-        s.IsMainWindowVisible = true;      // 走完向导后显示课表浮窗
+        s.IsMainWindowVisible = true;      
         Services.SettingsService.Save(s);
 
         _greetingTimer?.Stop();
@@ -318,7 +318,7 @@ public partial class OobeWindow : AppWindow
         }
         catch
         {
-            // 打不开浏览器就算了
+            
         }
     }
 }

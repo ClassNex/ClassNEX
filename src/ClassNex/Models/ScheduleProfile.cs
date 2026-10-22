@@ -2,16 +2,16 @@ using YamlDotNet.Serialization;
 
 namespace ClassNex.Models;
 
-/// <summary>
-/// 课表档案（白皮书中的「档案」，对应 CSES 文档根节点）。
-/// 一个档案 = 一组科目 + 一份周课表。
-/// </summary>
+
+
+
+
 public sealed class ScheduleProfile
 {
-    /// <summary>CSES 版本号，固定为 1。</summary>
+    
     public int Version { get; set; } = 1;
 
-    /// <summary>名称（本地档案名，不写入 CSES）。</summary>
+    
     [YamlIgnore]
     public string Name { get; set; } = "默认";
 
@@ -22,7 +22,7 @@ public sealed class ScheduleProfile
     public Subject? FindSubject(string name) =>
         Subjects.FirstOrDefault(s => s.Name == name);
 
-    /// <summary>取某天、某周次的课程（按开始时间排序）。</summary>
+    
     public List<Course> GetCourses(int enableDay, string parity)
     {
         var list = new List<Course>();
@@ -40,7 +40,7 @@ public sealed class ScheduleProfile
             .ToList();
     }
 
-    /// <summary>找到某天、某周次的 Schedule 对象（没有则创建）。</summary>
+    
     public Schedule GetOrCreateSchedule(int enableDay, string weeks)
     {
         var found = Schedules.FirstOrDefault(s => s.EnableDay == enableDay && s.Weeks == weeks);

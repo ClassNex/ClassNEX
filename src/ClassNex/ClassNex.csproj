@@ -2,9 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <!-- Windows 专用 TFM：语音识别要用的 API
-         · System.Speech（老 SAPI）—— 需要 -windows
-         · Windows.Media.SpeechRecognition（现代 WinRT 引擎，识别率高得多）—— 需要 windows10.0.19041.0 及以上 -->
+    
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
     <Nullable>enable</Nullable>
@@ -13,29 +11,29 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <RootNamespace>ClassNex</RootNamespace>
     <AssemblyName>ClassNex</AssemblyName>
-    <!-- 对外版本号（产品版本，显示在设置→关于与文件属性里） -->
+    
     <Version>0.5.0</Version>
     <InformationalVersion>26w42a</InformationalVersion>
-    <!-- 不要把 git 提交哈希附加到产品版本号后面 -->
+    
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
-    <!-- NU1903：Tmds.DBus.Protocol 是 Avalonia.Desktop 的 Linux D-Bus 传递依赖，win-x64 自包含不打包，屏蔽该审计告警 -->
+    
     <NoWarn>$(NoWarn);NU1903</NoWarn>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\icon.ico" />
-    <!-- Win11 默认账户头像（取自 C:\ProgramData\Microsoft\User Account Pictures\user.png） -->
+    
     <AvaloniaResource Include="Assets\avatar.png" />
-    <!-- 内置小米 MiSans 字体（免费商用授权，授权文件见 Assets\Fonts\LICENSE.txt） -->
+    
     <AvaloniaResource Include="Assets\Fonts\*.ttf" />
-    <!-- 主页横幅（从 ClassWidgets 2 测试版扒的轮播图） -->
+    
     <AvaloniaResource Include="Assets\Banners\*.png" />
-    <!-- 首次启动向导（OOBE）插图 -->
+    
     <AvaloniaResource Include="Assets\Oobe\*.png" />
-    <!-- NEX 的 Sparkle 图标 -->
+    
     <AvaloniaResource Include="Assets\NexAi.png" />
-    <!-- 唤醒提示音（用户提供的 wav，跑马灯动画时播放） -->
+    
     <AvaloniaResource Include="Assets\NexWake.wav" />
   </ItemGroup>
 
@@ -45,7 +43,7 @@
     <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.3.12" />
     <PackageReference Include="AvaloniaFluentUI" Version="1.0.3" />
     <PackageReference Include="YamlDotNet" Version="16.3.0" />
-    <!-- 语音识别（离线）：唤醒词 + 听写 -->
+    
     <PackageReference Include="System.Speech" Version="10.0.12" />
   </ItemGroup>
 

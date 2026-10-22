@@ -17,10 +17,10 @@ using ClassNex.Widgets;
 
 namespace ClassNex.Views;
 
-/// <summary>
-/// 主界面：悬浮在桌面上的组件容器（对应 ClassIsland 的「主界面」）。
-/// 显示哪些内容由「应用设置 → 主界面组件」决定。
-/// </summary>
+
+
+
+
 public partial class MainWindow : Window
 {
     private readonly DispatcherTimer _timer;
@@ -29,7 +29,7 @@ public partial class MainWindow : Window
 
     private IntPtr _hwnd;
 
-    /// <summary>当前淡化目标（避免过渡动画被反复重启）。</summary>
+    
     private double _hoverFadeTarget = 1.0;
 
     private static readonly Easing IslandWidthEasing = Easing.Parse("0.65, 0, 0.35, 1.0");
@@ -39,7 +39,7 @@ public partial class MainWindow : Window
     private string _hoverDebugCursor = "";
 #endif
 
-    /// <summary>CI GridContentRoot 的 Margin="12 0"（岛宽 = 内容宽 + 两侧各 12）。</summary>
+    
     private const double IslandContentMargin = 12;
 
     public MainWindow()
@@ -55,7 +55,7 @@ public partial class MainWindow : Window
         AppServices.TimeLayout.Changed += OnDataChanged;
         AppServices.Widgets.Changed += OnWidgetsChanged;
 
-        // 每秒刷新，用于时钟与倒计时
+        
         _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _timer.Tick += (_, _) =>
         {
@@ -67,19 +67,19 @@ public partial class MainWindow : Window
         };
         _timer.Start();
 
-        // 鼠标移入淡化：CI 用 RawInput 事件即时判定；本应用开启鼠标穿透收不到鼠标消息，
-        // 故用 30ms 高频轮询光标位置近似 CI 的即时响应（淡化本身仍是 CI 的 100ms 线性过渡）
+        
+        
         _hoverTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(30) };
         _hoverTimer.Tick += (_, _) => UpdateHoverFade();
         _hoverTimer.Start();
 
-        // 某些全屏窗口会抢走置顶，失焦后重新声明
+        
         Deactivated += (_, _) => EnforcePlacement();
 
-        // 背景岛宽度跟随内容：CI 的 BackgroundWidth 会做 300ms 过渡，
-        // 所以内容变宽/变窄时，背景岛平滑追上，而不是硬跳。（只订阅一次）
-        // ★ CI：BackgroundWidth = GridWrapper.Bounds.Width —— 是**包含 GridContentRoot 的
-        //   Margin="12 0"** 的宽度（即内容宽 + 两侧各 12），否则文字会顶到岛边缘、没有内边距。
+        
+        
+        
+        
 #if DEBUG
         CardContent.SizeChanged += (_, args) =>
         {
@@ -93,15 +93,15 @@ public partial class MainWindow : Window
         CardContent.SizeChanged += (_, args) => SetIslandWidth(args.NewSize.Width + IslandContentMargin * 2);
 #endif
 
-        // 每次显示都播放 CI 同款淡入（只订阅一次）
+        
         PropertyChanged += (_, args) =>
         {
             if (args.Property == IsVisibleProperty && IsVisible)
                 PlayFadeInAnimation();
         };
 
-        // 主题切换（深色 ↔ 浅色）时重建组件：组件文字/画刷是「创建时按当前主题取色」的，
-        // 不重建就会保持旧主题的颜色（用户反馈的「切主题字体不变黑白」）。
+        
+        
         if (Application.Current is { } app)
         {
             app.ActualThemeVariantChanged += (_, _) => Dispatcher.UIThread.Post(() =>
@@ -112,10 +112,10 @@ public partial class MainWindow : Window
             });
         }
 
-        // 主界面固定位置、不可拖动（用户要求「强制置顶不可移动」）
+        
     }
 
-    /// <summary>强制置顶：主界面始终浮在其它窗口之上，不受设置与焦点影响。</summary>
+    
     private void EnsureTopmost()
     {
         if (!IsVisible)
@@ -125,19 +125,19 @@ public partial class MainWindow : Window
             Topmost = true;
     }
 
-    // ---------- 外观 ----------
+    
 
     public void ApplySettings()
     {
         var s = AppServices.Settings;
 
-        // 强制置顶
+        
         Topmost = true;
 
-        // ================= 1:1 CI 的岛（MainWindowLine 的 .line-background 样式）=================
-        // 整体缩放：CI RootLayoutTransformControl 的 ScaleTransform = Settings.Scale（1.9）。
-        // 岛内所有尺寸都用 CI 的原值（18/14/16/20 字号、40 高、12 边距、8 圆角……），
-        // 由这个变换统一放大 —— 不再在组件里到处乘缩放。
+        
+        
+        
+        
         var scale = Math.Clamp(s.EffectiveScale, 0.4, 5.0);
         if (RootScale.LayoutTransform is ScaleTransform rootScale)
         {
@@ -145,20 +145,20 @@ public partial class MainWindow : Window
             rootScale.ScaleY = scale;
         }
 
-        // CI .line-background：Background=SolidBackgroundFillColorSecondaryBrush、
-        // BorderBrush=ControlElevationBorderBrush、BorderThickness=1、CornerRadius=RadiusX(8)、
-        // BoxShadow="0 4 8 2 #48000000"、Opacity=BackgroundOpacity（0.5）、Height=IslandContainerHeight(40)
-        // 回滚到主题资源取色（浅/深色都跟主题走，和 CI 一致），不要再自己判深浅色
+        
+        
+        
+        
         IslandBackground.Background = CiPalette.SurfaceBrush("SolidBackgroundFillColorSecondaryBrush", s.BackgroundOpacity);
         IslandBackground.BorderBrush = CiPalette.IslandBorderBrush();
         IslandBackground.Opacity = Math.Clamp(s.BackgroundOpacity, 0.05, 1.0);
         IslandBackground.Height = 40;
 
-        // 窗口尺寸（SizeToContent）跟随内容；背景岛宽度单独做补间动画
+        
         if (CardContent.Bounds.Width > 0)
             SetIslandWidth(CardContent.Bounds.Width + IslandContentMargin * 2);
 
-        // 组件排列方向（CI 的一行横向排列；组件之间无间距，纵向时整岛加高，每行 40 高）
+        
         var vertical = s.Orientation == LayoutOrientation.Vertical;
         WidgetHost.Orientation = vertical ? Orientation.Vertical : Orientation.Horizontal;
         WidgetHost.Spacing = 0;
@@ -167,13 +167,13 @@ public partial class MainWindow : Window
         else
             IslandBackground.Height = 40 + (_editMode ? 30 : 0);
 
-        // 编辑模式的底部工具条（CI 底部栏：添加组件 / 组件设置 / 完成）
+        
         EditBarHost.IsVisible = _editMode;
         if (_editMode)
             BuildEditBar();
 
-        // 窗口固定为整屏宽（CI 的做法）：内容宽度变化（剩余时间每秒变、课间切换……）时
-        // 窗口本身不缩放、也不重新居中，只有岛在窗口内平滑变化 —— 否则会「一抖一抖」。
+        
+        
         var primary = Screens.Primary;
         if (primary is not null)
         {
@@ -181,26 +181,26 @@ public partial class MainWindow : Window
             Width = primary.WorkingArea.Width / screenScaling;
         }
 
-        // 鼠标穿透设置可能被改动
+        
         ApplyClickThrough();
 
-        // 位置固定为「屏幕顶端 + 水平居中」（对齐 CI），不再使用设置里的坐标
+        
         EnforcePlacement();
     }
 
-    // ---------- 组件 ----------
+    
 
     private void RebuildWidgets()
     {
         WidgetHost.Children.Clear();
         _widgets.Clear();
 
-        // ⚠️ 这里**不能**启用 CI 的 WrapPanelResizingAnimationAssist（隐式 Offset 动画）：
-        // 岛的宽度是「布局立刻跳到目标宽 + composition Scale.X 补间放大」实现的
-        // （见 SetIslandWidth —— Avalonia 的 Width 过渡在 LayoutTransformControl 里会卡布局）。
-        // 若组件再加一层 300ms 的 Offset 补间，组件会被画在「旧位置 × 未完成的缩放」上，
-        // 与邻居文字叠在一起（用户录屏里文本组件输入时 周三10/07 与 111111 相互重影）。
-        // 只保留岛的宽度生长动画即可，组件位置直接跟随布局。
+        
+        
+        
+        
+        
+        
         WrapPanelResizingAnimationAssist.SetIsResizingAnimationEnabled(WidgetHost, false);
 
         foreach (var config in AppServices.Widgets.Widgets.Where(w => w.IsEnabled).OrderBy(w => w.Order))
@@ -213,7 +213,7 @@ public partial class MainWindow : Window
 
             if (_editMode)
             {
-                // 编辑模式（照 CI）：每个组件都是独立的一项 —— 组件上方挂它自己的工具条
+                
                 var item = new StackPanel
                 {
                     Orientation = Orientation.Vertical,
@@ -229,7 +229,7 @@ public partial class MainWindow : Window
             }
         }
 
-        // 编辑模式末尾的「＋ 添加组件」（CI 同位置是「＋ 新主界面行」）
+        
         if (_editMode)
             WidgetHost.Children.Add(BuildAddComponentButton(compact: true));
 
@@ -270,7 +270,7 @@ public partial class MainWindow : Window
             }
             catch
             {
-                // 单个组件异常不影响整体
+                
             }
         }
     }
@@ -278,10 +278,10 @@ public partial class MainWindow : Window
     private void OnDataChanged() => Dispatcher.UIThread.Post(RefreshWidgets);
 
 #if DEBUG
-    /// <summary>
-    /// 布局自检（仅调试）：CLASSNEX_VERIFY_LAYOUT=1 时每秒把窗口/背景岛/底部进度条/
-    /// 课表当前项（剩余时间文本与倒计时胶囊）的实测尺寸写到 _verify_layout.log。
-    /// </summary>
+    
+    
+    
+    
     private void DumpLayoutIfRequested()
     {
         if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_LAYOUT") != "1")
@@ -306,7 +306,7 @@ public partial class MainWindow : Window
         }
         catch
         {
-            // 自检失败忽略
+            
         }
     }
 #endif
@@ -317,7 +317,7 @@ public partial class MainWindow : Window
         RefreshWidgets();
     });
 
-    // ---------- 位置：与 CI 一致，停靠屏幕顶端 + 水平居中，且不可拖动 ----------
+    
 
     protected override void OnOpened(EventArgs e)
     {
@@ -326,15 +326,15 @@ public partial class MainWindow : Window
         ApplyClickThrough();
         EnforcePlacement();
 
-        // CI 同款的「出现动画」：窗口真正显示后才开始（订阅 IsVisible 会在首帧渲染前触发，动画白跑）。
-        // 顺序：① 先显示「骨架占位」（组件还没加载出来时）② 组件就绪后换成真实内容并 250ms 淡入。
-        // 设置「基本 → 显示启动加载界面」可以关掉骨架。
+        
+        
+        
         if (AppServices.Settings.ShowStartupSplash)
             ShowSkeleton();
         if (!AppServices.Settings.ShowStartupSplash
             || Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_SKELETON") == "1")
         {
-            // 调试：CLASSNEX_VERIFY_SKELETON=1 时保持骨架不切换，方便截图/核对样式
+            
         }
         else
         {
@@ -346,7 +346,7 @@ public partial class MainWindow : Window
         SetIslandWidth(CardContent.Bounds.Width + IslandContentMargin * 2);
     }
 
-    // ==================== NEX 对话层（语音唤醒：课表上翻 → 对话文字翻上来） ====================
+    
 
     private bool _nexPanelActive;
 
@@ -354,15 +354,15 @@ public partial class MainWindow : Window
 
     private TranslateTransform? NexShift => NexPanel.RenderTransform as TranslateTransform;
 
-    /// <summary>
-    /// 显示对话层。<paramref name="placeholder"/> = true 表示还没听到内容，
-    /// 用浅一点的字体显示「请讲」（次要色 + 降透明度）。
-    /// </summary>
+    
+    
+    
+    
     public void ShowNexPanel(string text, bool placeholder)
     {
         NexPanelText.Text = text;
-        // 浮窗上的对话文字统一用白色（浮窗直接叠在桌面上，跟课表组件的白字一致）；
-        // 「请讲」这种占位提示更浅一点（降透明度）
+        
+        
         NexPanelText.Foreground = Brushes.White;
         NexPanelText.Opacity = placeholder ? 0.62 : 1.0;
 
@@ -370,8 +370,8 @@ public partial class MainWindow : Window
         {
             _nexPanelActive = true;
 
-            // 视觉上和岛一致（同底色、同描边）；同时把岛本身的背景藏起来，
-            // 否则会看到「两个框」（对话层 + 岛背景）叠在一起 —— 用户反馈过
+            
+            
             NexPanel.Background = IslandBackground.Background;
             NexPanel.BorderBrush = IslandBackground.BorderBrush;
             IslandBackground.Opacity = 0;
@@ -385,12 +385,12 @@ public partial class MainWindow : Window
 
             Dispatcher.UIThread.Post(() =>
             {
-                // 课表向上翻出去
+                
                 if (CardShift is { } c)
                     c.Y = -26;
                 CardContent.Opacity = 0;
 
-                // 对话层从下面翻上来
+                
                 if (NexShift is { } n)
                     n.Y = 0;
                 NexPanel.Opacity = 1;
@@ -404,7 +404,7 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>收起对话层、课表翻回来。</summary>
+    
     public void HideNexPanel()
     {
         if (!_nexPanelActive)
@@ -427,16 +427,16 @@ public partial class MainWindow : Window
 
             NexPanel.IsVisible = false;
 
-            // 岛背景恢复（透明度取自设置，与 ApplyBackground 一致）
+            
             IslandBackground.Opacity = Math.Clamp(AppServices.Settings.BackgroundOpacity, 0.05, 1.0);
             SetIslandWidth(CardContent.Bounds.Width + IslandContentMargin * 2);
         }, TimeSpan.FromMilliseconds(280));
     }
 
-    /// <summary>
-    /// 启动占位骨架：组件还没加载出来时先显示占位块（一小块 + 一长块），
-    /// 岛宽会跟着骨架宽度生长（CardContent.SizeChanged 驱动）。
-    /// </summary>
+    
+    
+    
+    
     private void ShowSkeleton()    {
         var brush = CiPalette.SkeletonBrush();
         SkeletonBlock1.Background = brush;
@@ -445,7 +445,7 @@ public partial class MainWindow : Window
         WidgetHost.IsVisible = false;
     }
 
-    /// <summary>组件就绪：收起骨架、显示真实内容并播放 CI 同款 250ms 淡入。</summary>
+    
     private void HideSkeleton()
     {
         if (!SkeletonHost.IsVisible)
@@ -456,46 +456,46 @@ public partial class MainWindow : Window
         PlayFadeInAnimation();
     }
 
-    /// <summary>提醒前的岛宽（提醒时扩展为整屏宽，结束后恢复）。</summary>
+    
     private double? _preNotificationIslandWidth;
 
-    /// <summary>
-    /// CI 提醒态：岛扩展为整屏宽（视频实测提醒时黑条横跨全屏），并显示岛底的整宽进度轨道
-    /// —— 蓝色填充随提醒时长从 0 走到 100%。
-    /// </summary>
+    
+    
+    
+    
     private void ExpandIslandForNotification()
     {
         _preNotificationIslandWidth ??= IslandBackground.Width;
 
         var scale = Math.Max(0.1, AppServices.Settings.MainWindowScale);
-        var full = Bounds.Width / scale;   // 窗口已是整屏宽，除以整体缩放 = 岛的逻辑宽
+        var full = Bounds.Width / scale;   
         if (full > IslandBackground.Width)
             IslandBackground.Width = full;
 
-        // 取消宽度补间可能留下的缩放（否则岛会被 Scale 缩回去）
+        
         if (ElementComposition.GetElementVisual(IslandBackground) is { } visual)
             visual.Scale = new Vector3D(1, 1, 1);
     }
 
-    /// <summary>
-    /// CI 提醒轨道：**只在 Overlay 阶段显示**（面具阶段没有）。
-    /// 显示提醒剩余时间 —— 满格(100)起从右向左倒扣变淡，走到 0 表示提醒即将结束。
-    /// </summary>
+    
+    
+    
+    
     private void StartNotificationTrack()
     {
-        // 自绘轨道：灰底在 XAML，填充条**满宽 + Scale=1**（出现第一帧就是满的，无充能）。
-        _trackFullWidth = Math.Max(1, IslandBackground.Width - 24); // 与 GridContentRoot 两侧 12 内边距对齐
+        
+        _trackFullWidth = Math.Max(1, IslandBackground.Width - 24); 
         NotificationTrack.Width = _trackFullWidth;
         NotificationTrackFill.Width = _trackFullWidth;
         NotificationTrack.IsVisible = true;
 
         if (ElementComposition.GetElementVisual(NotificationTrackFill) is { } fillVisual)
         {
-            fillVisual.CenterPoint = new Vector3D(0, fillVisual.Size.Y / 2, 0); // 左缘锚定
+            fillVisual.CenterPoint = new Vector3D(0, fillVisual.Size.Y / 2, 0); 
             fillVisual.Scale = new Vector3D(1, 1, 1);
         }
 
-        // 停顿 500ms（满格）后，用 composition Scale.X 1→0 平滑收缩（GPU 补间，不生硬）
+        
         DispatcherTimer.RunOnce(() =>
         {
             var visual = ElementComposition.GetElementVisual(NotificationTrackFill);
@@ -513,7 +513,7 @@ public partial class MainWindow : Window
 
     private double _trackFullWidth;
 
-    /// <summary>提醒结束：岛恢复为内容宽，隐藏轨道。</summary>
+    
     private void RestoreIslandAfterNotification()
     {
         NotificationTrack.IsVisible = false;
@@ -524,7 +524,7 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>浮窗岛的屏幕矩形（物理像素），供灵动通知胶囊定位（对照 CI MainWindowLine 取 GridWrapper 的做法）。</summary>
+    
     public PixelRect? GetIslandScreenRect()
     {
         if (IslandBackground is not { } island || !island.IsLoaded)
@@ -539,7 +539,7 @@ public partial class MainWindow : Window
         return new PixelRect(topLeft, size);
     }
 
-    /// <summary>浮窗岛中心的屏幕坐标（物理像素），供重要通知水波纹定位（对照 CI MainWindowLine.GetCenter）。</summary>
+    
     public PixelPoint? GetIslandCenterOnScreen()
     {
         if (IslandBackground is not { } island || !island.IsLoaded)
@@ -548,35 +548,35 @@ public partial class MainWindow : Window
         return island.PointToScreen(new Point(island.Bounds.Width / 2, island.Bounds.Height / 2));
     }
 
-    /// <summary>
-    /// 重要通知遮罩：岛上显示大字提示（对照 CI 的 MaskContent + FluentTheme/Styles.axaml 的
-    /// :mask-in 动画 —— 文字 Opacity 0→1（Delay 0.26s / 0.25s / 0.25,1,0.5,1）
-    /// + Scale 1.1→1.0（Delay 0.26s / 0.75s / 0.25,1,0.5,1））。
-    /// </summary>
+    
+    
+    
+    
+    
     public void ShowNotificationMask(string text)
     {
         NotificationMaskText.Text = text;
         NotificationMask.IsVisible = true;
 
-        // CI 提醒态（视频实测）：岛扩展到**整屏宽**、文字居中、底下一条整宽轨道随提醒时长推进
+        
         ExpandIslandForNotification();
 
-        // CI :mask-in —— 岛的正常内容透明度置 0（GridContentRoot），否则课表会和面具/Overlay 叠字
+        
         CardContent.Opacity = 0;
 
-        // CI：SlantedMaskControl 斜切条纹打开（IsOpened=true，两边→中间，360ms/120ms 交错）
+        
         NotificationMaskBg.IsOpened = true;
 
-        // 文字按用户要求用黑色（强调色底上的黑字，深浅色模式一致）。
-        // 挂在遮罩根的 TextElement.Foreground 上，继承到图标与文字；避免被其它样式覆盖。
+        
+        
         Avalonia.Controls.Documents.TextElement.SetForeground(NotificationMask, Brushes.Black);
         NotificationMaskText.Foreground = Brushes.Black;
 
-        // CI :mask-in（FluentTheme/Styles.axaml）：
-        //   Opacity 0→1：Delay 0.26s / 0.25s / 0.25,1,0.5,1
-        //   ScaleX/Y 1.1→1.0：Delay 0.26s / 0.75s / 0.25,1,0.5,1
-        // 用属性动画驱动 XAML 的 ScaleTransform（RenderTransformOrigin=50%,50% 生效）。
-        // 之前用 composition 缩放，布局完成前 visual.Size=0 → 中心点错位 → 文字「跑一下」。
+        
+        
+        
+        
+        
         var easing = Easing.Parse("0.25, 1, 0.5, 1");
 
         var fade = new Animation
@@ -624,13 +624,13 @@ public partial class MainWindow : Window
         _ = scale.RunAsync(NotificationMaskContent);
     }
 
-    /// <summary>隐藏通知遮罩（对照 CI 的 :mask-out —— 文字 Opacity 1→0 0.2s + 条纹收起）。</summary>
+    
     public void HideNotificationMask()
     {
-        // CI：SlantedMaskControl 斜切条纹收起（IsOpened=false，中间→两边，360ms+120ms≈480ms）
+        
         NotificationMaskBg.IsOpened = false;
 
-        // CI :mask-out —— 文字 Opacity 1→0（0.2s）
+        
         var fade = new Animation
         {
             Duration = TimeSpan.FromMilliseconds(200),
@@ -643,31 +643,31 @@ public partial class MainWindow : Window
         };
         _ = fade.RunAsync(NotificationMaskContent);
 
-        // 等条纹收完（480ms）再隐藏整个遮罩 —— 之前 220ms 就藏了，结束动画「闪一下就没了」
+        
         DispatcherTimer.RunOnce(() =>
         {
             NotificationMask.IsVisible = false;
             NotificationOverlay.IsVisible = false;
-            // 通知结束，岛的正常内容恢复显示
+            
             CardContent.Opacity = 1;
-            // 岛恢复内容宽、轨道隐藏
+            
             RestoreIslandAfterNotification();
         }, TimeSpan.FromMilliseconds(500));
     }
 
-    /// <summary>
-    /// 面具之后的 Overlay 阶段（对照 CI 的 ClassOffOverlay）：**面具收起后**，
-    /// 「下节课是…」显示在**岛的正常区域**（主题文字色，不盖遮罩）—— 与 CI 一致。
-    /// </summary>
+    
+    
+    
+    
     public void ShowNotificationOverlay(string left, string subject, string teacher, string time)
     {
-        // CI：mask-out（条纹中间→两边收起），遮罩消失，岛恢复原样
+        
         NotificationMaskBg.IsOpened = false;
         DispatcherTimer.RunOnce(() => NotificationMask.IsVisible = false, TimeSpan.FromMilliseconds(500));
 
-        // 岛的正常区域显示 Overlay 文字并淡入。
-        // CI 顺序：先 mask-out（条纹中间→两边收完约 480ms），**之后**才 overlay-in ——
-        // 所以文字先保持透明，淡入延迟 500ms（等条纹完全收完），轨道同样延迟启动。
+        
+        
+        
         NotificationOverlayLeft.Text = left;
         NotificationOverlaySubject.Text = subject;
         NotificationOverlayTeacher.Text = teacher;
@@ -692,21 +692,21 @@ public partial class MainWindow : Window
         _ = fade.RunAsync(NotificationOverlay);
     }
 
-    /// <summary>
-    /// 预热斜切条纹动画（首次触发会 JIT + 编译几何，容易卡一下）：
-    /// 启动后快速开-合一次，之后的提醒动画就顺滑了。面具保持隐藏，不会有可见闪烁。
-    /// </summary>
+    
+    
+    
+    
     public void WarmNotificationMask()
     {
         NotificationMaskBg.IsOpened = true;
         DispatcherTimer.RunOnce(() => NotificationMaskBg.IsOpened = false, TimeSpan.FromMilliseconds(60));
     }
 
-    /// <summary>
-    /// 岛宽变化（CI BackgroundWidth DoubleTransition 0.300 / 0.65,0,0.35,1.0）。
-    /// 布局宽度直接对齐内容；视觉宽度用 composition Scale 动画补间 ——
-    /// Avalonia 的 Width 过渡在 LayoutTransformControl 内会卡住布局，不能用。
-    /// </summary>
+    
+    
+    
+    
+    
     private void SetIslandWidth(double target)
     {
         var previous = IslandBackground.Width;
@@ -716,10 +716,10 @@ public partial class MainWindow : Window
         if (visual is null)
             return;
 
-        // 以岛中心为锚点缩放（岛居中 → 与 CI 的背景宽动画一致，从中心对称展开/收缩）
+        
         visual.CenterPoint = new System.Numerics.Vector3((float)target / 2, 20f, 0f);
 
-        // 首次布局（previous 为 0/NaN）：从 0 展开（启动生长动画）；之后从旧宽/新宽 补间到 1
+        
         var from = double.IsNaN(previous) || previous <= 0.5
             ? 0f
             : (float)(previous / target);
@@ -735,10 +735,10 @@ public partial class MainWindow : Window
         visual.StartAnimation(nameof(visual.Scale), anim);
     }
 
-    /// <summary>
-    /// 主界面显示时的淡入动画 —— 1:1 复刻 CI MainWindowLine.PlayFadeInAnimation：
-    /// composition 标量动画 250ms、缓动 0.25,1,0.5,1（cubic-bezier），目标是 Opacity。
-    /// </summary>
+    
+    
+    
+    
     private void PlayFadeInAnimation()
     {
         var compositionVisual = ElementComposition.GetElementVisual(CardHost);
@@ -754,29 +754,29 @@ public partial class MainWindow : Window
         compositionVisual.StartAnimation(nameof(compositionVisual.Opacity), anim);
     }
 
-    /// <summary>应用「鼠标穿透」：开启后点击落到后方窗口，不再被主界面挡住。</summary>
+    
     private void ApplyClickThrough()
     {
         if (_hwnd == IntPtr.Zero)
             _hwnd = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
 
-        // 编辑模式下必须禁用穿透，否则点不到组件工具条上的按钮
+        
         WindowsOverlay.SetClickThrough(_hwnd, AppServices.Settings.IsClickThrough && !_editMode);
 
-        // 与 CI 的 WindowFeatures.ToolWindow 等价：主界面不进 Alt+Tab 列表，
-        // 这样按 Alt+Tab 切换窗口时浮窗不会被隐藏或关闭。
+        
+        
         WindowsOverlay.SetToolWindow(_hwnd, true);
     }
 
-    /// <summary>
-    /// 鼠标移入淡化（1:1 复刻 CI IsMouseInFadingEnabled）：
-    ///   - 判定：光标是否落在主界面矩形内（CI MainWindowLine.GetMouseStatusByPos：
-    ///     行矩形 × DPI × Scale；本项目无整体缩放，Bounds 即最终尺寸）
-    ///   - 目标透明度：CI 写死 Opacity = 0.05（MainWindowLine.axaml 的 IsLineFaded 样式）
-    ///   - 过渡：100ms 线性（MainWindow.axaml 里 HoverHost 的 DoubleTransition，与 CI Styles.axaml 一致）
-    ///   - 响应：CI 靠 RawInput 事件即时判定；本应用开启鼠标穿透收不到鼠标消息，
-    ///     故由 30ms 高频轮询近似（仅目标变化时才赋值，避免打断过渡动画）
-    /// </summary>
+    
+    
+    
+    
+    
+    
+    
+    
+    
     private void UpdateHoverFade()
     {
         if (!IsVisible)
@@ -790,8 +790,8 @@ public partial class MainWindow : Window
         if (cursor is null || Bounds.Width <= 0 || Bounds.Height <= 0)
             return;
 
-        // 悬停判定用**岛**的屏幕矩形（CI 的 GetMouseStatusByPos 判的也是组件行自身，
-        // 而不是整个窗口 —— 窗口现在是整屏宽，用窗口会把整条屏顶都算成悬停）
+        
+        
         var islandTopLeft = IslandBackground.PointToScreen(new Point(0, 0));
         var islandBottomRight = IslandBackground.PointToScreen(
             new Point(IslandBackground.Bounds.Width, IslandBackground.Bounds.Height));
@@ -809,8 +809,8 @@ public partial class MainWindow : Window
         var hovered = cursor.Value.X >= left && cursor.Value.X <= right
                       && cursor.Value.Y >= top && cursor.Value.Y <= bottom;
 
-        // 与 CI 一致：编辑模式下不淡出（CI 的淡化样式带 [MainWindowInEditMode=False] 条件），
-        // 否则鼠标移到浮窗上就看不到内容、也点不到工具条。
+        
+        
         var target = hovered && !_editMode
             ? Math.Clamp(AppServices.Settings.HoverOpacity, 0.0, 1.0)
             : 1.0;
@@ -822,11 +822,11 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>
-    /// 强制置顶 + 对齐 CI 的停靠。依据 CI 的 data\Settings.json：
-    ///   WindowDockingLocation = 1（屏幕顶部）、WindowDockingOffsetX/Y = 0（无偏移）
-    ///   窗口按内容自适应宽度后水平居中（CI 卡片 1647 宽 = 内容宽，两侧各 136 为居中留白）
-    /// </summary>
+    
+    
+    
+    
+    
     private void EnforcePlacement()
     {
         if (!IsVisible)
@@ -842,19 +842,19 @@ public partial class MainWindow : Window
         var wa = screen.WorkingArea;
         var scale = screen.Scaling <= 0 ? 1.0 : screen.Scaling;
 
-        // 逻辑尺寸 → 物理像素
+        
         var widthPx = (int)Math.Round(Bounds.Width * scale);
 
-        // 允许负值：窗口（透明）比屏幕宽时向两侧对称溢出，岛始终水平居中（同 CI 的整屏宽窗口）
+        
         var x = wa.X + (wa.Width - widthPx) / 2;
-        var y = wa.Y; // WindowDockingOffsetY = 0 → 贴顶
+        var y = wa.Y; 
 
         var target = new PixelPoint(x, y);
         if (Position != target)
             Position = target;
     }
 
-    // ---------- 右键菜单 ----------
+    
 
     private void OnMenuToggleVisible(object? sender, RoutedEventArgs e) => App.ToggleMainWindow();
 

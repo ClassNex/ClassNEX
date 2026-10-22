@@ -2,16 +2,16 @@ using ClassNex.Models;
 
 namespace ClassNex.Services;
 
-/// <summary>
-/// 组件服务：主界面组件（Widgets）的增删、排序与配置持久化。
-/// </summary>
+
+
+
 public interface IWidgetService
 {
     IReadOnlyList<WidgetConfig> Widgets { get; }
 
     IReadOnlyList<WidgetTypeInfo> AvailableTypes { get; }
 
-    /// <summary>是否已添加某类型组件。</summary>
+    
     bool Contains(string type);
 
     event Action? Changed;
@@ -20,13 +20,13 @@ public interface IWidgetService
 
     void Remove(WidgetConfig config);
 
-    /// <summary>上移 / 下移（delta = -1 / +1）。</summary>
+    
     void Move(WidgetConfig config, int delta);
 
-    /// <summary>通知配置已修改（并持久化）。</summary>
+    
     void Save();
 
-    /// <summary>恢复为默认组件布局。</summary>
+    
     void ResetToDefault();
 }
 

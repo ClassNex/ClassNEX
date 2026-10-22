@@ -13,11 +13,10 @@
         Background="Transparent"
         TransparencyLevelHint="Mica, AcrylicBlur, Blur, Transparent">
 
-    <!-- 沉浸式标题栏 + 云母（项目规则：所有页面都要） -->
+    
 
     <Window.Styles>
-        <!-- ============ 文字：全部走 Fluent 主题资源（DynamicResource），
-             不要在代码里用 FindResource —— 那个拿到的是浅色主题画刷，深色下会变成黑字（实测踩过）。 ============ -->
+        
         <Style Selector="SelectableTextBlock.ChatText">
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
@@ -46,7 +45,7 @@
             <Setter Property="MaxWidth" Value="660"/>
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
         </Style>
-        <!-- 用户消息气泡：强调色底 + 反色文字（Fluent 的标准做法） -->
+        
         <Style Selector="Border.UserBubble">
             <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
             <Setter Property="CornerRadius" Value="8"/>
@@ -59,7 +58,7 @@
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}"/>
         </Style>
-        <!-- 工具卡片 -->
+        
         <Style Selector="Border.ToolCard">
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="BorderThickness" Value="1"/>
@@ -70,7 +69,7 @@
             <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}"/>
         </Style>
-        <!-- 提示条（普通 / 警告） -->
+        
         <Style Selector="Border.Notice">
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="Padding" Value="14,10"/>
@@ -85,7 +84,7 @@
             <Setter Property="HorizontalAlignment" Value="Left"/>
             <Setter Property="Background" Value="{DynamicResource SystemFillColorCautionBackgroundBrush}"/>
         </Style>
-        <!-- 思考块（折叠） -->
+        
         <Style Selector="Button.ThinkingHeader">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -108,11 +107,11 @@
 
     <Grid RowDefinitions="48,*,Auto">
 
-        <!-- ============ 顶栏（沉浸标题栏那一行；最后一列留给系统按钮） ============ -->
+        
         <Border Grid.Row="0" Height="48" Padding="14,0" BorderThickness="0">
             <Grid ColumnDefinitions="Auto,*,Auto,152">
                 <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                    <!-- 官方 Fluent sparkle 图标（U+F0F7）；字体用 avares 目录式引用，裸族名命不中内嵌字体 -->
+                    
                     <ui:FontIcon Glyph="&#xF0F7;"
                                  FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" FontSize="18"
                                  VerticalAlignment="Center"/>
@@ -133,13 +132,13 @@
             </Grid>
         </Border>
 
-        <!-- ============ 消息区 ============ -->
+        
         <ScrollViewer Grid.Row="1" x:Name="MessageScroll" VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Disabled">
             <StackPanel x:Name="MessagePanel" Margin="24,6,24,6" Spacing="12"/>
         </ScrollViewer>
 
-        <!-- ============ 输入区 ============ -->
+        
         <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="24,6,24,18">
             <TextBox x:Name="InputBox"
                      AcceptsReturn="True"

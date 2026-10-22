@@ -2,7 +2,7 @@ using ClassNex.Models;
 
 namespace ClassNex.ViewModels;
 
-/// <summary>科目列表项：包装 <see cref="Subject"/>，让编辑时列表能实时刷新。</summary>
+
 public sealed class SubjectItem : ViewModelBase
 {
     public SubjectItem(Subject model) => Model = model;

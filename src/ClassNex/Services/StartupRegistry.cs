@@ -2,17 +2,17 @@ using Microsoft.Win32;
 
 namespace ClassNex.Services;
 
-/// <summary>
-/// 开机自启与 Url 协议注册（写当前用户注册表，不需要管理员权限）。
-/// 对照设置页「基本 → 行为」里的「开机自启」「注册 Url 协议」两项。
-/// </summary>
+
+
+
+
 public static class StartupRegistry
 {
     private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string RunValueName = "ClassNEX";
     private const string ProtocolRoot = @"Software\Classes\classnex";
 
-    /// <summary>开机自启：写/删 HKCU\...\Run\ClassNEX。</summary>
+    
     public static void SetRunAtStartup(bool enabled)
     {
         if (!OperatingSystem.IsWindows())
@@ -38,11 +38,11 @@ public static class StartupRegistry
         }
         catch
         {
-            // 注册表不可写时忽略（不影响其它功能）
+            
         }
     }
 
-    /// <summary>注册/注销 classnex:// Url 协议。</summary>
+    
     public static void SetUrlProtocol(bool enabled)
     {
         if (!OperatingSystem.IsWindows())
@@ -70,11 +70,11 @@ public static class StartupRegistry
         }
         catch
         {
-            // 忽略
+            
         }
     }
 
-    /// <summary>读取注册表当前状态（用于把设置项与实际状态对齐）。</summary>
+    
     public static bool IsRunAtStartupEnabled()
     {
         if (!OperatingSystem.IsWindows())

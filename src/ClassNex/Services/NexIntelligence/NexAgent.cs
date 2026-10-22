@@ -7,37 +7,37 @@ using System.Threading.Tasks;
 
 namespace ClassNex.Services.NexIntelligence;
 
-/// <summary>
-/// NEX Agent：一轮对话 = 发消息 → 流式收正文/思考 → 若有工具调用则执行并回填 → 继续，直到模型不再要工具。
-/// </summary>
+
+
+
 public sealed class NexAgent
 {
     private readonly NexAiClient _client = new();
 
-    /// <summary>对话历史（含工具调用与工具结果）。</summary>
+    
     public List<NexMessage> History { get; } = new();
 
-    /// <summary>本次会话的权限档位（由对话框顶部的选择器决定）。</summary>
+    
     public NexPermission Permission { get; set; } = NexPermission.ReadOnly;
 
-    /// <summary>单轮里最多执行几轮工具调用，防止打转。</summary>
+    
     public int MaxToolRounds { get; set; } = 8;
 
     public bool IsRunning { get; private set; }
 
-    /// <summary>流式增量（正文 / 思考）。</summary>
+    
     public event Action<NexDelta>? DeltaReceived;
 
-    /// <summary>开始执行某个工具。</summary>
+    
     public event Action<NexToolCall>? ToolStarted;
 
-    /// <summary>工具执行结束（调用、结果文本、是否成功）。</summary>
+    
     public event Action<NexToolCall, string, bool>? ToolFinished;
 
-    /// <summary>一条助手消息接收完毕（含纯文本与工具调用两种）。</summary>
+    
     public event Action<NexMessage>? AssistantMessageCompleted;
 
-    /// <summary>出错（网络、鉴权、模型不存在等）。</summary>
+    
     public event Action<string>? ErrorOccurred;
 
     public void Reset()
@@ -45,7 +45,7 @@ public sealed class NexAgent
         History.Clear();
     }
 
-    /// <summary>发一条用户消息并跑完一整轮（含工具往返）。</summary>
+    
     public async Task RunAsync(string userInput, CancellationToken ct)
     {
         if (IsRunning)
@@ -106,7 +106,7 @@ public sealed class NexAgent
         }
         catch (OperationCanceledException)
         {
-            // 用户点了停止：什么都不做，历史保留
+            
         }
         catch (Exception ex)
         {
@@ -118,7 +118,7 @@ public sealed class NexAgent
         }
     }
 
-    /// <summary>系统提示词：带上应用现状、工作区与当前权限，让模型知道自己能做什么。</summary>
+    
     private NexMessage BuildSystemMessage()
     {
         var settings = AppServices.Settings;

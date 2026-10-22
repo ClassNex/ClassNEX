@@ -7,24 +7,24 @@ using ClassNex.Models;
 
 namespace ClassNex.Services;
 
-/// <summary>
-/// 「组件设置」的**按类型**设置项构建器 —— 对照 CI 的
-/// <c>ClassIsland/Controls/Components/XxxComponentSettingsControl.axaml</c>：
-/// 每种组件类型只显示**它自己的**设置项，互不共用。
-///
-/// CI 里没有设置控件的组件（DateComponent、SeparatorComponent）在这里同样没有设置项，
-/// 调用方会显示「该组件没有专属设置」。
-///
-/// 与 CI 的两点差异（本项目的 UI 库 AvaloniaFluentUI 1.0.3 缺这两个控件，
-/// 按约定「CI 有、库没有 → 用类似的」处理）：
-///   1. CI 用 <c>ToggleSwitch</c>，这里用 <c>CheckBox</c>；
-///   2. CI 用 <c>ColorPicker</c>，这里用**预设色下拉框**（颜色是「多选一」，也符合本项目「多选一用下拉框」的规矩）。
-/// </summary>
+
+
+
+
+
+
+
+
+
+
+
+
+
 public static class WidgetSettingsBuilder
 {
     private static readonly FontFamily IconFont = new("Segoe MDL2 Assets");
 
-    /// <summary>文本组件可选颜色（预设色卡；第一项是「跟随主题」）。</summary>
+    
     private static readonly (string Name, string? Hex)[] TextColors =
     {
         ("跟随主题", null),
@@ -40,10 +40,10 @@ public static class WidgetSettingsBuilder
         ("紫色", "#FF8B5CF6"),
     };
 
-    /// <summary>
-    /// 构建指定组件配置的专属设置行。
-    /// <paramref name="changed"/> 在任一设置变化后调用（用于保存并刷新浮窗）。
-    /// </summary>
+    
+    
+    
+    
     public static List<Control> Build(WidgetConfig cfg, Action changed)
     {
         var rows = new List<Control>();
@@ -65,16 +65,16 @@ public static class WidgetSettingsBuilder
             case "countdown":
                 BuildCountdown(cfg, rows, changed);
                 break;
-            // date / divider：CI 的 DateComponent / SeparatorComponent 都没有设置控件 → 无专属设置
+            
         }
 
         return rows;
     }
 
-    /// <summary>该组件类型是否有专属设置（CI：有没有 XxxComponentSettingsControl）。</summary>
+    
     public static bool HasSettings(string type) => type is "text" or "clock" or "schedule" or "nextclass" or "countdown";
 
-    // ============================== 「文本」组件（CI TextComponentSettingsControl） ==============================
+    
 
     private static void BuildText(WidgetConfig cfg, List<Control> rows, Action changed)
     {
@@ -93,7 +93,7 @@ public static class WidgetSettingsBuilder
         };
         rows.Add(Row("\uE70F", "文本内容", "要显示的文本，支持占位符。", box));
 
-        // CI：自定义字体颜色 = 勾选 + 颜色选择器（这里颜色用预设色下拉框）
+        
         var colorCombo = new ComboBox
         {
             Width = 150,
@@ -121,12 +121,12 @@ public static class WidgetSettingsBuilder
         rows.Add(colorRow);
     }
 
-    // ============================== 「时钟」组件（CI ClockComponentSettingsControl） ==============================
+    
 
     private static void BuildClock(WidgetConfig cfg, List<Control> rows, Action changed)
     {
-        // 注：CI 的「使用实际时间」依赖时间偏移功能，本项目暂无时间偏移，故不提供该设置项
-        // （字段 ShowRealTime 保留在模型里，将来做时间偏移时再接）。
+        
+        
         var flashRow = Row("\uE9D9", "闪动时间分隔符", "模拟电子时钟的分隔符闪动效果。",
             Check(cfg.FlashTimeSeparator, on => { cfg.FlashTimeSeparator = on; changed(); }),
             visible: !cfg.ShowSeconds);
@@ -134,14 +134,14 @@ public static class WidgetSettingsBuilder
         var seconds = Check(cfg.ShowSeconds, on =>
         {
             cfg.ShowSeconds = on;
-            flashRow.IsVisible = !on; // CI：显示秒时不显示「闪动分隔符」
+            flashRow.IsVisible = !on; 
             changed();
         });
         rows.Add(Row("\uEC4A", "显示秒数", "启用后，时钟将显示精准到秒的时间。", seconds));
         rows.Add(flashRow);
     }
 
-    // ============================== 「课程表」组件（CI LessonControlSettings 的子集） ==============================
+    
 
     private static void BuildSchedule(WidgetConfig cfg, List<Control> rows, Action changed)
     {
@@ -177,7 +177,7 @@ public static class WidgetSettingsBuilder
         rows.Add(Row("\uE71E", "课程表文本间距", "使课程表显示更紧凑或宽松。", panel));
     }
 
-    // ============================== 「当前 / 下节课」组件（CI 无此组件，本项目自定） ==============================
+    
 
     private static void BuildNextClass(WidgetConfig cfg, List<Control> rows, Action changed)
     {
@@ -185,7 +185,7 @@ public static class WidgetSettingsBuilder
             Check(cfg.ShowNextClass, on => { cfg.ShowNextClass = on; changed(); })));
     }
 
-    // ============================== 「倒计时」组件（CI CountDownComponentSettings 的子集） ==============================
+    
 
     private static void BuildCountdown(WidgetConfig cfg, List<Control> rows, Action changed)
     {
@@ -218,9 +218,9 @@ public static class WidgetSettingsBuilder
             Check(cfg.UseCountdownAccent, on => { cfg.UseCountdownAccent = on; changed(); })));
     }
 
-    // ============================== 小工具 ==============================
+    
 
-    /// <summary>一行设置（CI 的 SettingsExpander：图标 + 标题 + 说明 + 右侧常显控件）。</summary>
+    
     private static SettingsExpander Row(string glyph, string header, string description, Control footer, bool visible = true)
         => new()
         {

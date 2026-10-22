@@ -6,10 +6,10 @@ using Avalonia.Rendering.Composition;
 
 namespace ClassNex.Controls.NotificationEffects;
 
-/// <summary>
-/// 1:1 移植自 CI（ClassIsland/Controls/NotificationEffects/RippleEffect.axaml.cs）。
-/// 重要通知的全局水波纹：从一个中心点放出一个填满全屏的圆，放大 + 淡出。
-/// </summary>
+
+
+
+
 public partial class RippleEffect : UserControl, INotificationEffectControl
 {
     public static readonly StyledProperty<IBrush?> FillProperty =
@@ -51,7 +51,7 @@ public partial class RippleEffect : UserControl, INotificationEffectControl
 
     private PixelPoint CenterPoint { get; }
 
-    /// <summary>无参构造：仅用于 XAML 设计期（消除 AVLN3001 警告）；运行时请用带中心点的构造。</summary>
+    
     public RippleEffect() : this(default)
     {
     }
@@ -66,7 +66,7 @@ public partial class RippleEffect : UserControl, INotificationEffectControl
 
     public async void Play()
     {
-        // 计算到达四个顶点的距离，取其最大值作为圆的最大半径。
+        
         var (cx, cy) = this.PointToClient(CenterPoint);
         CenterX = cx;
         CenterY = cy;

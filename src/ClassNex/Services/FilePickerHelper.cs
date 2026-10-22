@@ -3,7 +3,7 @@ using Avalonia.Platform.Storage;
 
 namespace ClassNex.Services;
 
-/// <summary>共用的文件选择对话框。</summary>
+
 public static class FilePickerHelper
 {
     private static readonly FilePickerFileType CsesType = new("CSES 课表")
@@ -16,7 +16,7 @@ public static class FilePickerHelper
         Patterns = new[] { "*" },
     };
 
-    /// <summary>选择一个 CSES 课表文件（.yaml / .yml），取消返回 null。</summary>
+    
     public static async Task<string?> PickTimetableAsync(Window owner)
     {
         var files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -33,7 +33,7 @@ public static class FilePickerHelper
         return string.IsNullOrWhiteSpace(path) ? null : path;
     }
 
-    /// <summary>选择 CSES 导出路径，取消返回 null。</summary>
+    
     public static async Task<string?> PickSaveTimetableAsync(Window owner)
     {
         var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions

@@ -5,11 +5,11 @@ using ClassNex.Models;
 
 namespace ClassNex.Services;
 
-/// <summary>
-/// 开发自检（仅 DEBUG 使用）：按档案编辑器各按钮的真实调用顺序演练一遍，
-/// 把每一步的结果/异常写进 _verify.log，用来定位「编辑时闪退」。
-/// 演练前对课表文件与时间表做快照，结束后恢复 —— 绝不污染真实数据。
-/// </summary>
+
+
+
+
+
 public static class EditorSelfTest
 {
     public static void Run()
@@ -28,7 +28,7 @@ public static class EditorSelfTest
             }
         }
 
-        // ---- 快照 ----
+        
         var yamlPath = AppServices.TimetablePath;
         var yamlSnapshot = File.Exists(yamlPath) ? File.ReadAllText(yamlPath) : null;
         var layoutJson = JsonSerializer.Serialize(AppServices.Settings.TimeLayout);
@@ -53,12 +53,12 @@ public static class EditorSelfTest
             Step("周课表行构建(带课程)", () =>
             {
                 var rows = WeekRowsBuilder.Build(profile, "all");
-                // 至少有一行在某一列显示了科目
+                
                 if (!rows.Any(r => Enumerable.Range(0, 7).Any(c => !string.IsNullOrEmpty(r[c]))))
                     throw new Exception("周课表行里没有任何科目文本");
             });
 
-            // 模拟「点空格 → 点科目 → 直接排课」+ 自动移动到下一个课程
+            
             Step("AddCourse(新课程)", () =>
             {
                 var schedule = profile.Schedules.First(s => s.EnableDay == 1);
@@ -82,7 +82,7 @@ public static class EditorSelfTest
                 AppServices.Schedule.RemoveCourse(1, "all", added);
             });
 
-            // 时间表编辑链路（改时间会同步课表）
+            
             Step("TimeLayout.Add", () =>
             {
                 AppServices.TimeLayout.Add(new ClassTime
@@ -114,14 +114,14 @@ public static class EditorSelfTest
                     AppServices.TimeLayout.Remove(t);
             });
 
-            // 科目编辑链路
+            
             Step("AddSubject + RemoveSubject", () =>
             {
                 var subject = AppServices.Schedule.AddSubject("自检科目");
                 AppServices.Schedule.RemoveSubject(subject);
             });
 
-            // 课程更新链路（编辑器 UpdateCourse 的真实路径）
+            
             Step("UpdateCourse 链路(删+增)", () =>
             {
                 var schedule = profile.Schedules.FirstOrDefault();
@@ -139,7 +139,7 @@ public static class EditorSelfTest
                 }
             });
 
-            // 时间服务（浮窗链路）
+            
             Step("Time.GetTodaySummary", () =>
             {
                 _ = AppServices.Time.GetTodaySummary(profile, DateTime.Now);
@@ -147,7 +147,7 @@ public static class EditorSelfTest
         }
         finally
         {
-            // ---- 恢复快照：自检绝不留痕 ----
+            
             try
             {
                 if (yamlSnapshot is not null)

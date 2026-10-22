@@ -10,9 +10,7 @@
         ShowInTaskbar="False"
         ShowActivated="False"
         CanResize="False">
-    <!-- 跑马灯：上/下两条横带 + 左右各两条「半段」竖带。
-         出场顺序：① 触发侧从中间向上下长开 → ② 上/下从触发侧推向对侧 → ③ 对侧从上下两端同时向中间合拢。
-         竖直半段用 ScaleTransform 从指定一端展开（不触发重排）。 -->
+    
     <Grid x:Name="Root">
         <Border x:Name="TopStrip" Height="16" VerticalAlignment="Top" HorizontalAlignment="Right" Width="0">
             <Border.Effect>
@@ -26,7 +24,7 @@
             </Border.Effect>
         </Border>
 
-        <!-- 右侧上半段（触发侧：从中间向上长开 → 原点在底边） -->
+        
         <Border x:Name="RightTopStrip" Width="16" VerticalAlignment="Top" HorizontalAlignment="Right"
                 Opacity="0" RenderTransformOrigin="0.5,1">
             <Border.RenderTransform>
@@ -37,7 +35,7 @@
             </Border.Effect>
         </Border>
 
-        <!-- 右侧下半段（触发侧：从中间向下长开 → 原点在顶边） -->
+        
         <Border x:Name="RightBottomStrip" Width="16" VerticalAlignment="Bottom" HorizontalAlignment="Right"
                 Opacity="0" RenderTransformOrigin="0.5,0">
             <Border.RenderTransform>
@@ -48,7 +46,7 @@
             </Border.Effect>
         </Border>
 
-        <!-- 左侧上半段（对侧：从上往下长 → 原点在顶边） -->
+        
         <Border x:Name="LeftTopStrip" Width="16" VerticalAlignment="Top" HorizontalAlignment="Left"
                 Opacity="0" RenderTransformOrigin="0.5,0">
             <Border.RenderTransform>
@@ -59,7 +57,7 @@
             </Border.Effect>
         </Border>
 
-        <!-- 左侧下半段（对侧：从下往上长 → 原点在底边） -->
+        
         <Border x:Name="LeftBottomStrip" Width="16" VerticalAlignment="Bottom" HorizontalAlignment="Left"
                 Opacity="0" RenderTransformOrigin="0.5,1">
             <Border.RenderTransform>

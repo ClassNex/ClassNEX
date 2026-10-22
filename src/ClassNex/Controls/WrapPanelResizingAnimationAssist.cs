@@ -7,13 +7,13 @@ using Avalonia.Rendering.Composition;
 
 namespace ClassNex.Controls;
 
-/// <summary>
-/// 面板子元素位置变化的隐式动画 —— 1:1 移植自 CI
-/// （ClassIsland.Core/Assists/WrapPanelResizingAnimationAssist.cs，仅去掉主题动画等级开关）。
-/// 给子控件挂 composition 的隐式 Offset 动画：内容重排（如课表项增减/切换）时平滑滑动，
-/// 而不是硬跳。Duration/Easing 为继承附加属性，默认 225ms / CubicEaseInOut；
-/// 主界面按 CI 的 MainWindow.axaml 传入 300ms / (0.65,0,0.35,1.0)。
-/// </summary>
+
+
+
+
+
+
+
 public class WrapPanelResizingAnimationAssist
 {
     public static readonly AttachedProperty<bool> IsResizingAnimationEnabledProperty =

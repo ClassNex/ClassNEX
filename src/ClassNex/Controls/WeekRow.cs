@@ -4,11 +4,11 @@ using ClassNex.Services;
 
 namespace ClassNex.Controls;
 
-/// <summary>
-/// 周课表的一行（1:1 对应 CI 的 <c>WeekClassPlanRow</c>）：
-/// 一个上课时间点 × 周日的七列，每列是该天在这个时间点上的科目显示文本。
-/// CI 的 ScheduleDataGrid 就是「真 DataGrid：行=时间点、列=周日~周六、单元格=ClassInfo」。
-/// </summary>
+
+
+
+
+
 public sealed class WeekRow : INotifyPropertyChanged
 {
     private string _sunday = "";
@@ -23,7 +23,7 @@ public sealed class WeekRow : INotifyPropertyChanged
 
     public string EndText { get; init; } = "";
 
-    /// <summary>时间列显示文本（CI：hh:mm-hh:mm）。</summary>
+    
     public string TimeText => $"{StartText}-{EndText}";
 
     public string Sunday { get => _sunday; set => Set(ref _sunday, value); }
@@ -40,7 +40,7 @@ public sealed class WeekRow : INotifyPropertyChanged
 
     public string Saturday { get => _saturday; set => Set(ref _saturday, value); }
 
-    /// <summary>按列序（0=周日 … 6=周六）取显示文本。</summary>
+    
     public string this[int column]
     {
         get => column switch
@@ -81,15 +81,15 @@ public sealed class WeekRow : INotifyPropertyChanged
     }
 }
 
-/// <summary>按「时间表节次 × 星期」构建周课表行（对应 CI ScheduleDataGrid.RefreshWeekScheduleRows）。</summary>
+
 public static class WeekRowsBuilder
 {
-    /// <summary>列顺序：周日在前（CI 的列排列）。值为 CSES 的 enable_day。</summary>
+    
     public static readonly int[] ColumnDays = { 7, 1, 2, 3, 4, 5, 6 };
 
     public static List<WeekRow> Build(ScheduleProfile profile, string parity)
     {
-        // 只取上课节次（课间不进网格）
+        
         var points = new SortedDictionary<TimeSpan, TimeSpan>();
         foreach (var time in AppServices.TimeLayout.Layout.Times)
         {
@@ -99,7 +99,7 @@ public static class WeekRowsBuilder
                 points.TryAdd(s, e);
         }
 
-        // 课程出现过的开始时间也要成行
+        
         foreach (var schedule in profile.Schedules)
         {
             if (!ScheduleProfile.MatchesParity(schedule.Weeks, parity))
@@ -147,7 +147,7 @@ public static class WeekRowsBuilder
             {
                 if (TimeSpan.TryParse(course.StartTime, out var s) && s == start)
                 {
-                    // CI 单元格显示的是科目**全名**（Subject.Name），不是简称
+                    
                     var subject = profile.FindSubject(course.Subject);
                     return subject?.Name ?? course.Subject;
                 }

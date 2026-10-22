@@ -1,9 +1,9 @@
 namespace ClassNex.Services;
 
-/// <summary>组件类型信息（供「主界面组件」设置页选择）。Glyph = Segoe 图标字形码。</summary>
+
 public sealed record WidgetTypeInfo(string Type, string DisplayName, string Description, string Glyph);
 
-/// <summary>可用的主界面组件类型注册表。</summary>
+
 public static class WidgetRegistry
 {
     public static readonly IReadOnlyList<WidgetTypeInfo> Types = new List<WidgetTypeInfo>

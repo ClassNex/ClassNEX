@@ -1,173 +1,173 @@
 namespace ClassNex.Models;
 
-/// <summary>主界面布局方向。</summary>
+
 public enum LayoutOrientation
 {
     Horizontal = 0,
     Vertical = 1,
 }
 
-/// <summary>应用设置（持久化到 data/Settings.json）。</summary>
+
 public sealed class AppSettings
 {
-    // ---------- 课表 ----------
-    /// <summary>当前课表文件路径；为空则使用 data/timetable.yaml。</summary>
+    
+    
     public string? TimetablePath { get; set; }
 
-    /// <summary>单周起始日期（用于判断当前是单周还是双周）。</summary>
+    
     public DateTime SingleWeekStartTime { get; set; } = new(DateTime.Today.Year, 1, 1);
 
-    /// <summary>周次轮换偏移。</summary>
+    
     public int WeekRotationOffset { get; set; }
 
-    // ---------- 主界面（悬浮课表） ----------
+    
     public bool IsMainWindowVisible { get; set; } = true;
 
     public double MainWindowLeft { get; set; } = 80;
 
     public double MainWindowTop { get; set; } = 80;
 
-    /// <summary>卡片背景不透明度（0~1）。默认 0.5，取自 CI ComponentLayouts.BackgroundOpacity。</summary>
+    
     public double BackgroundOpacity { get; set; } = 0.5;
 
-    /// <summary>是否置顶。</summary>
+    
     public bool Topmost { get; set; } = true;
 
-    /// <summary>全局字号缩放。</summary>
+    
     public double FontScale { get; set; } = 1.0;
 
-    /// <summary>
-    /// 主界面缩放（对应 CI Settings.json 的 Scale）。CI 默认值为 1.9，
-    /// 主界面所有文字与控件都按此倍率放大。
-    /// </summary>
+    
+    
+    
+    
     public double MainWindowScale { get; set; } = 1.9;
 
-    /// <summary>最终生效的缩放 = 主界面缩放 × 全局字号缩放。</summary>
+    
     public double EffectiveScale => MainWindowScale * FontScale;
 
-    /// <summary>鼠标穿透：开启后点击直接落到后方窗口/桌面（CI 风格的桌面浮层行为）。</summary>
+    
     public bool IsClickThrough { get; set; } = true;
 
-    /// <summary>鼠标移入时主界面的目标不透明度（CI 值 0.05，见 CI MainWindowLine.axaml 的 IsLineFaded 样式）。</summary>
+    
     public double HoverOpacity { get; set; } = 0.05;
 
-    /// <summary>组件排列方向。</summary>
+    
     public LayoutOrientation Orientation { get; set; } = LayoutOrientation.Horizontal;
 
-    // ---------- 组件 ----------
-    /// <summary>主界面组件列表（可增删、排序、单独配置）。</summary>
+    
+    
     public List<WidgetConfig> Widgets { get; set; } = new();
 
-    // ---------- 时间表 ----------
-    /// <summary>时间表（节次定义）。为空时会从课表反推。</summary>
+    
+    
     public TimeLayout TimeLayout { get; set; } = new();
 
-    // ---------- 外观 ----------
-    /// <summary>主题：system / light / dark。</summary>
+    
+    
     public string ThemeMode { get; set; } = "system";
 
-    // ---------- 托盘 ----------
-    /// <summary>点击托盘图标行为：0=显示/隐藏主界面，1=打开应用设置，2=打开档案编辑器。</summary>
+    
+    
     public int TrayClickBehavior { get; set; }
 
-    // ---------- 账户 ----------
-    /// <summary>用户名（显示在设置窗口左侧账户区与账户页）。</summary>
+    
+    
     public string UserName { get; set; } = "LingOfficial";
 
-    /// <summary>邮箱（显示在设置窗口左侧账户区与账户页）。</summary>
+    
     public string Email { get; set; } = "Lingofficial0423@gamil";
 
-    // ---------- 通知 ----------
-    /// <summary>允许通知（总开关：水波纹 + 灵动通知都受它控制）。</summary>
+    
+    
     public bool AllowNotification { get; set; } = true;
 
-    /// <summary>允许重要通知特效（上下课/课间休息时的全局水波纹，对照 CI 的 AllowNotificationEffect）。</summary>
+    
     public bool AllowNotificationEffect { get; set; } = true;
 
-    /// <summary>允许次要通知（灵动通知胶囊，对照 ClassWidgets 的 tip_toast）。</summary>
+    
     public bool AllowMinorNotification { get; set; } = true;
 
-    /// <summary>上课/下课/课前准备提醒设置（1:1 对照 CI 的 ClassNotificationSettings）。</summary>
+    
     public NotificationSettings Notification { get; set; } = new();
 
-    // ---------- 行为（对照设置页「基本 → 行为」） ----------
+    
 
-    /// <summary>开机自启（写入 HKCU 的 Run 项）。</summary>
+    
     public bool RunAtStartup { get; set; }
 
-    /// <summary>注册 classnex:// Url 协议（写入 HKCU\Software\Classes）。</summary>
+    
     public bool RegisterUrlProtocol { get; set; }
 
-    /// <summary>教学安全模式：崩溃时按 <see cref="CrashHandlingMode"/> 处理。</summary>
+    
     public bool TeachingSafeMode { get; set; }
 
-    /// <summary>崩溃处理方式：0=显示崩溃报告 1=忽略并继续 2=重新启动应用。</summary>
+    
     public int CrashHandlingMode { get; set; }
 
-    /// <summary>启动时显示加载界面（浮窗骨架）。</summary>
+    
     public bool ShowStartupSplash { get; set; } = true;
 
-    /// <summary>调试菜单已解锁（关于页点版本号 10 次启用；设置页底部出现「调试」页）。</summary>
+    
     public bool IsDebugOptionsEnabled { get; set; }
 
-    /// <summary>已播种的内置示例课表版本。低于当前版本时会重新播种 data/timetable.yaml。</summary>
+    
     public int SampleSeedVersion { get; set; }
 
-    /// <summary>首次运行时的默认组件布局。</summary>
+    
     public static List<WidgetConfig> CreateDefaultWidgets() => new()
     {
         new WidgetConfig { Type = "date", IsEnabled = true, Order = 0 },
         new WidgetConfig { Type = "schedule", IsEnabled = true, Order = 1 },
     };
 
-    // ==================== 首次启动向导（OOBE） ====================
+    
 
-    /// <summary>是否已完成首次启动向导。未完成时启动不显示浮窗，只显示向导。</summary>
+    
     public bool IsOobeCompleted { get; set; }
 
-    /// <summary>语言（BCP-47，如 zh-CN / en-US）；向导第一步可选。</summary>
+    
     public string Language { get; set; } = "zh-CN";
 
-    /// <summary>开学日期（课表按周次显示时用）。</summary>
+    
     public DateTime? SemesterStartDate { get; set; }
 
-    // ==================== NEX Intelligence（AI Agent） ====================
+    
 
-    /// <summary>是否启用 NEX Intelligence（关闭后导航项不显示）。</summary>
+    
     public bool IsNexIntelligenceEnabled { get; set; } = true;
 
-    /// <summary>OpenAI 兼容接口的服务地址（不带 /v1）。</summary>
+    
     public string NexApiBaseUrl { get; set; } = "https://cyberspace.furruka.asia";
 
-    /// <summary>
-    /// 用户自己的接口密钥。**留空 = 使用内置密钥**（NexConfig.BuiltInApiKey）。
-    /// 界面上不会显示内置密钥的明文；调试页可以填写自己的密钥覆盖它。
-    /// </summary>
+    
+    
+    
+    
     public string NexApiKey { get; set; } = "";
 
-    /// <summary>模型名。</summary>
+    
     public string NexModel { get; set; } = "z-ai/glm-5.3";
 
-    /// <summary>默认权限档位：readonly（仅可查看）/ workspace（工作区内修改）/ full（完全权限）。</summary>
+    
     public string NexPermission { get; set; } = "readonly";
 
-    /// <summary>自定义系统提示词（留空用内置的）。</summary>
+    
     public string NexSystemPrompt { get; set; } = "";
 
-    /// <summary>是否启用「嘿 NEX」语音唤醒（需要麦克风）。</summary>
+    
     public bool IsNexVoiceWakeEnabled { get; set; } = true;
 
-    /// <summary>是否显示屏幕边缘的唤醒条（半透明小白条，点一下等于喊唤醒词）。</summary>
+    
     public bool IsNexEdgeBarEnabled { get; set; } = true;
 
-    /// <summary>唤醒条贴哪一侧：left / right。</summary>
+    
     public string NexEdgeBarSide { get; set; } = "right";
 }
 
-/// <summary>
-/// 上课/下课/课前准备提醒设置 —— 1:1 对照 CI 的
-/// <c>ClassIsland/Models/NotificationProviderSettings/ClassNotificationSettings.cs</c>（字段与默认值一致）。
-/// </summary>
+
+
+
+
 public sealed class NotificationSettings
 {
     public bool IsClassOnNotificationEnabled { get; set; } = true;

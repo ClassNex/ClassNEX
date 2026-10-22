@@ -14,11 +14,10 @@
         MinWidth="960" MinHeight="600"
         WindowStartupLocation="CenterScreen">
 
-    <!-- 沉浸式标题栏（同设置窗口）：DockPanel 不设不透明背景，窗口的 Mica 云母才能透上来 -->
+    
     <DockPanel>
 
-        <!-- 顶栏 = 标题栏那一行（48 与 TitleBarHeight 对齐）：透明 + 无下分隔线，
-             第 4 列留 152 宽避让系统最小化/最大化/关闭按钮 -->
+        
         <Border DockPanel.Dock="Top" Height="48" Padding="14,0"
                 Background="Transparent"
                 BorderThickness="0">
@@ -41,23 +40,18 @@
                     <Button x:Name="ExportButton" Content="导出 CSES…"/>
                 </StackPanel>
 
-                <!-- 系统最小化/最大化/关闭按钮占位（沉浸式标题栏里它们画在右上角） -->
+                
                 <Border Grid.Column="3" Width="152"/>
             </Grid>
         </Border>
 
         <TabControl x:Name="Tabs" Margin="8">
 
-            <!-- ==================== 课表（按 CI 图2：周课表网格直接显示 + 点选编辑） ====================
-                 CI 结构：CommandBar 工具栏 + 日期导航（2026/10/5 ← → 第N周）
-                 + 周课表网格（7 天列 × 时间点行，直接显示，不再分列表/周视图）
-                 + 右侧「编辑科目」面板。
-                 编辑模型：点格子选中（强调色边框）→ 点右侧科目 → 立即生效；
-                 勾选「选完科目自动移动到下一个课程」后自动移到下一时间点。 -->
+            
             <TabItem Header="课表">
                 <Grid Margin="12" RowDefinitions="Auto,Auto,*" ColumnDefinitions="*,5,350">
 
-                    <!-- 工具栏：CI 用 CommandBar（Fluent 控件） -->
+                    
                     <StackPanel Grid.Row="0" Grid.ColumnSpan="3" Orientation="Horizontal" Spacing="8"
                                 Margin="0,0,4,8">
                         <ui:CommandBar x:Name="ClassCommandBar" DefaultLabelPosition="Right"
@@ -69,7 +63,7 @@
                         </ComboBox>
                     </StackPanel>
 
-                    <!-- 日期导航（CI：2026/10/5 ← → 第N周） -->
+                    
                     <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Spacing="8" Margin="4,0,4,8">
                         <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
                                 BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
@@ -86,7 +80,7 @@
                                    VerticalAlignment="Center"/>
                     </StackPanel>
 
-                    <!-- 周课表：CI ScheduleDataGrid 的结构 —— 真 DataGrid，行=时间点、列=周日~周六 -->
+                    
                     <DataGrid x:Name="WeekGrid" Grid.Row="2" Grid.Column="0"
                               Margin="0,0,4,0"
                               AutoGenerateColumns="False"
@@ -167,7 +161,7 @@
                     <GridSplitter Grid.Row="2" Grid.Column="1" HorizontalAlignment="Stretch"
                                   VerticalAlignment="Stretch" Background="Transparent"/>
 
-                    <!-- 编辑科目面板（对应 CI 右侧 TabControl「编辑科目」） -->
+                    
                     <DockPanel Grid.Row="2" Grid.Column="2" Margin="12,0,0,0">
                         <TextBlock DockPanel.Dock="Top" Text="编辑科目" FontSize="15" FontWeight="SemiBold"
                                    Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
@@ -180,7 +174,7 @@
                                 Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
                                 BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                                 BorderThickness="1" CornerRadius="8" Padding="10">
-                            <!-- 科目面板：与 CI 一致用 ListBox + WrapPanel（Fluent 控件，项显示简称） -->
+                            
                             <ListBox x:Name="SubjectPaletteList" Background="Transparent" BorderThickness="0"
                                      SelectionMode="Single">
                                 <ListBox.ItemsPanel>
@@ -202,7 +196,7 @@
                 </Grid>
             </TabItem>
 
-            <!-- ==================== 时间表（对应 CI「时间表」页的可视化时间轴） ==================== -->
+            
             <TabItem Header="时间表">
                 <Grid Margin="12" ColumnDefinitions="*,330">
 
@@ -265,7 +259,7 @@
                 </Grid>
             </TabItem>
 
-            <!-- ==================== 科目（对应 CI「科目」页的表格） ==================== -->
+            
             <TabItem Header="科目">
                 <Grid Margin="12" ColumnDefinitions="*,330">
 
@@ -320,7 +314,7 @@
                 </Grid>
             </TabItem>
 
-            <!-- ==================== 调课 ==================== -->
+            
             <TabItem Header="调课">
                 <StackPanel Margin="16" Spacing="12">
                     <TextBlock Text="调课" FontSize="18" FontWeight="SemiBold"

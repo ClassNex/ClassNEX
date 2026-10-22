@@ -2,35 +2,35 @@ using ClassNex.Models;
 
 namespace ClassNex.Services;
 
-/// <summary>
-/// 时间服务（白皮书 Core/Services/ITimeService.cs）：
-/// 当前节次计算、倒计时、今日课程。
-/// </summary>
+
+
+
+
 public interface ITimeService
 {
-    /// <summary>按「单周起始日期」推算当前周次类型：odd / even。</summary>
+    
     string GetCurrentParity(DateTime now);
 
-    /// <summary>取某天（1=周一 ... 7=周日）在当前周次下的课程。</summary>
+    
     List<CourseSlot> GetDaySlots(ScheduleProfile profile, int enableDay, string parity);
 
-    /// <summary>取今日课程（已按开始时间排序）。</summary>
+    
     List<CourseSlot> GetTodaySlots(ScheduleProfile profile, DateTime now);
 
-    /// <summary>当前正在上的课。</summary>
+    
     CourseSlot? GetCurrentCourse(IReadOnlyList<CourseSlot> slots, TimeSpan now);
 
-    /// <summary>下一节课。</summary>
+    
     CourseSlot? GetNextCourse(IReadOnlyList<CourseSlot> slots, TimeSpan now);
 
-    /// <summary>倒计时文本，如「12 分钟后」「即将上课」。</summary>
+    
     string GetCountdownText(IReadOnlyList<CourseSlot> slots, TimeSpan now);
 
-    /// <summary>今日课表摘要（供主界面显示）。</summary>
+    
     TodaySummary GetTodaySummary(ScheduleProfile profile, DateTime now);
 }
 
-/// <summary>今日课表摘要。</summary>
+
 public sealed record TodaySummary(
     int DayNumber,
     string DayText,
@@ -42,10 +42,10 @@ public sealed record TodaySummary(
 {
     public string ParityText => Parity == "odd" ? "单周" : Parity == "even" ? "双周" : "全周";
 
-    /// <summary>没有课。</summary>
+    
     public bool IsEmpty => Slots.Count == 0;
 
-    /// <summary>今日课程已全部结束。</summary>
+    
     public bool IsFinished => Slots.Count > 0 && Current is null && Next is null;
 }
 
@@ -57,7 +57,7 @@ public sealed class TimeService : ITimeService
 
     public TimeService(Func<AppSettings> settingsAccessor) => _settings = settingsAccessor;
 
-    /// <summary>CSES 的 enable_day：1=周一 ... 7=周日。</summary>
+    
     public static int DayNumberOf(DateTime date) => ((int)date.DayOfWeek + 6) % 7 + 1;
 
     public string GetCurrentParity(DateTime now)

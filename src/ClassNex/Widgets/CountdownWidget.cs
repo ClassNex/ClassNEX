@@ -4,11 +4,11 @@ using ClassNex.Styles;
 
 namespace ClassNex.Widgets;
 
-/// <summary>
-/// 倒计时组件。
-/// 设了「目标日期」时 = CI 的 CountDownComponent（距某一天的倒计时：事件名 + 天数 + 强调色）；
-/// 没设则沿用上课 / 下课倒计时。
-/// </summary>
+
+
+
+
+
 public sealed class CountdownWidget : WidgetBase
 {
     private readonly TextBlock _text;
@@ -34,7 +34,7 @@ public sealed class CountdownWidget : WidgetBase
                 _ => $"{name} 已过 {-days} 天",
             };
 
-            // CI CountDownComponentSettings：强调色用于事件名与倒计时
+            
             _text.Foreground = Config.UseCountdownAccent ? CiPalette.AccentBrush() : White();
         }
         else

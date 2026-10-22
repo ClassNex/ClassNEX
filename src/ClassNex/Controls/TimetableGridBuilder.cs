@@ -9,30 +9,30 @@ using ClassNex.Styles;
 
 namespace ClassNex.Controls;
 
-/// <summary>
-/// 周课表网格构建器。
-///
-/// 用色完全对齐 CI（ClassIsland）：
-///   - 单元格**不给科目上色**，只用统一的中性底 + 文字（CI 课表就是这样）
-///   - 只有**选中项**使用 CI 强调青 <see cref="CiPalette.Primary"/> 填充
-///   - 行之间用细分隔线区分（CI 课表的做法）
-/// 交互：点课程文字选中编辑，点空格新增。
-/// </summary>
+
+
+
+
+
+
+
+
+
 public static class TimetableGridBuilder
 {
     public static readonly string[] DayNames = { "周一", "周二", "周三", "周四", "周五", "周六", "周日" };
 
-    /// <summary>列顺序：周日在前（对齐 CI ScheduleDataGrid 的列排列）。值为 CSES 的 enable_day。</summary>
+    
     private static readonly int[] ColumnDays = { 7, 1, 2, 3, 4, 5, 6 };
 
     private static readonly TimeSpan DefaultDuration = TimeSpan.FromMinutes(45);
 
-    /// <summary>
-    /// 渲染周课表。选中/编辑以「格子」为单位（对齐 CI ScheduleDataGrid 的 SelectedClassInfo）：
-    /// 点任意格子（有课或空的）都会回调 <paramref name="onSelectCell"/>，由调用方记录选中格，
-    /// 再用右侧「编辑科目」面板排课。
-    /// <paramref name="weekStart"/>：显示周的周日日期（表头显示「周日 10/04」形式）。
-    /// </summary>
+    
+    
+    
+    
+    
+    
     public static void Render(
         Grid grid,
         ScheduleProfile profile,
@@ -47,7 +47,7 @@ public static class TimetableGridBuilder
 
         var week = weekStart ?? DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek);
 
-        // 1. 收集当前周次下的课程
+        
         var entries = new List<CourseRef>();
         foreach (var schedule in profile.Schedules)
         {
@@ -60,13 +60,13 @@ public static class TimetableGridBuilder
                 entries.Add(new CourseRef(schedule.EnableDay, schedule.Weeks, schedule, course));
         }
 
-        // 2. 行定义：**只取上课节次**（课间不进网格，对齐 CI 课表编辑器）
-        var rowTimes = new SortedDictionary<TimeSpan, TimeSpan>(); // start -> end
+        
+        var rowTimes = new SortedDictionary<TimeSpan, TimeSpan>(); 
 
         foreach (var time in AppServices.TimeLayout.Layout.Times)
         {
             if (time.Kind == ClassTimeKind.Break)
-                continue; // 课间行不放进网格
+                continue; 
             if (TimeSpan.TryParse(time.Start, out var s) && TimeSpan.TryParse(time.End, out var e) && e > s)
                 rowTimes.TryAdd(s, e);
         }
@@ -86,7 +86,7 @@ public static class TimetableGridBuilder
             return;
         }
 
-        // 3. 列 / 行
+        
         grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
         for (var d = 0; d < 7; d++)
             grid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
@@ -98,12 +98,12 @@ public static class TimetableGridBuilder
         grid.Children.Add(BuildHeader("时间", 0, 0));
         for (var c = 0; c < 7; c++)
         {
-            // 表头：周日 10/04 形式（CI ScheduleDataGrid 的列头，周日在前）
+            
             var date = week.AddDays(c);
             grid.Children.Add(BuildDayHeader(DayNames[ColumnDays[c] - 1], date, 0, c + 1));
         }
 
-        // 4. 每行：左侧时间 + 7 个格子
+        
         for (var i = 0; i < rows.Count; i++)
         {
             var start = rows[i];
@@ -139,7 +139,7 @@ public static class TimetableGridBuilder
         }
     }
 
-    /// <summary>表头：CI 用略亮的表头底色。</summary>
+    
     private static Border BuildHeader(string text, int row, int col)
     {
         var border = new Border
@@ -163,7 +163,7 @@ public static class TimetableGridBuilder
         return border;
     }
 
-    /// <summary>天列表头：两行（星期 + 日期，如「周日 / 10/04」），对齐 CI ScheduleDataGrid 的列头。</summary>
+    
     private static Border BuildDayHeader(string dayName, DateTime date, int row, int col)
     {
         var border = new Border
@@ -201,7 +201,7 @@ public static class TimetableGridBuilder
         return border;
     }
 
-    /// <summary>左侧时间列（CI 显示起止时间；课间行淡化）。</summary>
+    
     private static Border BuildTimeLabel(string start, string end, int row, bool isBreak = false)
     {
         var border = new Border
@@ -237,7 +237,7 @@ public static class TimetableGridBuilder
         return border;
     }
 
-    /// <summary>课程单元格：**不给科目上色**（CI 做法），仅文字；选中的格子用强调色整格填充（CI 选中格样式）。</summary>
+    
     private static Border BuildCourseCell(
         List<CourseRef> courses,
         CellTarget target,
@@ -251,8 +251,8 @@ public static class TimetableGridBuilder
 
         var border = new Border
         {
-            // 注意：不能给 null —— Avalonia 里 Background 为 null 的控件不参与命中测试，
-            // 会导致「已有课程的格子点不动」。未选中时用透明画刷（仍可点击）。
+            
+            
             Background = isSelected ? CiPalette.AccentBrush() : Brushes.Transparent,
             CornerRadius = new CornerRadius(4),
             Margin = new Thickness(4, 2),
@@ -294,7 +294,7 @@ public static class TimetableGridBuilder
             Text = text,
             FontSize = 13,
             FontWeight = FontWeight.SemiBold,
-            // 选中格是强调色填充 → 文字用强调色上的前景色（CI 选中格）
+            
             Foreground = isSelected ? CiPalette.OnAccentBrush() : null,
             TextWrapping = TextWrapping.NoWrap,
         });
@@ -318,7 +318,7 @@ public static class TimetableGridBuilder
         };
     }
 
-    /// <summary>空格子：极淡的中性底，点击即选中该格；选中的格子用强调色整格填充（CI 的选中格）。</summary>
+    
     private static Border BuildEmptyCell(CellTarget target, Action<CellTarget>? onSelect, bool isSelected = false)
     {
         var border = new Border
@@ -333,7 +333,7 @@ public static class TimetableGridBuilder
             BorderThickness = new Thickness(0, 0, 0, 1),
             Child = new AvaloniaFluentUI.Controls.FontIcon
             {
-                // Fluent 的「Add」字形，替代原来的全角加号字符
+                
                 Glyph = "\uE710",
                 FontSize = 14,
                 Opacity = isSelected ? 0.95 : 0.35,

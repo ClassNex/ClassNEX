@@ -8,20 +8,20 @@ using ClassNex.Services;
 
 namespace ClassNex.Views;
 
-/// <summary>
-/// 主界面「编辑模式」—— 照搬 CI 的「编辑主界面」逻辑
-/// （ClassIsland/Views/EditMode/EditableComponentsListBox + EditModeView）：
-///   - **每个组件都是独立的一项**：点它上方自己的工具条就能单独操作它（设置 / 删除 / 上移下移）
-///   - 组件末尾是「＋ 添加组件」（CI 里同位置是「＋ 新主界面行」，本项目是单行布局）
-///   - 底部工具条：添加组件 / 组件设置… / 完成（对应 CI 底部的 添加组件 / 外观 / 完成）
-///   - 编辑模式下**不淡化、鼠标不穿透**（CI 的 `[IsLineFaded=True][MainWindowInEditMode=False]` 同样如此，
-///     否则鼠标点不到工具条上的按钮）
-/// </summary>
+
+
+
+
+
+
+
+
+
 public partial class MainWindow
 {
     private bool _editMode;
 
-    /// <summary>是否处于编辑模式。</summary>
+    
     public bool IsEditMode => _editMode;
 
     public void EnterEditMode()
@@ -48,9 +48,9 @@ public partial class MainWindow
 
     private void OnMenuEnterEditMode(object? sender, RoutedEventArgs e) => EnterEditMode();
 
-    /// <summary>
-    /// 单个组件的工具条（CI 编辑模式下每个组件上方那一条：名称 + ⚙ 设置 + 🗑 删除 + ⋯ 更多）。
-    /// </summary>
+    
+    
+    
     private Control BuildComponentToolbar(WidgetConfig config)
     {
         var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2 };
@@ -64,13 +64,13 @@ public partial class MainWindow
             Margin = new Thickness(0, 0, 6, 0),
         });
 
-        // ⚙ 该组件的设置（CI 打开的是该组件自己的设置控件；本项目落在「主界面组件」页）
+        
         row.Children.Add(ToolButton("\uE713", "该组件的设置", () => App.OpenSettings("widgets")));
 
-        // 🗑 删除该组件
+        
         row.Children.Add(ToolButton("\uE74D", "删除该组件", () => AppServices.Widgets.Remove(config)));
 
-        // ⋯ 更多（上移 / 下移 / 删除）
+        
         var moreButton = ToolButton("\uE712", "更多（上移 / 下移 / 删除）", null);
         moreButton.Flyout = BuildMoreFlyout(config);
         row.Children.Add(moreButton);
@@ -128,7 +128,7 @@ public partial class MainWindow
         return flyout;
     }
 
-    /// <summary>「＋ 添加组件」按钮（列表 = 组件注册表里的全部类型）。</summary>
+    
     private static Control BuildAddComponentButton(bool compact)
     {
         var flyout = new MenuFlyout();
@@ -158,7 +158,7 @@ public partial class MainWindow
         };
     }
 
-    /// <summary>底部工具条（CI 编辑主界面底部栏的对等物）。</summary>
+    
     private void BuildEditBar()
     {
         var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };

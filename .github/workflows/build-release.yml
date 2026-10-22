@@ -1,0 +1,74 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - '26w*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish
+        shell: pwsh
+        run: |
+          dotnet publish src\ClassNex\ClassNex.csproj -c Release -r win-x64 --self-contained true -p:DebugType=none -o build\publish
+          Remove-Item build\publish\data -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item build\publish\Assets\timetable.yaml -Force -ErrorAction SilentlyContinue
+
+      - name: Zip
+        shell: pwsh
+        run: |
+          $ver = $env:GITHUB_REF_NAME -replace '_.*$', ''
+          $out = "build\ClassNEX-$ver-Alpha-win-x64.zip"
+          Compress-Archive -Path build\publish\* -DestinationPath $out -CompressionLevel Optimal
+          "ZIP_PATH=$out" >> $env:GITHUB_ENV
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-zip
+          path: ${{ env.ZIP_PATH }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/26w')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-zip
+
+      - name: Create release
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VER="${GITHUB_REF_NAME%%_*}"
+          ASSET="ClassNEX-${VER}-Alpha-win-x64.zip"
+          NOTES=$(cat RELEASE_NOTES.md)
+          echo "$NOTES" > /tmp/notes.md
+          gh release create "$GITHUB_REF_NAME" "$ASSET" \
+            --title "ClassNEX $GITHUB_REF_NAME" \
+            --notes-file /tmp/notes.md \
+            --repo "$GITHUB_REPOSITORY" || \
+          gh release edit "$GITHUB_REF_NAME" --title "ClassNEX $GITHUB_REF_NAME" --notes-file /tmp/notes.md
+          gh release upload "$GITHUB_REF_NAME" "$ASSET" --clobber --repo "$GITHUB_REPOSITORY"

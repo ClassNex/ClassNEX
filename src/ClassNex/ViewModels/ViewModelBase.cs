@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace ClassNex.ViewModels;
 
-/// <summary>实现 INotifyPropertyChanged 的视图模型基类。</summary>
+
 public abstract class ViewModelBase : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;

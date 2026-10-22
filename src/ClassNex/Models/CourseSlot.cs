@@ -1,6 +1,6 @@
 namespace ClassNex.Models;
 
-/// <summary>一节课的运行时视图（课程 + 解析后的时间），供组件与时间服务使用。</summary>
+
 public sealed record CourseSlot(
     string Subject,
     string DisplayName,
@@ -15,7 +15,7 @@ public sealed record CourseSlot(
 
     public string TimeRange => $"{StartText}–{EndText}";
 
-    /// <summary>教师 · 教室（缺失则返回空串）。</summary>
+    
     public string Detail
     {
         get
@@ -29,6 +29,6 @@ public sealed record CourseSlot(
         }
     }
 
-    /// <summary>是否正在进行中。</summary>
+    
     public bool Contains(TimeSpan time) => Start <= time && time < End;
 }

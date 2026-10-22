@@ -17,16 +17,7 @@
         SizeToContent="Height"
         WindowStartupLocation="Manual">
 
-    <!-- ================= 1:1 移植 CI 浮窗主界面结构 =================
-         CardHost（Panel）          —— 启动/显示淡入：composition 250ms / 0.25,1,0.5,1（CI MainWindowLine.PlayFadeInAnimation）
-         HoverHost（Panel）         —— 鼠标移入淡化：Opacity 0.05、100ms 线性（CI IsLineFaded 样式）
-         RootScale（LayoutTransformControl）—— CI RootLayoutTransformControl：ScaleTransform 1.9（CI Settings.Scale）
-         IslandBackground（Border） —— CI MainWindowLine 的 .line-background：
-                                      高固定 40（IslandContainerHeight）、宽 300ms 过渡（BackgroundWidth DoubleTransition）、
-                                      背景 SolidBackgroundFillColorSecondaryBrush、透明度 BackgroundOpacity、
-                                      1px 描边 ControlElevationBorderBrush、圆角 RadiusX=8、阴影 0 4 8 2 #48000000
-         CardContent（Border）      —— CI GridContentRoot：Margin="12 0"、MinWidth=20
-    -->
+    
     <Panel x:Name="CardHost">
         <Panel.ContextMenu>
             <ContextMenu>
@@ -48,13 +39,12 @@
                 </Transitions>
             </Panel.Transitions>
 
-            <!-- 底部留白：容纳岛的阴影（CI 窗口高 = 岛 40×1.9 + 阴影区） -->
+            
             <Grid Margin="0,0,0,16">
 
                 <LayoutTransformControl x:Name="RootScale" ClipToBounds="False"
                                         TextElement.FontWeight="Medium">
-                    <!-- CI：MainWindowFontWeight2 默认 = FontWeight.Medium(500)，
-                         挂在 ZoomBorder 的 TextElement 上下发给全部组件（所以 CI 的字看起来更饱满） -->
+                    
                     <LayoutTransformControl.LayoutTransform>
                         <ScaleTransform/>
                     </LayoutTransformControl.LayoutTransform>
@@ -62,10 +52,7 @@
                     <StackPanel>
                         <Panel x:Name="LinePanel" ClipToBounds="False">
 
-                            <!-- CI .line-background：岛背景。宽度变化在代码里做 300ms 缓动
-                                 （CI BackgroundWidth DoubleTransition 0.300 / 0.65,0,0.35,1.0；
-                                  Avalonia 的 Width 过渡在 LayoutTransformControl 内不生效，改用代码补间）。
-                                 注意：CI 的 .line-background 没有 ClipToBounds —— 加了会把 BoxShadow 裁掉。 -->
+                            
                             <Border x:Name="IslandBackground"
                                     Height="40"
                                     HorizontalAlignment="Center"
@@ -74,8 +61,7 @@
                                     BoxShadow="0 4 8 2 #48000000">
                             </Border>
 
-                            <!-- CI GridContentRoot：Margin="12 0"、MinWidth=20
-                                 通知期间透明度置 0（CI :mask-in 时把岛内容隐藏，避免与面具/Overlay 叠字） -->
+                            
                             <Border x:Name="CardContent"
                                     Margin="12,0"
                                     MinWidth="20"
@@ -100,9 +86,7 @@
                                                 HorizontalAlignment="Center"
                                                 VerticalAlignment="Stretch"/>
 
-                                    <!-- 启动占位骨架（组件还没加载出来时显示）：一小块 + 一长块。
-                                         尺寸照参考图实测换算（缩放 2.375）：块 80×24 / 620×24、
-                                         间隔 14、岛左右内边距 ~18；块底色在代码里按深浅主题取色 -->
+                                    
                                     <StackPanel x:Name="SkeletonHost"
                                                 Orientation="Horizontal"
                                                 Spacing="14"
@@ -116,8 +100,7 @@
                                 </Grid>
                             </Border>
 
-                            <!-- NEX 对话层：语音唤醒时课表向上翻出去、这块从下面翻上来显示对话文字。
-                                 「请讲」用浅一点的字体（次要色 + 降透明度）。 -->
+                            
                             <Border x:Name="NexPanel"
                                     Height="40"
                                     Margin="12,0"
@@ -138,9 +121,7 @@
                                            TextTrimming="CharacterEllipsis"/>
                             </Border>
 
-                            <!-- CI OverlayMask：重要通知时盖在岛上的遮罩 + 大字提示
-                                 （对照 CI FluentTheme/Styles.axaml 的 OverlayMask/OverlayMaskContent +
-                                   SlantedMaskControl 斜切条纹：RegionDurationMs=360 / StageStaggerMs=120）。 -->
+                            
                             <Border x:Name="NotificationMask"
                                     Height="40"
                                     HorizontalAlignment="Center"
@@ -180,8 +161,7 @@
                                 </Panel>
                             </Border>
 
-                            <!-- CI OverlayContent：面具收起后显示的「下节课是…」——**不盖遮罩**，
-                                 直接显示在岛的正常区域，用主题文字色（CI 的 OverlayContent 在岛内容层）。 -->
+                            
                             <Border x:Name="NotificationOverlay"
                                     Height="40"
                                     HorizontalAlignment="Center"
@@ -190,8 +170,7 @@
                                     IsHitTestVisible="False"
                                     TextElement.Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                                     Width="{Binding #IslandBackground.Width}">
-                                <!-- CI ClassOffOverlay：左右两栏 —— 左「本节[课间名]长[时长]」，
-                                     右「下节课是：[科目 Bold][老师][时间]」 -->
+                                
                                 <Grid ColumnDefinitions="*,*" Margin="12,0">
                                     <TextBlock x:Name="NotificationOverlayLeft" Grid.Column="0"
                                                FontSize="16"
@@ -209,9 +188,7 @@
                                 </Grid>
                             </Border>
 
-                            <!-- CI 提醒轨道：Overlay 阶段显示。**自绘**（灰底 + 强调色填充条），
-                                 代码直接设置填充宽度 —— 规避 ProgressBar 主题自带的 Value 过渡动画
-                                 （那会把它变成 0→100 的「充能」，用户不要；要求出现即满格）。 -->
+                            
                             <Panel x:Name="NotificationTrack"
                                    Height="2" MinHeight="2"
                                    VerticalAlignment="Bottom"
@@ -226,7 +203,7 @@
 
                         </Panel>
 
-                        <!-- 编辑模式底部工具条（CI「编辑主界面」的底部栏：添加组件 / 组件设置 / 完成） -->
+                        
                         <Panel x:Name="EditBarHost"
                                IsVisible="False"
                                Margin="0,8,0,0"

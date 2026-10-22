@@ -5,10 +5,10 @@ using Avalonia.Media;
 
 namespace ClassNex.Views;
 
-/// <summary>
-/// 托盘左键菜单：原生托盘菜单（NativeMenu）只能通过右键触发，
-/// 所以左键点击改为弹出这个无边框 Fluent 菜单窗（失焦即关闭，行为与系统菜单一致）。
-/// </summary>
+
+
+
+
 public partial class TrayMenuWindow : Window
 {
     public TrayMenuWindow()
@@ -17,13 +17,13 @@ public partial class TrayMenuWindow : Window
         Deactivated += (_, _) => Close();
     }
 
-    /// <summary>菜单项：图标 + 文字 + 点击动作。IconFont 留空用 Segoe MDL2。</summary>
+    
     public sealed record Item(string Glyph, string Header, Action Action, string? IconFont = null);
 
-    /// <summary>分隔线标记。</summary>
+    
     public static Item Separator { get; } = new("", "-", () => { });
 
-    /// <summary>按顺序构建菜单项（对照 App.axaml 里原来的 NativeMenu）。</summary>
+    
     public void Build(IReadOnlyList<Item> items)
     {
         ItemsPanel.Children.Clear();
@@ -50,8 +50,8 @@ public partial class TrayMenuWindow : Window
                 {
                     new AvaloniaFluentUI.Controls.FontIcon
                     {
-                        // 托盘菜单：回到上一版字号（20），图标位宽改回 16 与其他项一致，
-                        // 这样文字左缘对齐（宽度不一致会把文字顶偏，看着没对齐）
+                        
+                        
                         Glyph = item.Glyph,
                         FontFamily = new FontFamily(item.IconFont ?? "Segoe MDL2 Assets"),
                         FontSize = item.IconFont is null ? 14 : 20,

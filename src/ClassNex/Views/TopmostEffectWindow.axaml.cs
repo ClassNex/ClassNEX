@@ -11,17 +11,17 @@ using Control = Avalonia.Controls.Control;
 
 namespace ClassNex.Views;
 
-/// <summary>顶层效果窗口的极简视图模型（对照 CI 的 TopmostEffectWindowViewModel）。</summary>
+
 public sealed class TopmostEffectWindowViewModel
 {
     public ObservableCollection<Control> EffectControls { get; } = new();
 }
 
-/// <summary>
-/// 1:1 移植自 CI（ClassIsland/Views/TopmostEffectWindow.axaml.cs）：
-/// 全屏透明、置顶、点击穿透的工具窗口，承载全局特效（重要通知的水波纹）。
-/// 有特效时显示，最后一个特效播完自动隐藏。
-/// </summary>
+
+
+
+
+
 public partial class TopmostEffectWindow : Window
 {
     public TopmostEffectWindowViewModel ViewModel { get; } = new();
@@ -86,7 +86,7 @@ public partial class TopmostEffectWindow : Window
         effect.Play();
     }
 
-    /// <summary>把窗口铺到指定屏幕（CI：fullscreen 用 Bounds，否则 WorkingArea）。</summary>
+    
     public void UpdateWindowPos(Screen screen, double scale, bool fullscreen)
     {
         var bounds = fullscreen ? screen.Bounds : screen.WorkingArea;
@@ -111,8 +111,8 @@ public partial class TopmostEffectWindow : Window
         Topmost = true;
         base.Show();
 
-        // CI：SetWindowFeature(Transparent | ToolWindow | Topmost | SkipManagement, true)
-        // = WS_EX_LAYERED|WS_EX_TRANSPARENT|WS_EX_NOACTIVATE（点击穿透、不抢焦点）+ WS_EX_TOOLWINDOW（不进 Alt+Tab）
+        
+        
         if (TryGetPlatformHandle() is { } handle)
         {
             var hwnd = handle.Handle;

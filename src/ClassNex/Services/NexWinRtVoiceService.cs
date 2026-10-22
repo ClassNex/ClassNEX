@@ -9,14 +9,14 @@ using Windows.Media.SpeechRecognition;
 
 namespace ClassNex.Services;
 
-/// <summary>
-/// 用 Windows 现代语音识别（WinRT <see cref="SpeechRecognizer"/>）实现唤醒 + 听写。
-/// 比老 SAPI（Microsoft Speech Recognizer 8.0）识别率高得多，而且：
-/// · 唤醒阶段用**列表约束**（词表只有唤醒词变体）—— 你说「NEX」只会被映射到词表里最接近的那条，几乎不会认错；
-/// · 听写阶段用**听写约束**（自然语言），可以整句识别中文问题；
-/// · 全程离线，音频不出本机。
-/// 两个约束不能同时生效，所以准备两个识别器实例：待机听唤醒词、唤醒后切听写。
-/// </summary>
+
+
+
+
+
+
+
+
 public sealed class NexWinRtVoiceService : INexVoiceService
 {
     private SpeechRecognizer? _wakeRecognizer;
@@ -41,7 +41,7 @@ public sealed class NexWinRtVoiceService : INexVoiceService
 
     public int DictationTimeoutSeconds { get; set; } = 10;
 
-    /// <summary>唤醒词词表（列表约束用；连读、带前缀、逐字母、中文谐音都放进去）。</summary>
+    
     private static readonly string[] WakePhrases =
     {
         "nex", "next", "nexus", "necks",
@@ -71,7 +71,7 @@ public sealed class NexWinRtVoiceService : INexVoiceService
             }
 
             _wakeRecognizer.ContinuousRecognitionSession.ResultGenerated += OnWakeResult;
-            // 会话结束会带状态：麦克风不可用/被占用/无权限都会在这里体现（只挂 ResultGenerated 是查不出来的）
+            
             _wakeRecognizer.ContinuousRecognitionSession.Completed += (_, e) =>
             {
                 _wakeRunning = false;
@@ -87,7 +87,7 @@ public sealed class NexWinRtVoiceService : INexVoiceService
                 + string.Join("、", SupportedLanguages().Select(l => l.LanguageTag)));
             NexVoiceLog.Write($"麦克风访问状态：{CheckMicrophoneAccess()}");
 
-            // 看门狗：麦克风保持常开 —— 会话被系统停掉（静默超时/设备切换/瞬时错误）就自动拉起来
+            
             _watchdog ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(8) };
             _watchdog.Tick -= OnWatchdogTick;
             _watchdog.Tick += OnWatchdogTick;
@@ -111,7 +111,7 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         _ = StartAsync();
     }
 
-    /// <summary>系统支持的识别语言（列表约束用 SupportedGrammarLanguages，听写用 SupportedTopicLanguages）。</summary>
+    
     private static IReadOnlyList<Language> SupportedLanguages()
     {
         var grammar = SpeechRecognizer.SupportedGrammarLanguages;
@@ -122,7 +122,7 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         return topic is { Count: > 0 } ? topic.ToList() : new List<Language> { SpeechRecognizer.SystemSpeechLanguage };
     }
 
-    /// <summary>优先中文（用户说的是中文问题），没有就退到英文，再没有就用系统默认。</summary>
+    
     private static Language PickLanguage()
     {
         var supported = SupportedLanguages();
@@ -134,10 +134,10 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         return en ?? supported.FirstOrDefault() ?? SpeechRecognizer.SystemSpeechLanguage;
     }
 
-    /// <summary>
-    /// 列出录音设备与当前默认输入设备（排查「在听但听不到」：多半是 Windows 默认输入设备选错了，
-    /// 比如被虚拟声卡/模拟器占用，识别器听到的就是静音）。
-    /// </summary>
+    
+    
+    
+    
     public static async Task<string> DescribeAudioDevicesAsync()
     {
         try
@@ -162,7 +162,7 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         }
     }
 
-    /// <summary>查麦克风权限（桌面应用要在「设置 → 隐私和安全性 → 麦克风」里允许访问，否则拿到的是静音流）。</summary>
+    
     public static string CheckMicrophoneAccess()
     {
         try
@@ -182,10 +182,10 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         }
     }
 
-    /// <summary>
-    /// 测试麦克风：做一次一次性识别（最长 5 秒），返回听到的内容。
-    /// 设置页「测试麦克风」按钮用它 —— 能直接看出是权限问题、设备问题还是识别问题。
-    /// </summary>
+    
+    
+    
+    
     public async Task<string> TestMicrophoneAsync()
     {
         var access = CheckMicrophoneAccess();
@@ -229,7 +229,7 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         }
         catch
         {
-            // 忽略
+            
         }
 
         _wakeRecognizer?.Dispose();
@@ -240,7 +240,7 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         _dictating = false;
     }
 
-    // ==================== 唤醒 ====================
+    
 
     private void OnWakeResult(SpeechContinuousRecognitionSession sender, SpeechContinuousRecognitionResultGeneratedEventArgs args)
     {
@@ -256,16 +256,16 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         _ = StartDictationAsync();
     }
 
-    // ==================== 听写 ====================
+    
 
     private async Task StartDictationAsync()
     {
         if (_dictating)
             return;
 
-        // ★ 关键：WinRT 听写需要系统已接受「语音隐私政策」。没接受时不仅听写会被拒，
-        //   而且被拒之后整个语音栈会拒绝后续识别 —— 连唤醒都会一起死掉
-        //   （用户反馈「第一次之后永远叫不起来」就是这个）。所以先探一次，不行就整条改走 SAPI。
+        
+        
+        
         if (!_sapiOnly && !_dictationProbed)
         {
             _dictationProbed = true;
@@ -309,17 +309,17 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         _dictating = true;
         WakeWordDetected?.Invoke();
 
-        // 听写起来了，让出麦克风（两个识别器同时抢麦会互相干扰）
+        
         await PauseWakeSessionAsync();
     }
 
-    /// <summary>用 SAPI 收一句话（不需要系统语音政策）。唤醒会话先让出来，听完再拉起来。</summary>
+    
     private void StartSapiDictation()
     {
         _dictating = true;
         WakeWordDetected?.Invoke();
 
-        // 让出麦克风：SAPI 和 WinRT 同时抢麦会互相干扰
+        
         _ = PauseWakeSessionAsync();
 
         _sapiDictation ??= new NexSapiDictation();
@@ -365,7 +365,7 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         }
     }
 
-    /// <summary>测试 WinRT 听写是否可用（系统语音政策是否已接受）。</summary>
+    
     private async Task<bool> ProbeWinRtDictationAsync()
     {
         try
@@ -380,7 +380,7 @@ public sealed class NexWinRtVoiceService : INexVoiceService
                 return false;
             }
 
-            // 不真的听，只启动/停止一次：政策没接受时 StartAsync 就会抛
+            
             await probe.ContinuousRecognitionSession.StartAsync();
             await probe.ContinuousRecognitionSession.StopAsync();
             return true;
@@ -392,10 +392,10 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         }
     }
 
-    /// <summary>
-    /// 把 WinRT 的语音错误翻译成用户能照做的提示。
-    /// 0x80045509 = 系统语音隐私政策还没接受 —— Windows 不允许整句识别，但列表约束（唤醒词）不受影响。
-    /// </summary>
+    
+    
+    
+    
     private static string DescribeSpeechError(Exception ex)
     {
         if (ex.Message.Contains("privacy policy", StringComparison.OrdinalIgnoreCase)
@@ -425,7 +425,7 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         };
         recognizer.ContinuousRecognitionSession.Completed += (_, _) =>
         {
-            // 静默超时结束：提示「请讲」并回到听唤醒词
+            
             if (_dictating)
             {
                 SpeechTimeout?.Invoke();
@@ -450,12 +450,12 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         SpeechRecognized?.Invoke(text);
     }
 
-    /// <summary>
-    /// 看门狗：保证麦克风**一直开着**（用户要求），并且长时间闲置后能自愈。
-    /// WinRT 的连续识别有个已知行为：会话看着还在跑，但闲置久了就不再收到音频（「时间久了叫不起来」）。
-    /// 所以这里三层兜底：① 会话不在跑 → 拉起来；② 超过 4 分钟没有任何识别活动 → 停+启刷新音频管道；
-    /// ③ 刷新也无效 → 整个重建识别器。
-    /// </summary>
+    
+    
+    
+    
+    
+    
     private void OnWatchdogTick(object? sender, EventArgs e)
     {
         if (!_listening || _dictating || _starting)
@@ -471,7 +471,7 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         if (idle < TimeSpan.FromMinutes(4))
             return;
 
-        // 看着在跑但太久没任何动静：先刷一次（停+启），再不行就重建
+        
         _ = RefreshWakeSessionAsync();
     }
 
@@ -495,7 +495,7 @@ public sealed class NexWinRtVoiceService : INexVoiceService
             NexVoiceLog.Write("看门狗刷新失败，准备重建识别器：" + ex.Message.Split('\n')[0]);
         }
 
-        // 刷新失败：整只重建
+        
         try
         {
             _wakeRecognizer.Dispose();
@@ -525,12 +525,12 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         }
         catch (Exception ex)
         {
-            // 起不来通常是权限/隐私政策问题：不再刷屏，每轮记一次就够
+            
             NexVoiceLog.Write("看门狗拉起失败：" + ex.Message.Split('\n')[0]);
         }
     }
 
-    /// <summary>连续问答：直接回到听写（不用再喊唤醒词）。</summary>
+    
     public void ListenForFollowUp()
     {
         if (!_listening || _dictating)
@@ -539,7 +539,7 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         _ = StartDictationAsync();
     }
 
-    /// <summary>回到只听唤醒词。</summary>
+    
     public void BackToWakeWord()
     {
         _ = BackToWakeWordAsync();
@@ -561,7 +561,7 @@ public sealed class NexWinRtVoiceService : INexVoiceService
             NexVoiceLog.Write("停止听写会话失败（忽略）：" + ex.Message.Split('\n')[0]);
         }
 
-        // 唤醒会话不一定还活着（可能被系统停过）：交给看门狗兜底，这里先立刻试一次
+        
         await EnsureWakeSessionAsync();
     }
 

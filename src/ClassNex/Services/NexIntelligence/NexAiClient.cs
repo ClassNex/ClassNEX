@@ -9,16 +9,16 @@ using System.Threading.Tasks;
 
 namespace ClassNex.Services.NexIntelligence;
 
-/// <summary>
-/// NEX Intelligence 的模型客户端：OpenAI 兼容的 /v1/chat/completions，走流式（SSE）。
-/// 已实测该接口返回的增量里有 content（正文）与 reasoning_content（思考过程），
-/// 工具调用则分片出现在 delta.tool_calls 里（按 index 拼装）。
-/// </summary>
+
+
+
+
+
 public sealed class NexAiClient
 {
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromMinutes(3) };
 
-    /// <summary>发一轮请求；增量通过回调实时抛出，返回拼好的助手消息（含工具调用）。</summary>
+    
     public async Task<NexMessage> CompleteAsync(
         string baseUrl,
         string apiKey,
@@ -49,14 +49,14 @@ public sealed class NexAiClient
         await using var stream = await response.Content.ReadAsStreamAsync(ct);
         using var reader = new StreamReader(stream, Encoding.UTF8);
 
-        // 工具调用的分片拼装：index -> (id, name, arguments)
+        
         var toolAcc = new Dictionary<int, NexToolCall>();
 
         while (true)
         {
             ct.ThrowIfCancellationRequested();
 
-            // 异步流里不能用 EndOfStream（CA2024）：读到 null 就是流结束
+            
             var line = await reader.ReadLineAsync(ct);
             if (line is null)
                 break;
@@ -124,7 +124,7 @@ public sealed class NexAiClient
             }
             catch (JsonException)
             {
-                // 单个分片坏了就跳过，不中断整轮
+                
             }
         }
 

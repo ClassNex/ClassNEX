@@ -5,30 +5,30 @@ using Avalonia.Threading;
 
 namespace ClassNex.Services;
 
-/// <summary>
-/// 用老 SAPI 做**一次性整句听写**（不需要系统的语音隐私政策，WinRT 听写则需要）。
-/// 用途：唤醒之后收一句话。用户机器上系统语音政策没接受时，WinRT 听写会被拒，
-/// 而且被拒之后整个语音栈会拒绝后续识别（连唤醒都会死），所以听写这条路改走 SAPI，
-/// 唤醒仍然交给准确率更高的 WinRT 列表约束。
-/// </summary>
+
+
+
+
+
+
 public sealed class NexSapiDictation : IDisposable
 {
     private SpeechRecognitionEngine? _engine;
     private DispatcherTimer? _timeout;
     private bool _listening;
 
-    /// <summary>听到一句话。</summary>
+    
     public event Action<string>? Recognized;
 
-    /// <summary>正在说的中间结果（边说边显示用）。</summary>
+    
     public event Action<string>? Hypothesis;
 
-    /// <summary>超时没听到。</summary>
+    
     public event Action? TimedOut;
 
     public bool IsListening => _listening;
 
-    /// <summary>开始听一句（最多 timeoutSeconds 秒）。</summary>
+    
     public bool ListenOnce(int timeoutSeconds = 10)
     {
         Stop();
@@ -97,7 +97,7 @@ public sealed class NexSapiDictation : IDisposable
         }
         catch
         {
-            // 忽略
+            
         }
 
         _engine = null;

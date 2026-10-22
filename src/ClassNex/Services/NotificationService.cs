@@ -7,13 +7,13 @@ using ClassNex.Views;
 
 namespace ClassNex.Services;
 
-/// <summary>
-/// 通知服务：每秒核对当前时间点，发生变化时发出重要通知
-/// = CI 的全局水波纹（<see cref="RippleEffect"/> + <see cref="TopmostEffectWindow"/>，1:1 移植）。
-/// 触发条件照 CI MainWindowLine.ProcessNotification：
-/// AllowNotificationEffect && 主界面可见 && 非编辑模式 && 尚未播放过提示音。
-/// （ClassWidgets 灵动通知：暂缓，文件保留未接线。）
-/// </summary>
+
+
+
+
+
+
+
 public sealed class NotificationService
 {
     private readonly DispatcherTimer _timer;
@@ -35,7 +35,7 @@ public sealed class NotificationService
             return;
         _started = true;
 
-        // 先同步一次基线（记录当前时间点），避免启动时把「正在上/正在课间」误报成新事件
+        
         _lastKey = CurrentKey(DateTime.Now);
         _timer.Start();
     }
@@ -58,19 +58,19 @@ public sealed class NotificationService
 
         _lastKey = key;
 
-        // 重要通知：上课开始 / 课间休息开始（CI：MainWindowLine 在通知的 Mask 播放时放 RippleEffect）
+        
         if (key.StartsWith("course:") || key.StartsWith("break:"))
             PlayNotification(key, now);
     }
 
-    /// <summary>
-    /// 播放一次「重要通知」完整流程（面具 + 水波纹 + 下课 Overlay）。
-    /// 定时器触发和调试页触发共用这一条路径。
-    /// </summary>
+    
+    
+    
+    
     private void PlayNotification(string key, DateTime now)
     {
-        // 提醒设置（1:1 对照 CI ClassNotificationSettings）：
-        // 上课提醒 / 下课提醒各自开关；遮罩文字取设置值（默认：上课 / 课间休息）
+        
+        
         var n = AppServices.Settings.Notification;
         if (key.StartsWith("course:"))
         {
@@ -83,8 +83,8 @@ public sealed class NotificationService
                 return;
         }
 
-        // CI：settings.IsNotificationEffectEnabled && Settings.AllowNotificationEffect &&
-        //     !IsAllComponentsHid && Settings.IsMainWindowVisible && !HasSoundsPlayed
+        
+        
         if (AppServices.Settings.AllowNotificationEffect
             && AppServices.Settings.IsMainWindowVisible
             && AppServices.MainWindow is { IsEditMode: false } mainWindow)
@@ -95,7 +95,7 @@ public sealed class NotificationService
             _effectWindow.PlayEffect(new RippleEffect(center));
             mainWindow.ShowNotificationMask(maskText);
 
-            // CI：下课（课间）提醒在面具之后还有 Overlay 阶段（ClassOffOverlay：下节课是…）
+            
             if (key.StartsWith("break:"))
             {
                 var summary = AppServices.Time.GetTodaySummary(AppServices.Schedule.Profile, now);
@@ -116,26 +116,26 @@ public sealed class NotificationService
                 }
             }
 
-            // CI：通知请求结束后面具淡出（:mask-out 0.2s），这里按类通知默认时长 3 秒
+            
             DispatcherTimer.RunOnce(mainWindow.HideNotificationMask, TimeSpan.FromSeconds(3));
         }
     }
 
-    /// <summary>调试：触发上课提醒（面具 + 水波纹），不依赖课表状态。</summary>
+    
     public void DebugTriggerClassOn()
     {
         var now = DateTime.Now;
         PlayNotification($"course:{now:HHmmss}:debug", now);
     }
 
-    /// <summary>调试：触发下课提醒（面具 + 水波纹 + 下节课 Overlay），不依赖课表状态。</summary>
+    
     public void DebugTriggerClassOff()
     {
         var now = DateTime.Now;
         PlayNotification($"break:{now:HH\\:mm\\:ss}", now);
     }
 
-    /// <summary>当前时间点标识：course:{开始}:{科目} / break:{开始} / finished / before / empty。</summary>
+    
     private string CurrentKey(DateTime now)
     {
         var summary = AppServices.Time.GetTodaySummary(AppServices.Schedule.Profile, now);
@@ -150,7 +150,7 @@ public sealed class NotificationService
         return summary.Slots.Count == 0 ? "empty" : "before";
     }
 
-    /// <summary>时长人性化（1:1 对照 CI ClassNotificationProviderControl.FormatTimeSpan）。</summary>
+    
     private static string FormatDuration(TimeSpan span)
     {
         if (span.TotalSeconds <= 0)
@@ -167,7 +167,7 @@ public sealed class NotificationService
         return string.Join(" ", parts);
     }
 
-    /// <summary>与 ScheduleWidget.FindCurrent 完全相同的定位逻辑（当前课 / 课间空档）。</summary>
+    
     private static (string Title, TimeSpan Start, TimeSpan End)? FindCurrent(IReadOnlyList<CourseSlot> slots, TimeSpan now)
     {
         for (var i = 0; i < slots.Count; i++)

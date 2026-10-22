@@ -8,7 +8,7 @@
         Background="Transparent" WindowStartupLocation="Manual">
 
     <Window.Styles>
-        <!-- 菜单项悬停高亮（照 Fluent 菜单） -->
+        
         <Style Selector="Button.TrayMenuItem:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
         </Style>
@@ -17,7 +17,7 @@
         </Style>
     </Window.Styles>
 
-    <!-- 托盘左键菜单（原生托盘菜单只能右键弹，所以左键用这个 Fluent 菜单窗） -->
+    
     <Border Margin="8" CornerRadius="6" BorderThickness="1" Padding="4"
             BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
             Background="{DynamicResource AcrylicBackgroundFillColorDefaultBrush}">

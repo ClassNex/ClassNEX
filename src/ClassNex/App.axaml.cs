@@ -28,7 +28,7 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
-        // 全局未处理异常 → 写 _crash.log，便于排查闪退
+        
         AppDomain.CurrentDomain.UnhandledException += (_, e) =>
             LogCrash(e.ExceptionObject as Exception);
         Dispatcher.UIThread.UnhandledException += (_, e) => LogCrash(e.Exception);
@@ -36,7 +36,7 @@ public partial class App : Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // 托盘常驻：关闭所有窗口也不退出应用
+            
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
             ApplyCiPalette();
@@ -46,10 +46,10 @@ public partial class App : Application
 
             if (!AppServices.Settings.IsOobeCompleted)
             {
-                // 全新安装：先走首次启动向导，不显示课表浮窗（用户要求）。
-                // 向导走完会写 IsOobeCompleted 并重启应用，重启后走下面的正常分支显示浮窗。
-                // ★ 必须盯住主窗口的 Opened：Avalonia 会在框架初始化完成后自动 Show 掉
-                //   desktop.MainWindow 指向的窗口，只在启动时 Hide 一次是不够的。
+                
+                
+                
+                
                 _mainWindow.Opened += (_, _) => _mainWindow?.Hide();
 
                 _oobeWindow = new Views.OobeWindow();
@@ -67,13 +67,13 @@ public partial class App : Application
                 }
             }
 
-            // ============ 通知：CI 的全局水波纹（1:1 移植；ClassWidgets 灵动通知暂不接线） ============
+            
             _effectWindow = new Views.TopmostEffectWindow();
             _notificationService = new Services.NotificationService(_effectWindow);
 
-            // 效果窗口铺满主屏工作区。
-            // ★ 对照 CI MainWindow.axaml.cs:929 —— scale 传 1/dpiX（把物理像素换算成 DIP），
-            //   传 1.0 会让窗口（和波纹半径）比屏幕大 1.25 倍（用户反馈「大小不对」的根因）。
+            
+            
+            
             if (_mainWindow is { } mw && mw.Screens.Primary is { } primary)
                 _effectWindow.UpdateWindowPos(primary, 1 / primary.Scaling, false);
 
@@ -81,7 +81,7 @@ public partial class App : Application
             Services.AppServices.NotificationService = _notificationService;
             _notificationService.Start();
 
-            // NEX 语音唤醒（「嘿 NEX」→ 提示音 + 跑马灯 + 浮窗翻页变对话）
+            
             _nexVoice = new Services.NexVoiceCoordinator();
             Services.AppServices.NexVoice = _nexVoice;
             if (AppServices.Settings.IsNexVoiceWakeEnabled)
@@ -89,18 +89,18 @@ public partial class App : Application
                 DispatcherTimer.RunOnce(() => _nexVoice?.Start(), TimeSpan.FromSeconds(2));
             }
 
-            // 屏幕边缘的唤醒条（半透明小白条，点一下 = 喊唤醒词）
+            
             DispatcherTimer.RunOnce(() => _nexVoice?.RefreshEdgeBar(), TimeSpan.FromSeconds(3));
 
-            // 处理 classnex:// Url 协议参数（第三方应用/网页调用本应用）
+            
             HandleUrlProtocol(Environment.GetCommandLineArgs());
 
-            // 预热提醒动画（斜切条纹首次触发要 JIT/编译几何，启动 1 秒后静默开合一次，之后不卡）
+            
             DispatcherTimer.RunOnce(() => _mainWindow?.WarmNotificationMask(), TimeSpan.FromSeconds(1));
 
 #if DEBUG
-            // 调试：CLASSNEX_VERIFY_NOTIFY=1 时启动后连放三次（3s/8s/13s）重要通知，
-            // 与真实下课提醒同链路：面具 1.5s → Overlay「下节课是…」→ 3.5s 收起。
+            
+            
             if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_NOTIFY") == "1")
             {
                 foreach (var delay in new[] { 3, 8, 13 })
@@ -131,10 +131,10 @@ public partial class App : Application
 #endif
 
 #if DEBUG
-            // 调试自检（仅 Debug 构建）：设 CLASSNEX_VERIFY=1 时写 _verify.log 并跑数据自检。
-            // ★ 默认**只启动浮窗主界面**，不弹「应用设置 / 档案编辑器」——
-            //   需要那两个窗口时才加 CLASSNEX_VERIFY_WINDOWS=1，
-            //   或者用 CLASSNEX_VERIFY_PAGE / CLASSNEX_VERIFY_SEARCH（这两个模式本身需要设置窗口）。
+            
+            
+            
+            
             if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY") == "1")
             {
                 Dispatcher.UIThread.Post(() =>
@@ -154,19 +154,19 @@ public partial class App : Application
                     Dispatcher.UIThread.Post(() =>
                     {
                         OpenProfileEditor(0);
-                        // 自检打开设置窗口；用 CLASSNEX_VERIFY_PAGE 指定页面
-                        // （general/interface/widgets/schedule/about/account）
+                        
+                        
                         OpenSettings(page ?? "widgets");
                     }, DispatcherPriority.Background);
                 }
 
-                // CLASSNEX_VERIFY_CHIME=1：直接播一次唤醒音（验证用户 wav 有没有加载/发声）
+                
                 if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_CHIME") == "1")
                 {
                     DispatcherTimer.RunOnce(() => Services.NexChime.PlayWake(), TimeSpan.FromSeconds(2));
                 }
 
-                // CLASSNEX_VERIFY_WAKE=<问题>：模拟一次语音唤醒（提示音 + 跑马灯 + 浮窗翻页 + 提问）
+                
                 var wakeProbe = Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_WAKE");
                 if (!string.IsNullOrWhiteSpace(wakeProbe))
                 {
@@ -179,7 +179,7 @@ public partial class App : Application
                     wakeTimer.Start();
                 }
 
-                // CLASSNEX_VERIFY_MIC=1：自检麦克风（权限 + 一次性识别），结果写 nex-voice.log
+                
                 if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_MIC") == "1")
                 {
                     var micTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
@@ -192,13 +192,13 @@ public partial class App : Application
                     micTimer.Start();
                 }
 
-                // CLASSNEX_VERIFY_EDITMODE=1：启动后直接进入编辑模式（核对组件工具条排版）
+                
                 if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_EDITMODE") == "1")
                 {
                     Dispatcher.UIThread.Post(() => _mainWindow?.EnterEditMode(), DispatcherPriority.Background);
                 }
 
-                // CLASSNEX_VERIFY_NEX=<文本>：打开 NEX 对话框并自动发一条消息（核对流式/思考/工具调用）
+                
                 var nexProbe = Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_NEX");
                 if (!string.IsNullOrWhiteSpace(nexProbe))
                 {
@@ -214,12 +214,12 @@ public partial class App : Application
                     probeTimer.Start();
                 }
 
-                // 设 CLASSNEX_VERIFY_SHOT=1：等布局稳定后把已存在的窗口各自渲染成 PNG，
-                // 供开发期核对排版（RenderTargetBitmap 直接渲染视觉树，不受其它窗口遮挡影响）
+                
+                
                 if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_SHOT") == "1")
                 {
-                    // 等布局稳定后把已存在的窗口各自渲染成 PNG；
-                    // 有 NEX 自检（CLASSNEX_VERIFY_NEX）时多等一会儿，好让对话跑完再出图。
+                    
+                    
                     var shotDelay = string.IsNullOrWhiteSpace(
                         Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_NEX"))
                         && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_WAKE"))
@@ -253,7 +253,7 @@ public partial class App : Application
 
     public static FluentAvaloniaTheme? FluentTheme => (FluentAvaloniaTheme?)Current?.Styles[0];
 
-    /// <summary>把未处理异常写到数据目录 Logs\crash.log（排查闪退用），并按「教学安全模式」处理。</summary>
+    
     private static void LogCrash(Exception? ex)
     {
         if (ex is null)
@@ -267,10 +267,10 @@ public partial class App : Application
         }
         catch
         {
-            // 忽略写日志失败
+            
         }
 
-        // 教学安全模式：0=显示崩溃报告（打开日志）1=忽略并继续 2=重新启动应用
+        
         try
         {
             if (!AppServices.Settings.TeachingSafeMode)
@@ -291,15 +291,15 @@ public partial class App : Application
         }
         catch
         {
-            // 安全模式的兜底动作失败时忽略（不能因为兜底再抛异常）
+            
         }
     }
 
-    /// <summary>
-    /// 响应 classnex:// Url 协议（在设置里开启「注册 Url 协议」后，第三方应用或网页可调用）。
-    /// 支持：classnex://settings 打开设置、classnex://profile 打开档案编辑器、
-    /// classnex://show 显示主界面、classnex://hide 隐藏主界面。
-    /// </summary>
+    
+    
+    
+    
+    
     private static void HandleUrlProtocol(string[] args)
     {
         var url = args.FirstOrDefault(a => a.StartsWith("classnex://", StringComparison.OrdinalIgnoreCase));
@@ -326,7 +326,7 @@ public partial class App : Application
     }
 
 #if DEBUG
-    /// <summary>把配色与设置的关键运行时状态写到输出目录 _verify.log，供开发期核对。</summary>
+    
     private static void WriteVerifyReport()
     {
         try
@@ -343,7 +343,7 @@ public partial class App : Application
                 $"课表文件             = {AppServices.TimetablePath}\n" +
                 $"科目数 / 课程数      = {AppServices.Schedule.Profile.Subjects.Count} / {AppServices.Schedule.Profile.Schedules.Sum(s => s.Classes.Count)}\n");
 
-            // 主题资源键探针：逐个问候选键是否存在（AvaloniaFluentUI 主题的键名与 FluentAvaloniaUI 未必一致）
+            
             try
             {
                 var candidates = new[]
@@ -375,7 +375,7 @@ public partial class App : Application
                 File.AppendAllText(path, $"\n[探针失败] {ex.Message}\n");
             }
 
-            // MiSans 字体探针：确认字体集合注册成功、Bold 是真实字重（而非合成加粗）
+            
             try
             {
                 var fam = new FontFamily("avares://ClassNex/Assets/Fonts/#MiSans");
@@ -391,7 +391,7 @@ public partial class App : Application
                     fontLines.Add($"MiSans {label,-6} = {(ok ? $"{gt!.FamilyName} / weight {gt.Weight}" : "未命中（回退系统字体）")}");
                 }
 
-                // 文件级探针：对每个 ttf 单独建 FontFamily（单文件集合），看各自解析出的字重（排查字重错位）
+                
                 foreach (var name in new[] { "MiSans-Regular.ttf", "MiSans-Bold.ttf" })
                 {
                     var fileFamily = new FontFamily($"avares://ClassNex/Assets/Fonts/{name}#MiSans");
@@ -410,16 +410,16 @@ public partial class App : Application
         }
         catch
         {
-            // 自检失败忽略
+            
         }
     }
 #endif
 
 #if DEBUG
-    /// <summary>
-    /// 调试用：把窗口的视觉树直接渲染成 PNG 存到程序目录（不受其它窗口遮挡影响）。
-    /// 用于开发期核对排版（SettingsWindow 常被别的窗口盖住，屏幕截图取不到）。
-    /// </summary>
+    
+    
+    
+    
     private static void SaveWindowShot(Window window, string fileName)
     {
         try
@@ -442,17 +442,17 @@ public partial class App : Application
     }
 #endif
 
-    /// <summary>
-    /// 套用 CI（ClassIsland）配色：把 CI 主色设为 FluentAvalonia 的强调色，
-    /// 使全应用的按钮 / 选中 / 焦点等统一为 CI 色调；并把调色板注册为应用资源供 XAML 使用。
-    /// </summary>
+    
+    
+    
+    
     private static void ApplyCiPalette()
     {
         var theme = FluentTheme;
         if (theme is not null)
         {
-            // 与 CI 完全一致：**不写死强调色**，跟随 Windows 系统强调色
-            // （CI 的 FluentTheme/Styles.axaml 里没有任何硬编码颜色，只用 FluentAvalonia 标准资源键）
+            
+            
             theme.CustomAccentColor = null;
             theme.PreferUserAccentColor = true;
         }
@@ -472,7 +472,7 @@ public partial class App : Application
     private static IClassicDesktopStyleApplicationLifetime? Lifetime =>
         Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
 
-    /// <summary>应用主题：system / light / dark。</summary>
+    
     public static void ApplyTheme(string mode)
     {
         var theme = FluentTheme;
@@ -495,7 +495,7 @@ public partial class App : Application
         }
     }
 
-    // ---------- 窗口管理 ----------
+    
 
     public static void ToggleMainWindow()
     {
@@ -564,10 +564,10 @@ public partial class App : Application
         Lifetime?.Shutdown();
     }
 
-    /// <summary>
-    /// 打开 Windows 的语音设置页（ms-settings:privacy-speech）。
-    /// 整句语音听写需要用户在那里接受语音隐私政策/开启「在线语音识别」，否则 WinRT 识别会报 0x80045509。
-    /// </summary>
+    
+    
+    
+    
     public static void OpenWindowsSpeechSettings()
     {
         try
@@ -580,7 +580,7 @@ public partial class App : Application
         }
     }
 
-    /// <summary>打开 NEX Intelligence 对话框（设置页按钮 / 以后可以挂托盘、快捷键）。</summary>
+    
     public static void OpenNexChat()
     {
         if (Current is not App app)
@@ -597,7 +597,7 @@ public partial class App : Application
         app._nexChatWindow.Activate();
     }
 
-    /// <summary>重启应用（首次启动向导完成、设置页「重启 ClassNEX」、托盘菜单「重启」用）。</summary>
+    
     public static void RestartApplication()    {
         try
         {
@@ -606,25 +606,25 @@ public partial class App : Application
         }
         catch
         {
-            // 忽略重启失败
+            
         }
 
         ExitApp();
     }
 
-    // ---------- 托盘事件 ----------
+    
 
     private Views.TrayMenuWindow? _trayMenu;
 
     private DispatcherTimer? _trayDebounce;
 
-    /// <summary>
-    /// 托盘左键 → 弹出 Fluent 菜单（用户要求：左键点开、不要右键弹菜单）。
-    /// 原生托盘菜单只能由右键触发，所以这里自己画一个无边框菜单窗；再点一次收起。
-    /// </summary>
+    
+    
+    
+    
     private void OnTrayIconClick(object? sender, EventArgs e)
     {
-        // 单击/双击都能打开：单击延迟 300ms 再执行，双击时两次单击会在窗口内合并、只打开一次
+        
         _trayDebounce?.Stop();
         var t = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
         t.Tick += (_, _) =>
@@ -657,8 +657,8 @@ public partial class App : Application
             new Views.TrayMenuWindow.Item("\uE71D", "编辑主界面…", () => OpenSettings("interface")),
             new Views.TrayMenuWindow.Item("\uE713", "应用设置…", () => OpenSettings()),
             Views.TrayMenuWindow.Separator,
-            // 和「编辑档案…」并列：NEX 对话框也是独立窗口，从菜单直接打开；
-            // 图标 = 官方 Fluent sparkle（U+F0F7），字体必须 avares 目录式引用（裸族名命不中内嵌字体）
+            
+            
             new Views.TrayMenuWindow.Item("\uF0F7", "NEX Intelligence…", OpenNexChat,
                 "avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable"),
             Views.TrayMenuWindow.Separator,
@@ -666,16 +666,16 @@ public partial class App : Application
             new Views.TrayMenuWindow.Item("\uE7E8", "退出", ExitApp),
         });
 
-        // ★ 先透明 + 先摆好大概位置，再 Show：
-        //   原来先 Show 后挪位置，窗口会先在默认位置（屏幕左上角）闪一下才跳到光标处
-        //   —— 用户反馈「打开托盘老是屏幕左边跳一下，看不清」。
+        
+        
+        
         var cursor = TryGetCursorPos(out var pt) ? pt : default;
         var hasCursor = cursor != default;
 
         menu.Opacity = 0;
         if (hasCursor)
         {
-            // 粗定位：菜单宽 240、每项约 38，先把它放到光标左下方，避免任何"跳到左上角"的痕迹
+            
             menu.Position = new PixelPoint(
                 Math.Max(0, cursor.X - 120),
                 Math.Max(0, cursor.Y - 320));
@@ -684,7 +684,7 @@ public partial class App : Application
         menu.Show();
         menu.Activate();
 
-        // 布局完成后再精确对齐（此时才知道真实高度），然后淡入
+        
         Dispatcher.UIThread.Post(() =>
         {
             if (hasCursor && menu.IsVisible)
@@ -730,7 +730,7 @@ public partial class App : Application
         }
     }
 
-    /// <summary>重启 / 退出（托盘菜单用；原来是 NativeMenuItem 的事件处理器）。</summary>
+    
     private void RestartApp()
     {
         try
@@ -740,13 +740,13 @@ public partial class App : Application
         }
         catch
         {
-            // 忽略
+            
         }
 
         ExitApp();
     }
 
-    /// <summary>托盘菜单「加载课表…」。</summary>
+    
     private async Task LoadTimetableFromMenuAsync()
     {
         var owner = _mainWindow ?? Lifetime?.MainWindow;

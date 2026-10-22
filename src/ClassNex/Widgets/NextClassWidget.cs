@@ -3,10 +3,10 @@ using Avalonia.Media;
 
 namespace ClassNex.Widgets;
 
-/// <summary>
-/// 当前 / 下节课组件。
-/// 设置项：显示下一节课（CI 无此组件，本项目自定）。
-/// </summary>
+
+
+
+
 public sealed class NextClassWidget : WidgetBase
 {
     private readonly TextBlock _text;
@@ -26,7 +26,7 @@ public sealed class NextClassWidget : WidgetBase
         if (ctx.Today.Current is { } current)
             message = $"正在上 {current.DisplayName} 至 {current.EndText}";
         else if (ctx.Today.Next is { } next)
-            // 组件设置「显示下一节课」关闭后，不在上课时就不显示下节课
+            
             message = Config.ShowNextClass ? $"下节课 {next.DisplayName} {next.StartText}" : "";
         else if (ctx.Today.IsEmpty)
             message = "今天没有课程。";

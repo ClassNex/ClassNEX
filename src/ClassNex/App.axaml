@@ -5,9 +5,7 @@
              x:Class="ClassNex.App"
              RequestedThemeVariant="Default">
 
-    <!-- 全局字体：小米 MiSans。
-         目录式 avares 引用 → FontManager 自动把 Assets/Fonts/ 下的全部 ttf 注册成一个字体集合，
-         "MiSans" 族同时拥有 Regular 与 Bold 两个真字重（不再合成加粗） -->
+    
     <Application.Resources>
         <ResourceDictionary>
             <FontFamily x:Key="AppFontFamily">avares://ClassNex/Assets/Fonts/#MiSans</FontFamily>
@@ -17,31 +15,22 @@
     <Application.Styles>
         <sty:FluentAvaloniaTheme PreferSystemTheme="True" />
 
-        <!-- 所有窗口统一使用 MiSans（TextElement.FontFamily 为继承属性，会下发到全部子控件） -->
+        
         <Style Selector="Window">
             <Setter Property="TextElement.FontFamily" Value="{DynamicResource AppFontFamily}" />
         </Style>
 
-        <!-- 文字渲染：灰度抗锯齿在主界面组件里用 RenderOptions.SetTextRenderingMode 逐个设置
-             （见 WidgetBase.Text；Avalonia 11.3 的 RenderOptions 没有可供 XAML Setter 用的
-              TextRenderingMode 附加属性字段，所以不能写在样式里）。 -->
+        
 
-        <!-- 图标字体：覆盖上面鸿蒙字体的继承。
-             必须只用 Segoe MDL2 Assets（segmdl2.ttf，码位齐全）；
-             Win11 的 Segoe Fluent Icons 删掉了 E51E/E06F/E9E4/EBAC 等旧码位，会显示成空方块。 -->
+        
         <Style Selector="afui|FontIcon">
             <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
         </Style>
     </Application.Styles>
 
-    <!--
-      注意：这里**不覆盖任何颜色资源**。
-      经核实 CI 源码（ClassIsland/XamlThemes/FluentTheme/Styles.axaml），CI 的默认主题
-      完全使用 FluentAvalonia 的标准资源键，没有硬编码色值；强调色跟随 Windows 系统强调色。
-      本应用因此保持一致，不写死颜色。
-    -->
+    
 
-    <!-- 系统托盘图标（左键弹出 Fluent 菜单窗；不再挂 NativeMenu，避免右键弹菜单） -->
+    
     <TrayIcon.Icons>
         <TrayIcons>
             <TrayIcon Icon="/Assets/icon.ico"

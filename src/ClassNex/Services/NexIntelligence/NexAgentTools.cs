@@ -10,16 +10,16 @@ using System.Threading.Tasks;
 
 namespace ClassNex.Services.NexIntelligence;
 
-/// <summary>
-/// NEX Intelligence 能调用的工具。三个权限档位决定放行范围：
-/// 仅可查看 = 只读工具；工作区内修改 = 可改应用数据目录里的文件；完全权限 = 任意路径 + 执行命令。
-/// </summary>
+
+
+
+
 public static class NexAgentTools
 {
-    /// <summary>工作区 = 应用数据目录（课表、设置、日志都在这里）。</summary>
+    
     public static string WorkspaceRoot => SettingsService.DataDirectory;
 
-    /// <summary>命令执行的超时（毫秒）。</summary>
+    
     private const int CommandTimeoutMs = 30_000;
 
     private const int MaxReadBytes = 200_000;
@@ -64,7 +64,7 @@ public static class NexAgentTools
         },
     };
 
-    /// <summary>执行一个工具调用，返回给模型看的文本结果。</summary>
+    
     public static async Task<(string Result, bool Ok)> ExecuteAsync(
         NexPermission permission, string name, string argumentsJson, CancellationToken ct)
     {
@@ -122,7 +122,7 @@ public static class NexAgentTools
         }
     }
 
-    // ---------- 具体工具 ----------
+    
 
     private static string GetInfo()
     {
@@ -238,7 +238,7 @@ public static class NexAgentTools
         }
         catch (OperationCanceledException)
         {
-            try { process.Kill(true); } catch { /* 忽略 */ }
+            try { process.Kill(true); } catch {  }
             return $"命令超过 {CommandTimeoutMs / 1000} 秒未结束，已终止。";
         }
 
@@ -280,7 +280,7 @@ public static class NexAgentTools
         }
         catch (JsonException)
         {
-            // 参数不是合法 JSON：当空参处理
+            
         }
 
         return map;

@@ -3,7 +3,7 @@ using Avalonia.Data.Converters;
 
 namespace ClassNex.Converters;
 
-/// <summary>1:1 移植自 CI（ClassIsland.Core/Converters/RippleEffectTranslationConverter.cs）。</summary>
+
 public class RippleEffectTranslationConverter : IValueConverter
 {
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)

@@ -10,12 +10,12 @@ using System.Threading.Tasks;
 
 namespace ClassNex.Services.NexIntelligence;
 
-/// <summary>模型列表拉取与连通性测试（设置页用）。</summary>
+
 public static class NexModelCatalog
 {
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(60) };
 
-    /// <summary>GET /v1/models，返回模型名列表（已排序）。</summary>
+    
     public static async Task<List<string>> FetchAsync(string baseUrl, string apiKey, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(baseUrl))
@@ -43,7 +43,7 @@ public static class NexModelCatalog
         return list.OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
-    /// <summary>发一条最小对话，验证地址 / 密钥 / 模型三段都通。</summary>
+    
     public static async Task<string> TestAsync(string baseUrl, string apiKey, string model, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(baseUrl))
