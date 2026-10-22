@@ -1,0 +1,11 @@
+﻿  正在确定要还原的项目…
+  所有项目均是最新的，无法还原。
+E:\ClassNex\src\ClassNex\App.axaml(47,14,47,14): Avalonia error AVLN2000: Unable to resolve suitable regular or attached property DoubleClicked on type Avalonia.Controls:Avalonia.Controls.TrayIcon Line 47, position 14. [E:\ClassNex\src\ClassNex\ClassNex.csproj]
+
+生成失败。
+
+E:\ClassNex\src\ClassNex\App.axaml(47,14,47,14): Avalonia error AVLN2000: Unable to resolve suitable regular or attached property DoubleClicked on type Avalonia.Controls:Avalonia.Controls.TrayIcon Line 47, position 14. [E:\ClassNex\src\ClassNex\ClassNex.csproj]
+    0 个警告
+    1 个错误
+
+已用时间 00:00:10.08

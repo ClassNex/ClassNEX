@@ -616,11 +616,27 @@ public partial class App : Application
 
     private Views.TrayMenuWindow? _trayMenu;
 
+    private DispatcherTimer? _trayDebounce;
+
     /// <summary>
     /// 托盘左键 → 弹出 Fluent 菜单（用户要求：左键点开、不要右键弹菜单）。
     /// 原生托盘菜单只能由右键触发，所以这里自己画一个无边框菜单窗；再点一次收起。
     /// </summary>
     private void OnTrayIconClick(object? sender, EventArgs e)
+    {
+        // 单击/双击都能打开：单击延迟 300ms 再执行，双击时两次单击会在窗口内合并、只打开一次
+        _trayDebounce?.Stop();
+        var t = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+        t.Tick += (_, _) =>
+        {
+            t.Stop();
+            OpenTrayMenuOnce();
+        };
+        _trayDebounce = t;
+        t.Start();
+    }
+
+    private void OpenTrayMenuOnce()
     {
         if (_trayMenu is { } openMenu)
         {
