@@ -38,7 +38,7 @@ $env:GH_TITLE = "ClassNEX ${Version}_Alpha"
 
 Write-Host ""
 Write-Host "Uploading..." -ForegroundColor Yellow
-python "$Root\_tools\gh_release.py" $Zip
+python "$Root\tools\gh_release.py" $Zip
 if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: upload failed (exit $LASTEXITCODE)" -ForegroundColor Red; exit $LASTEXITCODE }
 
 Write-Host ""

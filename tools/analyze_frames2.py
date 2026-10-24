@@ -2,7 +2,7 @@
 import glob
 from PIL import Image
 
-FRAMES = sorted(glob.glob(r"E:\ClassNex\_tools\frames2\frame_*.png"))
+FRAMES = sorted(glob.glob(r"E:\ClassNex\tools\frames2\frame_*.png"))
 
 
 def ch(px):

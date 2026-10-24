@@ -20,5 +20,5 @@ def show(path, label):
         print(f"y={y:3d} {line}")
 
 
-show(r"E:\ClassNex\_tools\frames\frame_1_1.3s.png", "录屏帧1")
+show(r"E:\ClassNex\tools\frames\frame_1_1.3s.png", "录屏帧1")
 show(r"E:\ClassNex\_tmp_now.png", "当前屏幕")

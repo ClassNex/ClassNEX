@@ -32,16 +32,21 @@ jobs:
       - name: Publish
         shell: pwsh
         run: |
-          dotnet publish src\ClassNex\ClassNex.csproj -c Release -r win-x64 --self-contained true -p:DebugType=none -o build\publish
-          Remove-Item build\publish\data -Recurse -Force -ErrorAction SilentlyContinue
-          Remove-Item build\publish\Assets\timetable.yaml -Force -ErrorAction SilentlyContinue
+          $ver = $env:GITHUB_REF_NAME -replace '_.*$', ''
+          dotnet publish src\ClassNex\ClassNex.csproj -c Release -r win-x64 --self-contained true -p:DebugType=none -o build\release\app-$ver-0
+          Remove-Item build\release\app-$ver-0\data -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item build\release\app-$ver-0\Assets\timetable.yaml -Force -ErrorAction SilentlyContinue
+          dotnet publish src\ClassNex.Launcher\ClassNex.Launcher.csproj -c Release -r win-x64 -p:PublishSingleFile=true -p:PublishTrimmed=true -p:DebugType=none -o build\launcher
+          Copy-Item build\launcher\ClassNex.exe build\release\ClassNex.exe
+          [System.IO.File]::WriteAllText("$PWD\build\release\PackageType", "folder", (New-Object System.Text.UTF8Encoding($false)))
+          python tools\make_files_json.py build\release $ver 0
 
       - name: Zip
         shell: pwsh
         run: |
           $ver = $env:GITHUB_REF_NAME -replace '_.*$', ''
           $out = "build\ClassNEX-$ver-Alpha-win-x64.zip"
-          Compress-Archive -Path build\publish\* -DestinationPath $out -CompressionLevel Optimal
+          Compress-Archive -Path build\release\* -DestinationPath $out -CompressionLevel Optimal
           "ZIP_PATH=$out" >> $env:GITHUB_ENV
 
       - name: Upload artifact

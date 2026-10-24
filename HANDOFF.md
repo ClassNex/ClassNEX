@@ -50,7 +50,7 @@ $env:CLASSNEX_VERIFY="1"; Start-Process "E:\ClassNex\src\ClassNex\bin\Debug\net1
 
 CI 完整安装包在（**已 gitignore，139MB，不要提交**）：
 ```
-E:\ClassNex\ClassIsland_app_windows_x64_full_folder (2)\
+E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 ```
 
 **主界面参数全在 `data\Settings.json`**，关键值（已全部抄进本项目）：
@@ -141,7 +141,7 @@ E:\ClassNex\ClassIsland_app_windows_x64_full_folder (2)\
   用户 CI 配置里也是 `"MainWindowFontWeight2": 500`；CI 挂在 ZoomBorder 的 `TextElement.FontWeight` 上下发）。
   本项目：`LayoutTransformControl TextElement.FontWeight="Medium"` + `WidgetBase.Text()` 默认字重 Medium
   （当前课名仍是 Bold，与 CI 一致）。这就是「我们的字比 CI 细」的原因。
-- ⚠️ **MiSans 字体已做过二进制修补**（脚本 `_tools\fix_misans_weights.ps1`，重新下载字体后必须重跑）：
+- ⚠️ **MiSans 字体已做过二进制修补**（脚本 `tools\fix_misans_weights.ps1`，重新下载字体后必须重跑）：
   官方 ttf 的 `usWeightClass` 非标准（Regular 330 / Medium 380 / Demibold 450 / Bold 630），
   且 Medium/Demibold 的**族名是独立的**（"MiSans Medium"/"MiSans Demibold"）→ Avalonia 永远匹配不到
   500/600。脚本把 name 表重建成 `MiSans` + `Medium`/`Demibold`、字重改成标准 500/600、并重算校验和。
@@ -311,7 +311,7 @@ pwsh 控制台看中文会乱码（**只是显示问题，值本身是对的**�
 
 ---
 
-## 6. 工具脚本 `_tools\`
+## 6. 工具脚本 `tools\`
 
 
 | 脚本 | 用途 |
@@ -333,26 +333,34 @@ dotnet build src\ClassNex\ClassNex.csproj -c Debug
 ```
 目标：**0 错误 0 警告**（一直是这个标准）。产物在 `bin\Debug\net10.0\`。
 
-### 出测试包（**自包含**，免装运行时，~137MB → zip ~67MB）
+### 出测试包（CI 同款目录结构：版本数据文件夹 + 启动器 + PackageType + files.json）
 ```powershell
-$out = "E:\ClassNex\build\ClassNEX-26w41f-Alpha-win-x64"
+$ver = "26w41f"
+$root = "E:\ClassNex\build\release"
 dotnet publish src\ClassNex\ClassNex.csproj -c Release -r win-x64 --self-contained true `
-  -p:DebugType=none -o $out
-Remove-Item "$out\data" -Recurse -Force          # ⚠️ 必删，否则把本机配置/课表打进去
-Remove-Item "$out\Assets\timetable.yaml" -Force  # ⚠️ 必删：用户要求「新激活不要带测试的课表文件」
-Remove-Item "$out\使用说明.txt" -Force -ErrorAction SilentlyContinue   # 用户不要使用说明
-Compress-Archive -Path "$out\*" -DestinationPath "E:\ClassNex\build\ClassNEX-26w41f-Alpha-win-x64.zip"
+  -p:DebugType=none -o "$root\app-$ver-0"
+Remove-Item "$root\app-$ver-0\data" -Recurse -Force          # ⚠️ 必删，否则把本机配置/课表打进去
+Remove-Item "$root\app-$ver-0\Assets\timetable.yaml" -Force  # ⚠️ 必删：用户要求「新激活不要带测试的课表文件」
+Remove-Item "$root\app-$ver-0\使用说明.txt" -Force -ErrorAction SilentlyContinue
+dotnet publish src\ClassNex.Launcher\ClassNex.Launcher.csproj -c Release -r win-x64 `
+  -p:PublishSingleFile=true -p:PublishTrimmed=true -p:DebugType=none -o "$root\..\launcher"
+Copy-Item "$root\..\launcher\ClassNex.exe" "$root\ClassNex.exe"
+[System.IO.File]::WriteAllText("$root\PackageType", "folder", (New-Object System.Text.UTF8Encoding($false)))
+python tools\make_files_json.py $root $ver 0
+Compress-Archive -Path "$root\*" -DestinationPath "E:\ClassNex\build\ClassNEX-$ver-Alpha-win-x64.zip"
 ```
+- 目录结构照 CI：`app-<版本>-<序号>\`（应用载荷）+ `ClassNex.exe`（启动器）+ `PackageType`（内容 "folder"）+ `files.json`（每文件 SHA512 清单，供增量更新）。
+- 首次启动时应用会在**安装根目录**生成 `data\`（SettingsService.DataDirectory = 载荷目录的 `..\data`），不需要随包携带。
 
 ### 发布到 GitHub Releases（一条命令）
-`_tools\gh_release.py` 会自动：删同名旧 release → 建预发布 → 上传 zip。
+`tools\gh_release.py` 会自动：删同名旧 release → 建预发布 → 上传 zip。
 ```powershell
 git tag -f 26w41f_Alpha ; git push -f origin 26w41f_Alpha
 $cred = "protocol=https`nhost=github.com`n" | git credential fill
 $env:GITHUB_TOKEN = ($cred | Select-String '^password=').Line.Substring(9)
 $env:HTTPS_PROXY="http://127.0.0.1:7890"; $env:HTTP_PROXY=$env:HTTPS_PROXY
 $env:GH_TAG="26w41f_Alpha"; $env:GH_TITLE="ClassNEX 26w41f_Alpha"
-python _tools\gh_release.py "E:\ClassNex\build\ClassNEX-26w41f-Alpha-win-x64.zip"
+python tools\gh_release.py "E:\ClassNex\build\ClassNEX-26w41f-Alpha-win-x64.zip"
 ```
 - 发布说明取自 `RELEASE_NOTES.md`
 - ⚠️ **RELEASE_NOTES.md 只写「这一次」的更新**，不要带上一版（用户明确要求）

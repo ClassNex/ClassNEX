@@ -14,7 +14,7 @@ with io.open(SETTINGS, "w", encoding="utf-8") as f:
 print("TimeLayout 已清空（Times=[]，启动时自动重建）")
 
 # 2. 重新生成示例课表并覆盖 data 副本
-subprocess.run([sys.executable, r"E:\ClassNex\_tools\make_sample_timetable.py"], check=True)
+subprocess.run([sys.executable, r"E:\ClassNex\tools\make_sample_timetable.py"], check=True)
 with io.open(YAML_SRC, "r", encoding="utf-8") as f:
     content = f.read()
 with io.open(YAML_DST, "w", encoding="utf-8", newline="\n") as f:

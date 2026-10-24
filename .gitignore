@@ -21,7 +21,7 @@ obj/
 Thumbs.db
 desktop.ini
 
-# 本地参考资料（ClassIsland 发布包，体积大，不入库）
+# 本地参考资料（ClassIsland 发布包已移到 E:\ci-app，不入库）
 ClassIsland_app_windows_x64_full_folder*/
 ClassIsland_app_windows_x64_full_folder*.zip
 
@@ -35,9 +35,14 @@ _verify.log
 build/
 
 _tmp_*.png
-_tools/frames/
-_tools/frames2/
+_b*.log
+_build*.log
+_casdoor*
+_icons_paths*
+tools/frames/
+tools/frames2/
+tools/frames3/
 
-_tools/*.png
+tools/*.png
 
-_tools/_tmp*
+tools/_tmp*
