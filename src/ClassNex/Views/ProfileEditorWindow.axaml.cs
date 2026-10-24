@@ -571,7 +571,7 @@ public partial class ProfileEditorWindow : AppWindow
             var block = new Border
             {
                 Background = isBreak
-                    ? CiPalette.SurfaceBrush("ControlAltFillColorSecondaryBrush", 0.4)
+                    ? CiPalette.TimeLineBreakBrush()
                     : isSelected ? CiPalette.SelectionBrush() : CiPalette.AccentBrush(),
                 CornerRadius = new CornerRadius(4),
                 Padding = new Thickness(10, 5),

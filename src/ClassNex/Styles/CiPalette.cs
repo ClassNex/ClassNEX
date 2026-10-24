@@ -211,6 +211,14 @@ public static class CiPalette
         return new SolidColorBrush(NeutralDark, fallbackOpacity);
     }
 
+    public static IBrush TimeLineBreakBrush()
+    {
+        if (TryResource("TextFillColorPrimaryBrush", out var brush) && brush is ISolidColorBrush solid)
+            return new SolidColorBrush(solid.Color, 0.45);
+
+        return new SolidColorBrush(NeutralDark, 0.45);
+    }
+
     
 
     
