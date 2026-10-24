@@ -61,14 +61,17 @@ public static class TimetableGridBuilder
         }
 
         
-        var rowTimes = new SortedDictionary<TimeSpan, TimeSpan>(); 
+        var rowTimes = new SortedDictionary<TimeSpan, TimeSpan>();
+        var breakStarts = new HashSet<TimeSpan>();
 
         foreach (var time in AppServices.TimeLayout.Layout.Times)
         {
+            if (!TimeSpan.TryParse(time.Start, out var s) || !TimeSpan.TryParse(time.End, out var e) || e <= s)
+                continue;
+
+            rowTimes.TryAdd(s, e);
             if (time.Kind == ClassTimeKind.Break)
-                continue; 
-            if (TimeSpan.TryParse(time.Start, out var s) && TimeSpan.TryParse(time.End, out var e) && e > s)
-                rowTimes.TryAdd(s, e);
+                breakStarts.Add(s);
         }
 
         foreach (var entry in entries)
@@ -111,11 +114,21 @@ public static class TimetableGridBuilder
             var startText = start.ToString(@"hh\:mm");
             var endText = end.ToString(@"hh\:mm");
 
-            grid.Children.Add(BuildTimeLabel(startText, endText, i + 1));
+            var isBreakRow = breakStarts.Contains(start);
+            grid.Children.Add(BuildTimeLabel(startText, endText, i + 1, isBreakRow));
 
             for (var day = 1; day <= 7; day++)
             {
                 var column = Array.IndexOf(ColumnDays, day) + 1;
+
+                if (isBreakRow)
+                {
+                    var breakCell = BuildBreakCell();
+                    Grid.SetRow(breakCell, i + 1);
+                    Grid.SetColumn(breakCell, column);
+                    grid.Children.Add(breakCell);
+                    continue;
+                }
 
                 var cellCourses = entries
                     .Where(e => e.EnableDay == day
@@ -140,6 +153,24 @@ public static class TimetableGridBuilder
     }
 
     
+    private static Border BuildBreakCell()
+    {
+        return new Border
+        {
+            Background = CiPalette.SurfaceBrush("SolidBackgroundFillColorTertiaryBrush", 0.5),
+            Padding = new Thickness(8, 6),
+            Opacity = 0.75,
+            Child = new TextBlock
+            {
+                Text = "课间",
+                FontSize = 12,
+                Opacity = 0.55,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+            },
+        };
+    }
+
     private static Border BuildHeader(string text, int row, int col)
     {
         var border = new Border

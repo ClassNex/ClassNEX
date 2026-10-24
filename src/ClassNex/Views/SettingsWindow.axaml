@@ -569,9 +569,9 @@
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="12">
-                                        <Slider x:Name="OpacitySlider" Minimum="0.1" Maximum="1" Width="240"
+                                        <Slider x:Name="OpacitySlider" Minimum="0.1" Maximum="1" Width="180"
                                                 TickFrequency="0.05" IsSnapToTickEnabled="True"/>
-                                        <TextBlock x:Name="OpacityValueText" VerticalAlignment="Center" Opacity="0.7"/>
+                                        <TextBlock x:Name="OpacityValueText" Width="46" TextAlignment="Right" VerticalAlignment="Center" Opacity="0.7"/>
                                     </StackPanel>
                                 </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>
@@ -582,9 +582,9 @@
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="12">
-                                        <Slider x:Name="FontScaleSlider" Minimum="0.8" Maximum="1.6" Width="240"
+                                        <Slider x:Name="FontScaleSlider" Minimum="0.8" Maximum="1.6" Width="180"
                                                 TickFrequency="0.05" IsSnapToTickEnabled="True"/>
-                                        <TextBlock x:Name="FontScaleValueText" VerticalAlignment="Center" Opacity="0.7"/>
+                                        <TextBlock x:Name="FontScaleValueText" Width="46" TextAlignment="Right" VerticalAlignment="Center" Opacity="0.7"/>
                                     </StackPanel>
                                 </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>
@@ -596,9 +596,9 @@
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="12">
-                                        <Slider x:Name="MainWindowScaleSlider" Minimum="0.6" Maximum="3.0" Width="240"
+                                        <Slider x:Name="MainWindowScaleSlider" Minimum="0.6" Maximum="3.0" Width="180"
                                                 TickFrequency="0.05" IsSnapToTickEnabled="True"/>
-                                        <TextBlock x:Name="MainWindowScaleValueText" VerticalAlignment="Center" Opacity="0.7"/>
+                                        <TextBlock x:Name="MainWindowScaleValueText" Width="46" TextAlignment="Right" VerticalAlignment="Center" Opacity="0.7"/>
                                     </StackPanel>
                                 </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>
@@ -887,7 +887,7 @@
                 Margin="0,4,0,0"
                 CornerRadius="8" BorderThickness="1"
                 BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                Background="{DynamicResource AcrylicBackgroundFillColorDefaultBrush}">
+                Background="{DynamicResource LayerFillColorDefaultBrush}">
             <ListBox x:Name="SearchResults" BorderThickness="0" Background="Transparent">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
