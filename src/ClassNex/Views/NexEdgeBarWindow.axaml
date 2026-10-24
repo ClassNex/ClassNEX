@@ -14,8 +14,8 @@
     <Border x:Name="Bar"
             CornerRadius="7"
             Background="#5CFFFFFF"
-            BorderThickness="1"
-            BorderBrush="#38FFFFFF"
+            BorderThickness="1.5"
+            BorderBrush="#8CC8C8C8"
             Cursor="Hand">
         <Border.Clip>
             <RectangleGeometry Rect="0,0,14,120"/>
