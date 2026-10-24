@@ -606,8 +606,8 @@ public partial class ProfileEditorWindow : AppWindow
             {
                 Background = isBreak
                     ? CiPalette.TimeLineBreakBrush()
-                    : isSelected ? CiPalette.SelectionBrush() : CiPalette.AccentBrush(),
-                BorderThickness = isSelected ? new Thickness(2) : new Thickness(0),
+                    : CiPalette.AccentBrush(),
+                BorderThickness = isSelected ? new Thickness(1) : new Thickness(0),
                 BorderBrush = CiPalette.FocusStrokeBrush(),
                 CornerRadius = new CornerRadius(4),
                 Padding = new Thickness(10, 5),
@@ -636,8 +636,22 @@ public partial class ProfileEditorWindow : AppWindow
             };
 
             block.PointerPressed += (_, _) => SelectTime(time);
-            Grid.SetColumn(block, 1);
-            row.Children.Add(block);
+            Control timelineVisual = block;
+            if (isSelected)
+            {
+                var ringHost = new Border
+                {
+                    BorderThickness = new Thickness(2),
+                    BorderBrush = CiPalette.FocusStrokeInnerBrush(),
+                    CornerRadius = new CornerRadius(5),
+                    Child = block,
+                };
+                ringHost.PointerPressed += (_, _) => SelectTime(time);
+                timelineVisual = ringHost;
+            }
+
+            Grid.SetColumn(timelineVisual, 1);
+            row.Children.Add(timelineVisual);
 
             TimeAxisPanel.Children.Add(row);
         }

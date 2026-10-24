@@ -235,6 +235,14 @@ public static class CiPalette
         return AccentBrush();
     }
 
+    public static IBrush FocusStrokeInnerBrush()
+    {
+        if (TryResource("FocusStrokeColorInnerBrush", out var brush))
+            return brush;
+
+        return IsDarkTheme() ? Brushes.Black : Brushes.White;
+    }
+
     public static IBrush TimeLineSeparatorBrush()
     {
         var brush = new LinearGradientBrush
