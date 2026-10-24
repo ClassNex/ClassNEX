@@ -35,7 +35,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：时间表编辑逻辑对齐 CI（上课/课间按默认时长 40/10 分钟插入、选中项后插入并做空间检查（无空间前插/缩短）、创建副本、删除后自动选中上一项、新增时间点时长设置、InfoBar 提示）、补齐分割线/行动时间点（含同位置重复检查、绿色/灰色斜纹样式）、选中时间点改 CI 双层焦点描边（不再换块内填充色）、课间块与时间标签文字跟随主题主文字色（修复深色主题下黑字压灰块不可见）、搜索样式收尾
+上次完成：时间表编辑逻辑对齐 CI（上课/课间按默认时长 40/10 分钟插入、选中项后插入并做空间检查（无空间前插/缩短）、创建副本、删除后自动选中上一项、新增时间点时长设置、InfoBar 提示）、补齐分割线/行动时间点（含同位置重复检查、绿色/灰色斜纹样式）、选中时间点改 CI 双层焦点描边（不再换块内填充色）、课间块与时间标签文字跟随主题主文字色（修复深色主题下黑字压灰块不可见）、NEX 导航图标还原 MDL2 E734 星星（与兄弟项同字体同字号，修复偏小偏位）、搜索样式收尾
 改了文件：src/ClassNex/Services/TimeLayoutService.cs、src/ClassNex/Views/ProfileEditorWindow.axaml(.cs)、src/ClassNex/Models/AppSettings.cs、src/ClassNex/Services/EditorSelfTest.cs、src/ClassNex/App.axaml.cs（新增 CLASSNEX_VERIFY_EDITOR_TAB 调试钩子）
 进行中：档案编辑器顶部导航重做（用户要求确认后再做，勿擅动）
 下一步：待用户指定

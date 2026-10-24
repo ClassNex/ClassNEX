@@ -224,8 +224,7 @@
                 
                 <ui:NavigationViewItem Content="NEX Intelligence">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable"
-                                           Glyph="&#xF0F7;" FontSize="18"/>
+                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE734;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="提醒">
