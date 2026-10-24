@@ -198,6 +198,16 @@ public partial class App : Application
                     Dispatcher.UIThread.Post(() => _mainWindow?.EnterEditMode(), DispatcherPriority.Background);
                 }
 
+                if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_EDITOR") == "1")
+                {
+                    DispatcherTimer.RunOnce(() => OpenProfileEditor(0), TimeSpan.FromSeconds(3));
+                }
+
+                if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_TRAY") == "1")
+                {
+                    DispatcherTimer.RunOnce(() => OnTrayIconClick(null, EventArgs.Empty), TimeSpan.FromSeconds(3));
+                }
+
                 
                 var nexProbe = Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_NEX");
                 if (!string.IsNullOrWhiteSpace(nexProbe))

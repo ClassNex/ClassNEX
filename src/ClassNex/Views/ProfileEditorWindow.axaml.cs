@@ -100,24 +100,9 @@ public partial class ProfileEditorWindow : AppWindow
     
     public void SelectTab(int index)
     {
-        if (index < 0 || index > 3)
-            return;
-
-        Tabs.SelectedIndex = index;
-        Tabs.SelectionChanged += OnTabsSelectionChanged;
-        ShowTabPanel(index);
+        if (index >= 0 && index < Tabs.ItemCount)
+            Tabs.SelectedIndex = index;
     }
-
-    private void ShowTabPanel(int index)
-    {
-        TabSchedule.IsVisible = index == 0;
-        TabTimeLayout.IsVisible = index == 1;
-        TabSubjects.IsVisible = index == 2;
-        TabRearrange.IsVisible = index == 3;
-    }
-
-    private void OnTabsSelectionChanged(object? sender, Avalonia.Controls.SelectionChangedEventArgs e)
-        => ShowTabPanel(Tabs.SelectedIndex);
 
     
 

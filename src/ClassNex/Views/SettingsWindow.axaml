@@ -368,7 +368,7 @@
                             <ui:SettingsExpander Header="在课前准备时发出提醒"
                                                  Description="在上课前一段时间发出醒目提醒，提示做好上课准备。">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons" Glyph="&#xE02B;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE02B;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <CheckBox x:Name="PreparingEnabledCheck"/>
@@ -421,7 +421,7 @@
                             <ui:SettingsExpander Header="在上课时发出提醒"
                                                  Description="在上课时发出醒目提醒，提示已经上课。">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons" Glyph="&#xEA2F;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xEA2F;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <CheckBox x:Name="ClassOnEnabledCheck"/>
@@ -439,7 +439,7 @@
                             <ui:SettingsExpander Header="在下课时发出提醒"
                                                  Description="在下课时发出醒目提醒，提示已经下课。">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons" Glyph="&#xE1A1;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE1A1;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <CheckBox x:Name="ClassOffEnabledCheck"/>
@@ -476,7 +476,7 @@
                                                  Description="在您的系统启动时自动运行本应用。">
                                 <ui:SettingsExpander.IconSource>
                                     
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons" Glyph="&#xE342;" FontSize="20"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE342;" FontSize="20"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <Border x:Name="StartupToggleHost"><ToggleSwitch/></Border>
@@ -487,7 +487,7 @@
                                                  Description="允许第三方应用或网页通过 Url 协议 classnex:// 调用本应用的部分功能。">
                                 <ui:SettingsExpander.IconSource>
                                     
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons" Glyph="&#xEAB0;" FontSize="20"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xEAB0;" FontSize="20"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <Border x:Name="UrlProtocolToggleHost"><ToggleSwitch/></Border>
@@ -498,7 +498,7 @@
                                                  Description="设置学期首日，该日期将作为多周轮换课表的计算起点和每周的第一天。">
                                 <ui:SettingsExpander.IconSource>
                                     
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons" Glyph="&#xE304;" FontSize="20"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE304;" FontSize="20"/>
                                 </ui:SettingsExpander.IconSource>
                                 
                                 <ui:SettingsExpander.Footer>
@@ -510,7 +510,7 @@
                                                  Description="鼠标左键点击本应用托盘图标时进行的操作。无论此设置处于何种选项，鼠标右键点击托盘图标总是会打开主菜单。">
                                 <ui:SettingsExpander.IconSource>
                                     
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons" Glyph="&#xE5C1;" FontSize="20"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE5C1;" FontSize="20"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <ComboBox x:Name="TrayBehaviorCombo" HorizontalAlignment="Stretch">
@@ -525,7 +525,7 @@
                                                  Description="启用后，如果应用发生意外崩溃，将自动按照右侧选择的方法处理崩溃，以确保教学不受到影响。如果发生的是不可忽略的异常，应用将自动退出。您可以在日志记录中查看崩溃详情。">
                                 <ui:SettingsExpander.IconSource>
                                     
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons" Glyph="&#xE809;" FontSize="20"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE809;" FontSize="20"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
@@ -551,7 +551,7 @@
 
                             <ui:SettingsExpander Header="主题" Description="跟随系统 / 浅色 / 深色">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons" Glyph="&#xE5CB;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE5CB;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     
@@ -565,7 +565,7 @@
 
                             <ui:SettingsExpander Header="主界面背景不透明度">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons" Glyph="&#xF37D;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xF37D;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="12">
@@ -578,7 +578,7 @@
 
                             <ui:SettingsExpander Header="全局字号缩放">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons" Glyph="&#xF273;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xF273;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="12">
@@ -592,7 +592,7 @@
                             <ui:SettingsExpander Header="主界面缩放"
                                                  Description="对应 CI 的「主界面缩放」（CI 默认 1.9），整体放大主界面">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons" Glyph="&#xF4D1;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xF4D1;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="12">
@@ -786,7 +786,7 @@
                             </ui:SettingsExpander>
                             <ui:SettingsExpander Header="调试菜单">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe Fluent Icons" Glyph="&#xE2C8;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE2C8;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpanderItem x:Name="DebugCloseItem" Content="关闭调试菜单（隐藏本页）" IsClickEnabled="True"/>
                             </ui:SettingsExpander>

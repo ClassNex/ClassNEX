@@ -45,17 +45,10 @@
             </Grid>
         </Border>
 
-        <StackPanel Margin="8" Spacing="10">
-            <ui:SegmentedView x:Name="Tabs" SelectedIndex="0" HorizontalAlignment="Left">
-                <ui:SegmentedItem Content="课表"/>
-                <ui:SegmentedItem Content="时间表"/>
-                <ui:SegmentedItem Content="科目"/>
-                <ui:SegmentedItem Content="调课"/>
-            </ui:SegmentedView>
-            <Grid>
+        <TabControl x:Name="Tabs" Margin="8">
 
             
-                <Grid x:Name="TabSchedule">
+            <TabItem Header="课表">
                 <Grid Margin="12" RowDefinitions="Auto,Auto,*" ColumnDefinitions="*,5,350">
 
                     
@@ -201,10 +194,10 @@
                         </Border>
                     </DockPanel>
                 </Grid>
-                </Grid>
+            </TabItem>
 
             
-                <Grid x:Name="TabTimeLayout" IsVisible="False">
+            <TabItem Header="时间表">
                 <Grid Margin="12" ColumnDefinitions="*,330">
 
                     <DockPanel Grid.Column="0">
@@ -264,10 +257,10 @@
                         </StackPanel>
                     </Border>
                 </Grid>
-                </Grid>
+            </TabItem>
 
             
-                <Grid x:Name="TabSubjects" IsVisible="False">
+            <TabItem Header="科目">
                 <Grid Margin="12" ColumnDefinitions="*,330">
 
                     <DockPanel Grid.Column="0">
@@ -319,10 +312,10 @@
                         </ScrollViewer>
                     </Border>
                 </Grid>
-                </Grid>
+            </TabItem>
 
             
-                <Grid x:Name="TabRearrange" IsVisible="False">
+            <TabItem Header="调课">
                 <StackPanel Margin="16" Spacing="12">
                     <TextBlock Text="调课" FontSize="18" FontWeight="SemiBold"
                                Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
@@ -330,9 +323,8 @@
                                TextWrapping="Wrap"
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                 </StackPanel>
-                </Grid>
+            </TabItem>
 
-            </Grid>
-        </StackPanel>
+        </TabControl>
     </DockPanel>
 </wd:AppWindow>
