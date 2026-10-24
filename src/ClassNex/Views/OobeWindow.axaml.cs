@@ -55,7 +55,6 @@ public partial class OobeWindow : AppWindow
 
         _greetingTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1400) };
         _greetingTimer.Tick += async (_, _) => await NextGreetingAsync();
-        _greetingTimer.Start();
 
 #if DEBUG
         
@@ -69,6 +68,12 @@ public partial class OobeWindow : AppWindow
             if (!AppServices.Settings.IsOobeCompleted)
                 App.ExitApp();
         };
+    }
+
+    protected override void OnOpened(EventArgs e)
+    {
+        base.OnOpened(e);
+        _greetingTimer?.Start();
     }
 
     private void BuildDots()
