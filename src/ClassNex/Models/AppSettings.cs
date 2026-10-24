@@ -54,6 +54,10 @@ public sealed class AppSettings
     
     public LayoutOrientation Orientation { get; set; } = LayoutOrientation.Horizontal;
 
+    public int DefaultOnClassTimePointMinutes { get; set; } = 40;
+
+    public int DefaultBreakingTimePointMinutes { get; set; } = 10;
+
     
     
     public List<WidgetConfig> Widgets { get; set; } = new();

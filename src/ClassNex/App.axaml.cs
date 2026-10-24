@@ -200,7 +200,9 @@ public partial class App : Application
 
                 if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_EDITOR") == "1")
                 {
-                    DispatcherTimer.RunOnce(() => OpenProfileEditor(0), TimeSpan.FromSeconds(3));
+                    var editorTab = Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_EDITOR_TAB");
+                    var tabIndex = int.TryParse(editorTab, out var parsedTab) ? parsedTab : 0;
+                    DispatcherTimer.RunOnce(() => OpenProfileEditor(tabIndex), TimeSpan.FromSeconds(3));
                 }
 
                 if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_TRAY") == "1")

@@ -165,12 +165,16 @@ public partial class ProfileEditorWindow : AppWindow
         };
 
         
-        AddTimeButton.Click += (_, _) => AddTime();
+        AddClassTimeButton.Click += (_, _) => AddTime(ClassTimeKind.Class);
+        AddBreakTimeButton.Click += (_, _) => AddTime(ClassTimeKind.Break);
+        DuplicateTimeButton.Click += (_, _) => DuplicateTime();
         RemoveTimeButton.Click += (_, _) => RemoveTime();
         MoveUpButton.Click += (_, _) => MoveTime(-1);
         MoveDownButton.Click += (_, _) => MoveTime(1);
         ResetTimeButton.Click += (_, _) => ResetTimeLayout();
         SaveTimeButton.Click += (_, _) => SaveTimeEdit();
+        ClassMinutesBox.ValueChanged += (_, _) => SaveDefaultMinutes();
+        BreakMinutesBox.ValueChanged += (_, _) => SaveDefaultMinutes();
 
         
         AddSubjectButton.Click += (_, _) => AddSubject();
@@ -212,6 +216,9 @@ public partial class ProfileEditorWindow : AppWindow
         RefreshNavigation();
 
         _loading = false;
+
+        ClassMinutesBox.Value = AppServices.Settings.DefaultOnClassTimePointMinutes;
+        BreakMinutesBox.Value = AppServices.Settings.DefaultBreakingTimePointMinutes;
 
         RenderTimetable();
     }
@@ -624,21 +631,45 @@ public partial class ProfileEditorWindow : AppWindow
         RefreshTimeline();
     }
 
-    private void AddTime()
+    private void AddTime(ClassTimeKind kind)
     {
-        var time = new ClassTime
+        var added = AppServices.TimeLayout.InsertNext(_selectedTime, kind, out var notice);
+        if (added is null)
         {
-            Name = $"第{AppServices.TimeLayout.Layout.Times.Count(t => t.Kind == ClassTimeKind.Class) + 1}节",
-            Start = "08:00",
-            End = "08:45",
-            Kind = ClassTimeKind.Class,
-        };
+            ShowTimeNotice(notice, true);
+            return;
+        }
 
-        AppServices.TimeLayout.Add(time);
-        _selectedTime = time;
+        _selectedTime = added;
         RefreshTimeline();
-        SelectTime(time);
+        SelectTime(added);
         RenderTimetable();
+
+        if (notice.Length > 0)
+            ShowTimeNotice(notice, false);
+    }
+
+    private void DuplicateTime()
+    {
+        if (_selectedTime is null)
+        {
+            ShowTimeNotice("请先在时间轴上选中一个时间点。", true);
+            return;
+        }
+
+        var copy = AppServices.TimeLayout.Duplicate(_selectedTime, out var notice);
+        if (copy is null)
+        {
+            ShowTimeNotice(notice, true);
+            return;
+        }
+
+        _selectedTime = copy;
+        RefreshTimeline();
+        SelectTime(copy);
+        RenderTimetable();
+
+        ShowTimeNotice(notice.Length > 0 ? notice : "已创建时间点副本。", false);
     }
 
     private void RemoveTime()
@@ -646,10 +677,51 @@ public partial class ProfileEditorWindow : AppWindow
         if (_selectedTime is null)
             return;
 
+        var index = AppServices.TimeLayout.Layout.Times.IndexOf(_selectedTime);
         AppServices.TimeLayout.Remove(_selectedTime);
-        _selectedTime = null;
-        RefreshTimeline();
+
+        if (index > 0)
+        {
+            _selectedTime = AppServices.TimeLayout.Layout.Times[index - 1];
+            SelectTime(_selectedTime);
+        }
+        else
+        {
+            _selectedTime = null;
+            ClearTimeEditor();
+            RefreshTimeline();
+        }
+
         RenderTimetable();
+    }
+
+    private void ShowTimeNotice(string text, bool warning)
+    {
+        TimeInfoBar.Message = text;
+        TimeInfoBar.Severity = warning
+            ? AvaloniaFluentUI.Controls.InfoBarSeverity.Warning
+            : AvaloniaFluentUI.Controls.InfoBarSeverity.Informational;
+        TimeInfoBar.IsOpen = true;
+    }
+
+    private void ClearTimeEditor()
+    {
+        _loading = true;
+        TimeEditorTitle.Text = "时间点";
+        TimeNameBox.Text = "";
+        TimeStartPicker.SelectedTime = null;
+        TimeEndPicker.SelectedTime = null;
+        TimeKindCombo.SelectedIndex = 0;
+        _loading = false;
+    }
+
+    private void SaveDefaultMinutes()
+    {
+        AppServices.Settings.DefaultOnClassTimePointMinutes =
+            (int)Math.Clamp(ClassMinutesBox.Value, 0, 36000);
+        AppServices.Settings.DefaultBreakingTimePointMinutes =
+            (int)Math.Clamp(BreakMinutesBox.Value, 0, 36000);
+        AppServices.SaveSettings();
     }
 
     private void MoveTime(int delta)

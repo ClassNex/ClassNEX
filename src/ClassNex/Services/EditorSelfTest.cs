@@ -113,6 +113,34 @@ public static class EditorSelfTest
                 if (t is not null)
                     AppServices.TimeLayout.Remove(t);
             });
+            Step("TimeLayout.InsertNext(选中项后插课间)", () =>
+            {
+                var layout = AppServices.TimeLayout.Layout.Times;
+                var anchor = layout.FirstOrDefault();
+                if (anchor is null) throw new Exception("时间表为空，无法自检插入");
+                var before = layout.Count;
+                var added = AppServices.TimeLayout.InsertNext(anchor, ClassTimeKind.Break, out var notice);
+                if (added is null) throw new Exception("插入失败：" + notice);
+                if (added.Kind != ClassTimeKind.Break) throw new Exception("插入的不是课间");
+                if (layout.Count != before + 1) throw new Exception("插入后数量不对");
+                var idx = layout.IndexOf(added);
+                var anchorIdx = layout.IndexOf(anchor);
+                var afterAnchor = idx == anchorIdx + 1;
+                var frontInserted = idx == 0 && anchorIdx == 1 && notice.Contains("向前");
+                if (!afterAnchor && !frontInserted)
+                    throw new Exception($"新时间点位置不对（idx={idx}, anchor={anchorIdx}）");
+            });
+            Step("TimeLayout.Duplicate(创建副本)", () =>
+            {
+                var layout = AppServices.TimeLayout.Layout.Times;
+                var anchor = layout.FirstOrDefault();
+                if (anchor is null) throw new Exception("时间表为空，无法自检副本");
+                var before = layout.Count;
+                var copy = AppServices.TimeLayout.Duplicate(anchor, out var notice);
+                if (copy is null) throw new Exception("复制失败：" + notice);
+                if (layout.Count != before + 1) throw new Exception("复制后数量不对");
+                AppServices.TimeLayout.Remove(copy);
+            });
 
             
             Step("AddSubject + RemoveSubject", () =>
