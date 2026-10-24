@@ -84,8 +84,8 @@ jobs:
           ASSET="ClassNEX-${VER}-Alpha-win-x64.zip"
           cp RELEASE_NOTES.md /tmp/notes.md
           if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release edit "$GITHUB_REF_NAME" --title "ClassNEX $GITHUB_REF_NAME" --notes-file /tmp/notes.md --repo "$GITHUB_REPOSITORY"
+            gh release edit "$GITHUB_REF_NAME" --title "ClassNEX $GITHUB_REF_NAME" --notes-file /tmp/notes.md --prerelease --repo "$GITHUB_REPOSITORY"
           else
-            gh release create "$GITHUB_REF_NAME" --title "ClassNEX $GITHUB_REF_NAME" --notes-file /tmp/notes.md --repo "$GITHUB_REPOSITORY"
+            gh release create "$GITHUB_REF_NAME" --title "ClassNEX $GITHUB_REF_NAME" --notes-file /tmp/notes.md --prerelease --repo "$GITHUB_REPOSITORY"
           fi
           gh release upload "$GITHUB_REF_NAME" "$ASSET" --clobber --repo "$GITHUB_REPOSITORY"
