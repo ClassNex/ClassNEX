@@ -9,6 +9,12 @@ on:
 permissions:
   contents: write
 
+env:
+  GIT_AUTHOR_NAME: LingOfficial
+  GIT_AUTHOR_EMAIL: 203777411+LingOfficial@users.noreply.github.com
+  GIT_COMMITTER_NAME: LingOfficial
+  GIT_COMMITTER_EMAIL: 203777411+LingOfficial@users.noreply.github.com
+
 jobs:
   build:
     runs-on: windows-latest
@@ -51,6 +57,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT || github.token }}
+
+      - name: Configure git
+        run: |
+          git config user.name "LingOfficial"
+          git config user.email "203777411+LingOfficial@users.noreply.github.com"
 
       - name: Download artifact
         uses: actions/download-artifact@v4
@@ -60,15 +73,14 @@ jobs:
       - name: Create release
         shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT || github.token }}
         run: |
           VER="${GITHUB_REF_NAME%%_*}"
           ASSET="ClassNEX-${VER}-Alpha-win-x64.zip"
-          NOTES=$(cat RELEASE_NOTES.md)
-          echo "$NOTES" > /tmp/notes.md
-          gh release create "$GITHUB_REF_NAME" "$ASSET" \
-            --title "ClassNEX $GITHUB_REF_NAME" \
-            --notes-file /tmp/notes.md \
-            --repo "$GITHUB_REPOSITORY" || \
-          gh release edit "$GITHUB_REF_NAME" --title "ClassNEX $GITHUB_REF_NAME" --notes-file /tmp/notes.md
+          cp RELEASE_NOTES.md /tmp/notes.md
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" --title "ClassNEX $GITHUB_REF_NAME" --notes-file /tmp/notes.md --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$GITHUB_REF_NAME" --title "ClassNEX $GITHUB_REF_NAME" --notes-file /tmp/notes.md --repo "$GITHUB_REPOSITORY"
+          fi
           gh release upload "$GITHUB_REF_NAME" "$ASSET" --clobber --repo "$GITHUB_REPOSITORY"
