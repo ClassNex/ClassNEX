@@ -167,6 +167,8 @@ public partial class ProfileEditorWindow : AppWindow
         
         AddClassTimeButton.Click += (_, _) => AddTime(ClassTimeKind.Class);
         AddBreakTimeButton.Click += (_, _) => AddTime(ClassTimeKind.Break);
+        AddSeparatorButton.Click += (_, _) => AddTime(ClassTimeKind.Separator);
+        AddActionButton.Click += (_, _) => AddTime(ClassTimeKind.Action);
         DuplicateTimeButton.Click += (_, _) => DuplicateTime();
         RemoveTimeButton.Click += (_, _) => RemoveTime();
         MoveUpButton.Click += (_, _) => MoveTime(-1);
@@ -175,6 +177,13 @@ public partial class ProfileEditorWindow : AppWindow
         SaveTimeButton.Click += (_, _) => SaveTimeEdit();
         ClassMinutesBox.ValueChanged += (_, _) => SaveDefaultMinutes();
         BreakMinutesBox.ValueChanged += (_, _) => SaveDefaultMinutes();
+        TimeKindCombo.SelectionChanged += (_, _) =>
+        {
+            if (_loading) return;
+            var marker = TimeKindCombo.SelectedIndex >= 2;
+            TimeEndPicker.IsEnabled = !marker;
+            TimeNameBox.IsEnabled = !marker;
+        };
 
         
         AddSubjectButton.Click += (_, _) => AddSubject();
@@ -550,6 +559,7 @@ public partial class ProfileEditorWindow : AppWindow
         foreach (var time in times)
         {
             var isBreak = time.Kind == ClassTimeKind.Break;
+            var isMarker = time.Kind is ClassTimeKind.Separator or ClassTimeKind.Action;
             var isSelected = ReferenceEquals(time, _selectedTime);
 
             var row = new Grid { ColumnDefinitions = new ColumnDefinitions("62,*") };
@@ -559,6 +569,7 @@ public partial class ProfileEditorWindow : AppWindow
                 Text = time.Start,
                 FontSize = 12,
                 Opacity = 0.7,
+                Foreground = CiPalette.PrimaryTextBrush(),
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Top,
                 Margin = new Thickness(0, 8, 8, 0),
@@ -566,13 +577,38 @@ public partial class ProfileEditorWindow : AppWindow
             Grid.SetColumn(label, 0);
             row.Children.Add(label);
 
-            var foreground = isBreak ? null : CiPalette.OnAccentBrush();
+            if (isMarker)
+            {
+                var stripHost = new Border
+                {
+                    Height = 6,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    VerticalAlignment = VerticalAlignment.Top,
+                    Margin = new Thickness(0, 10, 0, 0),
+                    CornerRadius = new CornerRadius(3),
+                    Background = time.Kind == ClassTimeKind.Separator
+                        ? CiPalette.TimeLineSeparatorBrush()
+                        : CiPalette.TimeLineActionBrush(),
+                    BorderThickness = isSelected ? new Thickness(2) : new Thickness(0),
+                    BorderBrush = CiPalette.FocusStrokeBrush(),
+                    Cursor = new Cursor(StandardCursorType.Hand),
+                };
+                stripHost.PointerPressed += (_, _) => SelectTime(time);
+                Grid.SetColumn(stripHost, 1);
+                row.Children.Add(stripHost);
+                TimeAxisPanel.Children.Add(row);
+                continue;
+            }
+
+            var foreground = isBreak ? CiPalette.PrimaryTextBrush() : CiPalette.OnAccentBrush();
 
             var block = new Border
             {
                 Background = isBreak
                     ? CiPalette.TimeLineBreakBrush()
                     : isSelected ? CiPalette.SelectionBrush() : CiPalette.AccentBrush(),
+                BorderThickness = isSelected ? new Thickness(2) : new Thickness(0),
+                BorderBrush = CiPalette.FocusStrokeBrush(),
                 CornerRadius = new CornerRadius(4),
                 Padding = new Thickness(10, 5),
                 MinHeight = isBreak ? 26 : 40,
@@ -625,7 +661,16 @@ public partial class ProfileEditorWindow : AppWindow
         TimeNameBox.Text = time.Name;
         TimeStartPicker.SelectedTime = TimeSpan.TryParse(time.Start, out var s) ? s : TimeSpan.Zero;
         TimeEndPicker.SelectedTime = TimeSpan.TryParse(time.End, out var e) ? e : TimeSpan.Zero;
-        TimeKindCombo.SelectedIndex = time.Kind == ClassTimeKind.Break ? 1 : 0;
+        TimeKindCombo.SelectedIndex = time.Kind switch
+        {
+            ClassTimeKind.Break => 1,
+            ClassTimeKind.Separator => 2,
+            ClassTimeKind.Action => 3,
+            _ => 0,
+        };
+        var marker = time.Kind is ClassTimeKind.Separator or ClassTimeKind.Action;
+        TimeEndPicker.IsEnabled = !marker;
+        TimeNameBox.IsEnabled = !marker;
 
         _loading = false;
         RefreshTimeline();
@@ -711,6 +756,8 @@ public partial class ProfileEditorWindow : AppWindow
         TimeNameBox.Text = "";
         TimeStartPicker.SelectedTime = null;
         TimeEndPicker.SelectedTime = null;
+        TimeEndPicker.IsEnabled = true;
+        TimeNameBox.IsEnabled = true;
         TimeKindCombo.SelectedIndex = 0;
         _loading = false;
     }
@@ -741,15 +788,25 @@ public partial class ProfileEditorWindow : AppWindow
 
         var start = TimeStartPicker.SelectedTime ?? TimeSpan.Zero;
         var end = TimeEndPicker.SelectedTime ?? TimeSpan.Zero;
-        if (end <= start)
+        var kind = TimeKindCombo.SelectedIndex switch
+        {
+            1 => ClassTimeKind.Break,
+            2 => ClassTimeKind.Separator,
+            3 => ClassTimeKind.Action,
+            _ => ClassTimeKind.Class,
+        };
+        var marker = kind is ClassTimeKind.Separator or ClassTimeKind.Action;
+        if (!marker && end <= start)
             return;
 
         var updated = new ClassTime
         {
-            Name = string.IsNullOrWhiteSpace(TimeNameBox.Text) ? "时间点" : TimeNameBox.Text!,
+            Name = marker
+                ? kind == ClassTimeKind.Separator ? "分割线" : "行动"
+                : string.IsNullOrWhiteSpace(TimeNameBox.Text) ? "时间点" : TimeNameBox.Text!,
             Start = start.ToString(@"hh\:mm"),
-            End = end.ToString(@"hh\:mm"),
-            Kind = TimeKindCombo.SelectedIndex == 1 ? ClassTimeKind.Break : ClassTimeKind.Class,
+            End = (marker ? start : end).ToString(@"hh\:mm"),
+            Kind = kind,
         };
 
         AppServices.TimeLayout.Update(_selectedTime, updated);

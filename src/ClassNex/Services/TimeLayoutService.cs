@@ -73,12 +73,32 @@ public sealed class TimeLayoutService : ITimeLayoutService
     {
         notice = "";
         var settings = _settings();
-        var duration = TimeSpan.FromMinutes(kind == ClassTimeKind.Class
-            ? settings.DefaultOnClassTimePointMinutes
-            : settings.DefaultBreakingTimePointMinutes);
-        var baseTime = Resolve(after?.End) ?? new TimeSpan(8, 0, 0);
+        var isPeriod = kind is ClassTimeKind.Class or ClassTimeKind.Break;
+        var duration = kind switch
+        {
+            ClassTimeKind.Class => TimeSpan.FromMinutes(settings.DefaultOnClassTimePointMinutes),
+            ClassTimeKind.Break => TimeSpan.FromMinutes(settings.DefaultBreakingTimePointMinutes),
+            _ => TimeSpan.Zero,
+        };
+        var baseTime = Resolve(isPeriod ? after?.End : after?.Start) ?? new TimeSpan(8, 0, 0);
 
-        if (after is not null && Layout.Times.IndexOf(after) is var index && index >= 0)
+        if (kind == ClassTimeKind.Separator
+            && Layout.Times.Any(t => t.Kind == ClassTimeKind.Separator
+                && ClassTime.SameTime(t.Start, Format(baseTime))))
+        {
+            notice = "这里已经存在一条分割线。";
+            return null;
+        }
+
+        if (kind == ClassTimeKind.Action
+            && Layout.Times.Any(t => t.Kind == ClassTimeKind.Action
+                && ClassTime.SameTime(t.Start, Format(baseTime))))
+        {
+            notice = "这里已经存在一个行动。";
+            return null;
+        }
+
+        if (isPeriod && after is not null && Layout.Times.IndexOf(after) is var index && index >= 0)
         {
             var next = index + 1 < Layout.Times.Count ? Layout.Times[index + 1] : null;
             if (next is not null && Resolve(next.Start) is { } nextStart)
@@ -107,9 +127,13 @@ public sealed class TimeLayoutService : ITimeLayoutService
 
         var time = new ClassTime
         {
-            Name = kind == ClassTimeKind.Class
-                ? $"第{Layout.Times.Count(t => t.Kind == ClassTimeKind.Class) + 1}节"
-                : "课间",
+            Name = kind switch
+            {
+                ClassTimeKind.Class => $"第{Layout.Times.Count(t => t.Kind == ClassTimeKind.Class) + 1}节",
+                ClassTimeKind.Break => "课间",
+                ClassTimeKind.Separator => "分割线",
+                _ => "行动",
+            },
             Start = Format(baseTime),
             End = Format(baseTime + duration),
             Kind = kind,
@@ -122,6 +146,22 @@ public sealed class TimeLayoutService : ITimeLayoutService
     public ClassTime? Duplicate(ClassTime source, out string notice)
     {
         notice = "";
+        if (source.Kind == ClassTimeKind.Separator
+            && Layout.Times.Any(t => t.Kind == ClassTimeKind.Separator
+                && ClassTime.SameTime(t.Start, source.Start)))
+        {
+            notice = "这里已经存在一条分割线。";
+            return null;
+        }
+
+        if (source.Kind == ClassTimeKind.Action
+            && Layout.Times.Any(t => t.Kind == ClassTimeKind.Action
+                && ClassTime.SameTime(t.Start, source.Start)))
+        {
+            notice = "这里已经存在一个行动。";
+            return null;
+        }
+
         var start = Resolve(source.Start);
         var end = Resolve(source.End);
         if (start is null || end is null)

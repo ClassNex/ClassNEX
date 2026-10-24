@@ -219,6 +219,54 @@ public static class CiPalette
         return new SolidColorBrush(NeutralDark, 0.45);
     }
 
+    public static IBrush PrimaryTextBrush()
+    {
+        if (TryResource("TextFillColorPrimaryBrush", out var brush))
+            return brush;
+
+        return Brushes.White;
+    }
+
+    public static IBrush FocusStrokeBrush()
+    {
+        if (TryResource("FocusStrokeColorOuterBrush", out var brush))
+            return brush;
+
+        return AccentBrush();
+    }
+
+    public static IBrush TimeLineSeparatorBrush()
+    {
+        var brush = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(20, 0, RelativeUnit.Relative),
+            SpreadMethod = GradientSpreadMethod.Repeat,
+            Transform = new RotateTransform(45),
+        };
+        brush.GradientStops.Add(new GradientStop(Colors.DarkGray, 0));
+        brush.GradientStops.Add(new GradientStop(Colors.DarkGray, 0.5));
+        brush.GradientStops.Add(new GradientStop(Colors.Gray, 0.5));
+        brush.GradientStops.Add(new GradientStop(Colors.Gray, 1));
+        return brush;
+    }
+
+    public static IBrush TimeLineActionBrush()
+    {
+        var brush = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(20, 0, RelativeUnit.Relative),
+            SpreadMethod = GradientSpreadMethod.Repeat,
+            Transform = new RotateTransform(45),
+        };
+        brush.GradientStops.Add(new GradientStop(Colors.Green, 0));
+        brush.GradientStops.Add(new GradientStop(Colors.Green, 0.5));
+        brush.GradientStops.Add(new GradientStop(Colors.LimeGreen, 0.5));
+        brush.GradientStops.Add(new GradientStop(Colors.LimeGreen, 1));
+        return brush;
+    }
+
     
 
     

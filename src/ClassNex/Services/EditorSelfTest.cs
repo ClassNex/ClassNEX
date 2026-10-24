@@ -141,6 +141,31 @@ public static class EditorSelfTest
                 if (layout.Count != before + 1) throw new Exception("复制后数量不对");
                 AppServices.TimeLayout.Remove(copy);
             });
+            Step("TimeLayout.InsertNext(分割线+重复检查)", () =>
+            {
+                var layout = AppServices.TimeLayout.Layout.Times;
+                var anchor = layout.FirstOrDefault();
+                if (anchor is null) throw new Exception("时间表为空，无法自检分割线");
+                var sep = AppServices.TimeLayout.InsertNext(anchor, ClassTimeKind.Separator, out var notice);
+                if (sep is null) throw new Exception("添加分割线失败：" + notice);
+                if (sep.Kind != ClassTimeKind.Separator) throw new Exception("添加的不是分割线");
+                var dup = AppServices.TimeLayout.InsertNext(sep, ClassTimeKind.Separator, out var dupNotice);
+                if (dup is not null) throw new Exception("同一位置重复分割线没有被拦截");
+                if (!dupNotice.Contains("分割线")) throw new Exception("重复提示文案不对：" + dupNotice);
+                AppServices.TimeLayout.Remove(sep);
+            });
+            Step("TimeLayout.InsertNext(行动+重复检查)", () =>
+            {
+                var layout = AppServices.TimeLayout.Layout.Times;
+                var anchor = layout.FirstOrDefault();
+                if (anchor is null) throw new Exception("时间表为空，无法自检行动");
+                var act = AppServices.TimeLayout.InsertNext(anchor, ClassTimeKind.Action, out var notice);
+                if (act is null) throw new Exception("添加行动失败：" + notice);
+                if (!ClassTime.SameTime(act.Start, act.End)) throw new Exception("行动必须是零时长");
+                var dup = AppServices.TimeLayout.InsertNext(act, ClassTimeKind.Action, out var dupNotice);
+                if (dup is not null) throw new Exception("同一位置重复行动没有被拦截");
+                AppServices.TimeLayout.Remove(act);
+            });
 
             
             Step("AddSubject + RemoveSubject", () =>

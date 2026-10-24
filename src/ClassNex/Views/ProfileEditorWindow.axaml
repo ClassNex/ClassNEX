@@ -207,6 +207,8 @@
                             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,10">
                                 <Button x:Name="AddClassTimeButton" Content="上课"/>
                                 <Button x:Name="AddBreakTimeButton" Content="课间"/>
+                                <Button x:Name="AddSeparatorButton" Content="分割线"/>
+                                <Button x:Name="AddActionButton" Content="行动"/>
                                 <Button x:Name="DuplicateTimeButton" Content="创建副本"/>
                                 <Button x:Name="RemoveTimeButton" Content="删除"/>
                                 <Button x:Name="MoveUpButton" Content="上移"/>
@@ -273,6 +275,8 @@
                                     <ComboBox x:Name="TimeKindCombo" HorizontalAlignment="Stretch">
                                         <ComboBoxItem Content="上课"/>
                                         <ComboBoxItem Content="课间"/>
+                                        <ComboBoxItem Content="分割线"/>
+                                        <ComboBoxItem Content="行动"/>
                                     </ComboBox>
                                 </StackPanel>
 

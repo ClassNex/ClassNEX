@@ -5,6 +5,8 @@ public enum ClassTimeKind
 {
     Class = 0,
     Break = 1,
+    Separator = 2,
+    Action = 3,
 }
 
 
