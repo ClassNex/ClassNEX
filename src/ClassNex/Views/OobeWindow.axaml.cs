@@ -11,6 +11,7 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using AvaloniaFluentUI.Windowing;
 using ClassNex.Services;
+using ClassNex.Styles;
 
 namespace ClassNex.Views;
 
@@ -36,6 +37,8 @@ public partial class OobeWindow : AppWindow
     private int _greetingIndex;
     private DispatcherTimer? _greetingTimer;
     private bool _greetingBusy;
+    private DispatcherTimer? _loginPollTimer;
+    private bool _loginPollBusy;
     private readonly List<Avalonia.Controls.Shapes.Ellipse> _dots = new();
 
     public OobeWindow()
@@ -114,6 +117,15 @@ public partial class OobeWindow : AppWindow
         PrivacyLink.Click += async (_, _) => await ShowPrivacyAsync();
         LicenseLink.Click += (_, _) => OpenUrl("https://github.com/ClassNex/ClassNEX/blob/main/LICENSE");
 
+        OobeLoginButton.Click += (_, _) => StartOobeLogin();
+        OobeLogoutButton.Click += (_, _) =>
+        {
+            AccountService.Logout();
+            RefreshOobeAccount();
+        };
+
+        AccountService.Changed += RefreshOobeAccount;
+
         ThemeCombo.SelectionChanged += (_, _) =>
         {
             var mode = ThemeCombo.SelectedIndex switch
@@ -172,7 +184,9 @@ public partial class OobeWindow : AppWindow
             SemesterLabel.Text = "Term start date";
             RunAtStartupCheck.Content = "Start ClassNEX when Windows starts";
             AccountTitle.Text = "Account";
-            AccountBody.Text = "Reserved: account sign-in and sync will be added in a later version.";
+            AccountBody.Text = "After signing in, your avatar, name and email are synced from the account service.";
+            OobeLoginButton.Content = "Sign in / Sign up";
+            OobeLogoutButton.Content = "Sign out";
             MoreTitle.Text = "More settings";
             MoreBody.Text = "Reserved: more options will be added in a later version.";
             FinishTitle.Text = "You're all set";
@@ -198,7 +212,9 @@ public partial class OobeWindow : AppWindow
             SemesterLabel.Text = "开学日期";
             RunAtStartupCheck.Content = "开机时自动启动 ClassNEX";
             AccountTitle.Text = "账户";
-            AccountBody.Text = "此页面预留：后续版本在这里提供账户登录与服务同步。";
+            AccountBody.Text = "登录后，头像、用户名与邮箱会从账户服务同步到本机。";
+            OobeLoginButton.Content = "登录 / 注册 ClassNEX 账号";
+            OobeLogoutButton.Content = "退出登录";
             MoreTitle.Text = "更多设置";
             MoreBody.Text = "此页面预留：后续版本继续补充。";
             FinishTitle.Text = "一切就绪";
@@ -210,6 +226,117 @@ public partial class OobeWindow : AppWindow
                 PageCount - 1 => "完成",
                 _ => "继续",
             };
+        }
+    }
+
+    private async void StartOobeLogin()
+    {
+        try
+        {
+            var loginUrl = AccountService.BuildLoginUrl();
+            OobeLoginStatus.Text = _isEnglish
+                ? "A browser window has been opened for you to finish signing in."
+                : "已打开浏览器，请在浏览器中完成登录。";
+            OobeLoginButton.IsEnabled = false;
+
+            OpenUrl(loginUrl);
+
+            _loginPollTimer?.Stop();
+            _loginPollTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(1),
+            };
+            _loginPollTimer.Tick += async (_, _) => await PollOobeLoginAsync();
+            _loginPollTimer.Start();
+        }
+        catch (Exception ex)
+        {
+            OobeLoginStatus.Text = (_isEnglish ? "Could not reach the account service: " : "无法连接账户服务：") + ex.Message;
+            OobeLoginButton.IsEnabled = true;
+        }
+    }
+
+    private async Task PollOobeLoginAsync()
+    {
+        if (_loginPollBusy)
+            return;
+
+        _loginPollBusy = true;
+        try
+        {
+            if (!AccountService.TryTakeCode(out var code) || code is null)
+                return;
+
+            var done = await AccountService.CompleteLoginAsync(code);
+            if (done)
+            {
+                _loginPollTimer?.Stop();
+                RefreshOobeAccount();
+                OobeLoginStatus.Text = _isEnglish ? "Signed in. Your profile has been synced." : "登录成功，账号信息已同步。";
+                OobeLoginButton.IsEnabled = false;
+                return;
+            }
+
+            OobeLoginStatus.Text = _isEnglish
+                ? "The browser returned the sign-in result, but syncing the profile failed. Please try again."
+                : "浏览器已返回登录结果，但同步登录信息失败，请重试。";
+            _loginPollTimer?.Stop();
+            OobeLoginButton.IsEnabled = true;
+        }
+        catch (Exception ex)
+        {
+            OobeLoginStatus.Text = (_isEnglish ? "Sign-in error: " : "登录出错：") + ex.Message;
+        }
+        finally
+        {
+            _loginPollBusy = false;
+        }
+    }
+
+    private void RefreshOobeAccount()
+    {
+        var profile = AccountService.Current;
+        var loggedIn = profile is not null;
+
+        OobeAccountCard.IsVisible = loggedIn;
+        OobeLogoutButton.IsVisible = loggedIn;
+        OobeLoginButton.IsEnabled = !loggedIn && !AccountService.FlowActive;
+
+        if (!loggedIn)
+            return;
+
+        OobeAccountName.Text = profile!.DisplayName;
+        OobeAccountEmail.Text = profile.Email;
+
+        try
+        {
+            Avalonia.Media.Imaging.Bitmap? bitmap = null;
+            if (AccountService.AvatarImagePath is { } local)
+            {
+                using var stream = File.OpenRead(local);
+                bitmap = new Avalonia.Media.Imaging.Bitmap(stream);
+            }
+
+            if (bitmap is null)
+            {
+                using var stream = Avalonia.Platform.AssetLoader.Open(
+                    new Uri("avares://ClassNex/Assets/avatar.png"));
+                bitmap = new Avalonia.Media.Imaging.Bitmap(stream);
+            }
+
+            OobeAvatar.Background = new Avalonia.Media.ImageBrush(bitmap)
+            {
+                Stretch = Avalonia.Media.Stretch.UniformToFill,
+                AlignmentX = Avalonia.Media.AlignmentX.Center,
+                AlignmentY = Avalonia.Media.AlignmentY.Center,
+            };
+
+            if (CiPalette.TryResource("AccentFillColorDefaultBrush", out var brush) &&
+                brush is Avalonia.Media.ISolidColorBrush solid)
+                OobeAvatar.BorderBrush = new Avalonia.Media.SolidColorBrush(solid.Color);
+        }
+        catch
+        {
         }
     }
 

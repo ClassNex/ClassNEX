@@ -132,7 +132,24 @@
                         HorizontalAlignment="Left" VerticalAlignment="Center">
                 <TextBlock x:Name="AccountTitle" Classes="OobeTitle" Text="账户"/>
                 <TextBlock x:Name="AccountBody" Classes="OobeBody" Opacity="0.8"
-                           Text="此页面预留：后续版本在这里提供账户登录与服务同步。"/>
+                           Text="登录后，头像、用户名与邮箱会从账户服务同步到本机。"/>
+                <Button x:Name="OobeLoginButton" Content="登录 / 注册 ClassNEX 账号" Classes="Primary"
+                        MinWidth="220" HorizontalAlignment="Left"/>
+                <TextBlock x:Name="OobeLoginStatus" FontSize="13" TextWrapping="Wrap" MaxWidth="560"
+                           Opacity="0.85"/>
+                <Border x:Name="OobeAccountCard" IsVisible="False" CornerRadius="8" Padding="14"
+                        BorderThickness="1" MaxWidth="420"
+                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                        Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <Border x:Name="OobeAvatar" Width="48" Height="48" CornerRadius="24" BorderThickness="3"/>
+                        <StackPanel VerticalAlignment="Center" Spacing="2">
+                            <TextBlock x:Name="OobeAccountName" FontSize="16" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="OobeAccountEmail" FontSize="12" Opacity="0.7"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+                <Button x:Name="OobeLogoutButton" Content="退出登录" IsVisible="False" HorizontalAlignment="Left"/>
             </StackPanel>
 
             

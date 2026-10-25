@@ -81,6 +81,10 @@ public sealed class AppSettings
     
     public string Email { get; set; } = "Lingofficial0423@gamil";
 
+    public string AccountEndpoint { get; set; } = "http://124.221.160.188:8000";
+
+    public string AccountClientId { get; set; } = "fa7664d772fac4b5097ce15c";
+
     
     
     public bool AllowNotification { get; set; } = true;

@@ -81,6 +81,8 @@ public partial class SettingsWindow : AppWindow
         InitShell();
         WireEvents();
         LoadFromSettings();
+        AccountService.Changed += () =>
+            Dispatcher.UIThread.Post(RefreshAccountName, DispatcherPriority.Background);
 
         
         
@@ -244,8 +246,9 @@ public partial class SettingsWindow : AppWindow
     
     private void RefreshAccountName()
     {
-        var name = AppServices.Settings.UserName;
-        var email = AppServices.Settings.Email;
+        var profile = AccountService.Current;
+        var name = profile?.DisplayName ?? AppServices.Settings.UserName;
+        var email = profile?.Email ?? AppServices.Settings.Email;
         var displayName = string.IsNullOrWhiteSpace(name) ? "未设置用户名" : name.Trim();
         var displayEmail = string.IsNullOrWhiteSpace(email) ? "未设置邮箱" : email.Trim();
 
@@ -253,6 +256,7 @@ public partial class SettingsWindow : AppWindow
         AccountEmailText.Text = displayEmail;
         AccountPageNameText.Text = displayName;
         AccountPageEmailText.Text = displayEmail;
+        AccountLogoutButton.IsEnabled = profile is not null;
 
         
         if (CiPalette.TryResource("AccentFillColorDefaultBrush", out var accentBrush) &&
@@ -263,6 +267,17 @@ public partial class SettingsWindow : AppWindow
         }
 
         RefreshAvatarImages();
+    }
+
+    private void OnAccountLogin(object? sender, RoutedEventArgs e)
+    {
+        App.OpenLoginWindow();
+    }
+
+    private void OnAccountLogout(object? sender, RoutedEventArgs e)
+    {
+        AccountService.Logout();
+        RefreshAccountName();
     }
 
     
@@ -353,7 +368,13 @@ public partial class SettingsWindow : AppWindow
         try
         {
             Avalonia.Media.Imaging.Bitmap bitmap;
-            if (System.IO.File.Exists(CustomAvatarPath))
+            if (AccountService.AvatarImagePath is { } accountAvatar &&
+                System.IO.File.Exists(accountAvatar))
+            {
+                using var stream = System.IO.File.OpenRead(accountAvatar);
+                bitmap = new Avalonia.Media.Imaging.Bitmap(stream);
+            }
+            else if (System.IO.File.Exists(CustomAvatarPath))
             {
                 using var stream = System.IO.File.OpenRead(CustomAvatarPath);
                 bitmap = new Avalonia.Media.Imaging.Bitmap(stream);

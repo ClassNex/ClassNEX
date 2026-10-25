@@ -873,6 +873,19 @@
                                     <TextBox x:Name="EmailBox" Width="300" Watermark="输入邮箱"/>
                                 </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>
+
+                            <ui:SettingsExpander Header="账户服务"
+                                                 Description="登录后头像、用户名与邮箱自动同步，在浏览器中完成登录">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE8D4;"/>
+                                </ui:SettingsExpander.IconSource>
+                                <ui:SettingsExpander.Footer>
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <Button x:Name="AccountLoginButton" Content="登录…" Click="OnAccountLogin"/>
+                                        <Button x:Name="AccountLogoutButton" Content="退出登录" Click="OnAccountLogout"/>
+                                    </StackPanel>
+                                </ui:SettingsExpander.Footer>
+                            </ui:SettingsExpander>
                         </StackPanel>
 
                     </StackPanel>

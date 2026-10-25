@@ -1,0 +1,83 @@
+<wd:AppWindow xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ui="using:AvaloniaFluentUI.Controls"
+        xmlns:wd="using:AvaloniaFluentUI.Windowing"
+        mc:Ignorable="d" d:DesignWidth="460" d:DesignHeight="620"
+        x:Class="ClassNex.Views.LoginWindow"
+        Title="登录 ClassNEX"
+        Icon="/Assets/icon.ico"
+        TitleBarHeight="48"
+        IsTitleBarContentVisible="False"
+        Width="460" Height="620"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen">
+
+    <StackPanel Margin="36,28,36,28" Spacing="18">
+
+        <StackPanel Spacing="8">
+            <TextBlock Text="登录 ClassNEX 账号" FontSize="22" FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            <TextBlock Text="登录后，头像、用户名与邮箱会从账户服务同步到本机。"
+                       TextWrapping="Wrap" Opacity="0.75"/>
+        </StackPanel>
+
+        <StackPanel x:Name="StateIdle" Spacing="12">
+            <Button x:Name="StartLoginButton" Content="使用浏览器登录" Classes="Primary"
+                    HorizontalAlignment="Left" MinWidth="160"/>
+            <TextBlock Text="点击后会在浏览器中打开登录页面，全程不需要在应用里输入密码。"
+                       FontSize="12" Opacity="0.65" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <StackPanel x:Name="StateFlow" IsVisible="False" Spacing="12">
+            <TextBlock x:Name="FlowStatusText" FontSize="13" TextWrapping="Wrap" Opacity="0.85"
+                       Text="已打开浏览器，请在浏览器中完成登录与授权。"/>
+            <StackPanel Orientation="Horizontal" Spacing="10">
+                <Button x:Name="ReopenBrowserButton" Content="重新打开浏览器" HorizontalAlignment="Left"/>
+                <Button x:Name="CancelFlowButton" Content="取消登录" HorizontalAlignment="Left"/>
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel x:Name="StateDone" IsVisible="False" Spacing="12">
+            <Border CornerRadius="8" Padding="20" BorderThickness="1"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
+                <StackPanel Spacing="14">
+                    <StackPanel Orientation="Horizontal" Spacing="16">
+                        <Border x:Name="DoneAvatar" Width="64" Height="64" CornerRadius="32"
+                                BorderThickness="3"/>
+                        <StackPanel VerticalAlignment="Center" Spacing="4">
+                            <TextBlock x:Name="DoneNameText" FontSize="18" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="DoneEmailText" FontSize="13" Opacity="0.7"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <TextBlock Text="登录成功，账号信息已同步到本机。"
+                               FontSize="13" Opacity="0.8" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+            <Button x:Name="FinishButton" Content="完成" Classes="Primary"
+                    HorizontalAlignment="Left" MinWidth="120"/>
+        </StackPanel>
+
+        <StackPanel x:Name="StateLoggedIn" IsVisible="False" Spacing="12">
+            <Border CornerRadius="8" Padding="20" BorderThickness="1"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
+                <StackPanel Orientation="Horizontal" Spacing="16">
+                    <Border x:Name="CurrentAvatar" Width="64" Height="64" CornerRadius="32"
+                            BorderThickness="3"/>
+                    <StackPanel VerticalAlignment="Center" Spacing="4">
+                        <TextBlock x:Name="CurrentNameText" FontSize="18" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="CurrentEmailText" FontSize="13" Opacity="0.7"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+            <StackPanel Orientation="Horizontal" Spacing="10">
+                <Button x:Name="LogoutButton" Content="退出登录" HorizontalAlignment="Left"/>
+                <Button x:Name="CloseButton" Content="关闭" HorizontalAlignment="Left"/>
+            </StackPanel>
+        </StackPanel>
+
+    </StackPanel>
+</wd:AppWindow>

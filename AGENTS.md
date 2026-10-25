@@ -35,7 +35,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：发布包结构照 CI 重构（新增 src/ClassNex.Launcher 启动器 + tools/make_files_json.py 清单生成器 + GitHub Actions 打包新流程，本地演练通过：启动器拉起 app-版本-0 载荷、首启生成根目录 data）；仓库整理（_tools 改名 tools、根目录日志与 _casdoor_dbpass.txt 等杂项移除、录屏帧移除、CI 参考包移到 E:\ci-app、HANDOFF/README 同步）；OOBE 问候语轮换改到窗口打开后才启动（首屏「你好」可见再开始多语言切换）；发布 26w43b_Alpha（版本号与发布说明按模板，GitHub Actions 自动打包上传）；打包问题修复（启动器补图标、改 GUI 子系统不再弹命令行、双 exe manifest 显式 asInvoker + supportedOS 消除 UAC，26w43b 已重打并覆盖附件）；账户系统基建：服务器 124.221.160.188（Debian 12，宝塔共存）Docker 部署 Casdoor + MariaDB（内部网络），Casdoor 端口 8000 健康运行，已建 ClassNEX 组织与应用 app-classnex（device_code + authorization_code + client_credentials，JWT，回调 http://localhost:17171/callback）
+上次完成：发布包结构照 CI 重构（新增 src/ClassNex.Launcher 启动器 + tools/make_files_json.py 清单生成器 + GitHub Actions 打包新流程，本地演练通过：启动器拉起 app-版本-0 载荷、首启生成根目录 data）；仓库整理（_tools 改名 tools、根目录日志与 _casdoor_dbpass.txt 等杂项移除、录屏帧移除、CI 参考包移到 E:\ci-app、HANDOFF/README 同步）；OOBE 问候语轮换改到窗口打开后才启动（首屏「你好」可见再开始多语言切换）；发布 26w43b_Alpha（版本号与发布说明按模板，GitHub Actions 自动打包上传）；打包问题修复（启动器补图标、改 GUI 子系统不再弹命令行、双 exe manifest 显式 asInvoker + supportedOS 消除 UAC，26w43b 已重打并覆盖附件）；账户系统：服务器 124.221.160.188（Debian 12，宝塔共存）Docker 部署 Casdoor + MariaDB（内部网络），Casdoor 端口 8000，组织 ClassNEX，应用 app-classnex（authorization_code 公共客户端，JWT，回调 http://localhost:17171/callback）；应用内登录已接通（LoginWindow + OOBE 账户页登录入口 + 设置账户页登录/退出，授权码+本地回环回调，头像/用户名/邮箱从 Casdoor userinfo 同步并缓存本地），注意设备流 120 秒硬编码有效期不可用于桌面端
 改了文件：src/ClassNex.Launcher/*（新增）、tools/make_files_json.py（新增）、.github/workflows/build-release.yml、ClassNex.sln、.gitignore、HANDOFF.md、README.md、AGENTS.md
 进行中：档案编辑器顶部导航重做（用户要求确认后再做，勿擅动）
 下一步：待用户指定

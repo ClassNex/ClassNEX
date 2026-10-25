@@ -18,6 +18,7 @@ public partial class App : Application
     private MainWindow? _mainWindow;
     private SettingsWindow? _settingsWindow;
     private ProfileEditorWindow? _profileEditor;
+    private LoginWindow? _loginWindow;
     private Views.TopmostEffectWindow? _effectWindow;
     private Views.OobeWindow? _oobeWindow;
     private Views.NexChatWindow? _nexChatWindow;
@@ -208,6 +209,11 @@ public partial class App : Application
                 if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_TRAY") == "1")
                 {
                     DispatcherTimer.RunOnce(() => OnTrayIconClick(null, EventArgs.Empty), TimeSpan.FromSeconds(3));
+                }
+
+                if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_LOGIN") == "1")
+                {
+                    DispatcherTimer.RunOnce(OpenLoginWindow, TimeSpan.FromSeconds(3));
                 }
 
                 
@@ -566,6 +572,22 @@ public partial class App : Application
         app._profileEditor.Closed += (_, _) => app._profileEditor = null;
         app._profileEditor.SelectTab(tabIndex);
         app._profileEditor.Show();
+    }
+
+    public static void OpenLoginWindow()
+    {
+        if (Current is not App app)
+            return;
+
+        if (app._loginWindow is { IsVisible: true } existing)
+        {
+            existing.Activate();
+            return;
+        }
+
+        app._loginWindow = new LoginWindow();
+        app._loginWindow.Closed += (_, _) => app._loginWindow = null;
+        app._loginWindow.Show();
     }
 
     public static void ExitApp()

@@ -37,6 +37,7 @@ public static class AppServices
     {
         SettingsService.EnsureDataDirectory();
         Settings = SettingsService.Load();
+        AccountService.Load();
 
         if (Settings.Widgets.Count == 0)
             Settings.Widgets = AppSettings.CreateDefaultWidgets();
