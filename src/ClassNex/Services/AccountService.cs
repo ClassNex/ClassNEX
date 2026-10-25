@@ -1,4 +1,3 @@
-using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -8,11 +7,8 @@ namespace ClassNex.Services;
 
 public static class AccountService
 {
-    private const string RedirectUri = "http://localhost:17171/callback";
-
-    private static HttpListener? _listener;
-    private static string _state = "";
-    private static string? _receivedCode;
+    private const string OrganizationName = "ClassNEX";
+    private const string ApplicationName = "app-classnex";
 
     public static AccountProfile? Current { get; private set; }
 
@@ -51,73 +47,105 @@ public static class AccountService
         }
     }
 
-    public static bool FlowActive => _listener is { IsListening: true };
-
     public static string? AvatarImagePath =>
         File.Exists(AvatarPath) ? AvatarPath : null;
 
-    public static void CancelLogin()
+    public static async Task<(bool Ok, string Message)> SignInAsync(string account, string password)
     {
-        _receivedCode = null;
-        StopListener();
-    }
-
-    public static string BuildLoginUrl()
-    {
-        var settings = AppServices.Settings;
-        var endpoint = settings.AccountEndpoint.TrimEnd('/');
-        _state = Guid.NewGuid().ToString("N");
-        _receivedCode = null;
-        StartListener();
-
-        return $"{endpoint}/login/oauth/authorize" +
-               $"?client_id={Uri.EscapeDataString(settings.AccountClientId)}" +
-               "&response_type=code" +
-               "&scope=openid%20profile%20email" +
-               $"&state={_state}" +
-               "&prompt=login" +
-               $"&redirect_uri={Uri.EscapeDataString(RedirectUri)}";
-    }
-
-    public static bool TryTakeCode(out string? code)
-    {
-        code = _receivedCode;
-        _receivedCode = null;
-        return code is not null;
-    }
-
-    public static async Task<bool> CompleteLoginAsync(string code)
-    {
-        var settings = AppServices.Settings;
-        var endpoint = settings.AccountEndpoint.TrimEnd('/');
-        var url = $"{endpoint}/api/login/oauth/access_token";
-
-        var form = new FormUrlEncodedContent(new Dictionary<string, string>
+        try
         {
-            ["grant_type"] = "authorization_code",
-            ["client_id"] = settings.AccountClientId,
-            ["code"] = code,
-            ["redirect_uri"] = RedirectUri,
-        });
+            var endpoint = AppServices.Settings.AccountEndpoint.TrimEnd('/');
+            var form = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["grant_type"] = "password",
+                ["client_id"] = AppServices.Settings.AccountClientId,
+                ["username"] = account.Trim(),
+                ["password"] = password,
+                ["scope"] = "openid profile email",
+            });
 
-        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
-        using var response = await http.PostAsync(url, form);
-        var text = await response.Content.ReadAsStringAsync();
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
+            using var response = await http.PostAsync($"{endpoint}/api/login/oauth/access_token", form);
+            var text = await response.Content.ReadAsStringAsync();
 
-        using var doc = JsonDocument.Parse(text);
-        var root = doc.RootElement;
-        if (!root.TryGetProperty("access_token", out var accessToken) ||
-            accessToken.GetString() is not { Length: > 0 } token)
-            return false;
+            using var doc = JsonDocument.Parse(text);
+            var root = doc.RootElement;
 
-        var profile = await FetchProfileAsync(token);
-        if (profile is null)
-            return false;
+            if (root.TryGetProperty("access_token", out var accessToken) &&
+                accessToken.GetString() is { Length: > 0 } token)
+            {
+                var profile = await FetchProfileAsync(token);
+                if (profile is null)
+                    return (false, "获取用户信息失败，请重试");
 
-        StopListener();
-        Current = profile;
-        Save();
-        return true;
+                Current = profile;
+                Save();
+                return (true, "");
+            }
+
+            var message = root.TryGetProperty("error_description", out var description) &&
+                          description.GetString() is { Length: > 0 } desc
+                ? desc
+                : "用户名或密码错误";
+            return (false, message);
+        }
+        catch (Exception ex)
+        {
+            return (false, "网络错误：" + ex.Message);
+        }
+    }
+
+    public static async Task<(bool Ok, string Message)> SendSignupCodeAsync(string email)
+    {
+        try
+        {
+            var endpoint = AppServices.Settings.AccountEndpoint.TrimEnd('/');
+            var form = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["dest"] = email.Trim(),
+                ["type"] = "email",
+                ["applicationId"] = $"admin/{ApplicationName}",
+                ["method"] = "signup",
+                ["captchaType"] = "none",
+            });
+
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
+            using var response = await http.PostAsync($"{endpoint}/api/send-verification-code", form);
+            return await ReadResultAsync(response);
+        }
+        catch (Exception ex)
+        {
+            return (false, "网络错误：" + ex.Message);
+        }
+    }
+
+    public static async Task<(bool Ok, string Message)> SignUpAsync(
+        string username, string displayName, string email, string password, string code)
+    {
+        try
+        {
+            var endpoint = AppServices.Settings.AccountEndpoint.TrimEnd('/');
+            var body = JsonSerializer.Serialize(new Dictionary<string, object>
+            {
+                ["organization"] = OrganizationName,
+                ["application"] = ApplicationName,
+                ["username"] = username.Trim(),
+                ["name"] = displayName.Trim(),
+                ["email"] = email.Trim(),
+                ["password"] = password,
+                ["emailCode"] = code.Trim(),
+                ["agreement"] = true,
+            }, JsonOptions);
+
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
+            using var content = new StringContent(body, Encoding.UTF8, "application/json");
+            using var response = await http.PostAsync($"{endpoint}/api/signup", content);
+            return await ReadResultAsync(response);
+        }
+        catch (Exception ex)
+        {
+            return (false, "网络错误：" + ex.Message);
+        }
     }
 
     public static async Task<string?> RefreshAvatarAsync()
@@ -130,7 +158,6 @@ public static class AccountService
 
     public static void Logout()
     {
-        StopListener();
         Current = null;
 
         if (File.Exists(FilePath))
@@ -141,91 +168,34 @@ public static class AccountService
         Changed?.Invoke();
     }
 
-    private static void StartListener()
+    private static async Task<(bool Ok, string Message)> ReadResultAsync(HttpResponseMessage response)
     {
-        StopListener();
-
-        var listener = new HttpListener();
-        listener.Prefixes.Add("http://localhost:17171/callback/");
-        listener.Start();
-        _listener = listener;
-        _ = Task.Run(() => ListenLoopAsync(listener));
-    }
-
-    private static void StopListener()
-    {
+        var text = await response.Content.ReadAsStringAsync();
         try
         {
-            _listener?.Close();
+            using var doc = JsonDocument.Parse(text);
+            var root = doc.RootElement;
+
+            var status = root.TryGetProperty("status", out var statusElement)
+                ? statusElement.GetString() ?? ""
+                : "";
+            var message = root.TryGetProperty("msg", out var msgElement)
+                ? msgElement.GetString() ?? ""
+                : "";
+
+            if (status == "ok")
+                return (true, "");
+            return (false, string.IsNullOrWhiteSpace(message) ? "操作失败" : message);
         }
         catch
         {
-        }
-
-        _listener = null;
-    }
-
-    private static async Task ListenLoopAsync(HttpListener listener)
-    {
-        try
-        {
-            while (listener.IsListening)
-            {
-                var context = await listener.GetContextAsync();
-                _ = Task.Run(() => HandleCallback(listener, context));
-            }
-        }
-        catch
-        {
-        }
-    }
-
-    private static void HandleCallback(HttpListener listener, HttpListenerContext context)
-    {
-        try
-        {
-            var query = context.Request.Url?.Query.TrimStart('?') ?? "";
-            var parts = query.Split('&', StringSplitOptions.RemoveEmptyEntries)
-                .Select(p => p.Split('=', 2))
-                .Where(p => p.Length == 2)
-                .ToDictionary(p => Uri.UnescapeDataString(p[0]), p => Uri.UnescapeDataString(p[1]));
-
-            var state = parts.GetValueOrDefault("state") ?? "";
-            var code = parts.GetValueOrDefault("code") ?? "";
-
-            var ok = state == _state && code.Length > 0;
-            var html = ok
-                ? "<html><head><meta charset=\"utf-8\"><title>ClassNEX</title></head><body style=\"font-family:sans-serif;text-align:center;padding-top:80px\"><h2>登录成功</h2><p>可以关闭这个页面，回到 ClassNEX。</p></body></html>"
-                : "<html><head><meta charset=\"utf-8\"><title>ClassNEX</title></head><body style=\"font-family:sans-serif;text-align:center;padding-top:80px\"><h2>登录未完成</h2><p>请回到 ClassNEX 重试。</p></body></html>";
-
-            var bytes = Encoding.UTF8.GetBytes(html);
-            context.Response.StatusCode = 200;
-            context.Response.ContentType = "text/html; charset=utf-8";
-            context.Response.ContentLength64 = bytes.Length;
-            context.Response.OutputStream.Write(bytes, 0, bytes.Length);
-            context.Response.Close();
-
-            if (ok)
-            {
-                _receivedCode = code;
-                try
-                {
-                    listener.Close();
-                }
-                catch
-                {
-                }
-            }
-        }
-        catch
-        {
+            return (false, "服务器返回了无法识别的响应");
         }
     }
 
     private static async Task<AccountProfile?> FetchProfileAsync(string accessToken)
     {
-        var settings = AppServices.Settings;
-        var endpoint = settings.AccountEndpoint.TrimEnd('/');
+        var endpoint = AppServices.Settings.AccountEndpoint.TrimEnd('/');
         var url = $"{endpoint}/api/userinfo?access_token={Uri.EscapeDataString(accessToken)}";
 
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };

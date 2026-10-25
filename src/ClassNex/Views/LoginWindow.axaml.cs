@@ -1,9 +1,7 @@
-using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Media;
-using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using AvaloniaFluentUI.Windowing;
 using ClassNex.Services;
@@ -13,17 +11,19 @@ namespace ClassNex.Views;
 
 public partial class LoginWindow : AppWindow
 {
-    private DispatcherTimer? _pollTimer;
-    private string _loginUrl = "";
-    private bool _pollBusy;
+    private DispatcherTimer? _codeCooldownTimer;
+    private int _codeCooldownLeft;
+    private bool _busy;
 
     public LoginWindow()
     {
         InitializeComponent();
 
-        StartLoginButton.Click += (_, _) => StartLogin();
-        ReopenBrowserButton.Click += (_, _) => OpenBrowser(_loginUrl);
-        CancelFlowButton.Click += (_, _) => CancelLogin();
+        ModeLoginButton.Click += (_, _) => SwitchMode(false);
+        ModeSignupButton.Click += (_, _) => SwitchMode(true);
+        SignInButton.Click += async (_, _) => await SignInAsync();
+        SendCodeButton.Click += async (_, _) => await SendCodeAsync();
+        SignUpButton.Click += async (_, _) => await SignUpAsync();
         FinishButton.Click += (_, _) => Close();
         LogoutButton.Click += (_, _) => DoLogout();
         CloseButton.Click += (_, _) => Close();
@@ -64,80 +64,181 @@ public partial class LoginWindow : AppWindow
         RefreshState();
     }
 
+    private void SwitchMode(bool signup)
+    {
+        LoginForm.IsVisible = !signup;
+        SignupForm.IsVisible = signup;
+        ModeLoginButton.Classes.Set("Primary", !signup);
+        ModeSignupButton.Classes.Set("Primary", signup);
+    }
+
     private void RefreshState()
     {
         var profile = AccountService.Current;
+        var loggedIn = profile is not null;
 
-        StateIdle.IsVisible = profile is null && !AccountService.FlowActive;
-        StateFlow.IsVisible = AccountService.FlowActive;
+        StateForm.IsVisible = !loggedIn;
         StateDone.IsVisible = false;
-        StateLoggedIn.IsVisible = profile is not null;
+        StateLoggedIn.IsVisible = loggedIn;
 
-        if (profile is not null)
-        {
-            CurrentNameText.Text = profile.DisplayName;
-            CurrentEmailText.Text = profile.Email;
-            ApplyAvatar(CurrentAvatar, profile);
-        }
-    }
-
-    private async void StartLogin()
-    {
-        try
-        {
-            _loginUrl = AccountService.BuildLoginUrl();
-            FlowStatusText.Text = "已打开浏览器，请在浏览器中完成登录。";
-            StateIdle.IsVisible = false;
-            StateFlow.IsVisible = true;
-            StateDone.IsVisible = false;
-            StateLoggedIn.IsVisible = false;
-
-            OpenBrowser(_loginUrl);
-
-            _pollTimer?.Stop();
-            _pollTimer = new DispatcherTimer
-            {
-                Interval = TimeSpan.FromSeconds(1),
-            };
-            _pollTimer.Tick += async (_, _) => await PollOnceAsync();
-            _pollTimer.Start();
-        }
-        catch (Exception ex)
-        {
-            FlowStatusText.Text = $"无法连接账户服务：{ex.Message}";
-            StateIdle.IsVisible = true;
-            StateFlow.IsVisible = false;
-        }
-    }
-
-    private async Task PollOnceAsync()
-    {
-        if (_pollBusy)
+        if (!loggedIn)
             return;
 
-        _pollBusy = true;
+        CurrentNameText.Text = profile!.DisplayName;
+        CurrentEmailText.Text = profile.Email;
+        AccountAvatar.Apply(CurrentAvatar, profile.DisplayName, AccountService.AvatarImagePath);
+    }
+
+    private async Task SignInAsync()
+    {
+        if (_busy)
+            return;
+
+        var account = LoginAccountBox.Text ?? "";
+        var password = LoginPasswordBox.Text ?? "";
+        if (string.IsNullOrWhiteSpace(account) || string.IsNullOrWhiteSpace(password))
+        {
+            LoginStatusText.Text = "请输入用户名和密码。";
+            return;
+        }
+
+        _busy = true;
+        SignInButton.IsEnabled = false;
+        LoginStatusText.Text = "正在登录…";
         try
         {
-            if (!AccountService.TryTakeCode(out var code) || code is null)
-                return;
-
-            var done = await AccountService.CompleteLoginAsync(code);
-            if (done)
+            var (ok, message) = await AccountService.SignInAsync(account, password);
+            if (ok)
             {
-                _pollTimer?.Stop();
                 ShowSuccess();
                 return;
             }
 
-            FlowStatusText.Text = "浏览器已返回登录结果，但换取登录信息失败，请重试。";
-        }
-        catch (Exception ex)
-        {
-            FlowStatusText.Text = $"登录出错：{ex.Message}";
+            LoginStatusText.Text = message;
         }
         finally
         {
-            _pollBusy = false;
+            _busy = false;
+            SignInButton.IsEnabled = true;
+        }
+    }
+
+    private async Task SendCodeAsync()
+    {
+        if (_busy)
+            return;
+
+        var email = SignupEmailBox.Text ?? "";
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            SignupStatusText.Text = "请先填写邮箱。";
+            return;
+        }
+
+        _busy = true;
+        SendCodeButton.IsEnabled = false;
+        SignupStatusText.Text = "正在发送验证码…";
+        try
+        {
+            var (ok, message) = await AccountService.SendSignupCodeAsync(email);
+            if (ok)
+            {
+                StartCodeCooldown();
+                SignupStatusText.Text = "验证码已发送，请查收邮箱。";
+            }
+            else
+            {
+                SendCodeButton.IsEnabled = true;
+                SignupStatusText.Text = message;
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void StartCodeCooldown()
+    {
+        _codeCooldownLeft = 60;
+        SendCodeButton.Content = $"60 秒后重发";
+        _codeCooldownTimer?.Stop();
+        _codeCooldownTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _codeCooldownTimer.Tick += (_, _) =>
+        {
+            _codeCooldownLeft--;
+            if (_codeCooldownLeft <= 0)
+            {
+                _codeCooldownTimer?.Stop();
+                SendCodeButton.IsEnabled = true;
+                SendCodeButton.Content = "发送验证码";
+                return;
+            }
+
+            SendCodeButton.Content = $"{_codeCooldownLeft} 秒后重发";
+        };
+        _codeCooldownTimer.Start();
+    }
+
+    private async Task SignUpAsync()
+    {
+        if (_busy)
+            return;
+
+        var username = (SignupUsernameBox.Text ?? "").Trim();
+        var displayName = (SignupDisplayNameBox.Text ?? "").Trim();
+        var email = (SignupEmailBox.Text ?? "").Trim();
+        var password = SignupPasswordBox.Text ?? "";
+        var confirm = SignupConfirmBox.Text ?? "";
+        var code = (SignupCodeBox.Text ?? "").Trim();
+
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(email) ||
+            string.IsNullOrWhiteSpace(password))
+        {
+            SignupStatusText.Text = "请填写用户名、邮箱和密码。";
+            return;
+        }
+
+        if (password != confirm)
+        {
+            SignupStatusText.Text = "两次输入的密码不一致。";
+            return;
+        }
+
+        if (code.Length == 0)
+        {
+            SignupStatusText.Text = "请输入邮箱收到的验证码。";
+            return;
+        }
+
+        _busy = true;
+        SignUpButton.IsEnabled = false;
+        SignupStatusText.Text = "正在创建账户…";
+        try
+        {
+            var (ok, message) = await AccountService.SignUpAsync(
+                username, displayName, email, password, code);
+            if (ok)
+            {
+                SignupStatusText.Text = "注册成功，正在自动登录…";
+                var (signOk, signMessage) = await AccountService.SignInAsync(username, password);
+                if (signOk)
+                {
+                    ShowSuccess();
+                    return;
+                }
+
+                SignupStatusText.Text = "账户已创建：" + signMessage + "（可切换到登录页直接登录）";
+            }
+            else
+            {
+                SignupStatusText.Text = message;
+            }
+        }
+        finally
+        {
+            _busy = false;
+            SignUpButton.IsEnabled = true;
         }
     }
 
@@ -153,47 +254,16 @@ public partial class LoginWindow : AppWindow
 
         DoneNameText.Text = profile.DisplayName;
         DoneEmailText.Text = profile.Email;
-        ApplyAvatar(DoneAvatar, profile);
+        AccountAvatar.Apply(DoneAvatar, profile.DisplayName, AccountService.AvatarImagePath);
 
-        StateIdle.IsVisible = false;
-        StateFlow.IsVisible = false;
+        StateForm.IsVisible = false;
         StateDone.IsVisible = true;
         StateLoggedIn.IsVisible = false;
-    }
-
-    private void CancelLogin()
-    {
-        _pollTimer?.Stop();
-        AccountService.CancelLogin();
-        RefreshState();
     }
 
     private void DoLogout()
     {
         AccountService.Logout();
         RefreshState();
-    }
-
-    private static void ApplyAvatar(Border target, Models.AccountProfile profile)
-    {
-        if (AccountService.AvatarImagePath is null &&
-            !string.IsNullOrWhiteSpace(profile.AvatarUrl))
-            _ = AccountService.RefreshAvatarAsync();
-
-        AccountAvatar.Apply(target, profile.DisplayName, AccountService.AvatarImagePath);
-    }
-
-    private static void OpenBrowser(string url)
-    {
-        if (string.IsNullOrWhiteSpace(url))
-            return;
-
-        try
-        {
-            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-        }
-        catch
-        {
-        }
     }
 }

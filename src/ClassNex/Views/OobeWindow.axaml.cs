@@ -37,8 +37,6 @@ public partial class OobeWindow : AppWindow
     private int _greetingIndex;
     private DispatcherTimer? _greetingTimer;
     private bool _greetingBusy;
-    private DispatcherTimer? _loginPollTimer;
-    private bool _loginPollBusy;
     private readonly List<Avalonia.Controls.Shapes.Ellipse> _dots = new();
 
     public OobeWindow()
@@ -229,68 +227,9 @@ public partial class OobeWindow : AppWindow
         }
     }
 
-    private async void StartOobeLogin()
+    private void StartOobeLogin()
     {
-        try
-        {
-            var loginUrl = AccountService.BuildLoginUrl();
-            OobeLoginStatus.Text = _isEnglish
-                ? "A browser window has been opened for you to finish signing in."
-                : "已打开浏览器，请在浏览器中完成登录。";
-            OobeLoginButton.IsEnabled = false;
-
-            OpenUrl(loginUrl);
-
-            _loginPollTimer?.Stop();
-            _loginPollTimer = new DispatcherTimer
-            {
-                Interval = TimeSpan.FromSeconds(1),
-            };
-            _loginPollTimer.Tick += async (_, _) => await PollOobeLoginAsync();
-            _loginPollTimer.Start();
-        }
-        catch (Exception ex)
-        {
-            OobeLoginStatus.Text = (_isEnglish ? "Could not reach the account service: " : "无法连接账户服务：") + ex.Message;
-            OobeLoginButton.IsEnabled = true;
-        }
-    }
-
-    private async Task PollOobeLoginAsync()
-    {
-        if (_loginPollBusy)
-            return;
-
-        _loginPollBusy = true;
-        try
-        {
-            if (!AccountService.TryTakeCode(out var code) || code is null)
-                return;
-
-            var done = await AccountService.CompleteLoginAsync(code);
-            if (done)
-            {
-                _loginPollTimer?.Stop();
-                RefreshOobeAccount();
-                OobeLoginStatus.Text = _isEnglish ? "Signed in. Your profile has been synced." : "登录成功，账号信息已同步。";
-                OobeLoginButton.IsEnabled = false;
-                return;
-            }
-
-            OobeLoginStatus.Text = _isEnglish
-                ? "The browser returned the sign-in result, but syncing the profile failed. Please try again."
-                : "浏览器已返回登录结果，但同步登录信息失败，请重试。";
-            _loginPollTimer?.Stop();
-            OobeLoginButton.IsEnabled = true;
-        }
-        catch (Exception ex)
-        {
-            OobeLoginStatus.Text = (_isEnglish ? "Sign-in error: " : "登录出错：") + ex.Message;
-        }
-        finally
-        {
-            _loginPollBusy = false;
-        }
+        App.OpenLoginWindow();
     }
 
     private void RefreshOobeAccount()
@@ -300,13 +239,16 @@ public partial class OobeWindow : AppWindow
 
         OobeAccountCard.IsVisible = loggedIn;
         OobeLogoutButton.IsVisible = loggedIn;
-        OobeLoginButton.IsEnabled = !loggedIn && !AccountService.FlowActive;
+        OobeLoginButton.IsEnabled = !loggedIn;
 
         if (!loggedIn)
             return;
 
         OobeAccountName.Text = profile!.DisplayName;
         OobeAccountEmail.Text = profile.Email;
+        OobeLoginStatus.Text = _isEnglish
+            ? "Signed in. Your profile has been synced."
+            : "登录成功，账号信息已同步。";
 
         AccountAvatar.Apply(OobeAvatar, profile.DisplayName, AccountService.AvatarImagePath);
     }
