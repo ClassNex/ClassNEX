@@ -835,7 +835,7 @@
                                     Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
                                 <StackPanel Orientation="Horizontal" Spacing="18">
                                     
-                                    <Border x:Name="AccountPageAvatarRing" Width="88" Height="88" CornerRadius="44"
+                                    <Border x:Name="AccountPageAvatarRing" Width="88" Height="88" CornerRadius="20"
                                             BorderThickness="5"/>
                                     <StackPanel VerticalAlignment="Center" Spacing="4">
                                         <TextBlock x:Name="AccountPageNameText" FontSize="24" FontWeight="SemiBold"/>

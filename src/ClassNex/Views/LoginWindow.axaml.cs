@@ -176,40 +176,11 @@ public partial class LoginWindow : AppWindow
 
     private static void ApplyAvatar(Border target, Models.AccountProfile profile)
     {
-        try
-        {
-            Bitmap? bitmap = null;
-            var local = AccountService.AvatarImagePath;
-            if (local is not null)
-            {
-                using var stream = File.OpenRead(local);
-                bitmap = new Bitmap(stream);
-            }
-            else if (!string.IsNullOrWhiteSpace(profile.AvatarUrl))
-            {
-                _ = AccountService.RefreshAvatarAsync();
-            }
+        if (AccountService.AvatarImagePath is null &&
+            !string.IsNullOrWhiteSpace(profile.AvatarUrl))
+            _ = AccountService.RefreshAvatarAsync();
 
-            if (bitmap is null)
-            {
-                using var stream = Avalonia.Platform.AssetLoader.Open(new Uri("avares://ClassNex/Assets/avatar.png"));
-                bitmap = new Bitmap(stream);
-            }
-
-            target.Background = new ImageBrush(bitmap)
-            {
-                Stretch = Stretch.UniformToFill,
-                AlignmentX = AlignmentX.Center,
-                AlignmentY = AlignmentY.Center,
-            };
-
-            if (CiPalette.TryResource("AccentFillColorDefaultBrush", out var brush) &&
-                brush is ISolidColorBrush solid)
-                target.BorderBrush = new SolidColorBrush(solid.Color);
-        }
-        catch
-        {
-        }
+        AccountAvatar.Apply(target, profile.DisplayName, AccountService.AvatarImagePath);
     }
 
     private static void OpenBrowser(string url)

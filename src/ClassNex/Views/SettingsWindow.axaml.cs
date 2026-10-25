@@ -119,7 +119,7 @@ public partial class SettingsWindow : AppWindow
             AccountShift.X = 0;
             AccountAvatarRing.Width = 32;
             AccountAvatarRing.Height = 32;
-            AccountAvatarRing.CornerRadius = new CornerRadius(16);
+            AccountAvatarRing.CornerRadius = new CornerRadius(8);
             AccountAvatarRing.BorderThickness = new Thickness(2);
             AccountTextHost.Opacity = 0;
             AccountTextHost.IsHitTestVisible = false;
@@ -130,7 +130,7 @@ public partial class SettingsWindow : AppWindow
             AccountShift.X = 0;
             AccountAvatarRing.Width = 52;
             AccountAvatarRing.Height = 52;
-            AccountAvatarRing.CornerRadius = new CornerRadius(26);
+            AccountAvatarRing.CornerRadius = new CornerRadius(12);
             AccountAvatarRing.BorderThickness = new Thickness(3);
             AccountTextHost.Opacity = 1;
             AccountTextHost.IsHitTestVisible = true;
@@ -365,40 +365,13 @@ public partial class SettingsWindow : AppWindow
     
     private void RefreshAvatarImages()
     {
-        try
-        {
-            Avalonia.Media.Imaging.Bitmap bitmap;
-            if (AccountService.AvatarImagePath is { } accountAvatar &&
-                System.IO.File.Exists(accountAvatar))
-            {
-                using var stream = System.IO.File.OpenRead(accountAvatar);
-                bitmap = new Avalonia.Media.Imaging.Bitmap(stream);
-            }
-            else if (System.IO.File.Exists(CustomAvatarPath))
-            {
-                using var stream = System.IO.File.OpenRead(CustomAvatarPath);
-                bitmap = new Avalonia.Media.Imaging.Bitmap(stream);
-            }
-            else
-            {
-                using var stream = AssetLoader.Open(new Uri(DefaultAvatarUri));
-                bitmap = new Avalonia.Media.Imaging.Bitmap(stream);
-            }
+        var name = AccountService.Current?.DisplayName ??
+                   AppServices.Settings.UserName;
+        var imagePath = AccountService.AvatarImagePath ??
+                        (System.IO.File.Exists(CustomAvatarPath) ? CustomAvatarPath : null);
 
-            var brush = new ImageBrush(bitmap)
-            {
-                Stretch = Stretch.UniformToFill,
-                AlignmentX = AlignmentX.Center,
-                AlignmentY = AlignmentY.Center,
-            };
-
-            AccountAvatarRing.Background = brush;
-            AccountPageAvatarRing.Background = brush;
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[头像] 加载失败：{ex.Message}");
-        }
+        AccountAvatar.Apply(AccountAvatarRing, name ?? "", imagePath);
+        AccountAvatar.Apply(AccountPageAvatarRing, name ?? "", imagePath);
     }
 
     

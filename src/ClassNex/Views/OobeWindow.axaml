@@ -142,7 +142,7 @@
                         BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                         Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
                     <StackPanel Orientation="Horizontal" Spacing="14">
-                        <Border x:Name="OobeAvatar" Width="48" Height="48" CornerRadius="24" BorderThickness="3"/>
+                        <Border x:Name="OobeAvatar" Width="48" Height="48" CornerRadius="12" BorderThickness="3"/>
                         <StackPanel VerticalAlignment="Center" Spacing="2">
                             <TextBlock x:Name="OobeAccountName" FontSize="16" FontWeight="SemiBold"/>
                             <TextBlock x:Name="OobeAccountEmail" FontSize="12" Opacity="0.7"/>

@@ -50,6 +50,10 @@ public static class CiPalette
     
     public static readonly Color Highlight = Color.Parse("#F4EF74");
 
+    public static readonly Color AvatarSurfaceLight = Color.Parse("#D6D6D6");
+
+    public static readonly Color AvatarSurfaceDark = Color.Parse("#505050");
+
     
 
     
@@ -226,6 +230,9 @@ public static class CiPalette
 
         return Brushes.White;
     }
+
+    public static IBrush AvatarSurfaceBrush() =>
+        new SolidColorBrush(IsDarkTheme() ? AvatarSurfaceDark : AvatarSurfaceLight);
 
     public static IBrush FocusStrokeBrush()
     {

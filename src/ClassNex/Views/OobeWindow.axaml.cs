@@ -308,36 +308,7 @@ public partial class OobeWindow : AppWindow
         OobeAccountName.Text = profile!.DisplayName;
         OobeAccountEmail.Text = profile.Email;
 
-        try
-        {
-            Avalonia.Media.Imaging.Bitmap? bitmap = null;
-            if (AccountService.AvatarImagePath is { } local)
-            {
-                using var stream = File.OpenRead(local);
-                bitmap = new Avalonia.Media.Imaging.Bitmap(stream);
-            }
-
-            if (bitmap is null)
-            {
-                using var stream = Avalonia.Platform.AssetLoader.Open(
-                    new Uri("avares://ClassNex/Assets/avatar.png"));
-                bitmap = new Avalonia.Media.Imaging.Bitmap(stream);
-            }
-
-            OobeAvatar.Background = new Avalonia.Media.ImageBrush(bitmap)
-            {
-                Stretch = Avalonia.Media.Stretch.UniformToFill,
-                AlignmentX = Avalonia.Media.AlignmentX.Center,
-                AlignmentY = Avalonia.Media.AlignmentY.Center,
-            };
-
-            if (CiPalette.TryResource("AccentFillColorDefaultBrush", out var brush) &&
-                brush is Avalonia.Media.ISolidColorBrush solid)
-                OobeAvatar.BorderBrush = new Avalonia.Media.SolidColorBrush(solid.Color);
-        }
-        catch
-        {
-        }
+        AccountAvatar.Apply(OobeAvatar, profile.DisplayName, AccountService.AvatarImagePath);
     }
 
     private void SwitchPage(int page)

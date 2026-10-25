@@ -39,7 +39,11 @@ public static class AccountService
 
             var json = File.ReadAllText(FilePath);
             if (!string.IsNullOrWhiteSpace(json))
+            {
                 Current = JsonSerializer.Deserialize<AccountProfile>(json, JsonOptions);
+                if (Current is not null && !string.IsNullOrWhiteSpace(Current.AvatarUrl))
+                    _ = RefreshAvatarAsync();
+            }
         }
         catch
         {
@@ -71,6 +75,7 @@ public static class AccountService
                "&response_type=code" +
                "&scope=openid%20profile%20email" +
                $"&state={_state}" +
+               "&prompt=login" +
                $"&redirect_uri={Uri.EscapeDataString(RedirectUri)}";
     }
 
