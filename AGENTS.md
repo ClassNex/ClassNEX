@@ -35,7 +35,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：全应用图标迁移到 Lucide Icons（内嵌 lucide.ttf，avares://ClassNex/Assets/Fonts/#lucide；移除 FluentSystemIcons-Resizable.ttf 与全部 Segoe MDL2 字形；App.axaml 全局 FontIcon 样式默认字体改为 lucide；导航/设置/托盘/编辑模式/组件库/通知胶囊等 40+ 处全部替换）；发布 26w43c_Alpha；账户系统（软件内表单登录注册、灰色圆角首字头像、服务器 Casdoor + 头像服务 + 邮箱验证码）；打包 CI 同款结构 + 启动器 + asInvoker 修复
+上次完成：全应用图标迁移到 Lucide Icons（内嵌 lucide.ttf，avares://ClassNex/Assets/Fonts/#lucide；移除 FluentSystemIcons-Resizable.ttf 与全部 Segoe MDL2 字形；App.axaml 全局 FontIcon 样式默认字体改为 lucide；导航/设置/托盘/编辑模式/组件库/通知胶囊等 40+ 处全部替换）；Casdoor 静态资源修复（根因：staticBaseUrl 指向本机但镜像缺静态仓库，/img/* 被 SPA 回退成 index.html 200 text/html；修复：服务器 /opt/casdoor/static 克隆官方静态仓库，nginx 80 端口新增 /casdoor-static/ 别名，app.conf staticBaseUrl 改为 http://124.221.160.188/casdoor-static，备份 app.conf.bak.20261031，公网验证 social_github/logo 等 image/png 200）；NEX 唤醒动画重复触发修复（Coordinator 1.5 秒去抖 + NexGlowWindow.IsRunning 播放中不重启动画 + 边缘条防连点）；发布 26w43c_Alpha；账户系统（软件内表单登录注册、灰色圆角首字头像、服务器 Casdoor + 头像服务 + 邮箱验证码）；打包 CI 同款结构 + 启动器 + asInvoker 修复
 改了文件：src/ClassNex.Launcher/*（新增）、tools/make_files_json.py（新增）、.github/workflows/build-release.yml、ClassNex.sln、.gitignore、HANDOFF.md、README.md、AGENTS.md
 进行中：档案编辑器顶部导航重做（用户要求确认后再做，勿擅动）
 下一步：待用户指定

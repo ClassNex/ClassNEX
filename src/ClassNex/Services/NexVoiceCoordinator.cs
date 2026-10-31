@@ -107,9 +107,16 @@ public sealed class NexVoiceCoordinator : IDisposable
     
     
     private bool _active;
+    private DateTime _lastWakeUtc = DateTime.MinValue;
+    private static readonly TimeSpan WakeDebounce = TimeSpan.FromMilliseconds(1500);
 
     private void OnWakeWord()
     {
+        var now = DateTime.UtcNow;
+        if (_active && now - _lastWakeUtc < WakeDebounce)
+            return;
+        _lastWakeUtc = now;
+
         NexChime.PlayWake();
 
         Dispatcher.UIThread.Post(() =>
@@ -294,7 +301,8 @@ public sealed class NexVoiceCoordinator : IDisposable
 
         
         WindowsOverlay.SetClickThrough(_glow.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero, false);
-        _glow.Start();
+        if (!_glow.IsRunning)
+            _glow.Start();
     }
 
     
@@ -355,6 +363,11 @@ public sealed class NexVoiceCoordinator : IDisposable
     
     public void ActivateByClick()
     {
+        var now = DateTime.UtcNow;
+        if (_active && now - _lastWakeUtc < WakeDebounce)
+            return;
+        _lastWakeUtc = now;
+
         NexChime.PlayWake();
 
         var main = AppServices.MainWindow;

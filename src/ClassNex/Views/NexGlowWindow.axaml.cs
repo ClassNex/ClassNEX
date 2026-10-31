@@ -31,6 +31,8 @@ public partial class NexGlowWindow : Window
     
     public bool StartFromLeft { get; set; }
 
+    public bool IsRunning => _timer.IsEnabled;
+
     private readonly LinearGradientBrush _topBrush = BuildStripBrush(true);
     private readonly LinearGradientBrush _bottomBrush = BuildStripBrush(true);
 
