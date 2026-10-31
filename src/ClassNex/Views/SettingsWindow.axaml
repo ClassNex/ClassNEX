@@ -39,7 +39,7 @@
                     <Button x:Name="BackButton" Theme="{StaticResource TransparentButton}"
                             Padding="6,4" VerticalAlignment="Center" ToolTip.Tip="返回上一页"
                             Click="OnNavigateBack">
-                        <ui:FontIcon Glyph="&#xE72B;" FontSize="14"/>
+                        <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE06E;" FontSize="14"/>
                     </Button>
                     <Image Source="/Assets/icon.ico" Width="18" Height="18"
                            IsHitTestVisible="False" RenderOptions.BitmapInterpolationMode="HighQuality"/>
@@ -58,7 +58,7 @@
                              VerticalAlignment="Center" VerticalContentAlignment="Center"
                              Margin="2,0,2,0">
                         <TextBox.InnerLeftContent>
-                            <ui:FontIcon Glyph="&#xE721;" FontSize="12" Margin="8,0,6,0"
+                            <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE151;" FontSize="12" Margin="8,0,6,0"
                                          VerticalAlignment="Center" Opacity="0.7"/>
                         </TextBox.InnerLeftContent>
                     </TextBox>
@@ -71,40 +71,40 @@
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                     <Button x:Name="MoreOptionsButton" Theme="{StaticResource TransparentButton}"
                             VerticalAlignment="Center" ToolTip.Tip="更多选项…">
-                        <ui:FontIcon Glyph="&#xE946;" FontSize="14"/>
+                        <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0B6;" FontSize="14"/>
                         <Button.Flyout>
                             
                             <MenuFlyout>
                                 <MenuItem Header="创建快捷方式…">
-                                    <MenuItem.Icon><ui:FontIcon Glyph="&#xE71C;"/></MenuItem.Icon>
+                                    <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE102;"/></MenuItem.Icon>
                                     <MenuItem Header="创建桌面快捷方式" Click="OnCreateDesktopShortcut">
-                                        <MenuItem.Icon><ui:FontIcon Glyph="&#xE8AB;"/></MenuItem.Icon>
+                                        <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE11D;"/></MenuItem.Icon>
                                     </MenuItem>
                                     <MenuItem Header="创建开始菜单快捷方式" Click="OnCreateStartMenuShortcut">
-                                        <MenuItem.Icon><ui:FontIcon Glyph="&#xE8AB;"/></MenuItem.Icon>
+                                        <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE426;"/></MenuItem.Icon>
                                     </MenuItem>
                                 </MenuItem>
                                 <Separator/>
                                 <MenuItem Header="NEX Intelligence…" Click="OnOpenNexChat"/>
                         <MenuItem Header="日志…" Click="OnOpenLogFile">
-                                    <MenuItem.Icon><ui:FontIcon Glyph="&#xE9D9;"/></MenuItem.Icon>
+                                    <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0CC;"/></MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="导出诊断数据…" Click="OnExportDiagnostics">
-                                    <MenuItem.Icon><ui:FontIcon Glyph="&#xE74D;"/></MenuItem.Icon>
+                                    <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0B2;"/></MenuItem.Icon>
                                 </MenuItem>
                                 <Separator/>
                                 <MenuItem Header="打开日志目录…" Click="OnOpenLogsFolder">
-                                    <MenuItem.Icon><ui:FontIcon Glyph="&#xE838;"/></MenuItem.Icon>
+                                    <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0D7;"/></MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="打开数据目录…" Click="OnOpenDataFolder">
-                                    <MenuItem.Icon><ui:FontIcon Glyph="&#xE838;"/></MenuItem.Icon>
+                                    <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0D7;"/></MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="打开应用目录…" Click="OnOpenAppFolder">
-                                    <MenuItem.Icon><ui:FontIcon Glyph="&#xE838;"/></MenuItem.Icon>
+                                    <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0D7;"/></MenuItem.Icon>
                                 </MenuItem>
                                 <Separator/>
                                 <MenuItem Header="重启 ClassNEX" Click="OnRestartApp">
-                                    <MenuItem.Icon><ui:FontIcon Glyph="&#xE72C;"/></MenuItem.Icon>
+                                    <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE145;"/></MenuItem.Icon>
                                 </MenuItem>
                             </MenuFlyout>
                         </Button.Flyout>
@@ -196,51 +196,51 @@
                 
                 <ui:NavigationViewItem Content="主页">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE80F;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0F5;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItemSeparator/>
                 
                 <ui:NavigationViewItem Content="基本">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE713;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE154;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="外观">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE790;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE1DD;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="窗口">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE740;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE426;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="组件">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE71D;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0FF;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 
                 <ui:NavigationViewItem Content="NEX Intelligence">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE734;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE412;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="提醒">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE838;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE059;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="关于 ClassNEX">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE946;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0F9;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
                 
                 <ui:NavigationViewItem x:Name="DebugNavItem" Content="调试" IsVisible="False">
                     <ui:NavigationViewItem.IconSource>
-                        <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE7C4;" FontSize="16"/>
+                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE20C;" FontSize="16"/>
                     </ui:NavigationViewItem.IconSource>
                 </ui:NavigationViewItem>
             </ui:NavigationView.MenuItems>
@@ -283,7 +283,7 @@
                             <ui:SettingsExpander Header="接口"
                                                  Description="应用已内置可用的接口，开箱即可对话，无需配置。想换成你自己的接口/密钥，请到「调试」页设置（版本号连点 10 次解锁）。">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE968;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE37F;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpanderItem x:Name="NexApiStateItem" Content="当前接口" Description="正在使用内置接口">
                                     <ui:SettingsExpanderItem.Footer>
@@ -296,7 +296,7 @@
                             <ui:SettingsExpander Header="默认权限"
                                                  Description="打开对话框时的默认档位（对话框顶部随时可改）。仅可查看=只读；工作区内修改=可改应用数据目录里的文件；完全权限=任意路径 + 执行命令。">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE72E;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE1FF;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <ComboBox x:Name="NexPermissionCombo" Width="180">
@@ -310,7 +310,7 @@
                             <ui:SettingsExpander Header="系统提示词"
                                                  Description="可选。留空用内置提示词（会带上应用状态、工作区与当前权限说明）。">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE70F;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE1F9;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpanderItem Content="自定义提示词">
                                     <ui:SettingsExpanderItem.Footer>
@@ -324,7 +324,7 @@
                             <ui:SettingsExpander Header="语音唤醒"
                                                  Description="对着麦克风说「嘿 NEX」或「NEX」即可唤醒：响起提示音、屏幕四周亮起跑马灯，浮窗课表向上翻页变成对话。">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE720;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE118;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <CheckBox x:Name="NexVoiceWakeCheck" Content="启用"/>
@@ -367,7 +367,7 @@
                             <ui:SettingsExpander Header="在课前准备时发出提醒"
                                                  Description="在上课前一段时间发出醒目提醒，提示做好上课准备。">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE02B;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE224;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <CheckBox x:Name="PreparingEnabledCheck"/>
@@ -420,7 +420,7 @@
                             <ui:SettingsExpander Header="在上课时发出提醒"
                                                  Description="在上课时发出醒目提醒，提示已经上课。">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xEA2F;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE059;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <CheckBox x:Name="ClassOnEnabledCheck"/>
@@ -438,7 +438,7 @@
                             <ui:SettingsExpander Header="在下课时发出提醒"
                                                  Description="在下课时发出醒目提醒，提示已经下课。">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE1A1;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE05A;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <CheckBox x:Name="ClassOffEnabledCheck"/>
@@ -456,7 +456,7 @@
                             <ui:SettingsExpander Header="显示科任老师名字"
                                                  Description="在显示课程相关的提醒时同时展示并播报对应科任老师的名字">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE77B;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE19F;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <CheckBox x:Name="ShowTeacherCheck"/>
@@ -467,7 +467,7 @@
                         
                         <StackPanel x:Name="PageGeneral" Spacing="10">
                             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,2">
-                                <ui:FontIcon Glyph="&#xE945;" FontSize="16" VerticalAlignment="Center" Opacity="0.85"/>
+                                <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE29A;" FontSize="16" VerticalAlignment="Center" Opacity="0.85"/>
                                 <TextBlock Text="行为" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             </StackPanel>
 
@@ -475,7 +475,7 @@
                                                  Description="在您的系统启动时自动运行本应用。">
                                 <ui:SettingsExpander.IconSource>
                                     
-                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE342;" FontSize="20"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE140;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <Border x:Name="StartupToggleHost"><ToggleSwitch/></Border>
@@ -486,7 +486,7 @@
                                                  Description="允许第三方应用或网页通过 Url 协议 classnex:// 调用本应用的部分功能。">
                                 <ui:SettingsExpander.IconSource>
                                     
-                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xEAB0;" FontSize="20"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE102;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <Border x:Name="UrlProtocolToggleHost"><ToggleSwitch/></Border>
@@ -497,7 +497,7 @@
                                                  Description="设置学期首日，该日期将作为多周轮换课表的计算起点和每周的第一天。">
                                 <ui:SettingsExpander.IconSource>
                                     
-                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE304;" FontSize="20"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE2B9;"/>
                                 </ui:SettingsExpander.IconSource>
                                 
                                 <ui:SettingsExpander.Footer>
@@ -509,7 +509,7 @@
                                                  Description="鼠标左键点击本应用托盘图标时进行的操作。无论此设置处于何种选项，鼠标右键点击托盘图标总是会打开主菜单。">
                                 <ui:SettingsExpander.IconSource>
                                     
-                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE5C1;" FontSize="20"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE120;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <ComboBox x:Name="TrayBehaviorCombo" HorizontalAlignment="Stretch">
@@ -524,7 +524,7 @@
                                                  Description="启用后，如果应用发生意外崩溃，将自动按照右侧选择的方法处理崩溃，以确保教学不受到影响。如果发生的是不可忽略的异常，应用将自动退出。您可以在日志记录中查看崩溃详情。">
                                 <ui:SettingsExpander.IconSource>
                                     
-                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE809;" FontSize="20"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE158;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
@@ -544,13 +544,13 @@
                         
                         <StackPanel x:Name="PageInterface" Spacing="10" IsVisible="False">
                             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,2">
-                                <ui:FontIcon Glyph="&#xEC4A;" FontSize="16" VerticalAlignment="Center" Opacity="0.85"/>
+                                <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE1DD;" FontSize="16" VerticalAlignment="Center" Opacity="0.85"/>
                                 <TextBlock Text="外观" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             </StackPanel>
 
                             <ui:SettingsExpander Header="主题" Description="跟随系统 / 浅色 / 深色">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE5CB;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE178;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     
@@ -564,7 +564,7 @@
 
                             <ui:SettingsExpander Header="主界面背景不透明度">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xF37D;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE09D;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="12">
@@ -577,7 +577,7 @@
 
                             <ui:SettingsExpander Header="全局字号缩放">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xF273;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE198;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="12">
@@ -591,7 +591,7 @@
                             <ui:SettingsExpander Header="主界面缩放"
                                                  Description="对应 CI 的「主界面缩放」（CI 默认 1.9），整体放大主界面">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xF4D1;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE1B6;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="12">
@@ -606,13 +606,13 @@
                         
                         <StackPanel x:Name="PageWindow" Spacing="10" IsVisible="False">
                             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,2">
-                                <ui:FontIcon Glyph="&#xE740;" FontSize="16" VerticalAlignment="Center" Opacity="0.85"/>
+                                <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE426;" FontSize="16" VerticalAlignment="Center" Opacity="0.85"/>
                                 <TextBlock Text="窗口" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             </StackPanel>
 
                             <ui:SettingsExpander Header="组件排列方向">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE700;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE1C6;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <ComboBox x:Name="OrientationCombo" HorizontalAlignment="Stretch">
@@ -625,7 +625,7 @@
                             <ui:SettingsExpander Header="鼠标穿透"
                                                  Description="开启后鼠标点击会直接落到主界面后方的窗口；鼠标移入主界面自动淡化">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE7C9;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE11F;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <CheckBox x:Name="ClickThroughSwitch"/>
@@ -651,7 +651,7 @@
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                                <ui:FontIcon FontFamily="Segoe MDL2 Assets"
+                                                <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
                                                              Glyph="{Binding Glyph}" FontSize="14" VerticalAlignment="Center"/>
                                                 <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
                                                 <Button Content="⋯" Padding="6,0" ToolTip.Tip="更多选项" Click="OnWidgetItemMore">
@@ -684,7 +684,7 @@
                                             <ListBox.ItemTemplate>
                                                 <DataTemplate>
                                                     <Grid ColumnDefinitions="Auto,*" Height="54" Margin="0,2,16,8">
-                                                        <ui:FontIcon FontFamily="Segoe MDL2 Assets" Glyph="{Binding Glyph}"
+                                                        <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="{Binding Glyph}"
                                                                      FontSize="28" VerticalAlignment="Center" Margin="2,0,12,0"/>
                                                         <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                                                             <TextBlock Text="{Binding DisplayName}" FontSize="14"
@@ -778,14 +778,14 @@
                                         IsOpen="True" IsClosable="False"/>
                             <ui:SettingsExpander Header="通知测试" Description="直接触发各类提醒，用于检查效果（不依赖当前课表状态）">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE838;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE059;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpanderItem x:Name="DebugTriggerClassOnItem" Content="触发上课提醒" IsClickEnabled="True"/>
                                 <ui:SettingsExpanderItem x:Name="DebugTriggerClassOffItem" Content="触发下课提醒" IsClickEnabled="True"/>
                             </ui:SettingsExpander>
                             <ui:SettingsExpander Header="调试菜单">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" Glyph="&#xE2C8;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE20C;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpanderItem x:Name="DebugCloseItem" Content="关闭调试菜单（隐藏本页）" IsClickEnabled="True"/>
                             </ui:SettingsExpander>
@@ -794,7 +794,7 @@
                             <ui:SettingsExpander Header="NEX Intelligence 接口"
                                                  Description="留空则使用内置接口（开箱可用）。填入你自己的地址/密钥就会覆盖内置的；密钥框不会回显内置密钥明文。">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE968;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE37F;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpanderItem Content="服务地址" Description="留空 = 内置地址">
                                     <ui:SettingsExpanderItem.Footer>
@@ -846,7 +846,7 @@
 
                             <ui:SettingsExpander Header="头像" Description="支持 PNG / JPG / BMP / WebP，上传后会复制到应用数据目录">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE91B;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0F6;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="10">
@@ -858,7 +858,7 @@
 
                             <ui:SettingsExpander Header="用户名" Description="显示在账户区的名称">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE77B;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE19F;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <TextBox x:Name="UserNameBox" Width="300" Watermark="输入用户名"/>
@@ -867,7 +867,7 @@
 
                             <ui:SettingsExpander Header="邮箱" Description="显示在账户区的邮箱地址">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE715;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE10F;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <TextBox x:Name="EmailBox" Width="300" Watermark="输入邮箱"/>
@@ -877,7 +877,7 @@
                             <ui:SettingsExpander Header="账户服务"
                                                  Description="登录后头像、用户名与邮箱自动同步，在浏览器中完成登录">
                                 <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="Segoe MDL2 Assets" Glyph="&#xE8D4;"/>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE10D;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <StackPanel Orientation="Horizontal" Spacing="10">

@@ -24,7 +24,7 @@
 
         
         <Style Selector="afui|FontIcon">
-            <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
+            <Setter Property="FontFamily" Value="avares://ClassNex/Assets/Fonts/#lucide" />
         </Style>
     </Application.Styles>
 

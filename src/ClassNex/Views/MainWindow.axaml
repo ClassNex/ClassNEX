@@ -147,13 +147,13 @@
                                             <StackPanel.RenderTransform>
                                                 <ScaleTransform/>
                                             </StackPanel.RenderTransform>
-                                            <TextBlock Text="&#xE823;" FontFamily="Segoe MDL2 Assets"
+                                            <TextBlock Text="&#xE087;" FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
                                                        FontSize="20" Height="20" Width="20" TextAlignment="Center"
                                                        Foreground="Black" VerticalAlignment="Center"/>
                                             <TextBlock x:Name="NotificationMaskText"
                                                        FontSize="18" FontWeight="Bold" Foreground="Black" Margin="8,0"
                                                        VerticalAlignment="Center"/>
-                                            <TextBlock Text="&#xE823;" FontFamily="Segoe MDL2 Assets"
+                                            <TextBlock Text="&#xE087;" FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
                                                        FontSize="20" Height="20" Width="20" TextAlignment="Center"
                                                        Foreground="Black" VerticalAlignment="Center"/>
                                         </StackPanel>

@@ -71,10 +71,10 @@
                             <TextBlock x:Name="NavDateText" FontSize="13" VerticalAlignment="Center"/>
                         </Border>
                         <Button x:Name="PrevWeekButton" Padding="8,2" VerticalAlignment="Center">
-                            <ui:FontIcon Glyph="&#xE76B;" FontSize="14"/>
+                            <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE06E;" FontSize="14"/>
                         </Button>
                         <Button x:Name="NextWeekButton" Padding="8,2" VerticalAlignment="Center">
-                            <ui:FontIcon Glyph="&#xE76C;" FontSize="14"/>
+                            <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE06F;" FontSize="14"/>
                         </Button>
                         <TextBlock x:Name="NavWeekText" Text="第1周" FontSize="13" Opacity="0.8"
                                    VerticalAlignment="Center"/>

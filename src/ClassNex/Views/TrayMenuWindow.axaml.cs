@@ -53,8 +53,8 @@ public partial class TrayMenuWindow : Window
                         
                         
                         Glyph = item.Glyph,
-                        FontFamily = new FontFamily(item.IconFont ?? "Segoe MDL2 Assets"),
-                        FontSize = item.IconFont is null ? 14 : 20,
+                        FontFamily = new FontFamily(item.IconFont ?? "avares://ClassNex/Assets/Fonts/#lucide"),
+                        FontSize = item.IconFont is null ? 14 : 14,
                         Width = 16,
                         VerticalAlignment = VerticalAlignment.Center,
                     },

@@ -682,22 +682,22 @@ public partial class App : Application
         var menu = new Views.TrayMenuWindow();
         menu.Build(new[]
         {
-            new Views.TrayMenuWindow.Item("\uE7C4", "显示 / 隐藏主界面", ToggleMainWindow),
+            new Views.TrayMenuWindow.Item("\uE0BA", "显示 / 隐藏主界面", ToggleMainWindow),
             Views.TrayMenuWindow.Separator,
-            new Views.TrayMenuWindow.Item("\uE70F", "编辑档案…", () => OpenProfileEditor(0)),
-            new Views.TrayMenuWindow.Item("\uE8B7", "加载课表…", () => _ = LoadTimetableFromMenuAsync()),
-            new Views.TrayMenuWindow.Item("\uE8AB", "换课…", () => OpenProfileEditor(3)),
+            new Views.TrayMenuWindow.Item("\uE1F9", "编辑档案…", () => OpenProfileEditor(0)),
+            new Views.TrayMenuWindow.Item("\uE19E", "加载课表…", () => _ = LoadTimetableFromMenuAsync()),
+            new Views.TrayMenuWindow.Item("\uE24A", "换课…", () => OpenProfileEditor(3)),
             Views.TrayMenuWindow.Separator,
-            new Views.TrayMenuWindow.Item("\uE71D", "编辑主界面…", () => OpenSettings("interface")),
-            new Views.TrayMenuWindow.Item("\uE713", "应用设置…", () => OpenSettings()),
+            new Views.TrayMenuWindow.Item("\uE12C", "编辑主界面…", () => OpenSettings("interface")),
+            new Views.TrayMenuWindow.Item("\uE154", "应用设置…", () => OpenSettings()),
             Views.TrayMenuWindow.Separator,
             
             
-            new Views.TrayMenuWindow.Item("\uF0F7", "NEX Intelligence…", OpenNexChat,
-                "avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable"),
+            new Views.TrayMenuWindow.Item("\uE412", "NEX Intelligence…", OpenNexChat,
+                "avares://ClassNex/Assets/Fonts/#lucide"),
             Views.TrayMenuWindow.Separator,
-            new Views.TrayMenuWindow.Item("\uE777", "重启 ClassNEX", RestartApp),
-            new Views.TrayMenuWindow.Item("\uE7E8", "退出", ExitApp),
+            new Views.TrayMenuWindow.Item("\uE145", "重启 ClassNEX", RestartApp),
+            new Views.TrayMenuWindow.Item("\uE140", "退出", ExitApp),
         });
 
         

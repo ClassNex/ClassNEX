@@ -35,7 +35,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：发布包结构照 CI 重构（新增 src/ClassNex.Launcher 启动器 + tools/make_files_json.py 清单生成器 + GitHub Actions 打包新流程，本地演练通过：启动器拉起 app-版本-0 载荷、首启生成根目录 data）；仓库整理（_tools 改名 tools、根目录日志与 _casdoor_dbpass.txt 等杂项移除、录屏帧移除、CI 参考包移到 E:\ci-app、HANDOFF/README 同步）；OOBE 问候语轮换改到窗口打开后才启动（首屏「你好」可见再开始多语言切换）；打包问题修复（启动器补图标、改 GUI 子系统不再弹命令行、双 exe manifest 显式 asInvoker + supportedOS 消除 UAC）；账户系统：服务器 124.221.160.188（Debian 12，宝塔共存）Docker 部署 Casdoor + MariaDB（内部网络），Casdoor 端口 8000，组织 ClassNEX，应用 app-classnex（password 授权公共客户端）；登录/注册全在软件内表单完成（用户名密码登录 + 邮箱验证码注册 60 秒重发冷却），头像/用户名/邮箱从 Casdoor 同步；默认头像为灰色圆角首字（Miku 规范浅 #D6D6D6 深 #505050），服务器头像服务 http://124.221.160.188/avatar/<用户名>.png（nginx 80 端口反代 → 127.0.0.1:18001，systemd 托管，cron 每 5 分钟同步新用户头像）；发布 26w43b_Alpha 后账户系统改动待发 26w43c_Alpha
+上次完成：全应用图标迁移到 Lucide Icons（内嵌 lucide.ttf，avares://ClassNex/Assets/Fonts/#lucide；移除 FluentSystemIcons-Resizable.ttf 与全部 Segoe MDL2 字形；App.axaml 全局 FontIcon 样式默认字体改为 lucide；导航/设置/托盘/编辑模式/组件库/通知胶囊等 40+ 处全部替换）；发布 26w43c_Alpha；账户系统（软件内表单登录注册、灰色圆角首字头像、服务器 Casdoor + 头像服务 + 邮箱验证码）；打包 CI 同款结构 + 启动器 + asInvoker 修复
 改了文件：src/ClassNex.Launcher/*（新增）、tools/make_files_json.py（新增）、.github/workflows/build-release.yml、ClassNex.sln、.gitignore、HANDOFF.md、README.md、AGENTS.md
 进行中：档案编辑器顶部导航重做（用户要求确认后再做，勿擅动）
 下一步：待用户指定

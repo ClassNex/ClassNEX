@@ -365,7 +365,8 @@ public static class TimetableGridBuilder
             Child = new AvaloniaFluentUI.Controls.FontIcon
             {
                 
-                Glyph = "\uE710",
+                Glyph = "\uE13D",
+                FontFamily = new Avalonia.Media.FontFamily("avares://ClassNex/Assets/Fonts/#lucide"),
                 FontSize = 14,
                 Opacity = isSelected ? 0.95 : 0.35,
                 HorizontalAlignment = HorizontalAlignment.Center,

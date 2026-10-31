@@ -112,8 +112,8 @@
             <Grid ColumnDefinitions="Auto,*,Auto,152">
                 <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                     
-                    <ui:FontIcon Glyph="&#xF0F7;"
-                                 FontFamily="avares://ClassNex/Assets/Fonts/#FluentSystemIcons-Resizable" FontSize="18"
+                    <ui:FontIcon Glyph="&#xE412;"
+                                 FontFamily="avares://ClassNex/Assets/Fonts/#lucide" FontSize="18"
                                  VerticalAlignment="Center"/>
                     <TextBlock Text="NEX Intelligence" FontSize="14" VerticalAlignment="Center"/>
                 </StackPanel>

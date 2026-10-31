@@ -65,13 +65,13 @@ public partial class MainWindow
         });
 
         
-        row.Children.Add(ToolButton("\uE713", "该组件的设置", () => App.OpenSettings("widgets")));
+        row.Children.Add(ToolButton("\uE154", "该组件的设置", () => App.OpenSettings("widgets")));
 
         
-        row.Children.Add(ToolButton("\uE74D", "删除该组件", () => AppServices.Widgets.Remove(config)));
+        row.Children.Add(ToolButton("\uE18E", "删除该组件", () => AppServices.Widgets.Remove(config)));
 
         
-        var moreButton = ToolButton("\uE712", "更多（上移 / 下移 / 删除）", null);
+        var moreButton = ToolButton("\uE0B6", "更多（上移 / 下移 / 删除）", null);
         moreButton.Flyout = BuildMoreFlyout(config);
         row.Children.Add(moreButton);
 
@@ -93,7 +93,7 @@ public partial class MainWindow
             Content = new TextBlock
             {
                 Text = glyph,
-                FontFamily = new FontFamily("Segoe MDL2 Assets"),
+                FontFamily = new FontFamily("avares://ClassNex/Assets/Fonts/#lucide"),
                 FontSize = 12,
                 Foreground = Brushes.White,
             },

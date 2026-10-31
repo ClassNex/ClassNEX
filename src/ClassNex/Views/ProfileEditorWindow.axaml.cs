@@ -108,8 +108,8 @@ public partial class ProfileEditorWindow : AppWindow
 
     private void BuildCommandBar()
     {
-        AddCommand("刷新", "\uE72C", () => { AppServices.ReloadTimetable(); LoadAll(); });
-        AddCommand("删除", "\uE74D", DeleteSelectedCourse);
+        AddCommand("刷新", "\uE145", () => { AppServices.ReloadTimetable(); LoadAll(); });
+        AddCommand("删除", "\uE18E", DeleteSelectedCourse);
     }
 
     private void AddCommand(string label, string glyph, Action action)
@@ -120,7 +120,7 @@ public partial class ProfileEditorWindow : AppWindow
             IconSource = new AvaloniaFluentUI.Controls.FontIconSource
             {
                 Glyph = glyph,
-                FontFamily = new Avalonia.Media.FontFamily("Segoe MDL2 Assets"),
+                FontFamily = new Avalonia.Media.FontFamily("avares://ClassNex/Assets/Fonts/#lucide"),
             },
         };
 

@@ -22,8 +22,8 @@
             
             <StackPanel Orientation="Horizontal" Spacing="23" VerticalAlignment="Center">
                 <ui:FontIcon x:Name="PillIcon"
-                             FontFamily="Segoe MDL2 Assets"
-                             Glyph="&#xE916;"
+                             FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
+                             Glyph="&#xE059;"
                              FontSize="32"
                              Foreground="White"/>
                 <TextBlock x:Name="TitleText" FontSize="22" Foreground="White"

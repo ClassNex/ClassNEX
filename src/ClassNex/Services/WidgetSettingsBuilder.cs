@@ -22,7 +22,7 @@ namespace ClassNex.Services;
 
 public static class WidgetSettingsBuilder
 {
-    private static readonly FontFamily IconFont = new("Segoe MDL2 Assets");
+    private static readonly FontFamily IconFont = new("avares://ClassNex/Assets/Fonts/#lucide");
 
     
     private static readonly (string Name, string? Hex)[] TextColors =
