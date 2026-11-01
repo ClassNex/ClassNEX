@@ -1050,7 +1050,26 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
     
     private void PlayPageEntrance()
     {
-        PageTransitions.PlayEntrance(PageScroll);
+        var name = (NavView.SelectedItem as NavigationViewItem)?.Content as string ?? "";
+        var index = Array.IndexOf(PageNames, name);
+        if (index < 0)
+            index = 0;
+
+        var page = index switch
+        {
+            0 => PageHome,
+            1 => PageGeneral,
+            2 => PageInterface,
+            3 => PageWindow,
+            4 => PageWidgets,
+            5 => PageNex,
+            6 => PageNotification,
+            7 => PageAbout,
+            8 => PageDebug,
+            _ => (Control)PageHome,
+        };
+
+        PageTransitions.PlayEntrance(page);
     }
 
     

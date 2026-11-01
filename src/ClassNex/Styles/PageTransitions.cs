@@ -46,8 +46,11 @@ public static class PageTransitions
 
         Dispatcher.UIThread.Post(() =>
         {
-            target.Opacity = 1;
-            shift.Y = 0;
-        }, DispatcherPriority.Render);
+            Dispatcher.UIThread.Post(() =>
+            {
+                target.Opacity = 1;
+                shift.Y = 0;
+            }, DispatcherPriority.Render);
+        }, DispatcherPriority.Background);
     }
 }
