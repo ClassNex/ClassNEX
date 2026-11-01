@@ -273,6 +273,8 @@ public partial class OobeWindow : AppWindow
                 _dots[i].Classes.Remove("Active");
         }
 
+        PageTransitions.PlayEntrance(CurrentPage());
+
         ApplyLanguage();
 
         if (_page == PageCount - 1)
@@ -280,6 +282,15 @@ public partial class OobeWindow : AppWindow
         else
             Fireworks.Stop();
     }
+
+    private Control CurrentPage() => _page switch
+    {
+        0 => PageWelcome,
+        1 => PagePreferences,
+        2 => PageAccount,
+        3 => PageMore,
+        _ => PageFinish,
+    };
 
     private async Task NextGreetingAsync()
     {

@@ -49,6 +49,11 @@ public partial class ProfileEditorWindow : AppWindow
 
         BuildCommandBar();
         WireEvents();
+        Tabs.SelectionChanged += (_, _) =>
+        {
+            if (Tabs.SelectedItem is TabItem { Content: Control content })
+                PageTransitions.PlayEntrance(content);
+        };
         LoadAll();
     }
 

@@ -1050,44 +1050,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
     
     private void PlayPageEntrance()
     {
-        if (PageScroll.RenderTransform is not TranslateTransform shift)
-            return;
-
-        const double from = 28;
-        const double durationMs = 320;
-
-        var started = DateTime.UtcNow;
-        shift.Y = from;
-
-        
-        
-        
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(8) };
-        timer.Tick += (_, _) =>
-        {
-            var elapsed = (DateTime.UtcNow - started).TotalMilliseconds;
-            var t = Math.Clamp(elapsed / durationMs, 0, 1);
-            var eased = 1 - Math.Pow(1 - t, 3);   
-
-            if (PageScroll.RenderTransform is TranslateTransform s)
-                s.Y = from * (1 - eased);
-
-            if (t >= 1)
-            {
-                timer.Stop();
-                if (PageScroll.RenderTransform is TranslateTransform done)
-                    done.Y = 0;
-            }
-        };
-        timer.Start();
-
-        
-        DispatcherTimer.RunOnce(() =>
-        {
-            timer.Stop();
-            if (PageScroll.RenderTransform is TranslateTransform s)
-                s.Y = 0;
-        }, TimeSpan.FromMilliseconds(durationMs + 200));
+        PageTransitions.PlayEntrance(PageScroll);
     }
 
     
