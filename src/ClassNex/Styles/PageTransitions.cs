@@ -51,13 +51,9 @@ public static class PageTransitions
             Setters = { new Setter(Visual.OpacityProperty, 1.0) },
         });
 
-        if (target.RenderTransform is not TranslateTransform shiftTransform)
-        {
-            shiftTransform = new TranslateTransform();
-            target.RenderTransform = shiftTransform;
-        }
+        target.RenderTransform ??= new TranslateTransform();
 
-        _ = shift.RunAsync(shiftTransform);
+        _ = shift.RunAsync(target);
         _ = fade.RunAsync(target);
     }
 }
