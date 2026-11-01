@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -28,6 +29,7 @@ public partial class ProfileEditorWindow : AppWindow
 {
     private readonly List<string> _subjectNames = new();
     private readonly ObservableCollection<WeekRow> _weekRows = new();
+    private readonly List<int> _pageHistory = new();
 
     private bool _loading;
     private bool _syncingPalette;
@@ -38,6 +40,7 @@ public partial class ProfileEditorWindow : AppWindow
     private DateTime _weekStart;
     private string _parity = "all";
     private int _pageIndex = -1;
+    private bool _navigatingBack;
 
     private static readonly string[] PageNames =
         { "档案信息", "课表", "时间表", "科目", "调课" };
@@ -45,6 +48,11 @@ public partial class ProfileEditorWindow : AppWindow
     public ProfileEditorWindow()
     {
         InitializeComponent();
+        ProfileVersionText.Text = typeof(ProfileEditorWindow).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+            ?? typeof(ProfileEditorWindow).Assembly.GetName().Version?.ToString()
+            ?? "";
+        BackButton.IsVisible = false;
 
         
         ParityCombo.SelectedIndex = 0;
@@ -146,6 +154,7 @@ public partial class ProfileEditorWindow : AppWindow
 
     private void WireEvents()
     {
+        BackButton.Click += (_, _) => NavigateBack();
         NavView.SelectionChanged += (_, _) => SwitchPage();
 
         
@@ -176,11 +185,7 @@ public partial class ProfileEditorWindow : AppWindow
         SubjectPaletteList.AddHandler(InputElement.PointerReleasedEvent, OnPalettePointerReleased,
             RoutingStrategies.Tunnel);
 
-        SaveNowButton.Click += (_, _) =>
-        {
-            AppServices.Schedule.Save();
-            PaletteHintText.Text = "课表已保存。";
-        };
+        SaveNowButton.Click += OnSaveNow;
 
         
         AddClassTimeButton.Click += (_, _) => AddTime(ClassTimeKind.Class);
@@ -223,7 +228,7 @@ public partial class ProfileEditorWindow : AppWindow
 
         OpenButton.Click += OnOpenTimetable;
         ExportButton.Click += OnExport;
-        ReloadButton.Click += (_, _) => { AppServices.ReloadTimetable(); LoadAll(); };
+        ReloadButton.Click += OnReloadProfile;
     }
 
     
@@ -259,7 +264,11 @@ public partial class ProfileEditorWindow : AppWindow
         if (index == _pageIndex)
             return;
 
+        if (!_navigatingBack && _pageIndex >= 0)
+            _pageHistory.Add(_pageIndex);
+
         _pageIndex = index;
+        BackButton.IsVisible = _pageHistory.Count > 0;
         if (index == 0)
             RefreshInfo();
         PageProfile.IsVisible = index == 0;
@@ -281,6 +290,43 @@ public partial class ProfileEditorWindow : AppWindow
         PageTransitions.PlayEntrance(page);
     }
 
+    private void NavigateBack()
+    {
+        if (_pageHistory.Count == 0)
+            return;
+
+        var target = _pageHistory[^1];
+        _pageHistory.RemoveAt(_pageHistory.Count - 1);
+
+        _navigatingBack = true;
+        try
+        {
+            NavView.SelectedItem = NavView.MenuItems[target];
+            if (_pageIndex != target)
+                SwitchPage();
+        }
+        finally
+        {
+            _navigatingBack = false;
+        }
+
+        BackButton.IsVisible = _pageHistory.Count > 0;
+    }
+
+    private void OnNavigateBack(object? sender, RoutedEventArgs e) => NavigateBack();
+
+    private void OnSaveNow(object? sender, RoutedEventArgs e)
+    {
+        AppServices.Schedule.Save();
+        PaletteHintText.Text = "课表已保存。";
+    }
+
+    private void OnReloadProfile(object? sender, RoutedEventArgs e)
+    {
+        AppServices.ReloadTimetable();
+        LoadAll();
+    }
+
     private void RefreshInfo()
     {
         var profile = AppServices.Schedule.Profile;
@@ -288,6 +334,7 @@ public partial class ProfileEditorWindow : AppWindow
         var courseCount = profile.Schedules.Sum(schedule => schedule.Classes.Count);
 
         ProfileInfoText.Text = $"当前课表文件：{AppServices.TimetablePath}";
+        ToolTip.SetTip(ProfileInfoText, AppServices.TimetablePath);
         ProfileSummaryText.Text =
             $"当前正在编辑「{profile.Name}」档案。课表修改会写入当前 CSES 文件，并通过左侧导航切换到其他编辑页面。";
         ProfileNameValueText.Text = profile.Name;

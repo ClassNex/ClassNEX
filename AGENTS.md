@@ -35,7 +35,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：档案编辑器由顶部 TabControl 重做为 AvaloniaFluentUI NavigationView（左侧导航：档案信息 / 课表 / 时间表 / 科目 / 调课；右侧统一标题与独立页面容器；新增只读档案信息概览和课程/科目/时间点计数；保留旧 SelectTab(0-3) 调用映射；页面切换复用 PageTransitions；修复科目表格行文字使用空 Foreground 导致不可见，并将行背景改为 Transparent 以恢复点击）；全应用图标迁移到 Lucide Icons；Casdoor 静态资源修复；NEX 唤醒动画去抖；页面切换动画改为单条关键帧动画；发布 26w43c_Alpha；账户系统；打包 CI 同款结构
-改了文件：src/ClassNex/Views/ProfileEditorWindow.axaml、src/ClassNex/Views/ProfileEditorWindow.axaml.cs
+上次完成：档案编辑器顶部按应用设置重做（返回历史按钮 + 图标/标题 + 当前文件路径框 + 版本号 + 更多选项；保存/打开/重新加载/导出下移到页面标题下方工具栏）；进程启动时设置稳定 AppUserModelID，任务栏使用 exe 内嵌 ClassNEX 图标；档案编辑器已使用左侧 NavigationView（档案信息 / 课表 / 时间表 / 科目 / 调课）并保留页面动画、档案概览、旧 SelectTab 映射和科目表格可点击修复
+改了文件：src/ClassNex/Program.cs、src/ClassNex/Views/ProfileEditorWindow.axaml、src/ClassNex/Views/ProfileEditorWindow.axaml.cs、HANDOFF.md、AGENTS.md
 进行中：无
 下一步：待用户指定

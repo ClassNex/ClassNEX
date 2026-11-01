@@ -183,6 +183,8 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   存 `AppSettings.UserName/Email`）；导航栏账户卡 + 搜索框布局**模板取自 FluentUI-Gallery**（zhuzichu520 的 Qt/QML 版）
 
 ### 档案编辑器
+- **顶部栏**：结构与应用设置一致，左侧返回历史按钮、应用图标和标题，中间显示当前 CSES 文件路径，
+  右侧显示版本号和“更多选项”；保存/打开课表/重新加载/导出 CSES 位于页面标题下方，不要再放回标题栏。
 - **整体布局**：使用 `NavigationView`（`PaneDisplayMode=Left`，`OpenPaneLength=220`，透明内容背景），左侧固定为
   「档案信息 / 课表 / 时间表 / 科目 / 调课」，右侧统一显示 28px 页面标题和独立页面面板；不要再退回顶部 TabControl。
   旧调用 `SelectTab(0-3)` 已映射到课表/时间表/科目/调课，`档案信息` 仍可从左侧进入；设置窗口、OOBE、档案编辑器页切换都走
@@ -195,6 +197,9 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 - **科目页**：表格（科目名 / 简称 / 户外课程 / 科任老师），`Subject.IsOutDoor` 对齐 CI
   （表格行必须显式使用 `CiPalette.PrimaryTextBrush()`，未选中行背景必须为 `Brushes.Transparent`，否则文字不显示且无法点击）
 - **调课页**：占位，未实现
+- **任务栏图标**：`Program.Main` 在 Avalonia 启动前调用 `SetCurrentProcessExplicitAppUserModelID("ClassNex.ClassNEX.Desktop")`；
+  不要移除该调用，否则 Windows 可能把窗口显示成通用任务栏图标。EXE 的 `ApplicationIcon` 与各窗口 `Icon`
+  必须继续指向 `Assets/icon.ico`，该 ICO 已包含 16/24/32/48/64/128/256 全套尺寸。
 
 ### 其它
 - **NEX Intelligence（内置 AI Agent，2026-10-11 新增）**
