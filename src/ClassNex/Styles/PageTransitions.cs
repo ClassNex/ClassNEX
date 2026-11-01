@@ -4,56 +4,50 @@ using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Styling;
+using Avalonia.Threading;
 
 namespace ClassNex.Styles;
 
 public static class PageTransitions
 {
-    private static readonly SplineEasing EntranceEasing =
-        new(new KeySpline(0.1, 0.9, 0.2, 1.0));
+    private const double FromVerticalOffset = 24;
+    private static readonly TimeSpan Duration = TimeSpan.FromMilliseconds(667);
+    private static readonly SplineEasing Easing = new(new KeySpline(0.1, 0.9, 0.2, 1.0));
 
     public static void PlayEntrance(Control target)
     {
         if (target is null)
             return;
 
-        const double fromOffset = 24;
-
-        var shift = new Animation
+        target.Transitions = new Transitions
         {
-            Duration = TimeSpan.FromMilliseconds(250),
-            Easing = EntranceEasing,
+            new DoubleTransition
+            {
+                Property = Visual.OpacityProperty,
+                Duration = Duration,
+                Easing = Easing,
+            },
+            new DoubleTransition
+            {
+                Property = TranslateTransform.YProperty,
+                Duration = Duration,
+                Easing = Easing,
+            },
         };
-        shift.Children.Add(new KeyFrame
-        {
-            Cue = new Cue(0),
-            Setters = { new Setter(TranslateTransform.YProperty, fromOffset) },
-        });
-        shift.Children.Add(new KeyFrame
-        {
-            Cue = new Cue(1),
-            Setters = { new Setter(TranslateTransform.YProperty, 0.0) },
-        });
 
-        var fade = new Animation
+        if (target.RenderTransform is not TranslateTransform shift)
         {
-            Duration = TimeSpan.FromMilliseconds(200),
-            Easing = new LinearEasing(),
-        };
-        fade.Children.Add(new KeyFrame
-        {
-            Cue = new Cue(0),
-            Setters = { new Setter(Visual.OpacityProperty, 0.0) },
-        });
-        fade.Children.Add(new KeyFrame
-        {
-            Cue = new Cue(1),
-            Setters = { new Setter(Visual.OpacityProperty, 1.0) },
-        });
+            shift = new TranslateTransform();
+            target.RenderTransform = shift;
+        }
 
-        target.RenderTransform ??= new TranslateTransform();
+        target.Opacity = 0;
+        shift.Y = FromVerticalOffset;
 
-        _ = shift.RunAsync(target);
-        _ = fade.RunAsync(target);
+        Dispatcher.UIThread.Post(() =>
+        {
+            target.Opacity = 1;
+            shift.Y = 0;
+        }, DispatcherPriority.Render);
     }
 }
