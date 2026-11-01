@@ -590,8 +590,9 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         {
             DispatcherTimer.RunOnce(() =>
             {
-                NavigateTo("appearance");   
+                NavigateTo("appearance");
                 DispatcherTimer.RunOnce(() => SaveShot("_anim_early.png"), TimeSpan.FromMilliseconds(60));
+                DispatcherTimer.RunOnce(() => SaveShot("_anim_mid.png"), TimeSpan.FromMilliseconds(300));
                 DispatcherTimer.RunOnce(() => SaveShot("_anim_late.png"), TimeSpan.FromMilliseconds(900));
             }, TimeSpan.FromSeconds(4));
         }

@@ -161,6 +161,12 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 - **动画参数**：启动/显示淡入 250ms `0.25,1,0.5,1`；岛宽变化 300ms `0.65,0,0.35,1.0`
   （CI BackgroundWidth；Avalonia 的 Width 过渡在 LayoutTransformControl 内会卡布局，改用 composition Scale 补间）；
   组件位移动画 = 移植的 `Controls/WrapPanelResizingAnimationAssist.cs`；进度条数值 50ms；悬停淡化 0.05/100ms
+- **页面切换动画**（设置窗口/OOBE/档案编辑器）：`Styles/PageTransitions.cs` 单条 `Animation` 关键帧 +
+  `RunAsync(目标, CancellationToken)`，参数照 WinUI 主题动画表 TAS_ENTERPAGE=32 实测值：位移 24→0 与透明度
+  0→1 均 667ms、cubic-bezier(0.1,0.9,0.2,1)；新动画开始前取消上一个动画，目标 `IsEffectivelyVisible=false`
+  时直接落位不播动画（避免窗口未显示时重复触发）；动画目标必须是单个页面面板（不能是 PageScroll 滚动容器，
+  否则整个内容+滚动条一起位移会产生上下抖动）；不要用两段式 `Dispatcher.UIThread.Post`（Background→Render）
+  驱动过渡，会丢动画并卡顿
 - **强制置顶**（每秒自检 + 失焦重声明）、贴屏幕顶部水平居中（窗口比屏宽时向两侧对称溢出，岛保持居中）、**不可拖动**
 - **鼠标穿透**（Win32 `WS_EX_TRANSPARENT`）+ **鼠标移入淡化**（淡到 0.05、100ms 线性过渡；
   因穿透后收不到鼠标消息，用 30ms 轮询 `GetCursorPos` 近似 CI 的 RawInput 即时判定 → `Services/WindowsOverlay.cs`）

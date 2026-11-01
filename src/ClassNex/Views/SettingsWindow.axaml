@@ -249,20 +249,6 @@
                 <TextBlock x:Name="PageTitleText" Grid.Row="0" FontSize="28"
                            Margin="32,24,32,0" HorizontalAlignment="Left"/>
                 <ScrollViewer x:Name="PageScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                    
-                    <ScrollViewer.RenderTransform>
-                        <TranslateTransform>
-                            <TranslateTransform.Transitions>
-                                <Transitions>
-                                    <DoubleTransition Property="Y" Duration="0:0:0.32">
-                                        <DoubleTransition.Easing>
-                                            <CubicEaseOut/>
-                                        </DoubleTransition.Easing>
-                                    </DoubleTransition>
-                                </Transitions>
-                            </TranslateTransform.Transitions>
-                        </TranslateTransform>
-                    </ScrollViewer.RenderTransform>
                     <StackPanel Margin="32,12,32,24" Spacing="12" MaxWidth="880" HorizontalAlignment="Left">
 
                         
