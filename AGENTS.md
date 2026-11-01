@@ -35,7 +35,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：档案编辑器 NavigationView 布局、顶部栏、任务栏图标、页面动画、Lucide 图标和 NEX 唤醒动画修复；版本号更新为 26w44a；GitHub Actions 构建与发布 26w44a_Alpha 成功，安装包 ClassNEX-26w44a-Alpha-win-x64.zip 已上传
-改了文件：src/ClassNex/ClassNex.csproj、RELEASE_NOTES.md、HANDOFF.md、AGENTS.md
+上次完成：Casdoor 新增 Smart Teach OIDC Provider（ClassNEX/smart-teach），接入 https://auth.smart-teach.cn 的授权、令牌和用户信息端点，绑定到 app-classnex 并开启登录、注册、解绑与邮箱绑定；外部应用回调已确认包含 http://124.221.160.188:8000/callback，客户端密钥仅保存在 Casdoor 数据库
+改了文件：HANDOFF.md、AGENTS.md
 进行中：无
 下一步：待用户指定

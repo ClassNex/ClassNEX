@@ -202,6 +202,10 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   必须继续指向 `Assets/icon.ico`，该 ICO 已包含 16/24/32/48/64/128/256 全套尺寸。
 
 ### 其它
+- **Casdoor OIDC 提供商**：`ClassNEX/smart-teach` 已接入 `https://auth.smart-teach.cn`，类型为 OIDC，
+  使用授权码流程和 PKCE，范围为 `openid profile email`；已绑定 `app-classnex`，允许登录、注册、解绑并按邮箱绑定。
+  外部应用 `Classnex` 的允许回调包含 `http://124.221.160.188:8000/callback`。Client ID 为
+  `913736707004a6f7c323`，Client Secret 只存在于 Casdoor 数据库，禁止写入仓库或交接文档。
 - **NEX Intelligence（内置 AI Agent，2026-10-11 新增）**
   - 设置里新增「NEX Intelligence」页（导航项在「组件」之后）+ 独立对话窗（沉浸标题栏 + 云母）
   - 代码在 `Services\NexIntelligence\`：`NexAiClient`（OpenAI 兼容 /v1/chat/completions，流式 SSE；增量为 `delta.content` 与 `delta.reasoning_content`，工具调用分片在 `delta.tool_calls` 里按 index 拼装）、`NexAgent`（一轮 = 发消息 → 流式收正文/思考 → 执行工具 → 回填 → 继续，最多 8 轮）、`NexAgentTools`（六个工具：读应用状态/读课表/列目录/读文件/写文件/执行命令）、`NexModelCatalog`（拉模型列表/测连接）
