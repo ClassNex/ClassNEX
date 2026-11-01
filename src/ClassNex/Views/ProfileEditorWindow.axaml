@@ -45,11 +45,132 @@
             </Grid>
         </Border>
 
-        <TabControl x:Name="Tabs" Margin="8">
+        <ui:NavigationView x:Name="NavView" Margin="8"
+                           Background="Transparent"
+                           PaneDisplayMode="Left"
+                           OpenPaneLength="220"
+                           IsPaneOpen="True"
+                           PaneTitle="档案编辑器"
+                           IsBackButtonVisible="False"
+                           IsSettingsVisible="False"
+                           IsPaneToggleButtonVisible="True">
+            <ui:NavigationView.Resources>
+                <SolidColorBrush x:Key="NavigationViewContentBackground" Color="Transparent"/>
+                <SolidColorBrush x:Key="NavigationViewContentGridBorderBrush" Color="Transparent"/>
+            </ui:NavigationView.Resources>
 
-            
-            <TabItem Header="课表">
-                <Grid Margin="12" RowDefinitions="Auto,Auto,*" ColumnDefinitions="*,5,350">
+            <ui:NavigationView.MenuItems>
+                <ui:NavigationViewItem Content="档案信息">
+                    <ui:NavigationViewItem.IconSource>
+                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
+                                           Glyph="&#xE0F9;" FontSize="16"/>
+                    </ui:NavigationViewItem.IconSource>
+                </ui:NavigationViewItem>
+                <ui:NavigationViewItem Content="课表">
+                    <ui:NavigationViewItem.IconSource>
+                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
+                                           Glyph="&#xE2B9;" FontSize="16"/>
+                    </ui:NavigationViewItem.IconSource>
+                </ui:NavigationViewItem>
+                <ui:NavigationViewItem Content="时间表">
+                    <ui:NavigationViewItem.IconSource>
+                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
+                                           Glyph="&#xE087;" FontSize="16"/>
+                    </ui:NavigationViewItem.IconSource>
+                </ui:NavigationViewItem>
+                <ui:NavigationViewItem Content="科目">
+                    <ui:NavigationViewItem.IconSource>
+                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
+                                           Glyph="&#xE198;" FontSize="16"/>
+                    </ui:NavigationViewItem.IconSource>
+                </ui:NavigationViewItem>
+                <ui:NavigationViewItem Content="调课">
+                    <ui:NavigationViewItem.IconSource>
+                        <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
+                                           Glyph="&#xE049;" FontSize="16"/>
+                    </ui:NavigationViewItem.IconSource>
+                </ui:NavigationViewItem>
+            </ui:NavigationView.MenuItems>
+
+            <Grid RowDefinitions="Auto,*">
+                <TextBlock x:Name="PageTitleText" Grid.Row="0" FontSize="28"
+                           Margin="32,24,32,0" HorizontalAlignment="Left"/>
+
+                <Grid Grid.Row="1">
+                    <ScrollViewer x:Name="PageProfile" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="32,16,32,32" Spacing="16" MaxWidth="860"
+                                    HorizontalAlignment="Left">
+                            <TextBlock x:Name="ProfileSummaryText" FontSize="14" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+
+                            <Border Padding="20"
+                                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1" CornerRadius="8">
+                                <Grid ColumnDefinitions="150,*"
+                                      RowDefinitions="Auto,Auto,Auto,Auto,Auto"
+                                      RowSpacing="12">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="档案名称"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="1" x:Name="ProfileNameValueText"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="课表文件"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="1" x:Name="ProfileFileValueText"
+                                               TextWrapping="Wrap"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="开学日期"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="1" x:Name="ProfileSemesterValueText"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="周次规则"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="支持每周、单周和双周课程"/>
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="保存位置"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                    <TextBlock Grid.Row="4" Grid.Column="1" Text="修改会写回当前 CSES 课表文件"
+                                               TextWrapping="Wrap"/>
+                                </Grid>
+                            </Border>
+
+                            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
+                                <Border Grid.Column="0" Padding="18"
+                                        Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1" CornerRadius="8">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="课程"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock x:Name="ProfileCourseCountText" FontSize="24"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="1" Padding="18"
+                                        Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1" CornerRadius="8">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="科目"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock x:Name="ProfileSubjectCountText" FontSize="24"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="2" Padding="18"
+                                        Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1" CornerRadius="8">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="时间点"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock x:Name="ProfileTimePointCountText" FontSize="24"/>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <TextBlock Text="使用左侧导航在课表、时间表、科目和调课页面之间切换。"
+                                       FontSize="12" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <Grid x:Name="PageSchedule" IsVisible="False" Margin="32,16,32,24"
+                          RowDefinitions="Auto,Auto,*" ColumnDefinitions="*,5,350">
 
                     
                     <StackPanel Grid.Row="0" Grid.ColumnSpan="3" Orientation="Horizontal" Spacing="8"
@@ -194,11 +315,8 @@
                         </Border>
                     </DockPanel>
                 </Grid>
-            </TabItem>
 
-            
-            <TabItem Header="时间表">
-                <DockPanel Margin="12">
+                    <DockPanel x:Name="PageTime" IsVisible="False" Margin="32,16,32,24">
                     <ui:InfoBar x:Name="TimeInfoBar" DockPanel.Dock="Top" Severity="Informational"
                                 IsOpen="False" IsClosable="True" Margin="0,0,0,8"/>
 
@@ -288,12 +406,10 @@
                             </StackPanel>
                         </Border>
                     </Grid>
-                </DockPanel>
-            </TabItem>
+                    </DockPanel>
 
-            
-            <TabItem Header="科目">
-                <Grid Margin="12" ColumnDefinitions="*,330">
+                    <Grid x:Name="PageSubject" IsVisible="False" Margin="32,16,32,24"
+                          ColumnDefinitions="*,330">
 
                     <DockPanel Grid.Column="0">
                         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,10">
@@ -343,20 +459,15 @@
                             </StackPanel>
                         </ScrollViewer>
                     </Border>
-                </Grid>
-            </TabItem>
+                    </Grid>
 
-            
-            <TabItem Header="调课">
-                <StackPanel Margin="16" Spacing="12">
-                    <TextBlock Text="调课" FontSize="18" FontWeight="SemiBold"
-                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    <StackPanel x:Name="PageSwap" IsVisible="False" Margin="32,16,32,24" Spacing="12">
                     <TextBlock Text="临时调课（不改动基础课表，只覆盖某一天）功能开发中。"
                                TextWrapping="Wrap"
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                </StackPanel>
-            </TabItem>
-
-        </TabControl>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </ui:NavigationView>
     </DockPanel>
 </wd:AppWindow>

@@ -183,11 +183,17 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   存 `AppSettings.UserName/Email`）；导航栏账户卡 + 搜索框布局**模板取自 FluentUI-Gallery**（zhuzichu520 的 Qt/QML 版）
 
 ### 档案编辑器
+- **整体布局**：使用 `NavigationView`（`PaneDisplayMode=Left`，`OpenPaneLength=220`，透明内容背景），左侧固定为
+  「档案信息 / 课表 / 时间表 / 科目 / 调课」，右侧统一显示 28px 页面标题和独立页面面板；不要再退回顶部 TabControl。
+  旧调用 `SelectTab(0-3)` 已映射到课表/时间表/科目/调课，`档案信息` 仍可从左侧进入；设置窗口、OOBE、档案编辑器页切换都走
+  `Styles/PageTransitions.cs`，动画目标必须只包含当前页面面板。
+- **档案信息页**：显示档案名称、CSES 路径、开学日期、周次规则，以及课程/科目/时间点数量；切回该页时重新汇总。
 - **课表页**：可视化周课表，**点空格 → 点科目直接排课**（含「选完科目自动移动到下一个课程」）、
   增删改课程、每周/单周/双周 + 单双周视图切换
 - **时间表页**：**可视化时间轴**（上课=强调色块、课间=中性块），增删/上移/下移，
   改时间**自动同步课表**，可从课表重建（`TimeLayout.FromProfile` 会自动补课间块）
 - **科目页**：表格（科目名 / 简称 / 户外课程 / 科任老师），`Subject.IsOutDoor` 对齐 CI
+  （表格行必须显式使用 `CiPalette.PrimaryTextBrush()`，未选中行背景必须为 `Brushes.Transparent`，否则文字不显示且无法点击）
 - **调课页**：占位，未实现
 
 ### 其它

@@ -11,6 +11,7 @@ using ClassNex.Controls;
 using ClassNex.Models;
 using ClassNex.Services;
 using ClassNex.Styles;
+using AvaloniaFluentUI.Controls;
 using AvaloniaFluentUI.Windowing;
 
 namespace ClassNex.Views;
@@ -36,6 +37,10 @@ public partial class ProfileEditorWindow : AppWindow
     private CellTarget? _selectedCell;
     private DateTime _weekStart;
     private string _parity = "all";
+    private int _pageIndex = -1;
+
+    private static readonly string[] PageNames =
+        { "档案信息", "课表", "时间表", "科目", "调课" };
 
     public ProfileEditorWindow()
     {
@@ -49,12 +54,11 @@ public partial class ProfileEditorWindow : AppWindow
 
         BuildCommandBar();
         WireEvents();
-        Tabs.SelectionChanged += (_, _) =>
-        {
-            if (Tabs.SelectedItem is TabItem { Content: Control content })
-                PageTransitions.PlayEntrance(content);
-        };
         LoadAll();
+
+        NavView.SelectedItem = NavView.MenuItems[1];
+        if (_pageIndex < 0)
+            SwitchPage();
     }
 
     
@@ -105,8 +109,15 @@ public partial class ProfileEditorWindow : AppWindow
     
     public void SelectTab(int index)
     {
-        if (index >= 0 && index < Tabs.ItemCount)
-            Tabs.SelectedIndex = index;
+        var navIndex = Math.Clamp(index, 0, 3) + 1;
+        if (navIndex >= NavView.MenuItems.Count)
+            return;
+
+        var item = NavView.MenuItems[navIndex];
+        if (ReferenceEquals(NavView.SelectedItem, item))
+            SwitchPage();
+        else
+            NavView.SelectedItem = item;
     }
 
     
@@ -135,6 +146,8 @@ public partial class ProfileEditorWindow : AppWindow
 
     private void WireEvents()
     {
+        NavView.SelectionChanged += (_, _) => SwitchPage();
+
         
         WeekGrid.SelectionChanged += (_, _) => UpdateSelectedCellFromGrid();
         WeekGrid.CurrentCellChanged += (_, _) => UpdateSelectedCellFromGrid();
@@ -237,7 +250,53 @@ public partial class ProfileEditorWindow : AppWindow
         RenderTimetable();
     }
 
-    private void RefreshInfo() => ProfileInfoText.Text = $"当前课表文件：{AppServices.TimetablePath}";
+    private void SwitchPage()
+    {
+        var name = (NavView.SelectedItem as NavigationViewItem)?.Content as string ?? "";
+        var index = Array.IndexOf(PageNames, name);
+        if (index < 0)
+            index = 1;
+        if (index == _pageIndex)
+            return;
+
+        _pageIndex = index;
+        if (index == 0)
+            RefreshInfo();
+        PageProfile.IsVisible = index == 0;
+        PageSchedule.IsVisible = index == 1;
+        PageTime.IsVisible = index == 2;
+        PageSubject.IsVisible = index == 3;
+        PageSwap.IsVisible = index == 4;
+        PageTitleText.Text = PageNames[index];
+
+        var page = index switch
+        {
+            0 => (Control)PageProfile,
+            1 => PageSchedule,
+            2 => PageTime,
+            3 => PageSubject,
+            _ => PageSwap,
+        };
+
+        PageTransitions.PlayEntrance(page);
+    }
+
+    private void RefreshInfo()
+    {
+        var profile = AppServices.Schedule.Profile;
+        var semester = AppServices.Settings.SemesterStartDate?.ToString("yyyy年M月d日") ?? "未设置";
+        var courseCount = profile.Schedules.Sum(schedule => schedule.Classes.Count);
+
+        ProfileInfoText.Text = $"当前课表文件：{AppServices.TimetablePath}";
+        ProfileSummaryText.Text =
+            $"当前正在编辑「{profile.Name}」档案。课表修改会写入当前 CSES 文件，并通过左侧导航切换到其他编辑页面。";
+        ProfileNameValueText.Text = profile.Name;
+        ProfileFileValueText.Text = AppServices.TimetablePath;
+        ProfileSemesterValueText.Text = semester;
+        ProfileCourseCountText.Text = courseCount.ToString();
+        ProfileSubjectCountText.Text = profile.Subjects.Count.ToString();
+        ProfileTimePointCountText.Text = AppServices.TimeLayout.Layout.Times.Count.ToString();
+    }
 
     private void RefreshSubjectNames()
     {
@@ -885,9 +944,12 @@ public partial class ProfileEditorWindow : AppWindow
 
             for (var c = 0; c < cells.Length; c++)
             {
+                var foreground = isSelected
+                    ? CiPalette.OnAccentBrush()
+                    : CiPalette.PrimaryTextBrush();
                 var cell = new Border
                 {
-                    Background = isSelected ? CiPalette.SelectionBrush() : null,
+                    Background = isSelected ? CiPalette.SelectionBrush() : Brushes.Transparent,
                     Cursor = new Cursor(StandardCursorType.Hand),
                     Child = new TextBlock
                     {
@@ -895,7 +957,7 @@ public partial class ProfileEditorWindow : AppWindow
                         FontSize = 13,
                         Margin = new Thickness(10, 7),
                         VerticalAlignment = VerticalAlignment.Center,
-                        Foreground = isSelected ? CiPalette.OnAccentBrush() : null,
+                        Foreground = foreground,
                     },
                 };
 
