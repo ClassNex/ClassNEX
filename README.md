@@ -17,6 +17,15 @@ ClassNEX 是一款功能强大、可定制、跨平台的课表信息显示工�
 > **目前不建议将 ClassNEX 用于生产环境。**
 ## Contributors
 
+## Contributors
+
+<p align="center">
+  <img
+    src="assets/contributors.svg"
+    width="100%"
+    alt="ClassNEX Contributors"
+  />
+</p>
 <p align="center">
   <img
     src="assets/contributors.svg"
