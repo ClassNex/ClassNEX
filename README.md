@@ -26,14 +26,6 @@ ClassNEX 是一款功能强大、可定制、跨平台的课表信息显示工�
     alt="ClassNEX Contributors"
   />
 </p>
-<p align="center">
-  <img
-    src="assets/contributors.svg"
-    width="100%"
-    alt="ClassNEX Contributors"
-  />
-</p>
-
 ---
 
 ## 当前实现（阶段一：桌面端课表）
