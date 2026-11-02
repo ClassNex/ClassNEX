@@ -207,7 +207,15 @@ ClassNEX 使用 GNU General Public License v3.0 开源协议。
 详见 [LICENSE](LICENSE)。
 
 ---
+## Contributors
 
+<p align="center">
+  <img
+    src="assets/contributors.svg"
+    width="100%"
+    alt="ClassNEX Contributors"
+  />
+</p>
 <div align="center">
 
 **ClassNEX · Powered by LingOfficial**
