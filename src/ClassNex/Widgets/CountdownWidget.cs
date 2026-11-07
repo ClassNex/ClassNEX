@@ -1,12 +1,10 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Layout;
 using Avalonia.Media;
 using ClassNex.Styles;
 
 namespace ClassNex.Widgets;
-
-
-
-
 
 
 public sealed class CountdownWidget : WidgetBase
@@ -15,8 +13,8 @@ public sealed class CountdownWidget : WidgetBase
 
     public CountdownWidget()
     {
-        _text = Text("", 18, White());
-        View = _text;
+        _text = Text("", 13.5, White());
+        View = Pill(_text, padding: 10, margin: new Thickness(0, 0, WidgetGap, 0));
     }
 
     public override string Type => "countdown";
@@ -34,8 +32,7 @@ public sealed class CountdownWidget : WidgetBase
                 _ => $"{name} 已过 {-days} 天",
             };
 
-            
-            _text.Foreground = Config.UseCountdownAccent ? CiPalette.AccentBrush() : White();
+            _text.Foreground = Config.UseCountdownAccent ? CiPalette.SakuraAccentBrush() : White();
         }
         else
         {
@@ -43,6 +40,6 @@ public sealed class CountdownWidget : WidgetBase
             _text.Foreground = White();
         }
 
-        _text.FontSize = Size(CiSecondary);
+        _text.FontSize = Size(13.5);
     }
 }

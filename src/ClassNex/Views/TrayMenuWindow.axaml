@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="using:AvaloniaFluentUI.Controls"
         x:Class="ClassNex.Views.TrayMenuWindow"
-        Width="240" SizeToContent="Height"
+        Width="280" SizeToContent="Height"
         SystemDecorations="None" ShowInTaskbar="False" Topmost="True"
         CanResize="False" TransparencyLevelHint="Transparent"
         Background="Transparent" WindowStartupLocation="Manual">
@@ -18,7 +18,9 @@
     </Window.Styles>
 
     
-    <Border Margin="8" CornerRadius="6" BorderThickness="1" Padding="4"
+    <Border x:Name="MenuRoot" Margin="28" CornerRadius="10" BorderThickness="1" Padding="4"
+            Opacity="0"
+            BoxShadow="0 8 18 0 #2E000000"
             BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
             Background="{DynamicResource AcrylicBackgroundFillColorDefaultBrush}">
         <StackPanel x:Name="ItemsPanel" Spacing="2"/>

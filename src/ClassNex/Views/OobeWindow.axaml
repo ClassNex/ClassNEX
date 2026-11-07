@@ -48,15 +48,6 @@
         <Style Selector="Button.Primary:pressed /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource AccentFillColorTertiaryBrush}"/>
         </Style>
-        <Style Selector="Ellipse.PageDot">
-            <Setter Property="Width" Value="8"/>
-            <Setter Property="Height" Value="8"/>
-            <Setter Property="Fill" Value="{DynamicResource ControlStrongStrokeColorDefaultBrush}"/>
-        </Style>
-        <Style Selector="Ellipse.PageDot.Active">
-            <Setter Property="Width" Value="18"/>
-            <Setter Property="Fill" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
-        </Style>
     </Window.Styles>
 
     <Grid RowDefinitions="*,Auto">
@@ -64,8 +55,8 @@
 
             
             <Grid x:Name="PageWelcome" ColumnDefinitions="3*,2*">
-                <StackPanel Grid.Column="0" Spacing="14" Margin="56,16,32,0"
-                            VerticalAlignment="Center" HorizontalAlignment="Left" MaxWidth="560">
+                <StackPanel x:Name="WelcomeTextPanel" Grid.Column="0" Spacing="14" Margin="56,16,32,0"
+                            VerticalAlignment="Center" HorizontalAlignment="Left" MaxWidth="560" Opacity="0">
                     <TextBlock x:Name="GreetingText"
                                Text="你好"
                                FontFamily="Noto Serif SC, Source Han Serif SC, SimSun"
@@ -93,8 +84,8 @@
                 </StackPanel>
 
                 
-                <Border Grid.Column="0" Grid.ColumnSpan="2"
-                        Margin="445,121,0,23" ClipToBounds="True">
+                <Border x:Name="WelcomeImage" Grid.Column="0" Grid.ColumnSpan="2"
+                        Margin="445,121,0,23" ClipToBounds="True" Opacity="0">
                     <Border.Background>
                         <ImageBrush Source="avares://ClassNex/Assets/Oobe/Classroom.png"
                                     Stretch="UniformToFill"
@@ -170,12 +161,20 @@
                                Text="点击「完成」后 ClassNEX 会重新启动，并在桌面上显示课表浮窗。"/>
                 </StackPanel>
             </Panel>
+            <TextBlock x:Name="StepIndicator"
+                       Margin="56,18,0,0"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Top"
+                       FontSize="12"
+                       Opacity="0.62"
+                       ZIndex="10"
+                       IsHitTestVisible="False"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
         </Grid>
 
         
-        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="56,12,56,28">
-            <StackPanel x:Name="PageDots" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"/>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
+        <Grid Grid.Row="1" Margin="56,12,56,28" HorizontalAlignment="Right">
+            <StackPanel x:Name="FooterActions" Orientation="Horizontal" Spacing="12" Opacity="0">
                 <Button x:Name="BackButton" Content="上一步" MinWidth="104"/>
                 <Button x:Name="NextButton" Content="同意并继续" MinWidth="120" Classes="Primary"/>
             </StackPanel>

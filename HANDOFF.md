@@ -99,27 +99,30 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 ## 3. 当前已完成的功能
 
 ### 主界面（悬浮课表）
-- **结构 = CI 原样**：`CardHost`(淡入) → `HoverHost`(悬停淡化) → `LayoutTransformControl RootScale`
+- **结构**：`CardHost`(淡入) → `HoverHost`(悬停淡化) → `LayoutTransformControl RootScale`
   （`ScaleTransform = MainWindowScale×FontScale`，默认 1.9，**CI 的 RootLayoutTransformControl**）
-  → `IslandBackground`（CI `.line-background`：高固定 40=IslandContainerHeight、圆角 8=RadiusX、
-  1px 描边 ControlElevationBorderBrush、阴影 `0 4 8 2 #48000000`、背景 SolidBackgroundFillColorSecondaryBrush、
-  透明度 BackgroundOpacity）→ `CardContent`（CI GridContentRoot：Margin="12 0"、MinWidth=20）
+  → `IslandBackground`（高 44、圆角 14、1px 渐变描边、柔和投影、顶部高光 `IslandSheen`；
+  表面色按主题取樱花渐变：浅色 `#FFFDFE → #FFF4F8 → #FFE6EF → #FFD8E6`，
+  深色 `#2A1722 → #3A1E2C → #4A2434 → #562B3D`，整体透明度 = `BackgroundOpacity`）→ `CardContent`（Margin="16 0"）
 - ⚠️ **三个必须记住的坑（都踩过）**：
-  1. 岛宽 = **内容宽 + 两侧各 12**（CI 的 `BackgroundWidth` 是含 `Margin="12 0"` 的 GridWrapper 宽度）；
-     只按内容宽设 → 文字顶到岛边缘、没有内边距
-  2. 进度条必须 **`MinWidth = 0`**（CI 源码里也写了这句）：主题 ProgressBar 默认 MinWidth=200，
-     会把当前课项撑到 200 宽，文字与后一项之间出现 ~200px 假空档
+  1. 岛宽 = **内容宽 + 两侧各 16**（`IslandContentMargin`）
+  2. 当前课进度条改成了**自绘 2px 轨道 + 填充**（`ScheduleWidget` 的 `_progressTrack/_progressFill`），
+     不再用 `ProgressBar`，因为主题 `ProgressBar` 默认 `MinWidth=200` 会撑宽当前课项
   3. 岛**不能加 `ClipToBounds`** —— 会把 `BoxShadow` 裁掉（阴影不渲染）
-- **取色全部跟随系统**：主题明暗 = `ThemeMode=system`（`PreferSystemTheme`）、强调色 = 系统强调色
-  （`CustomAccentColor=null` + `PreferUserAccentColor=true`）。因此**组件文字必须跟随主题取色**
-  （`WidgetBase.White()` 现在返回主题 `TextFillColorPrimaryBrush`：深色主题=浅字、浅色主题=深字），
-  写死白色会导致浅色主题下白字看不见
-- **进度条轨道**用 `CiPalette.ProgressTrackBrush()`：**只给 6% 对比**（深色主题 = 白 6%、浅色 = 黑 6%）。
-  CI 的 FluentAvalonia 轨道几乎和卡底同色（填充段之后直接就是卡底），AvaloniaFluentUI 的默认轨道
-  偏亮，会在青色填充后面露出一截「浅色白边」—— 之前压到 0.35 仍嫌亮，现在 0.06 基本看不见。
-- **倒计时胶囊**：CI 源码里背景层有 `Height="{Binding Bounds.Height, ElementName=BorderStroke}"`，
-  **这一句必须有** —— 漏了它背景层只有 padding 高（6px），会在胶囊正下方露出一截小线条
-  （见 `ScheduleWidget.BuildCountdownPill` 的 `bg.Height = height`）
+- **取色跟随主题，组件强调色改为樱花玫瑰**：主题明暗 = `ThemeMode=system`（`PreferSystemTheme`）；
+  主界面表面由 `CiPalette.IslandSurfaceBrush()` 按 `IsDarkTheme()` 返回粉白/深玫瑰渐变，不再依赖
+  `SolidBackgroundFillColorSecondaryBrush`（不带主题变体取资源会返回浅色变体，深色主题下卡片会发白）。
+  悬浮组件的强调色统一走 `CiPalette.SakuraAccentBrush()` / `SakuraAccentGradient()`（浅色 `#D95C7C`、
+  深色 `#F08AA3`），不再使用系统强调色；其余窗口仍跟随系统强调色。因此**组件文字必须跟随主题取色**
+  （`WidgetBase.White()` 返回 `TextFillColorPrimaryBrush`：深色主题=浅字、浅色主题=深字），写死白色会在
+  浅色主题下看不清。
+- **组件样式**：课表项 = `Pill` 胶囊（高 29、圆角 8、7px 左右内边距、4px 间距），已上完项
+  `Opacity=0.42` + 160ms 淡出；当前课项 = 高 36 的樱花强调色胶囊（18% 填充、46% 描边、圆角 10），
+  底部内嵌 2px 进度线；倒计时 ≤60s 时换成**实心樱花渐变胶囊**（`OnAccentBrush` 文字）
+- **日期组件**：左侧 3px 樱花强调色竖条 + 两行「周几 / MM/dd」+ 右侧细分隔线，
+  不再是单行 `ddd MM/dd` 文本；字号 9.5 / 15，行高 11 / 18
+- **进度条轨道**：自绘轨道用 `SakuraAccentTint(0.16)`，填充用 `SakuraAccentGradient()`，不经过主题 ProgressBar
+- **倒计时胶囊**：樱花渐变底 + `OnAccentBrush` 文字，高 20、圆角 10、8px 内边距
 - **文字渲染用灰度抗锯齿**（`RenderOptions.SetTextRenderingMode(block, TextRenderingMode.Antialias)`，
   见 `WidgetBase.Text` 和胶囊文本）：默认的亚像素渲染会在笔画边缘产生彩色毛边（看着像「像素点」），
   在半透明卡片上尤其明显。⚠️ Avalonia 11.3 的 `RenderOptions` **没有**可供 XAML Setter 用的
@@ -128,6 +131,7 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 - **日期组件对齐 CI 的 `DateComponent`**：CI 里它就是一个普通 TextBlock
   （`StringFormat="{0:ddd MM/dd}"`），字号 = 继承的 `MainWindowBodyFontSize`（16）、字重 Normal。
   本项目此前是 22/SemiBold，已统一为 **Body 16 + Normal**（否则比课表项还重、看着字号不统一）。
+  （2026-11-01 视觉重做后改为两行日期块，见上）
 - **窗口固定为整屏宽**（CI 的做法）：`SizeToContent="Height"` + 代码里设 `Width = 主屏工作区宽/缩放`。
   内容宽度变化时窗口本身**不缩放、不重新居中**，只有岛在窗口内平滑变化 ——
   否则剩余时间每秒变宽变窄，窗口跟着一抖一抖（实测：修前时间文本宽 41.6↔40.0、岛宽 648.0↔646.4、
@@ -155,12 +159,15 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   编辑模式下**不淡化、鼠标不穿透**（否则点不到按钮）；代码见 `Views/MainWindow.EditMode.cs`
 - **组件内只用 CI 原值**（18/14/16/20 字号、16/10 间隔、8/2 胶囊内边距、1px 描边……），
   整体缩放交给 LayoutTransformControl —— 不再在各组件里 ×scale
-- 课表项语义 = CI LessonsListBox：当前项(上课/课间)=全名 Bold 18 + 剩余时间 + **进度条贴项底**
-  （项高=岛高 40，进度条即落在岛底边）、其他课=简称 18、**已上完淡化 0.6 带 150ms CubicEaseInOut 过渡**、
-  课间项隐藏（仅当前课间显示「课间休息」）
-- **动画参数**：启动/显示淡入 250ms `0.25,1,0.5,1`；岛宽变化 300ms `0.65,0,0.35,1.0`
+- 课表项语义 = CI LessonsListBox：当前项(上课/课间)=全名 Bold + 剩余时间 + **进度线贴项底**
+  （当前项高 36，进度线在胶囊内部底边）、其他课=简称胶囊、**已上完 `Opacity=0.42` 带 160ms CubicEaseInOut 过渡**、
+  课间项隐藏（仅当前课间显示「课间休息」）；课间当前项使用较淡的强调色胶囊
+- **动画参数**：启动动画 = `LinePanel` 组合层 opacity 0→1（420ms，`0.16,1,0.3,1`）+ scale
+  `(0.94,0.90)→(1.012,1.006)→(1,1)`（760ms，带回弹）；组件按 90ms + 45ms/个错峰淡入。
+  组件不再用 composition `Offset` 做上浮位移（部分合成器/DPI 下会把子视觉叠到同一位置，表现为启动时组件堆在一起）；
+  之后显示用 250ms `0.25,1,0.5,1` 淡入；岛宽变化 300ms `0.65,0,0.35,1.0`
   （CI BackgroundWidth；Avalonia 的 Width 过渡在 LayoutTransformControl 内会卡布局，改用 composition Scale 补间）；
-  组件位移动画 = 移植的 `Controls/WrapPanelResizingAnimationAssist.cs`；进度条数值 50ms；悬停淡化 0.05/100ms
+  组件位移动画 = 移植的 `Controls/WrapPanelResizingAnimationAssist.cs`；进度线随每秒刷新；悬停淡化 0.05/100ms
 - **页面切换动画**（设置窗口/OOBE/档案编辑器）：`Styles/PageTransitions.cs` 单条 `Animation` 关键帧 +
   `RunAsync(目标, CancellationToken)`，参数照 WinUI 主题动画表 TAS_ENTERPAGE=32 实测值：位移 24→0 与透明度
   0→1 均 667ms、cubic-bezier(0.1,0.9,0.2,1)；新动画开始前取消上一个动画，目标 `IsEffectivelyVisible=false`
@@ -170,7 +177,42 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 - **强制置顶**（每秒自检 + 失焦重声明）、贴屏幕顶部水平居中（窗口比屏宽时向两侧对称溢出，岛保持居中）、**不可拖动**
 - **鼠标穿透**（Win32 `WS_EX_TRANSPARENT`）+ **鼠标移入淡化**（淡到 0.05、100ms 线性过渡；
   因穿透后收不到鼠标消息，用 30ms 轮询 `GetCursorPos` 近似 CI 的 RawInput 即时判定 → `Services/WindowsOverlay.cs`）
-- 黑底 50% 不透明、圆角 8
+- 浅色粉白樱花渐变 / 深色深玫瑰渐变玻璃底 + 不透明度设置 + 圆角 14 + 顶部高光 + 玫瑰色柔和投影
+
+### 设置窗口与托盘菜单
+- **设置窗口背景**：`SettingsWindow` 的 `Background` 与 `SettingsRoot.Background` 都设为
+  `CiPalette.SettingsSurfaceBrush()`：浅色 `#FFFCFD → #FFF4F9 → #FFEAF3 → #FFE0EC`，深色
+  `#1A1118 → #24151E → #2B1824 → #321B28`；监听 `Application.ActualThemeVariantChanged` 刷新，
+  窗口关闭时退订。
+- **设置窗口启动动画**：`Opened` 时对 `SettingsRoot` 组合层 opacity 0→1（430ms，
+  `0.16,1,0.3,1`）+ scale `0.965→1.006→1`（620ms，回弹）+ offsetY 16→0（520ms）。
+  `SettingsRoot.Opacity` 先设为 0，播放时恢复 1，避免闪出完整页面。
+- **托盘菜单**：`TrayMenuWindow` 的 `MenuRoot` 加入 open/close 动画；打开时 scale
+  `0.93→1.012→1` + fade 190ms + offsetY 10→0，以右下角为变换中心，朝向托盘弹出；
+  关闭时 130~150ms 缩小淡出后 `Close()`。失焦、点菜单项、再次点托盘图标都走
+  `CloseAnimated()`；`App.OpenTrayMenuOnce` 不再手动改 `Window.Opacity`（否则会和组合层动画打架）。
+  菜单项的逐条 stagger 已移除，避免组合层偏移/关闭时出现半截列表。
+- **设置窗口顶栏**：顶部 48px 区域改成 `152,*,152` 三列，中间放最大 700 宽的胶囊
+  `TopBarCapsule`（高 42、圆角 21、ChipSurface + 樱花描边），左侧返回/图标/标题，
+  中间 290 宽搜索框，右侧版本号/更多；左右 152 给系统窗口按钮留位。
+  标题“应用设置”使用资源圆体 Bold，字体子集在
+  `Assets/Fonts/ResourceHanRounded-Bold-Subset.ttf`（只含“应用设置”四字，许可证见同目录 txt）。
+- **欢迎设置窗口入场**：`OobeWindow` 保留 Fluent `AppWindow`，把首屏拆成四组：
+  左侧欢迎文案（左上）、右侧插图（右上）、底部页点（左下）、底部按钮（右下）。
+  `OnOpened` 延迟 450ms（等窗口真正显示）后用 16ms `DispatcherTimer` 跑 780ms：
+  各组 `RenderTransform`（`TranslateTransform` + `ScaleTransform` + `RotateTransform`）
+  从窗口四角带旋转/缩放飞入，透明度同步淡入；组间延迟 0/70/150/220ms。
+  动画结束立即停掉计时器，`Closing` 也会停。不要用全屏透明 Window 承载这个效果：
+  实测会先黑屏/白卡再重排，且元素容易在窗口显示前就播完。
+- **主页樱花飘落**：内容 Grid 右侧放 460 宽 `HomePetals` Canvas（`IsHitTestVisible=False`，
+  只在主页显示）；8 朵整花，每朵是一个 `Path` + `GeometryGroup`（5 个旋转 72° 的花瓣）。
+  起点沿顶部均匀分布并带抖动，每朵有独立的水平风偏、正弦横摆、旋转和 5.5~14.5s 下落时长，
+  路径是弯的，速度明显有快有慢，不共用同一条对角线。用组合层 `Offset`（7 个关键帧）和
+  `RotationAngle` 无限循环动画驱动，`AnimationIterationBehavior.Forever`；不排队、不分段启动，
+  避免出现“飘一下停一下”。⚠️ 关键帧必须显式传 `LinearEasing`；不要在 `HomePetals.SizeChanged`
+  里启动/重建动画 —— 布局过程中启动会让 `Offset` 被后续布局盖掉，表现为花朵全堆在左上角。
+  只在 `Opened` 和切回主页时启动；离开主页/关闭窗口时 `StopAnimation` 暂停，窗口尺寸变化不重建；
+  总共只有 8 个 Path 视觉、每朵 2 条组合动画，UI 线程零逐帧更新。
 
 ### 应用设置（FluentUI：`NavigationView` + `SettingsExpander` + `InfoBar`）
 - 通用：单周开始日期、托盘点击行为
@@ -199,7 +241,8 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 - **调课页**：占位，未实现
 - **任务栏图标**：`Program.Main` 在 Avalonia 启动前调用 `SetCurrentProcessExplicitAppUserModelID("ClassNex.ClassNEX.Desktop")`；
   不要移除该调用，否则 Windows 可能把窗口显示成通用任务栏图标。EXE 的 `ApplicationIcon` 与各窗口 `Icon`
-  必须继续指向 `Assets/icon.ico`，该 ICO 已包含 16/24/32/48/64/128/256 全套尺寸。
+  必须继续指向 `Assets/icon.ico`；该 ICO 由 `icon-1200.png` 加 18% 圆角生成（`icon-rounded-1200.png`），
+  含 16/20/24/32/40/48/64/96/128/256 全套尺寸，圆角外为透明。
 
 ### 其它
 - **Casdoor OIDC 提供商**：`ClassNEX/smart-teach` 已接入 `https://auth.smart-teach.cn`，类型为 OIDC，
@@ -210,9 +253,35 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   - 设置里新增「NEX Intelligence」页（导航项在「组件」之后）+ 独立对话窗（沉浸标题栏 + 云母）
   - 代码在 `Services\NexIntelligence\`：`NexAiClient`（OpenAI 兼容 /v1/chat/completions，流式 SSE；增量为 `delta.content` 与 `delta.reasoning_content`，工具调用分片在 `delta.tool_calls` 里按 index 拼装）、`NexAgent`（一轮 = 发消息 → 流式收正文/思考 → 执行工具 → 回填 → 继续，最多 8 轮）、`NexAgentTools`（六个工具：读应用状态/读课表/列目录/读文件/写文件/执行命令）、`NexModelCatalog`（拉模型列表/测连接）
   - 权限三档：**仅可查看**（只读工具）/ **工作区内修改**（可写 `SettingsService.DataDirectory` 里的文件）/ **完全权限**（任意路径 + `run_command`）。对话框顶栏随时切换，设置页设默认档
+  - **全屏唤醒光效**：`Views/NexGlowWindow` + `Controls/NexGlowControl`。紧贴屏幕边缘的
+    粉白光晕已改为 **44 圈连续渐变**（越靠内越透明、偏粉），不再是几条分层描边；
+    150 片樱花花瓣从四边向内飘入，只走屏幕短边的 5%~15%，集中在边框附近。
+    「请讲」浮窗在该模式下会 `SetWindowPos(HWND_TOPMOST)` + `Activate()`，确保压在
+    其他置顶窗口（包括花瓣层）之上。设置页「NEX Intelligence」顶部有「预览跑马灯」按钮，
+    原来的「测试跑马灯」也保留。
   - ⚠️ **接口密钥绝不写进源码/仓库**（仓库是公开的）：只在设置页填写，落盘到本机 `data\Settings.json`；新机器要重新填一次
   - 自检：`CLASSNEX_VERIFY_NEX=<文本>` 打开对话框并自动发一条消息；出图看 `_shot_nex.png`
-- 首次启动向导（OOBE，五页）：多语言问候 + 隐私/许可链接 + 语言选择 + 外观/开学日期/开机自启动 + 账户与更多设置预留页 + 烟花完成页；走完向导前不显示浮窗
+- **Metro 转场统一层**：`Styles/MetroTransitions.cs` 负责设置/档案编辑等页面切换：
+  页面父级只做 220ms CrossFade，**不施加任何页面级 RenderTransform/位移**；设置页页面宿主必须是
+  单格 `Grid#PageHost`（严禁 StackPanel：新旧页同时可见时会被上下串联，隐藏旧页后新页会从底部弹回），
+  所有页面同格重叠并 `VerticalAlignment=Top`。列表条目 420ms
+  纯水平偏心翻门，轴心固定 `0%,50%`，`scaleX .70→1`、`scaleY 1`、`translateX -45→0`、
+  `translateY` 全程 0，**无 Skew/剪切**，延迟 `35ms * index`，
+  cubic-bezier(0,0,0.2,1)，无反向回弹；结束恢复 RenderTransform/Opacity 但保留左轴心，
+  避免影响 Tilt。标题作为序列第 0 项一起入场（`PageTitleText.MinHeight=48` 固定占位），
+  前进为标题→条目，后退反转序列为底部条目→标题；Page 实例常驻缓存，不重建。
+  `Styles/MetroTilt.cs` 给设置/档案导航项、长条 SettingsExpander/Card、托盘菜单项和 OOBE 按钮
+  做按压倾斜：原点永久锁定 50%,50%，不修改任何布局属性；使用
+  `TransformOperationsTransition`（按下 70ms / 回弹 180ms，cubic-bezier(0.1,0.9,0.2,1)），
+  倾斜按长条阻尼公式 `skewY=dx*150/max(W,100)`、`skewX=-dy*0.6`、位移 1.5/0.8px、scale 0.985，
+  不再逐帧计时，也不会把卡片整体拉下去。若模板内有名为 `TiltHost` 的内层 Border 会优先使用它。
+  `MetroTransitions` 在切换开始/结束强制清空旧页 RenderTransform/Origin/Opacity 并关闭命中测试；
+  切页期间标题先隐藏，过渡完成后再写入新标题，避免「新标题 + 旧内容」同屏。
+- 首次启动向导（OOBE，五页）：多语言问候 + 隐私/许可链接 + 语言选择 + 外观/开学日期/开机自启动 + 账户与更多设置预留页 + 烟花完成页；走完向导前不显示浮窗。
+  页脚圆点已移除，顶部显示「第 n 步 / 共 5 步」；切页为 360ms 的 WP8.1 风格翻页
+  （左外侧轴心、ScaleX 收拢 + skew，cubic-bezier(0.1,0.9,0.2,1)，两页交叉淡出；切换期间锁输入）。
+  随时检查：**设置 → 关于 ClassNEX → 首次启动向导 → 预览 OOBE**；预览模式不会改
+  `IsOobeCompleted`、不会重启，关闭预览也不会退出主程序。
 - 系统托盘（左键弹菜单：显示/隐藏主界面、编辑档案、加载课表、换课、编辑主界面、应用设置、重启、退出）
 - CSES YAML 课表导入/导出；**新激活不再内置示例课表**（示例课表只在老安装升级时播种，打包时还要删掉 `Assets\timetable.yaml`）
 - 内置 **MiSans**（小米字体，免费商用，授权见 `Assets\Fonts\LICENSE.txt`；Regular/Bold 两字重）

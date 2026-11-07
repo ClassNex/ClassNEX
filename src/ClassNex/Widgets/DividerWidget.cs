@@ -1,7 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
-using Avalonia.Media;
 using ClassNex.Styles;
 
 namespace ClassNex.Widgets;
@@ -18,9 +17,10 @@ public sealed class DividerWidget : WidgetBase
         _line = new Border
         {
             Width = 1,
-            MinHeight = 24,
-            Background = White(0.28),
-            VerticalAlignment = VerticalAlignment.Stretch,
+            Height = 22,
+            Margin = new Thickness(6, 0, 10, 0),
+            Background = CiPalette.WithOpacity(CiPalette.PrimaryTextBrush(), 0.16),
+            VerticalAlignment = VerticalAlignment.Center,
         };
 
         View = _line;
@@ -28,19 +28,21 @@ public sealed class DividerWidget : WidgetBase
 
     public override void Refresh(WidgetContext ctx)
     {
-        
-        _line.MinHeight = 40;
-
-        
         if (ctx.Settings.Orientation == Models.LayoutOrientation.Vertical)
         {
             _line.Width = double.NaN;
             _line.Height = 1;
+            _line.Margin = new Thickness(10, 6, 10, 6);
+            _line.HorizontalAlignment = HorizontalAlignment.Stretch;
+            _line.VerticalAlignment = VerticalAlignment.Center;
         }
         else
         {
             _line.Width = 1;
-            _line.Height = double.NaN;
+            _line.Height = 22;
+            _line.Margin = new Thickness(6, 0, 10, 0);
+            _line.HorizontalAlignment = HorizontalAlignment.Stretch;
+            _line.VerticalAlignment = VerticalAlignment.Center;
         }
     }
 }

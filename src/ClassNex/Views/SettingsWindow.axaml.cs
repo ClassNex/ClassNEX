@@ -2,6 +2,8 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Reflection;
 using Avalonia;
+using Avalonia.Animation;
+using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
@@ -9,14 +11,18 @@ using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform;
+using Avalonia.Rendering.Composition;
+using Avalonia.Rendering.Composition.Animations;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using ClassNex.Models;
 using ClassNex.Services;
 using ClassNex.Styles;
 using ClassNex.ViewModels;
 using AvaloniaFluentUI.Controls;
 using AvaloniaFluentUI.Windowing;
+using AvaloniaPath = Avalonia.Controls.Shapes.Path;
 
 namespace ClassNex.Views;
 
@@ -32,9 +38,43 @@ public partial class SettingsWindow : AppWindow
     
     private readonly List<int> _pageHistory = new();
     private int _lastPageIndex = -1;
+    private Control? _currentPageView;
 
     private bool _loading;
     private WidgetItem? _currentWidget;
+
+    private bool _entrancePlayed;
+    private EventHandler? _themeChangedHandler;
+
+    private readonly List<SakuraBlossom> _blossoms = new();
+    private readonly Random _petalRandom = new();
+    private bool _blossomsRunning;
+
+    private static readonly Color[] PetalColors =
+    {
+        Color.FromArgb(0xDD, 0xF2, 0x93, 0xB2),
+        Color.FromArgb(0xDD, 0xFF, 0xA8, 0xC4),
+        Color.FromArgb(0xD0, 0xE8, 0x86, 0xAB),
+        Color.FromArgb(0xDD, 0xFF, 0xC9, 0xDA),
+        Color.FromArgb(0xDD, 0xF7, 0x9F, 0xBE),
+    };
+
+    private sealed class SakuraBlossom
+    {
+        public required AvaloniaPath View { get; init; }
+        public CompositionVisual? Visual;
+        public double Size;
+        public double StartX;
+        public double StartY;
+        public double EndX;
+        public double EndY;
+        public double Phase;
+        public double Sway;
+        public double Duration;
+        public double SpinDuration;
+        public double RotationOffset;
+        public double Opacity;
+    }
 
     
     private sealed class SearchEntry
@@ -76,11 +116,33 @@ public partial class SettingsWindow : AppWindow
     public SettingsWindow()
     {
         InitializeComponent();
+        ApplySakuraChrome();
+        SettingsRoot.Opacity = 0;
+
+        foreach (var item in NavView.MenuItems.OfType<Control>())
+            MetroTilt.Attach(item);
+
+        Opened += (_, _) =>
+        {
+            PlayEntrance();
+            StartSakuraBlossoms();
+        };
+
+        if (Application.Current is { } app)
+        {
+            _themeChangedHandler = (_, _) => Dispatcher.UIThread.Post(ApplySakuraChrome);
+            app.ActualThemeVariantChanged += _themeChangedHandler;
+            Closed += (_, _) => app.ActualThemeVariantChanged -= _themeChangedHandler;
+        }
+
+        Closed += (_, _) => StopSakuraBlossoms();
+
         WidgetList.ItemsSource = _widgets;
 
         InitShell();
         WireEvents();
         LoadFromSettings();
+
         AccountService.Changed += () =>
             Dispatcher.UIThread.Post(RefreshAccountName, DispatcherPriority.Background);
 
@@ -89,6 +151,201 @@ public partial class SettingsWindow : AppWindow
         
         
         AccountPanel.SizeChanged += (_, e) => ApplyAccountCompact(e.NewSize.Width < 150);
+    }
+
+    private void ApplySakuraChrome()
+    {
+        var brush = CiPalette.SettingsSurfaceBrush();
+        Background = brush;
+        SettingsRoot.Background = brush;
+        TopBarCapsule.Background = CiPalette.ChipSurfaceBrush();
+        TopBarCapsule.BorderBrush = CiPalette.ChipBorderBrush();
+    }
+
+    private void PlayEntrance()
+    {
+        if (_entrancePlayed)
+            return;
+
+        _entrancePlayed = true;
+        SettingsRoot.Opacity = 1;
+
+        var visual = ElementComposition.GetElementVisual(SettingsRoot);
+        if (visual is null)
+            return;
+
+        var bounds = SettingsRoot.Bounds;
+        visual.CenterPoint = new Vector3D(
+            (float)(bounds.Width / 2),
+            (float)(bounds.Height / 2),
+            0);
+        visual.Opacity = 0f;
+        visual.Scale = new Vector3D(0.965f, 0.965f, 1f);
+        visual.Offset = new Vector3D(0f, 16f, 0f);
+
+        var compositor = visual.Compositor;
+
+        var fade = compositor.CreateScalarKeyFrameAnimation();
+        fade.InsertKeyFrame(0f, 0f);
+        fade.InsertKeyFrame(1f, 1f, Easing.Parse("0.16, 1, 0.3, 1"));
+        fade.Duration = TimeSpan.FromMilliseconds(430);
+        visual.StartAnimation(nameof(visual.Opacity), fade);
+
+        var scale = compositor.CreateVector3KeyFrameAnimation();
+        scale.InsertKeyFrame(0f, new System.Numerics.Vector3(0.965f, 0.965f, 1f));
+        scale.InsertKeyFrame(0.62f, new System.Numerics.Vector3(1.006f, 1.006f, 1f), Easing.Parse("0.22, 1, 0.36, 1"));
+        scale.InsertKeyFrame(1f, new System.Numerics.Vector3(1f, 1f, 1f));
+        scale.Duration = TimeSpan.FromMilliseconds(620);
+        visual.StartAnimation(nameof(visual.Scale), scale);
+
+        var slide = compositor.CreateVector3KeyFrameAnimation();
+        slide.InsertKeyFrame(0f, new System.Numerics.Vector3(0f, 16f, 0f));
+        slide.InsertKeyFrame(1f, new System.Numerics.Vector3(0f, 0f, 0f), Easing.Parse("0.16, 1, 0.3, 1"));
+        slide.Duration = TimeSpan.FromMilliseconds(520);
+        visual.StartAnimation(nameof(visual.Offset), slide);
+    }
+
+    private void StartSakuraBlossoms()
+    {
+        if (!HomePetals.IsVisible || _blossomsRunning)
+            return;
+
+        var width = HomePetals.Bounds.Width;
+        var height = HomePetals.Bounds.Height;
+        if (width <= 0 || height <= 0)
+            return;
+
+        if (_blossoms.Count == 0)
+        {
+            CreateSakuraBlossoms(width, height);
+            Dispatcher.UIThread.Post(StartSakuraBlossoms, DispatcherPriority.Loaded);
+            return;
+        }
+
+        _blossomsRunning = true;
+        var allStarted = true;
+        foreach (var blossom in _blossoms)
+        {
+            if (!StartBlossomAnimation(blossom))
+                allStarted = false;
+        }
+
+        if (!allStarted)
+        {
+            _blossomsRunning = false;
+            Dispatcher.UIThread.Post(StartSakuraBlossoms, DispatcherPriority.Loaded);
+        }
+    }
+
+    private void StopSakuraBlossoms()
+    {
+        _blossomsRunning = false;
+
+        foreach (var blossom in _blossoms)
+        {
+            var visual = blossom.Visual;
+            if (visual is null)
+                continue;
+
+            visual.StopAnimation(nameof(visual.Offset));
+            visual.StopAnimation(nameof(visual.RotationAngle));
+            visual.Opacity = 0;
+        }
+    }
+
+    private void CreateSakuraBlossoms(double width, double height)
+    {
+        for (var i = 0; i < 8; i++)
+        {
+            var size = 26 + _petalRandom.NextDouble() * 22;
+            var group = new GeometryGroup();
+
+            for (var petalIndex = 0; petalIndex < 5; petalIndex++)
+            {
+                var petal = Geometry.Parse(
+                    "M 24,24 C 18,19 11,8 17,-1 C 21,-7 27,-7 31,-1 C 37,8 30,19 24,24 Z");
+                petal.Transform = new RotateTransform(petalIndex * 72, 24, 24);
+                group.Children.Add(petal);
+            }
+
+            var opacity = 0.34 + _petalRandom.NextDouble() * 0.30;
+            var startX = -40 + (i + 0.5) * (width + 80) / 8
+                         + (_petalRandom.NextDouble() - 0.5) * 36;
+            var startY = -20 - _petalRandom.NextDouble() * 220;
+            var drift = 20 + _petalRandom.NextDouble() * 170;
+            var rotation = _petalRandom.NextDouble() * Math.PI * 2;
+
+            var view = new AvaloniaPath
+            {
+                Data = group,
+                Width = size,
+                Height = size,
+                Stretch = Stretch.Uniform,
+                Fill = new SolidColorBrush(PetalColors[i % PetalColors.Length]),
+                Opacity = opacity,
+            };
+
+            var blossom = new SakuraBlossom
+            {
+                View = view,
+                Size = size,
+                StartX = startX,
+                StartY = startY,
+                EndX = startX + drift,
+                EndY = height + 100 + _petalRandom.NextDouble() * 80,
+                Phase = _petalRandom.NextDouble() * Math.PI * 2,
+                Sway = 20 + _petalRandom.NextDouble() * 36,
+                Duration = 5.5 + _petalRandom.NextDouble() * 9 + i * 0.1,
+                SpinDuration = 8 + _petalRandom.NextDouble() * 7,
+                RotationOffset = rotation,
+                Opacity = opacity,
+            };
+
+            Canvas.SetLeft(view, 0);
+            Canvas.SetTop(view, 0);
+            HomePetals.Children.Add(view);
+            _blossoms.Add(blossom);
+        }
+    }
+
+    private static bool StartBlossomAnimation(SakuraBlossom blossom)
+    {
+        var visual = blossom.Visual ??= ElementComposition.GetElementVisual(blossom.View);
+        if (visual is null)
+            return false;
+
+        visual.CenterPoint = new Vector3D((float)(blossom.Size / 2), (float)(blossom.Size / 2), 0);
+        visual.Offset = new Vector3D((float)blossom.StartX, (float)blossom.StartY, 0);
+        visual.Opacity = (float)blossom.Opacity;
+
+        var compositor = visual.Compositor;
+
+        var move = compositor.CreateVector3KeyFrameAnimation();
+        for (var step = 0; step <= 6; step++)
+        {
+            var progress = step / 6.0;
+            var sway = Math.Sin(blossom.Phase + progress * Math.PI * 2.6)
+                       * blossom.Sway * (0.45 + progress * 0.55);
+            var x = blossom.StartX + (blossom.EndX - blossom.StartX) * progress + sway;
+            var y = blossom.StartY + (blossom.EndY - blossom.StartY) * progress;
+            move.InsertKeyFrame(
+                (float)progress,
+                new System.Numerics.Vector3((float)x, (float)y, 0),
+                new LinearEasing());
+        }
+
+        move.Duration = TimeSpan.FromSeconds(blossom.Duration);
+        move.IterationBehavior = AnimationIterationBehavior.Forever;
+        visual.StartAnimation(nameof(visual.Offset), move);
+
+        var spin = compositor.CreateScalarKeyFrameAnimation();
+        spin.InsertKeyFrame(0f, (float)blossom.RotationOffset, new LinearEasing());
+        spin.InsertKeyFrame(1f, (float)(blossom.RotationOffset + Math.PI * 2), new LinearEasing());
+        spin.Duration = TimeSpan.FromSeconds(blossom.SpinDuration);
+        spin.IterationBehavior = AnimationIterationBehavior.Forever;
+        visual.StartAnimation(nameof(visual.RotationAngle), spin);
+
+        return true;
     }
 
     
@@ -464,11 +721,18 @@ public partial class SettingsWindow : AppWindow
         
         if (page == "account")
         {
+            var previousAccountPage = _currentPageView;
             PageHome.IsVisible = PageGeneral.IsVisible = PageInterface.IsVisible = PageWindow.IsVisible =
                 PageWidgets.IsVisible = PageNotification.IsVisible = PageAbout.IsVisible =
-                PageDebug.IsVisible = PageNex.IsVisible = false;
+                PageDebug.IsVisible = PageNex.IsVisible = PageAccount.IsVisible = false;
             PageAccount.IsVisible = true;
+            _currentPageView = PageAccount;
+            HomePetals.IsVisible = false;
+            StopSakuraBlossoms();
             PageTitleText.Text = "账户";
+            PageTitleText.Opacity = 1;
+            MetroTransitions.Play(previousAccountPage, PageAccount, true, null, PageTitleText);
+            AttachTiltToPage(PageAccount);
             return;
         }
 
@@ -667,10 +931,16 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         if (index < 0)
             index = 0;
 
+        var previousPage = _currentPageView;
+        var previousIndex = _lastPageIndex;
+
         
         if (_lastPageIndex >= 0 && _lastPageIndex != index)
             _pageHistory.Add(_lastPageIndex);
         _lastPageIndex = index;
+
+        var page = PageFor(index);
+        _currentPageView = page;
 
         PageHome.IsVisible = index == 0;
         PageGeneral.IsVisible = index == 1;
@@ -683,11 +953,18 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         PageDebug.IsVisible = index == 8;
         PageAccount.IsVisible = false;   
 
-        
-        PlayPageEntrance();
+        HomePetals.IsVisible = index == 0;
+        if (index == 0)
+            StartSakuraBlossoms();
+        else
+            StopSakuraBlossoms();
 
-        
-        PageTitleText.Text = PageNames[Math.Clamp(index, 0, PageNames.Length - 1)];
+        var title = PageNames[Math.Clamp(index, 0, PageNames.Length - 1)];
+        PageTitleText.Text = title;
+        PageTitleText.Opacity = 1;
+        MetroTransitions.Play(previousPage, page, index >= previousIndex, null, PageTitleText);
+
+        AttachTiltToPage(page);
 
         if (index == 0)
             RefreshHomeGreeting();
@@ -704,8 +981,26 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
     private bool _nexEventsWired;
     private bool _nexLoading;
+    private DispatcherTimer? _nexGlowPreviewTimer;
 
     
+    private void PlayNexGlowPreview()
+    {
+        _nexGlowPreviewTimer?.Stop();
+        AppServices.NexVoice?.ShowGlow();
+        AppServices.MainWindow?.ShowNexPanel("请讲", true);
+
+        _nexGlowPreviewTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3.5) };
+        _nexGlowPreviewTimer.Tick += (_, _) =>
+        {
+            _nexGlowPreviewTimer?.Stop();
+            _nexGlowPreviewTimer = null;
+            AppServices.NexVoice?.GlowWindow?.StopGlow();
+            AppServices.MainWindow?.HideNexPanel();
+        };
+        _nexGlowPreviewTimer.Start();
+    }
+
     private void RefreshNexPage()
     {
         var s = AppServices.Settings;
@@ -731,20 +1026,8 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
                     AppServices.NexVoice?.Stop();
             };
 
-            NexGlowTestButton.Click += (_, _) =>
-            {
-                
-                AppServices.NexVoice?.ShowGlow();
-                AppServices.MainWindow?.ShowNexPanel("请讲", true);
-                var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3.5) };
-                timer.Tick += (_, _) =>
-                {
-                    timer.Stop();
-                    AppServices.NexVoice?.ShowGlow();     
-                    AppServices.MainWindow?.HideNexPanel();
-                };
-                timer.Start();
-            };
+            NexGlowTestButton.Click += (_, _) => PlayNexGlowPreview();
+            NexGlowEntryButton.Click += (_, _) => PlayNexGlowPreview();
 
             NexEdgeBarCheck.IsCheckedChanged += (_, _) =>
             {
@@ -1049,28 +1332,31 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
     
     
     
-    private void PlayPageEntrance()
+    private Control PageFor(int index) => index switch
     {
-        var name = (NavView.SelectedItem as NavigationViewItem)?.Content as string ?? "";
-        var index = Array.IndexOf(PageNames, name);
-        if (index < 0)
-            index = 0;
+        0 => PageHome,
+        1 => PageGeneral,
+        2 => PageInterface,
+        3 => PageWindow,
+        4 => PageWidgets,
+        5 => PageNex,
+        6 => PageNotification,
+        7 => PageAbout,
+        8 => PageDebug,
+        _ => (Control)PageHome,
+    };
 
-        var page = index switch
+    private static void AttachTiltToPage(Control page)
+    {
+        Dispatcher.UIThread.Post(() =>
         {
-            0 => PageHome,
-            1 => PageGeneral,
-            2 => PageInterface,
-            3 => PageWindow,
-            4 => PageWidgets,
-            5 => PageNex,
-            6 => PageNotification,
-            7 => PageAbout,
-            8 => PageDebug,
-            _ => (Control)PageHome,
-        };
-
-        PageTransitions.PlayEntrance(page);
+            foreach (var control in page.GetVisualDescendants().OfType<Control>())
+            {
+                var name = control.GetType().Name;
+                if (name is "SettingsCard" or "SettingsExpanderItem")
+                    MetroTilt.Attach(control);
+            }
+        }, DispatcherPriority.Background);
     }
 
     
@@ -1354,6 +1640,8 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
     private const string RepoUrl = "https://github.com/ClassNex/ClassNEX";
 
     private void OnOpenHomePage(object? sender, RoutedEventArgs e) => OpenUrl(RepoUrl);
+
+    private void OnPreviewOobe(object? sender, RoutedEventArgs e) => App.ShowOobePreview();
 
     private void OnOpenIssues(object? sender, RoutedEventArgs e) => OpenUrl($"{RepoUrl}/issues");
 

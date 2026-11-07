@@ -5,6 +5,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using ClassNex.Models;
 using ClassNex.Services;
+using ClassNex.Styles;
 
 namespace ClassNex.Views;
 
@@ -58,8 +59,8 @@ public partial class MainWindow
         row.Children.Add(new TextBlock
         {
             Text = WidgetRegistry.DisplayNameOf(config.Type),
-            FontSize = 14,
-            Foreground = Brushes.White,
+            FontSize = 13,
+            Foreground = CiPalette.PrimaryTextBrush(),
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 0, 6, 0),
         });
@@ -77,11 +78,13 @@ public partial class MainWindow
 
         return new Border
         {
-            Background = new SolidColorBrush(Colors.Black, 0.55),
-            CornerRadius = new CornerRadius(4),
+            Background = CiPalette.IslandSurfaceBrush(),
+            BorderBrush = CiPalette.IslandBorderBrush(),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
             Padding = new Thickness(8, 2),
             HorizontalAlignment = HorizontalAlignment.Left,
-            Margin = new Thickness(0, 0, 0, 2),
+            Margin = new Thickness(0, 0, 0, 4),
             Child = row,
         };
     }
@@ -95,10 +98,11 @@ public partial class MainWindow
                 Text = glyph,
                 FontFamily = new FontFamily("avares://ClassNex/Assets/Fonts/#lucide"),
                 FontSize = 12,
-                Foreground = Brushes.White,
+                Foreground = CiPalette.PrimaryTextBrush(),
             },
             Background = Brushes.Transparent,
             BorderThickness = new Thickness(0),
+            CornerRadius = new CornerRadius(4),
             Padding = new Thickness(4, 2),
             VerticalAlignment = VerticalAlignment.Center,
         };
@@ -146,12 +150,13 @@ public partial class MainWindow
             {
                 Text = compact ? "＋" : "＋ 添加组件",
                 FontSize = compact ? 16 : 14,
-                Foreground = Brushes.White,
+                Foreground = CiPalette.SakuraAccentBrush(),
             },
-            Background = new SolidColorBrush(Colors.White, 0.10),
-            BorderThickness = new Thickness(0),
-            CornerRadius = new CornerRadius(4),
-            Padding = compact ? new Thickness(10, 14) : new Thickness(10, 6),
+            Background = CiPalette.SakuraAccentTint(0.14),
+            BorderBrush = CiPalette.SakuraAccentTint(0.3),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            Padding = compact ? new Thickness(10, 12) : new Thickness(10, 6),
             VerticalAlignment = VerticalAlignment.Bottom,
             Margin = compact ? new Thickness(8, 0, 0, 0) : new Thickness(0),
             Flyout = flyout,
@@ -167,10 +172,11 @@ public partial class MainWindow
 
         var settings = new Button
         {
-            Content = new TextBlock { Text = "组件设置…", FontSize = 14, Foreground = Brushes.White },
-            Background = new SolidColorBrush(Colors.White, 0.10),
-            BorderThickness = new Thickness(0),
-            CornerRadius = new CornerRadius(4),
+            Content = new TextBlock { Text = "组件设置…", FontSize = 14, Foreground = CiPalette.PrimaryTextBrush() },
+            Background = CiPalette.ChipSurfaceBrush(),
+            BorderBrush = CiPalette.ChipBorderBrush(),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
             Padding = new Thickness(10, 6),
         };
         settings.Click += (_, _) => App.OpenSettings("widgets");
@@ -178,10 +184,10 @@ public partial class MainWindow
 
         var done = new Button
         {
-            Content = new TextBlock { Text = "✓ 完成", FontSize = 14, Foreground = Brushes.Black },
-            Background = Brushes.White,
+            Content = new TextBlock { Text = "✓ 完成", FontSize = 14, Foreground = CiPalette.OnAccentBrush() },
+            Background = CiPalette.SakuraAccentGradient(),
             BorderThickness = new Thickness(0),
-            CornerRadius = new CornerRadius(4),
+            CornerRadius = new CornerRadius(8),
             Padding = new Thickness(12, 6),
         };
         done.Click += (_, _) => ExitEditMode();
@@ -190,9 +196,12 @@ public partial class MainWindow
         EditBarHost.Children.Clear();
         EditBarHost.Children.Add(new Border
         {
-            Background = new SolidColorBrush(Colors.Black, 0.6),
-            CornerRadius = new CornerRadius(6),
+            Background = CiPalette.IslandSurfaceBrush(),
+            BorderBrush = CiPalette.IslandBorderBrush(),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(12),
             Padding = new Thickness(6),
+            BoxShadow = BoxShadows.Parse("0 8 24 2 #55000000"),
             Child = row,
         });
     }

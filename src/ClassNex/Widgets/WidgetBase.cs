@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Layout;
@@ -44,6 +45,12 @@ public abstract class WidgetBase
     
     protected const double CiLarge = 20;
 
+    protected const double ChipHeight = 29;
+
+    protected const double ChipRadius = 8;
+
+    protected const double WidgetGap = 4;
+
     public WidgetConfig Config { get; init; } = new();
 
     
@@ -89,8 +96,7 @@ public abstract class WidgetBase
         double fontSize,
         IBrush? foreground = null,
         FontWeight weight = FontWeight.Medium)
-    {
-        var block = new TextBlock
+    {        var block = new TextBlock
         {
             Text = text,
             FontSize = fontSize,
@@ -111,6 +117,29 @@ public abstract class WidgetBase
     }
 
     
+    protected static Border Pill(
+        Control content,
+        IBrush? background = null,
+        IBrush? borderBrush = null,
+        double height = ChipHeight,
+        double padding = 7,
+        double radius = ChipRadius,
+        Thickness? margin = null)
+    {
+        return new Border
+        {
+            Height = height,
+            Padding = new Thickness(padding, 0),
+            CornerRadius = new CornerRadius(radius),
+            Background = background ?? CiPalette.ChipSurfaceBrush(),
+            BorderBrush = borderBrush ?? CiPalette.ChipBorderBrush(),
+            BorderThickness = new Thickness(1),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = margin ?? default,
+            Child = content,
+        };
+    }
+
     protected static readonly FontFeatureCollection TabularFigures = new()
     {
         FontFeature.Parse("tnum"),

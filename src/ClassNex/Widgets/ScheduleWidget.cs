@@ -3,6 +3,7 @@ using Avalonia.Animation;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using ClassNex.Models;
@@ -11,48 +12,25 @@ using ClassNex.Styles;
 namespace ClassNex.Widgets;
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 public sealed class ScheduleWidget : WidgetBase
 {
-    
-
-    
     private const int CiCountdownSeconds = 60;
 
     private readonly StackPanel _root;
 
-    
     private TextBlock? _timeText;
     private Control? _countdownPill;
-    private Border? _pillStroke;
     private TextBlock? _pillText;
-    private ProgressBar? _progress;
-    private string? _currentTitle;
+    private Border? _progressTrack;
+    private Border? _progressFill;
+    private string? _signature;
     private TimeSpan _currentStart;
     private TimeSpan _currentEnd;
 
     public override string Type => "schedule";
 
-    
-    
-    
-    
     public double? CurrentProgress { get; private set; }
 
-    
     public string DebugLayout()
     {
         var time = _timeText is null
@@ -61,12 +39,11 @@ public sealed class ScheduleWidget : WidgetBase
         var pill = _countdownPill is null
             ? "pill=(无)"
             : $"pill={(_countdownPill.IsVisible ? "显示" : "隐藏")} {_countdownPill.Bounds.Width:0.0}x{_countdownPill.Bounds.Height:0.0}" +
-              $" r={(_pillStroke is null ? 0 : _pillStroke.CornerRadius.TopLeft):0.0}" +
-              $" text={_pillText?.Bounds.Width:0.0}x{_pillText?.Bounds.Height:0.0}" +
-              $" screen={_countdownPill.PointToScreen(new Avalonia.Point(0, 0))}";
-        var bar = _progress is null
+              $" text={_pillText?.Bounds.Width:0.0}x{_pillText?.Bounds.Height:0.0}";
+        var bar = _progressTrack is null
             ? "bar=(无)"
-            : $"bar={(_progress.IsVisible ? "显示" : "隐藏")} {_progress.Bounds.Width:0.0}x{_progress.Bounds.Height:0.0}@y{_progress.Bounds.Y:0.0}";
+            : $"bar={(_progressTrack.IsVisible ? "显示" : "隐藏")} {_progressTrack.Bounds.Width:0.0}x{_progressTrack.Bounds.Height:0.0}" +
+              $" fill={_progressFill?.Width:0.0}";
         return $"{time} | {pill} | {bar} | progress={CurrentProgress:0.000}";
     }
 
@@ -75,8 +52,8 @@ public sealed class ScheduleWidget : WidgetBase
         _root = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            VerticalAlignment = VerticalAlignment.Stretch,
-            Height = 40, 
+            VerticalAlignment = VerticalAlignment.Center,
+            Height = CiPalette.IslandHeight,
         };
 
         View = _root;
@@ -86,51 +63,56 @@ public sealed class ScheduleWidget : WidgetBase
     {
         var now = ctx.Now.TimeOfDay;
 
-        
-        
         if (ctx.Profile.Schedules.Count == 0 && ctx.Profile.Subjects.Count == 0)
         {
             ClearCurrent();
             CurrentProgress = null;
-            if (_root.Children.Count == 0)
+            if (_signature != "import")
+            {
+                _root.Children.Clear();
                 _root.Children.Add(BuildImportHint());
+            }
+
+            _signature = "import";
             return;
         }
 
-        
         if (ctx.Today.IsEmpty)
         {
             ClearCurrent();
             CurrentProgress = null;
-            if (_root.Children.Count == 0)
-                _root.Children.Add(Text("今天没有课程。", Size(CiBody), White(0.92)));
+            if (_signature != "empty")
+            {
+                _root.Children.Clear();
+                _root.Children.Add(BuildEmptyHint());
+            }
+
+            _signature = "empty";
             return;
         }
 
         var slots = ctx.Today.Slots;
-
-        
         var cur = FindCurrent(slots, now);
+        var slotSignature = string.Join(
+            ";",
+            slots.Select(slot => $"{slot.DisplayName}|{slot.Start}|{slot.End}"));
+        var signature = cur is null
+            ? $"{ctx.Today.DateText}|{slotSignature}|none"
+            : $"{ctx.Today.DateText}|{slotSignature}|{cur.Value.Title}|{cur.Value.Start}|{cur.Value.End}";
 
-        
-        if (cur is not null
-            && cur.Value.Title == _currentTitle
-            && cur.Value.Start == _currentStart
-            && cur.Value.End == _currentEnd
-            && _timeText is not null)
+        if (signature == _signature && _root.Children.Count > 0)
         {
-            UpdateCurrentLive(now);
+            if (cur is not null)
+                UpdateCurrentLive(now);
             return;
         }
 
+        _signature = signature;
         ClearCurrent();
 
-        _currentTitle = cur?.Title;
         _currentStart = cur?.Start ?? default;
         _currentEnd = cur?.End ?? default;
-
-        if (cur is null)
-            CurrentProgress = null;
+        CurrentProgress = cur is null ? null : ProgressFraction(cur.Value.Start, cur.Value.End, now);
 
         _root.Children.Clear();
 
@@ -150,14 +132,12 @@ public sealed class ScheduleWidget : WidgetBase
         {
             var slot = slots[i];
 
-            
-            
             if (i > 0)
             {
                 var gapStart = slots[i - 1].End;
                 var gapEnd = slot.Start;
                 if (gapEnd > gapStart && now >= gapStart && now < gapEnd)
-                    AddExpanded("课间休息", gapStart, gapEnd, now);
+                    AddExpanded("课间休息", gapStart, gapEnd, now, isBreak: true);
             }
 
             var isCurrent = slot.Contains(now);
@@ -170,34 +150,46 @@ public sealed class ScheduleWidget : WidgetBase
         }
     }
 
-    
     private Control BuildImportHint()
     {
-        var panel = new StackPanel
+        var content = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             VerticalAlignment = VerticalAlignment.Center,
+            Spacing = 6,
+            Children =
+            {
+                Text("尚未导入课程", Size(13.5), White(0.74)),
+                Text("前往导入 ›", Size(13.5), CiPalette.SakuraAccentBrush()),
+            },
         };
 
-        panel.Children.Add(Text("还未导入课程，前往编辑档案导入课表", Size(CiBody), White(0.92)));
-        panel.PointerPressed += (_, _) => App.OpenProfileEditor(0);
+        var pill = Pill(content, padding: 12, margin: new Thickness(0, 0, WidgetGap, 0));
+        pill.Cursor = new Cursor(StandardCursorType.Hand);
+        pill.PointerPressed += (_, _) => App.OpenProfileEditor(0);
 
-        return panel;
+        return pill;
+    }
+
+    private Control BuildEmptyHint()
+    {
+        var pill = Pill(
+            Text("今天没有课程", Size(13.5), White(0.55)),
+            padding: 12,
+            margin: new Thickness(0, 0, WidgetGap, 0));
+
+        return pill;
     }
 
     private void ClearCurrent()
     {
         _timeText = null;
-        _countdownPill = null;        _pillStroke = null;
+        _countdownPill = null;
         _pillText = null;
-        _progress = null;
-        _currentTitle = null;
+        _progressTrack = null;
+        _progressFill = null;
     }
 
-    
-    
-    
-    
     private static TimeSpan LeftOf(TimeSpan end, TimeSpan now)
     {
 #if DEBUG
@@ -207,7 +199,9 @@ public sealed class ScheduleWidget : WidgetBase
         return end - now;
     }
 
-    private (string Title, TimeSpan Start, TimeSpan End)? FindCurrent(System.Collections.Generic.IReadOnlyList<CourseSlot> slots, TimeSpan now)
+    private (string Title, TimeSpan Start, TimeSpan End)? FindCurrent(
+        System.Collections.Generic.IReadOnlyList<CourseSlot> slots,
+        TimeSpan now)
     {
         for (var i = 0; i < slots.Count; i++)
         {
@@ -226,30 +220,27 @@ public sealed class ScheduleWidget : WidgetBase
         return null;
     }
 
-    private void AddExpanded(string title, TimeSpan start, TimeSpan end, TimeSpan now)
+    private void AddExpanded(string title, TimeSpan start, TimeSpan end, TimeSpan now, bool isBreak = false)
     {
-        var (control, time, pill, stroke, pillText, progress) = BuildExpandedItem(title, start, end, now);
+        var (control, time, pill, pillText, track, fill) = BuildExpandedItem(title, start, end, now, isBreak);
         _timeText = time;
         _countdownPill = pill;
-        _pillStroke = stroke;
         _pillText = pillText;
-        _progress = progress;
+        _progressTrack = track;
+        _progressFill = fill;
         CurrentProgress = ProgressFraction(start, end, now);
+        UpdateProgressFill();
+        track.SizeChanged += (_, _) => UpdateProgressFill();
         _root.Children.Add(control);
     }
 
-    
-    
-    
-    
     private void UpdateCurrentLive(TimeSpan now)
     {
         CurrentProgress = ProgressFraction(_currentStart, _currentEnd, now);
-        if (_progress is not null)
-            _progress.Value = CurrentProgress.Value;
+        UpdateProgressFill();
 
         var left = LeftOf(_currentEnd, now);
-        var text = "-" + FormatClock(left);
+        var text = "剩 " + FormatClock(left);
         var showPill = left >= TimeSpan.Zero && left.TotalSeconds <= CiCountdownSeconds;
 
         if (_timeText is not null)
@@ -265,65 +256,64 @@ public sealed class ScheduleWidget : WidgetBase
         }
     }
 
-    
-    
-    
-    
+    private void UpdateProgressFill()
+    {
+        if (_progressTrack is null || _progressFill is null || CurrentProgress is not { } progress)
+            return;
+
+        var width = _progressTrack.Bounds.Width;
+        if (width <= 0)
+            return;
+
+        _progressFill.Width = Math.Max(0, width * progress);
+    }
+
     private Control BuildMinimized(CourseSlot slot, bool isFinished)
     {
-        var text = Text(slot.DisplayName, Size(CiEmphasized), White());
-        text.HorizontalAlignment = HorizontalAlignment.Center;
+        var text = Text(
+            slot.DisplayName,
+            Size(14.5),
+            White(0.92),
+            FontWeight.Medium);
 
-        var container = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            VerticalAlignment = VerticalAlignment.Center,
-            Opacity = isFinished && Config.FadeCompletedClasses ? 0.6 : 1.0,
-            Children =
-            {
-                new Border { Width = 10 * Config.ScheduleSpacing }, 
-                text,
-                new Border { Width = 10 * Config.ScheduleSpacing },
-            },
-        };
+        var spacing = Math.Clamp(Config.ScheduleSpacing, 0.5, 2.0);
+        var pill = Pill(
+            text,
+            padding: 7,
+            margin: new Thickness(0, 0, WidgetGap * spacing, 0));
 
-        
-        container.Transitions = new Transitions
+        var faded = isFinished && Config.FadeCompletedClasses;
+        pill.Opacity = faded ? 0.42 : 1.0;
+        pill.Transitions = new Transitions
         {
             new DoubleTransition
             {
                 Property = Visual.OpacityProperty,
-                Duration = TimeSpan.FromMilliseconds(150),
+                Duration = TimeSpan.FromMilliseconds(160),
                 Easing = new CubicEaseInOut(),
             },
         };
 
-        return container;
+        return pill;
     }
 
-    
-    
-    
-    
-    
-    
-    private (Control Control, TextBlock TimeText, Control Pill, Border Stroke, TextBlock PillText, ProgressBar Progress)
-        BuildExpandedItem(string title, TimeSpan start, TimeSpan end, TimeSpan now)
+    private (Control Control, TextBlock TimeText, Control Pill, TextBlock PillText, Border Track, Border Fill)
+        BuildExpandedItem(string title, TimeSpan start, TimeSpan end, TimeSpan now, bool isBreak)
     {
-        var name = Text(title, Size(CiEmphasized), White(), FontWeight.Bold);
+        var name = Text(title, Size(16.5), White(), FontWeight.Bold);
         name.VerticalAlignment = VerticalAlignment.Center;
 
-        
         var left = LeftOf(end, now);
-        var remaining = "-" + FormatClock(left);
+        var remaining = "剩 " + FormatClock(left);
 
-        var time = Text(remaining, Size(CiSecondary), White(0.9));
-        time.VerticalAlignment = VerticalAlignment.Bottom;
-        time.Margin = new Thickness(6, 0, 0, 0);
+        var time = Text(remaining, Size(11.5), White(0.62));
+        time.VerticalAlignment = VerticalAlignment.Center;
+        time.TextAlignment = TextAlignment.Right;
+        time.Width = 58;
+        time.Margin = new Thickness(8, 0, 0, 0);
 
-        
-        var (pill, stroke, pillText) = BuildCountdownPill(remaining);
-        pill.Margin = new Thickness(6, 0, 0, 0);
+        var (pill, pillText) = BuildCountdownPill(remaining);
+        pill.Margin = new Thickness(8, 0, 0, 0);
 
         var showPill = left >= TimeSpan.Zero && left.TotalSeconds <= CiCountdownSeconds;
         time.IsVisible = !showPill;
@@ -333,146 +323,76 @@ public sealed class ScheduleWidget : WidgetBase
         {
             Orientation = Orientation.Horizontal,
             VerticalAlignment = VerticalAlignment.Center,
-            Children =
-            {
-                new Border { Width = 16 }, 
-                name,
-                time,
-                pill,
-                new Border { Width = 16 },
-            },
+            Margin = new Thickness(12, 0, 12, 0),
+            Children = { name, time, pill },
         };
 
-        
-        
-        
-        
-        
-        var progress = new ProgressBar
+        var track = new Border
         {
-            Minimum = 0,
-            Maximum = 1,
-            Value = ProgressFraction(start, end, now),
-            MinWidth = 0,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Height = 2,
+            CornerRadius = new CornerRadius(1),
+            Background = CiPalette.SakuraAccentTint(0.16),
+        };
+
+        var fill = new Border
+        {
+            Height = 2,
+            CornerRadius = new CornerRadius(1),
+            Background = CiPalette.SakuraAccentGradient(),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Width = 0,
+        };
+
+        var progressHost = new Grid
+        {
+            Height = 2,
+            Margin = new Thickness(12, 0, 12, 3),
             VerticalAlignment = VerticalAlignment.Bottom,
-            Foreground = CiPalette.AccentBrush(),
-            Background = CiPalette.ProgressTrackBrush(),
+            Children = { track, fill },
         };
 
-        
-        progress.Transitions = new Transitions
+        var layout = new Grid
         {
-            new DoubleTransition
-            {
-                Property = ProgressBar.ValueProperty,
-                Duration = TimeSpan.FromMilliseconds(50),
-            },
+            RowDefinitions = new RowDefinitions("*,5"),
+            Children = { row, progressHost },
         };
+        Grid.SetRow(row, 0);
+        Grid.SetRow(progressHost, 1);
 
-        
-        
-        
-        
-        
         var mask = new Border
         {
-            Background = CiPalette.CurrentLessonMaskBrush(),
-            CornerRadius = CiPalette.LessonCornerRadius(),
-            Margin = new Thickness(0, 1, 0, 1),
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Stretch,
-            Child = row,
+            Background = CiPalette.SakuraAccentTint(isBreak ? 0.12 : 0.18),
+            BorderBrush = CiPalette.SakuraAccentTint(isBreak ? 0.30 : 0.46),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(10),
+            Height = 36,
+            VerticalAlignment = VerticalAlignment.Center,
+            ClipToBounds = true,
+            Margin = new Thickness(0, 0, WidgetGap, 0),
+            Child = layout,
         };
 
-        var grid = new Grid
-        {
-            VerticalAlignment = VerticalAlignment.Stretch,
-            Children = { mask, progress },
-        };
-
-        return (grid, time, pill, stroke, pillText, progress);
+        return (mask, time, pill, pillText, track, fill);
     }
 
-    
-    
-    
-    
-    
-    private static (Control Pill, Border Stroke, TextBlock Text) BuildCountdownPill(string text)
+    private static (Control Pill, TextBlock Text) BuildCountdownPill(string text)
     {
-        var accent = CiPalette.AccentBrush();
+        var pillText = Text(text, CiBody - 5, CiPalette.OnAccentBrush());
+        pillText.VerticalAlignment = VerticalAlignment.Center;
 
-        IBrush background = CiPalette.TryResource("AccentFillColorTertiaryBrush", out var tertiary)
-            ? tertiary
-            : accent;
-
-        var bg = new Border
+        var pill = new Border
         {
-            Background = background,
-            Opacity = 0.3,
-            BorderThickness = new Thickness(1),
-            Padding = new Thickness(8, 2),
-            VerticalAlignment = VerticalAlignment.Bottom,
-            ClipToBounds = true,
-        };
-
-        var pillText = new TextBlock
-        {
-            Text = text,
-            FontSize = CiBody, 
-            FontWeight = FontWeight.Medium, 
-            Foreground = White(),
+            Background = CiPalette.SakuraAccentGradient(),
+            CornerRadius = new CornerRadius(10),
+            Padding = new Thickness(8, 1),
+            Height = 20,
             VerticalAlignment = VerticalAlignment.Center,
-            TextWrapping = TextWrapping.NoWrap,
-        };
-        RenderOptions.SetTextRenderingMode(pillText, TextRenderingMode.Antialias);
-        
-        TextElement.SetFontFeatures(pillText, TabularFigures);
-
-        var stroke = new Border
-        {
-            BorderBrush = accent,
-            BorderThickness = new Thickness(1),
-            Padding = new Thickness(8, 2),
-            VerticalAlignment = VerticalAlignment.Bottom,
-            ClipToBounds = true,
             Child = pillText,
         };
 
-        
-        
-        void UpdateRadius()
-        {
-            var height = stroke.Bounds.Height;
-            if (height <= 0)
-                return;
-
-            var radius = new CornerRadius(Math.Max(1, height / 2));
-            stroke.CornerRadius = radius;
-            bg.CornerRadius = radius;
-
-            
-            
-            
-            bg.Height = height;
-        }
-
-        stroke.SizeChanged += (_, _) => UpdateRadius();
-        stroke.LayoutUpdated += (_, _) => UpdateRadius();
-
-        var pill = new Grid
-        {
-            
-            
-            VerticalAlignment = VerticalAlignment.Bottom,
-            Children = { bg, stroke },
-        };
-
-        return (pill, stroke, pillText);
+        return (pill, pillText);
     }
 
-    
     private static double ProgressFraction(TimeSpan start, TimeSpan end, TimeSpan now)
     {
         var total = end - start;
@@ -483,10 +403,6 @@ public sealed class ScheduleWidget : WidgetBase
         return Math.Clamp(elapsed.TotalSeconds / total.TotalSeconds, 0, 1);
     }
 
-    
-    
-    
-    
     private static string FormatClock(TimeSpan left)
     {
         if (left < TimeSpan.Zero)

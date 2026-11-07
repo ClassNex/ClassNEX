@@ -14,6 +14,7 @@ using ClassNex.Models;
 using ClassNex.Services;
 using ClassNex.Styles;
 using ClassNex.Widgets;
+using System.Runtime.InteropServices;
 
 namespace ClassNex.Views;
 
@@ -28,9 +29,26 @@ public partial class MainWindow : Window
     private readonly List<WidgetBase> _widgets = new();
 
     private IntPtr _hwnd;
+    private static readonly IntPtr HwndTopmost = new(-1);
+    private const uint SwpNoSize = 0x0001;
+    private const uint SwpNoMove = 0x0002;
+    private const uint SwpNoActivate = 0x0010;
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool SetWindowPos(
+        IntPtr hWnd,
+        IntPtr hWndInsertAfter,
+        int x,
+        int y,
+        int cx,
+        int cy,
+        uint uFlags);
 
     
     private double _hoverFadeTarget = 1.0;
+
+    private bool _startupPlayed;
+    private bool _startupScheduled;
 
     private static readonly Easing IslandWidthEasing = Easing.Parse("0.65, 0, 0.35, 1.0");
 
@@ -40,7 +58,7 @@ public partial class MainWindow : Window
 #endif
 
     
-    private const double IslandContentMargin = 12;
+    private const double IslandContentMargin = 16;
 
     public MainWindow()
     {
@@ -96,8 +114,20 @@ public partial class MainWindow : Window
         
         PropertyChanged += (_, args) =>
         {
-            if (args.Property == IsVisibleProperty && IsVisible)
-                PlayFadeInAnimation();
+            if (args.Property != IsVisibleProperty)
+                return;
+
+            if (IsVisible)
+            {
+                if (!_startupPlayed)
+                    ScheduleStartupEntrance();
+                else
+                    PlayFadeInAnimation();
+            }
+            else
+            {
+                ResetEntranceVisual();
+            }
         };
 
         
@@ -149,10 +179,17 @@ public partial class MainWindow : Window
         
         
         
-        IslandBackground.Background = CiPalette.SurfaceBrush("SolidBackgroundFillColorSecondaryBrush", s.BackgroundOpacity);
+        IslandBackground.Background = CiPalette.IslandSurfaceBrush();
         IslandBackground.BorderBrush = CiPalette.IslandBorderBrush();
+        IslandBackground.BoxShadow = CiPalette.IslandShadow();
         IslandBackground.Opacity = Math.Clamp(s.BackgroundOpacity, 0.05, 1.0);
-        IslandBackground.Height = 40;
+        IslandBackground.Height = CiPalette.IslandHeight;
+        IslandBackground.CornerRadius = new CornerRadius(CiPalette.IslandCornerRadius);
+        NexPanel.CornerRadius = new CornerRadius(CiPalette.IslandCornerRadius);
+        IslandSheen.Background = CiPalette.IslandSheenBrush();
+        NexSheen.Background = CiPalette.IslandSheenBrush();
+        NotificationMaskBg.Fill = CiPalette.SakuraAccentGradient();
+        NotificationTrackFill.Background = CiPalette.SakuraAccentBrush();
 
         
         if (CardContent.Bounds.Width > 0)
@@ -162,10 +199,11 @@ public partial class MainWindow : Window
         var vertical = s.Orientation == LayoutOrientation.Vertical;
         WidgetHost.Orientation = vertical ? Orientation.Vertical : Orientation.Horizontal;
         WidgetHost.Spacing = 0;
+        var editRows = _editMode ? 30 : 0;
         if (vertical)
-            IslandBackground.Height = 40 * Math.Max(1, _widgets.Count) + (_editMode ? 30 : 0);
+            IslandBackground.Height = CiPalette.IslandHeight * Math.Max(1, _widgets.Count) + editRows;
         else
-            IslandBackground.Height = 40 + (_editMode ? 30 : 0);
+            IslandBackground.Height = CiPalette.IslandHeight + editRows;
 
         
         EditBarHost.IsVisible = _editMode;
@@ -235,11 +273,21 @@ public partial class MainWindow : Window
 
         if (_widgets.Count == 0 && !_editMode)
         {
-            WidgetHost.Children.Add(new TextBlock
+            WidgetHost.Children.Add(new Border
             {
-                Text = "未启用任何组件 —— 请在「应用设置 → 主界面组件」中添加",
-                Foreground = Brushes.White,
-                FontSize = 14,
+                Background = CiPalette.ChipSurfaceBrush(),
+                BorderBrush = CiPalette.ChipBorderBrush(),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(12, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Child = new TextBlock
+                {
+                    Text = "未启用任何组件，请在「应用设置 → 主界面组件」中添加",
+                    Foreground = CiPalette.WithOpacity(CiPalette.PrimaryTextBrush(), 0.66),
+                    FontSize = 14,
+                    VerticalAlignment = VerticalAlignment.Center,
+                },
             });
         }
     }
@@ -329,16 +377,15 @@ public partial class MainWindow : Window
         
         
         
-        if (AppServices.Settings.ShowStartupSplash)
+        var keepSkeleton = Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_SKELETON") == "1";
+        if (AppServices.Settings.ShowStartupSplash && !keepSkeleton)
+        {
             ShowSkeleton();
-        if (!AppServices.Settings.ShowStartupSplash
-            || Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_SKELETON") == "1")
-        {
-            
-        }
-        else
-        {
             DispatcherTimer.RunOnce(HideSkeleton, TimeSpan.FromMilliseconds(380));
+        }
+        else if (!keepSkeleton)
+        {
+            ScheduleStartupEntrance();
         }
 
         if (double.IsNaN(IslandBackground.Width))
@@ -360,10 +407,16 @@ public partial class MainWindow : Window
     
     public void ShowNexPanel(string text, bool placeholder)
     {
+        if (!IsVisible)
+            Show();
+
+        if (!Topmost)
+            Topmost = true;
+
         NexPanelText.Text = text;
         
         
-        NexPanelText.Foreground = Brushes.White;
+        NexPanelText.Foreground = CiPalette.PrimaryTextBrush();
         NexPanelText.Opacity = placeholder ? 0.62 : 1.0;
 
         if (!_nexPanelActive)
@@ -402,6 +455,13 @@ public partial class MainWindow : Window
         {
             SetIslandWidth(NexPanel.Bounds.Width + IslandContentMargin * 2);
         }
+
+        // Raise after the panel is configured so a z-order call can never hide it.
+        var handle = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
+        if (handle != IntPtr.Zero)
+            SetWindowPos(handle, HwndTopmost, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate);
+
+        Activate();
     }
 
     
@@ -453,7 +513,7 @@ public partial class MainWindow : Window
 
         SkeletonHost.IsVisible = false;
         WidgetHost.IsVisible = true;
-        PlayFadeInAnimation();
+        ScheduleStartupEntrance();
     }
 
     
@@ -484,7 +544,7 @@ public partial class MainWindow : Window
     private void StartNotificationTrack()
     {
         
-        _trackFullWidth = Math.Max(1, IslandBackground.Width - 24); 
+        _trackFullWidth = Math.Max(1, IslandBackground.Width - IslandContentMargin * 2);
         NotificationTrack.Width = _trackFullWidth;
         NotificationTrackFill.Width = _trackFullWidth;
         NotificationTrack.IsVisible = true;
@@ -717,7 +777,7 @@ public partial class MainWindow : Window
             return;
 
         
-        visual.CenterPoint = new System.Numerics.Vector3((float)target / 2, 20f, 0f);
+        visual.CenterPoint = new System.Numerics.Vector3((float)target / 2, (float)(CiPalette.IslandHeight / 2), 0f);
 
         
         var from = double.IsNaN(previous) || previous <= 0.5
@@ -739,6 +799,120 @@ public partial class MainWindow : Window
     
     
     
+    private void ResetEntranceVisual()
+    {
+        if (!_startupPlayed)
+            return;
+
+        var visual = ElementComposition.GetElementVisual(LinePanel);
+        if (visual is not null)
+        {
+            visual.Opacity = 1f;
+            visual.Scale = new Vector3D(1f, 1f, 1f);
+        }
+
+        foreach (var child in WidgetHost.Children.OfType<Control>())
+        {
+            var childVisual = ElementComposition.GetElementVisual(child);
+            if (childVisual is null)
+                continue;
+
+            childVisual.Opacity = 1f;
+        }
+    }
+
+    private void ScheduleStartupEntrance()
+    {
+        if (_startupPlayed || _startupScheduled)
+            return;
+
+        _startupScheduled = true;
+        DispatcherTimer.RunOnce(() =>
+        {
+            _startupScheduled = false;
+            PlayStartupEntrance();
+        }, TimeSpan.FromMilliseconds(80));
+    }
+
+    private void PlayStartupEntrance()
+    {
+        if (_startupPlayed || !IsVisible)
+            return;
+
+        _startupPlayed = true;
+
+        var visual = ElementComposition.GetElementVisual(LinePanel);
+        if (visual is null)
+        {
+            PlayFadeInAnimation();
+            return;
+        }
+
+        var bounds = LinePanel.Bounds;
+        visual.CenterPoint = new Vector3D(
+            (float)(bounds.Width / 2),
+            (float)(bounds.Height / 2),
+            0);
+        visual.Opacity = 0f;
+        visual.Scale = new Vector3D(0.94f, 0.90f, 1f);
+
+        var compositor = visual.Compositor;
+
+        var fade = compositor.CreateScalarKeyFrameAnimation();
+        fade.InsertKeyFrame(0f, 0f);
+        fade.InsertKeyFrame(1f, 1f, Easing.Parse("0.16, 1, 0.3, 1"));
+        fade.Duration = TimeSpan.FromMilliseconds(420);
+        visual.StartAnimation(nameof(visual.Opacity), fade);
+
+        var scale = compositor.CreateVector3KeyFrameAnimation();
+        scale.InsertKeyFrame(0f, new System.Numerics.Vector3(0.94f, 0.90f, 1f));
+        scale.InsertKeyFrame(0.62f, new System.Numerics.Vector3(1.012f, 1.006f, 1f), Easing.Parse("0.22, 1, 0.36, 1"));
+        scale.InsertKeyFrame(1f, new System.Numerics.Vector3(1f, 1f, 1f));
+        scale.Duration = TimeSpan.FromMilliseconds(760);
+        visual.StartAnimation(nameof(visual.Scale), scale);
+
+        AnimateWidgetStagger();
+    }
+
+    private void AnimateWidgetStagger()
+    {
+        var children = WidgetHost.Children.OfType<Control>().ToList();
+        for (var i = 0; i < children.Count; i++)
+        {
+            var child = children[i];
+            var visual = ElementComposition.GetElementVisual(child);
+            if (visual is null)
+                continue;
+
+            var delay = TimeSpan.FromMilliseconds(90 + Math.Min(i, 8) * 45);
+
+            visual.Opacity = 0f;
+
+            if (delay <= TimeSpan.Zero)
+            {
+                StartWidgetEntrance(visual);
+                continue;
+            }
+
+            DispatcherTimer.RunOnce(() =>
+            {
+                if (child.IsLoaded)
+                    StartWidgetEntrance(visual);
+            }, delay);
+        }
+    }
+
+    private static void StartWidgetEntrance(CompositionVisual visual)
+    {
+        var compositor = visual.Compositor;
+
+        var fade = compositor.CreateScalarKeyFrameAnimation();
+        fade.InsertKeyFrame(0f, 0f);
+        fade.InsertKeyFrame(1f, 1f, Easing.Parse("0.16, 1, 0.3, 1"));
+        fade.Duration = TimeSpan.FromMilliseconds(430);
+        visual.StartAnimation(nameof(visual.Opacity), fade);
+    }
+
     private void PlayFadeInAnimation()
     {
         var compositionVisual = ElementComposition.GetElementVisual(CardHost);

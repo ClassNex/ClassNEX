@@ -40,6 +40,7 @@ public partial class ProfileEditorWindow : AppWindow
     private DateTime _weekStart;
     private string _parity = "all";
     private int _pageIndex = -1;
+    private Control? _currentPageView;
     private bool _navigatingBack;
 
     private static readonly string[] PageNames =
@@ -48,6 +49,8 @@ public partial class ProfileEditorWindow : AppWindow
     public ProfileEditorWindow()
     {
         InitializeComponent();
+        foreach (var item in NavView.MenuItems.OfType<Control>())
+            MetroTilt.Attach(item);
         ProfileVersionText.Text = typeof(ProfileEditorWindow).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
             ?? typeof(ProfileEditorWindow).Assembly.GetName().Version?.ToString()
@@ -264,6 +267,9 @@ public partial class ProfileEditorWindow : AppWindow
         if (index == _pageIndex)
             return;
 
+        var previousPage = _currentPageView;
+        var previousIndex = _pageIndex;
+
         if (!_navigatingBack && _pageIndex >= 0)
             _pageHistory.Add(_pageIndex);
 
@@ -276,7 +282,7 @@ public partial class ProfileEditorWindow : AppWindow
         PageTime.IsVisible = index == 2;
         PageSubject.IsVisible = index == 3;
         PageSwap.IsVisible = index == 4;
-        PageTitleText.Text = PageNames[index];
+        var title = PageNames[index];
 
         var page = index switch
         {
@@ -287,7 +293,25 @@ public partial class ProfileEditorWindow : AppWindow
             _ => PageSwap,
         };
 
-        PageTransitions.PlayEntrance(page);
+        _currentPageView = page;
+        PageTitleText.Text = title;
+        PageTitleText.Opacity = 1;
+        MetroTransitions.Play(previousPage, page, index > previousIndex, null, PageTitleText);
+
+        AttachTiltToPage(page);
+    }
+
+    private static void AttachTiltToPage(Control page)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            foreach (var control in page.GetVisualDescendants().OfType<Control>())
+            {
+                var name = control.GetType().Name;
+                if (name is "SettingsCard" or "SettingsExpanderItem")
+                    MetroTilt.Attach(control);
+            }
+        }, Avalonia.Threading.DispatcherPriority.Background);
     }
 
     private void NavigateBack()

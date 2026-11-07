@@ -54,16 +54,19 @@
 
                             
                             <Border x:Name="IslandBackground"
-                                    Height="40"
+                                    Height="44"
                                     HorizontalAlignment="Center"
-                                    CornerRadius="8"
+                                    CornerRadius="14"
                                     BorderThickness="1"
-                                    BoxShadow="0 4 8 2 #48000000">
+                                    BoxShadow="0 10 30 2 #66000000">
+                                <Border x:Name="IslandSheen"
+                                        CornerRadius="13"
+                                        IsHitTestVisible="False"/>
                             </Border>
 
                             
                             <Border x:Name="CardContent"
-                                    Margin="12,0"
+                                    Margin="16,0"
                                     MinWidth="20"
                                     Background="Transparent"
                                     HorizontalAlignment="Center">
@@ -102,10 +105,10 @@
 
                             
                             <Border x:Name="NexPanel"
-                                    Height="40"
-                                    Margin="12,0"
+                                    Height="44"
+                                    Margin="16,0"
                                     MinWidth="240" MaxWidth="820"
-                                    CornerRadius="8"
+                                    CornerRadius="14"
                                     BorderThickness="1"
                                     IsVisible="False"
                                     Opacity="0"
@@ -114,18 +117,23 @@
                                 <Border.RenderTransform>
                                     <TranslateTransform/>
                                 </Border.RenderTransform>
-                                <TextBlock x:Name="NexPanelText"
-                                           Margin="18,0"
-                                           FontSize="17"
-                                           VerticalAlignment="Center"
-                                           TextTrimming="CharacterEllipsis"/>
+                                <Grid>
+                                    <Border x:Name="NexSheen"
+                                            CornerRadius="13"
+                                            IsHitTestVisible="False"/>
+                                    <TextBlock x:Name="NexPanelText"
+                                               Margin="18,0"
+                                               FontSize="17"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </Grid>
                             </Border>
 
                             
                             <Border x:Name="NotificationMask"
-                                    Height="40"
+                                    Height="44"
                                     HorizontalAlignment="Center"
-                                    CornerRadius="8"
+                                    CornerRadius="14"
                                     ClipToBounds="True"
                                     IsVisible="False"
                                     IsHitTestVisible="False"
@@ -163,7 +171,7 @@
 
                             
                             <Border x:Name="NotificationOverlay"
-                                    Height="40"
+                                    Height="44"
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Center"
                                     IsVisible="False"

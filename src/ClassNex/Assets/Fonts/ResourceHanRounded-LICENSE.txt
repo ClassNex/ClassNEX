@@ -1,0 +1,7 @@
+ClassNex 顶栏字体：Resource Han Rounded CN Bold (Subset)
+
+版权 © 2018–2022 Cyano Hao，部分 © 2014–2021 Adobe，保留字体名 “Source”。
+字体以 SIL Open Font License 1.1 授权。
+完整许可证：https://github.com/CyanoHao/Resource-Han-Rounded/blob/master/LICENSE.md
+
+本项目仅内置用于顶栏标题的子集，包含“应用设置”四个汉字。

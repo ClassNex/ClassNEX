@@ -1,11 +1,10 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Layout;
 using Avalonia.Media;
+using ClassNex.Styles;
 
 namespace ClassNex.Widgets;
-
-
-
-
 
 
 public sealed class TextWidget : WidgetBase
@@ -14,8 +13,13 @@ public sealed class TextWidget : WidgetBase
 
     public TextWidget()
     {
-        _text = Text("", 16, White());
-        View = _text;
+        _text = Text("", 14.5, White());
+        View = new Border
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(2, 0, WidgetGap + 2, 0),
+            Child = _text,
+        };
     }
 
     public override string Type => "text";
@@ -33,13 +37,12 @@ public sealed class TextWidget : WidgetBase
             .Replace("{current}", ctx.Today.Current?.DisplayName ?? "")
             .Replace("{next}", ctx.Today.Next?.DisplayName ?? "");
 
-        
         _text.Foreground = Config.UseCustomFontColor
                            && !string.IsNullOrWhiteSpace(Config.FontColor)
                            && Color.TryParse(Config.FontColor, out var custom)
             ? new SolidColorBrush(custom)
             : White();
 
-        _text.FontSize = Size(CiBody);
+        _text.FontSize = Size(14.5);
     }
 }

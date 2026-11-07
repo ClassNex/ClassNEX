@@ -33,6 +33,10 @@ public static class CiPalette
     
     public const double CardCornerRadius = 8;
 
+    public const double IslandHeight = 44;
+
+    public const double IslandCornerRadius = 14;
+
     
 
     
@@ -66,6 +70,134 @@ public static class CiPalette
             return brush;
 
         return new SolidColorBrush(Colors.SlateBlue);
+    }
+
+    public static Color AccentColor()
+    {
+        if (AccentBrush() is ISolidColorBrush solid)
+            return solid.Color;
+
+        return Colors.SlateBlue;
+    }
+
+    public static IBrush WithOpacity(IBrush brush, double opacity)
+    {
+        var clamped = Math.Clamp(opacity, 0, 1);
+        if (brush is ISolidColorBrush solid)
+            return new SolidColorBrush(solid.Color, Math.Clamp(solid.Opacity * clamped, 0, 1));
+
+        return brush;
+    }
+
+    public static IBrush AccentTint(double opacity) => WithOpacity(AccentBrush(), opacity);
+
+    public static readonly Color SakuraAccent = Color.Parse("#D95C7C");
+
+    public static readonly Color SakuraAccentDark = Color.Parse("#F08AA3");
+
+    public static IBrush SakuraAccentBrush() =>
+        new SolidColorBrush(IsDarkTheme() ? SakuraAccentDark : SakuraAccent);
+
+    public static IBrush SakuraAccentTint(double opacity) =>
+        WithOpacity(SakuraAccentBrush(), opacity);
+
+    public static IBrush SakuraAccentGradient()
+    {
+        var dark = IsDarkTheme();
+
+        return new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
+            GradientStops =
+            {
+                new GradientStop(dark ? Color.Parse("#E56E8F") : Color.Parse("#D94F74"), 0),
+                new GradientStop(dark ? Color.Parse("#FFA5BA") : Color.Parse("#F08AA3"), 1),
+            },
+        };
+    }
+
+    public static IBrush IslandSurfaceBrush()
+    {
+        var dark = IsDarkTheme();
+        var brush = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+        };
+
+        if (dark)
+        {
+            brush.GradientStops.Add(new GradientStop(Color.Parse("#2A1722"), 0));
+            brush.GradientStops.Add(new GradientStop(Color.Parse("#3A1E2C"), 0.38));
+            brush.GradientStops.Add(new GradientStop(Color.Parse("#4A2434"), 0.72));
+            brush.GradientStops.Add(new GradientStop(Color.Parse("#562B3D"), 1));
+        }
+        else
+        {
+            brush.GradientStops.Add(new GradientStop(Color.Parse("#FFFDFE"), 0));
+            brush.GradientStops.Add(new GradientStop(Color.Parse("#FFF4F8"), 0.36));
+            brush.GradientStops.Add(new GradientStop(Color.Parse("#FFE6EF"), 0.72));
+            brush.GradientStops.Add(new GradientStop(Color.Parse("#FFD8E6"), 1));
+        }
+
+        return brush;
+    }
+
+    public static IBrush ChipSurfaceBrush() =>
+        IsDarkTheme()
+            ? new SolidColorBrush(Colors.White, 0.075)
+            : new SolidColorBrush(Colors.White, 0.55);
+
+    public static IBrush ChipBorderBrush() =>
+        WithOpacity(SakuraAccentBrush(), IsDarkTheme() ? 0.20 : 0.16);
+
+    public static IBrush IslandSheenBrush()
+    {
+        var dark = IsDarkTheme();
+
+        return new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
+            GradientStops =
+            {
+                new GradientStop(dark ? Color.FromArgb(0x1E, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x70, 0xFF, 0xFF, 0xFF), 0),
+                new GradientStop(Color.FromArgb(0x00, 0xFF, 0xFF, 0xFF), 0.52),
+                new GradientStop(dark ? Color.FromArgb(0x1A, 0xF0, 0x8A, 0xA3) : Color.FromArgb(0x12, 0xD9, 0x5C, 0x7C), 1),
+            },
+        };
+    }
+
+    public static BoxShadows IslandShadow() =>
+        IsDarkTheme()
+            ? BoxShadows.Parse("0 10 30 2 #55000000")
+            : BoxShadows.Parse("0 12 30 2 #33C05A7E");
+
+    public static IBrush SettingsSurfaceBrush()
+    {
+        var brush = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+        };
+
+        if (IsDarkTheme())
+        {
+            brush.GradientStops.Add(new GradientStop(Color.Parse("#1A1118"), 0));
+            brush.GradientStops.Add(new GradientStop(Color.Parse("#24151E"), 0.42));
+            brush.GradientStops.Add(new GradientStop(Color.Parse("#2B1824"), 0.78));
+            brush.GradientStops.Add(new GradientStop(Color.Parse("#321B28"), 1));
+        }
+        else
+        {
+            brush.GradientStops.Add(new GradientStop(Color.Parse("#FFFCFD"), 0));
+            brush.GradientStops.Add(new GradientStop(Color.Parse("#FFF4F9"), 0.38));
+            brush.GradientStops.Add(new GradientStop(Color.Parse("#FFEAF3"), 0.76));
+            brush.GradientStops.Add(new GradientStop(Color.Parse("#FFE0EC"), 1));
+        }
+
+        return brush;
     }
 
     
@@ -112,8 +244,8 @@ public static class CiPalette
     public static IBrush SkeletonBrush()
     {
         return IsDarkTheme()
-            ? new SolidColorBrush(Colors.White, 0.16)
-            : new SolidColorBrush(Colors.Black, 0.07);
+            ? new SolidColorBrush(Colors.White, 0.14)
+            : WithOpacity(SakuraAccentBrush(), 0.12);
     }
 
     
@@ -126,8 +258,8 @@ public static class CiPalette
     {
         var dark = IsDarkTheme();
         return dark
-            ? new SolidColorBrush(Colors.White, 0.18)
-            : new SolidColorBrush(Colors.Black, 0.18);
+            ? new SolidColorBrush(Colors.White, 0.14)
+            : WithOpacity(SakuraAccentBrush(), 0.16);
     }
 
     
@@ -166,8 +298,8 @@ public static class CiPalette
         var dark = IsDarkTheme();
 
         
-        var top = dark ? Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x52, 0x00, 0x00, 0x00);
-        var bottom = dark ? Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x1E, 0x00, 0x00, 0x00);
+        var top = dark ? Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0xF0, 0xFF, 0xFF, 0xFF);
+        var bottom = dark ? Color.FromArgb(0x2E, 0xF0, 0x8A, 0xA3) : Color.FromArgb(0x4C, 0xD9, 0x5C, 0x7C);
 
         return new LinearGradientBrush
         {

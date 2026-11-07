@@ -21,6 +21,7 @@ public partial class App : Application
     private LoginWindow? _loginWindow;
     private Views.TopmostEffectWindow? _effectWindow;
     private Views.OobeWindow? _oobeWindow;
+    private Views.OobeWindow? _oobePreview;
     private Views.NexChatWindow? _nexChatWindow;
     private Services.NexVoiceCoordinator? _nexVoice;
     private Services.NotificationService? _notificationService;
@@ -66,6 +67,8 @@ public partial class App : Application
                 {
                     Dispatcher.UIThread.Post(() => _mainWindow?.Hide(), DispatcherPriority.Background);
                 }
+
+
             }
 
             
@@ -85,6 +88,9 @@ public partial class App : Application
             
             _nexVoice = new Services.NexVoiceCoordinator();
             Services.AppServices.NexVoice = _nexVoice;
+
+
+
             if (AppServices.Settings.IsNexVoiceWakeEnabled)
             {
                 DispatcherTimer.RunOnce(() => _nexVoice?.Start(), TimeSpan.FromSeconds(2));
@@ -615,6 +621,23 @@ public partial class App : Application
     }
 
     
+    public static void ShowOobePreview()
+    {
+        if (Current is not App app)
+            return;
+
+        if (app._oobePreview is { IsVisible: true } existing)
+        {
+            existing.Activate();
+            return;
+        }
+
+        app._oobePreview = new Views.OobeWindow(preview: true);
+        app._oobePreview.Closed += (_, _) => app._oobePreview = null;
+        app._oobePreview.Show();
+        app._oobePreview.Activate();
+    }
+
     public static void OpenNexChat()
     {
         if (Current is not App app)
@@ -674,8 +697,7 @@ public partial class App : Application
     {
         if (_trayMenu is { } openMenu)
         {
-            openMenu.Close();
-            _trayMenu = null;
+            openMenu.CloseAnimated();
             return;
         }
 
@@ -706,7 +728,6 @@ public partial class App : Application
         var cursor = TryGetCursorPos(out var pt) ? pt : default;
         var hasCursor = cursor != default;
 
-        menu.Opacity = 0;
         if (hasCursor)
         {
             
@@ -723,14 +744,12 @@ public partial class App : Application
         {
             if (hasCursor && menu.IsVisible)
             {
-                var w = menu.Bounds.Width > 0 ? menu.Bounds.Width : 240;
+                var w = menu.Bounds.Width > 0 ? menu.Bounds.Width : 280;
                 var h = menu.Bounds.Height > 0 ? menu.Bounds.Height : 320;
                 menu.Position = new PixelPoint(
                     Math.Max(0, (int)(cursor.X - w / 2)),
-                    Math.Max(0, (int)(cursor.Y - h - 8)));
+                    Math.Max(0, (int)(cursor.Y - h + 20)));
             }
-
-            menu.Opacity = 1;
         }, DispatcherPriority.Background);
 
         _trayMenu = menu;

@@ -1,11 +1,9 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Layout;
 using Avalonia.Media;
 
 namespace ClassNex.Widgets;
-
-
-
-
 
 
 public sealed class ClockWidget : WidgetBase
@@ -14,8 +12,13 @@ public sealed class ClockWidget : WidgetBase
 
     public ClockWidget()
     {
-        _text = Text("", 22, White(), FontWeight.SemiBold);
-        View = _text;
+        _text = Text("", 20, White());
+        View = new Border
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(2, 0, WidgetGap + 2, 0),
+            Child = _text,
+        };
     }
 
     public override string Type => "clock";
@@ -28,7 +31,6 @@ public sealed class ClockWidget : WidgetBase
         }
         else if (Config.FlashTimeSeparator)
         {
-            
             var sep = ctx.Now.Second % 2 == 0 ? ":" : " ";
             _text.Text = $"{ctx.Now:HH}{sep}{ctx.Now:mm}";
         }

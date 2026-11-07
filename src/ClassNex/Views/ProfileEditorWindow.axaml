@@ -139,6 +139,7 @@
 
             <Grid RowDefinitions="Auto,Auto,*">
                 <TextBlock x:Name="PageTitleText" Grid.Row="0" FontSize="28"
+                           MinHeight="48" VerticalAlignment="Top"
                            Margin="32,24,32,0" HorizontalAlignment="Left"/>
 
                 <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8"

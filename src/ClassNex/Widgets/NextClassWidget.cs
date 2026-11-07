@@ -1,10 +1,11 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
+using Avalonia.Layout;
 using Avalonia.Media;
+using ClassNex.Styles;
 
 namespace ClassNex.Widgets;
-
-
-
 
 
 public sealed class NextClassWidget : WidgetBase
@@ -13,8 +14,25 @@ public sealed class NextClassWidget : WidgetBase
 
     public NextClassWidget()
     {
-        _text = Text("", 18, White(), FontWeight.SemiBold);
-        View = _text;
+        _text = Text("", 14.5, White());
+
+        var dot = new Ellipse
+        {
+            Width = 6,
+            Height = 6,
+            Fill = CiPalette.SakuraAccentBrush(),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 7, 0),
+        };
+
+        var row = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center,
+            Children = { dot, _text },
+        };
+
+        View = Pill(row, padding: 10, margin: new Thickness(0, 0, WidgetGap, 0));
     }
 
     public override string Type => "nextclass";
@@ -24,17 +42,16 @@ public sealed class NextClassWidget : WidgetBase
         string message;
 
         if (ctx.Today.Current is { } current)
-            message = $"正在上 {current.DisplayName} 至 {current.EndText}";
+            message = $"正在上 {current.DisplayName} · 至 {current.EndText}";
         else if (ctx.Today.Next is { } next)
-            
-            message = Config.ShowNextClass ? $"下节课 {next.DisplayName} {next.StartText}" : "";
+            message = Config.ShowNextClass ? $"下节课 {next.DisplayName} · {next.StartText}" : "";
         else if (ctx.Today.IsEmpty)
-            message = "今天没有课程。";
+            message = "今天没有课程";
         else
-            message = "今日课程已结束。";
+            message = "今日课程已结束";
 
         _text.Text = message;
-        _text.IsVisible = message.Length > 0;
-        _text.FontSize = Size(CiEmphasized);
+        _text.FontSize = Size(14.5);
+        View.IsVisible = message.Length > 0;
     }
 }

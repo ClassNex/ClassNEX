@@ -15,7 +15,7 @@
         WindowStartupLocation="CenterScreen">
 
     
-    <Grid RowDefinitions="48,*">
+    <Grid x:Name="SettingsRoot" RowDefinitions="48,*" Background="Transparent">
         
         <Grid.Styles>
             <Style Selector="ScrollViewer.anim">
@@ -32,87 +32,92 @@
             </Style>
         </Grid.Styles>
         
-        <Border Grid.Row="0" Height="48" BorderThickness="0">
-            <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="14,0,0,0">
-                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    
-                    <Button x:Name="BackButton" Theme="{StaticResource TransparentButton}"
-                            Padding="6,4" VerticalAlignment="Center" ToolTip.Tip="返回上一页"
-                            Click="OnNavigateBack">
-                        <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE06E;" FontSize="14"/>
-                    </Button>
-                    <Image Source="/Assets/icon.ico" Width="18" Height="18"
-                           IsHitTestVisible="False" RenderOptions.BitmapInterpolationMode="HighQuality"/>
-                    <TextBlock Text="应用设置" FontSize="12" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                </StackPanel>
+        <Border Grid.Row="0" Height="48" BorderThickness="0" Background="Transparent">
+            <Grid ColumnDefinitions="152,*,152">
+                <Border x:Name="TopBarCapsule"
+                        Grid.Column="1"
+                        MaxWidth="700" Height="42"
+                        HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                        CornerRadius="21"
+                        BorderThickness="1"
+                        BoxShadow="0 8 22 2 #24000000">
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="8,0,10,0">
+                        <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                            <Button x:Name="BackButton" Theme="{StaticResource TransparentButton}"
+                                    Padding="6,4" VerticalAlignment="Center" ToolTip.Tip="返回上一页"
+                                    Click="OnNavigateBack">
+                                <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE06E;" FontSize="14"/>
+                            </Button>
+                            <Image Source="/Assets/icon.ico" Width="16" Height="16"
+                                   IsHitTestVisible="False" RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                            <TextBlock Text="应用设置" FontSize="13" FontWeight="Bold"
+                                       FontFamily="avares://ClassNex/Assets/Fonts/#Resource Han Rounded CN"
+                                       VerticalAlignment="Center" IsHitTestVisible="False"/>
+                        </StackPanel>
 
-                
-                <Border Grid.Column="1" Width="420" Height="32" CornerRadius="8" BorderThickness="1"
-                        HorizontalAlignment="Center" VerticalAlignment="Center"
-                        Margin="110,0,0,0"
-                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                        Background="{DynamicResource ControlFillColorDefaultBrush}">
-                    <TextBox x:Name="SearchBox"
-                             BorderThickness="0" Background="Transparent"
-                             Watermark="查找设置"
-                             VerticalAlignment="Center" VerticalContentAlignment="Center"
-                             Margin="2,0,2,0">
-                        <TextBox.InnerLeftContent>
-                            <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE151;" FontSize="12" Margin="8,0,6,0"
-                                         VerticalAlignment="Center" Opacity="0.7"/>
-                        </TextBox.InnerLeftContent>
-                    </TextBox>
+                        <Border Grid.Column="1" Width="290" Height="30" CornerRadius="15" BorderThickness="1"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                Background="{DynamicResource ControlFillColorDefaultBrush}">
+                            <TextBox x:Name="SearchBox"
+                                     BorderThickness="0" Background="Transparent"
+                                     Watermark="查找设置"
+                                     VerticalAlignment="Center" VerticalContentAlignment="Center"
+                                     Margin="2,0,2,0">
+                                <TextBox.InnerLeftContent>
+                                    <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE151;" FontSize="12" Margin="8,0,6,0"
+                                                 VerticalAlignment="Center" Opacity="0.7"/>
+                                </TextBox.InnerLeftContent>
+                            </TextBox>
+                        </Border>
+
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <TextBlock x:Name="VersionText" FontSize="12" VerticalAlignment="Center"
+                                       ToolTip.Tip="连点 10 次可解锁调试菜单"
+                                       PointerPressed="OnVersionPointerPressed"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                            <Button x:Name="MoreOptionsButton" Theme="{StaticResource TransparentButton}"
+                                    VerticalAlignment="Center" ToolTip.Tip="更多选项…">
+                                <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0B6;" FontSize="14"/>
+                                <Button.Flyout>
+                                    <MenuFlyout>
+                                        <MenuItem Header="创建快捷方式…">
+                                            <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE102;"/></MenuItem.Icon>
+                                            <MenuItem Header="创建桌面快捷方式" Click="OnCreateDesktopShortcut">
+                                                <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE11D;"/></MenuItem.Icon>
+                                            </MenuItem>
+                                            <MenuItem Header="创建开始菜单快捷方式" Click="OnCreateStartMenuShortcut">
+                                                <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE426;"/></MenuItem.Icon>
+                                            </MenuItem>
+                                        </MenuItem>
+                                        <Separator/>
+                                        <MenuItem Header="NEX Intelligence…" Click="OnOpenNexChat"/>
+                                        <MenuItem Header="日志…" Click="OnOpenLogFile">
+                                            <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0CC;"/></MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="导出诊断数据…" Click="OnExportDiagnostics">
+                                            <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0B2;"/></MenuItem.Icon>
+                                        </MenuItem>
+                                        <Separator/>
+                                        <MenuItem Header="打开日志目录…" Click="OnOpenLogsFolder">
+                                            <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0D7;"/></MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="打开数据目录…" Click="OnOpenDataFolder">
+                                            <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0D7;"/></MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="打开应用目录…" Click="OnOpenAppFolder">
+                                            <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0D7;"/></MenuItem.Icon>
+                                        </MenuItem>
+                                        <Separator/>
+                                        <MenuItem Header="重启 ClassNEX" Click="OnRestartApp">
+                                            <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE145;"/></MenuItem.Icon>
+                                        </MenuItem>
+                                    </MenuFlyout>
+                                </Button.Flyout>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
                 </Border>
-
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <TextBlock x:Name="VersionText" FontSize="12" VerticalAlignment="Center"
-                               ToolTip.Tip="连点 10 次可解锁调试菜单"
-                               PointerPressed="OnVersionPointerPressed"
-                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                    <Button x:Name="MoreOptionsButton" Theme="{StaticResource TransparentButton}"
-                            VerticalAlignment="Center" ToolTip.Tip="更多选项…">
-                        <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0B6;" FontSize="14"/>
-                        <Button.Flyout>
-                            
-                            <MenuFlyout>
-                                <MenuItem Header="创建快捷方式…">
-                                    <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE102;"/></MenuItem.Icon>
-                                    <MenuItem Header="创建桌面快捷方式" Click="OnCreateDesktopShortcut">
-                                        <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE11D;"/></MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="创建开始菜单快捷方式" Click="OnCreateStartMenuShortcut">
-                                        <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE426;"/></MenuItem.Icon>
-                                    </MenuItem>
-                                </MenuItem>
-                                <Separator/>
-                                <MenuItem Header="NEX Intelligence…" Click="OnOpenNexChat"/>
-                        <MenuItem Header="日志…" Click="OnOpenLogFile">
-                                    <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0CC;"/></MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem Header="导出诊断数据…" Click="OnExportDiagnostics">
-                                    <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0B2;"/></MenuItem.Icon>
-                                </MenuItem>
-                                <Separator/>
-                                <MenuItem Header="打开日志目录…" Click="OnOpenLogsFolder">
-                                    <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0D7;"/></MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem Header="打开数据目录…" Click="OnOpenDataFolder">
-                                    <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0D7;"/></MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem Header="打开应用目录…" Click="OnOpenAppFolder">
-                                    <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0D7;"/></MenuItem.Icon>
-                                </MenuItem>
-                                <Separator/>
-                                <MenuItem Header="重启 ClassNEX" Click="OnRestartApp">
-                                    <MenuItem.Icon><ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE145;"/></MenuItem.Icon>
-                                </MenuItem>
-                            </MenuFlyout>
-                        </Button.Flyout>
-                    </Button>
-                </StackPanel>
-
-                
-                <Border Grid.Column="3" Width="152"/>
             </Grid>
         </Border>
 
@@ -246,10 +251,27 @@
             </ui:NavigationView.MenuItems>
 
             <Grid RowDefinitions="Auto,*">
+                <Canvas x:Name="HomePetals"
+                        Grid.RowSpan="2"
+                        Width="460"
+                        Margin="0,12,30,0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Stretch"
+                        IsHitTestVisible="False"
+                        IsVisible="False"
+                        ClipToBounds="True"
+                        Opacity="0.9"/>
                 <TextBlock x:Name="PageTitleText" Grid.Row="0" FontSize="28"
+                           MinHeight="48" VerticalAlignment="Top"
                            Margin="32,24,32,0" HorizontalAlignment="Left"/>
                 <ScrollViewer x:Name="PageScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="32,12,32,24" Spacing="12" MaxWidth="880" HorizontalAlignment="Left">
+                    <Grid x:Name="PageHost" Margin="32,12,32,24" MaxWidth="880"
+                          HorizontalAlignment="Left" VerticalAlignment="Top">
+                        <Grid.Styles>
+                            <Style Selector="Grid#PageHost > StackPanel">
+                                <Setter Property="VerticalAlignment" Value="Top"/>
+                            </Style>
+                        </Grid.Styles>
 
                         
                         <StackPanel x:Name="PageHome" Spacing="6">
@@ -265,6 +287,11 @@
                         <StackPanel x:Name="PageNex" Spacing="12" IsVisible="False">
                             <ui:InfoBar Severity="Informational" IsOpen="True" IsClosable="False"
                                         Message="NEX 是内置的 AI 助手：能查课表、看应用状态，也能按你选的权限读写文件。对话内容会发送到接口服务商。"/>
+
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <Button x:Name="NexOpenChatButton" Content="打开 NEX 对话框" Classes="Primary" MinWidth="150"/>
+                                <Button x:Name="NexGlowEntryButton" Content="预览跑马灯"/>
+                            </StackPanel>
 
                             <ui:SettingsExpander Header="接口"
                                                  Description="应用已内置可用的接口，开箱即可对话，无需配置。想换成你自己的接口/密钥，请到「调试」页设置（版本号连点 10 次解锁）。">
@@ -339,10 +366,6 @@
                                     </ui:SettingsExpanderItem.Footer>
                                 </ui:SettingsExpanderItem>
                             </ui:SettingsExpander>
-
-                            <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,0">
-                                <Button x:Name="NexOpenChatButton" Content="打开 NEX 对话框" Classes="Primary" MinWidth="150"/>
-                            </StackPanel>
                         </StackPanel>
 
                         
@@ -752,6 +775,16 @@
                                                 <Button Content="反馈问题" Click="OnOpenIssues"/>
                                             </StackPanel>
                                         </Grid>
+                                        <Separator/>
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <StackPanel Spacing="2">
+                                                <TextBlock Text="首次启动向导"/>
+                                                <TextBlock Text="预览 OOBE 的翻页动画和步骤提示，不会修改当前设置。"
+                                                           FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                            <Button Grid.Column="1" Content="预览 OOBE"
+                                                    VerticalAlignment="Center" Click="OnPreviewOobe"/>
+                                        </Grid>
                                     </StackPanel>
                                 </ui:SettingsExpander.Items>
                             </ui:SettingsExpander>
@@ -874,7 +907,7 @@
                             </ui:SettingsExpander>
                         </StackPanel>
 
-                    </StackPanel>
+                    </Grid>
                 </ScrollViewer>
             </Grid>
         </ui:NavigationView>
