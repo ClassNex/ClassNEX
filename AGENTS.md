@@ -35,7 +35,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：合并联合开发者源码快照：主界面樱花视觉重做、胶囊组件、启动回弹动画、设置窗口玻璃背景、主页樱花飘落、托盘动画、新图标与 NEX 樱花唤醒光效；版本号更新为 26w45a，主仓库 Debug 构建 0 警告 0 错误
+上次完成：合并联合开发者源码快照并发布 26w45a_Alpha；主界面樱花视觉、胶囊组件、启动回弹动画、设置窗口玻璃背景、主页樱花飘落、托盘动画、新图标与 NEX 樱花唤醒光效；发布说明署名联合开发者 washiyin，并通过 co-author 计入仓库贡献
 改了文件：src/ClassNex/ClassNex.csproj、RELEASE_NOTES.md、HANDOFF.md、AGENTS.md 及联合开发者合并文件
 进行中：无
 下一步：待用户指定
