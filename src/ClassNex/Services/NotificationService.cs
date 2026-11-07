@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Threading;
 using ClassNex.Controls.NotificationEffects;
 using ClassNex.Models;
+using ClassNex.Styles;
 using ClassNex.Views;
 
 namespace ClassNex.Services;
@@ -92,7 +93,12 @@ public sealed class NotificationService
             var maskText = key.StartsWith("break:") ? n.ClassOffMaskText : n.ClassOnMaskText;
 
             var center = mainWindow.GetIslandCenterOnScreen() ?? new PixelPoint(0, 0);
-            _effectWindow.PlayEffect(new RippleEffect(center));
+            var clipCornerRadius = 14 * Math.Max(0.1, AppServices.Settings.EffectiveScale);
+            _effectWindow.PlayEffect(new RippleEffect(
+                center,
+                CiPalette.SakuraAccentBrush(),
+                mainWindow.GetIslandScreenRect,
+                clipCornerRadius));
             mainWindow.ShowNotificationMask(maskText);
 
             

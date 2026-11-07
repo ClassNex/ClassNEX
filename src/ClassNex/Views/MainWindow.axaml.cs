@@ -591,11 +591,10 @@ public partial class MainWindow : Window
             return null;
 
         var topLeft = island.PointToScreen(new Point(0, 0));
-
-        var scaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0;
+        var bottomRight = island.PointToScreen(new Point(island.Bounds.Width, island.Bounds.Height));
         var size = new PixelSize(
-            Math.Max(1, (int)Math.Round(island.Bounds.Width * scaling)),
-            Math.Max(1, (int)Math.Round(island.Bounds.Height * scaling)));
+            Math.Max(1, bottomRight.X - topLeft.X),
+            Math.Max(1, bottomRight.Y - topLeft.Y));
         return new PixelRect(topLeft, size);
     }
 

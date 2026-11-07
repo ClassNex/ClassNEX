@@ -50,15 +50,20 @@ public partial class RippleEffect : UserControl, INotificationEffectControl
     }
 
     private PixelPoint CenterPoint { get; }
+    private readonly Func<PixelRect?>? _clipBoundsProvider;
+    private readonly double _clipCornerRadius;
 
     
     public RippleEffect() : this(default)
     {
     }
 
-    public RippleEffect(PixelPoint center, IBrush? brush = null)
+    public RippleEffect(PixelPoint center, IBrush? brush = null,
+        Func<PixelRect?>? clipBoundsProvider = null, double clipCornerRadius = 0)
     {
         CenterPoint = center;
+        _clipBoundsProvider = clipBoundsProvider;
+        _clipCornerRadius = clipCornerRadius;
         Fill = brush ?? (Application.Current!.TryFindResource("AccentFillColorDefaultBrush", out var v) ? v as IBrush : null);
         InitializeComponent();
         EllipseMain.IsVisible = true;
@@ -70,6 +75,19 @@ public partial class RippleEffect : UserControl, INotificationEffectControl
         var (cx, cy) = this.PointToClient(CenterPoint);
         CenterX = cx;
         CenterY = cy;
+
+        if (_clipBoundsProvider?.Invoke() is { } clipBounds)
+        {
+            var topLeft = this.PointToClient(new PixelPoint(clipBounds.X, clipBounds.Y));
+            var bottomRight = this.PointToClient(new PixelPoint(clipBounds.Right, clipBounds.Bottom));
+            var clipWidth = Math.Max(0, bottomRight.X - topLeft.X);
+            var clipHeight = Math.Max(0, bottomRight.Y - topLeft.Y);
+            Clip = new RectangleGeometry(
+                new Rect(topLeft.X, topLeft.Y, clipWidth, clipHeight),
+                _clipCornerRadius,
+                _clipCornerRadius);
+        }
+
         var topLevel = TopLevel.GetTopLevel(this);
         var r11 = Math.Sqrt(Math.Pow(cx, 2) + Math.Pow(cy, 2));
         var r12 = Math.Sqrt(Math.Pow(topLevel?.Width ?? 0 - cx, 2) + Math.Pow(cy, 2));

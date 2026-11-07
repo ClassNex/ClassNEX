@@ -115,7 +115,11 @@ public partial class App : Application
                     DispatcherTimer.RunOnce(() =>
                     {
                         var center = _mainWindow?.GetIslandCenterOnScreen() ?? new Avalonia.PixelPoint(200, 200);
-                        _effectWindow!.PlayEffect(new Controls.NotificationEffects.RippleEffect(center));
+                        _effectWindow!.PlayEffect(new Controls.NotificationEffects.RippleEffect(
+                            center,
+                            ClassNex.Styles.CiPalette.SakuraAccentBrush(),
+                            () => _mainWindow?.GetIslandScreenRect(),
+                            14 * Math.Max(0.1, Services.AppServices.Settings.EffectiveScale)));
                         _mainWindow?.ShowNotificationMask("课间休息");
 
                         var summary = Services.AppServices.Time.GetTodaySummary(

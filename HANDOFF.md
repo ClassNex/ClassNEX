@@ -109,6 +109,10 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   2. 当前课进度条改成了**自绘 2px 轨道 + 填充**（`ScheduleWidget` 的 `_progressTrack/_progressFill`），
      不再用 `ProgressBar`，因为主题 `ProgressBar` 默认 `MinWidth=200` 会撑宽当前课项
   3. 岛**不能加 `ClipToBounds`** —— 会把 `BoxShadow` 裁掉（阴影不渲染）
+- **通知涟漪必须裁到岛形**：全屏顶层效果窗口里的涟漪从岛中心扩散，若不裁切会越过圆角在岛下方露出半圆。
+  现在 `RippleEffect` 在播放时读取 `MainWindow.GetIslandScreenRect()`，按实际屏幕矩形和圆角建立 `RectangleGeometry` 裁切；
+  颜色统一走 `CiPalette.SakuraAccentBrush()`。`GetIslandScreenRect()` 用岛的两个角 `PointToScreen` 计算尺寸，
+  能正确包含 `LayoutTransform` 缩放和系统 DPI。⚠️ 不要改成直接给岛开 `ClipToBounds`。
 - **取色跟随主题，组件强调色改为樱花玫瑰**：主题明暗 = `ThemeMode=system`（`PreferSystemTheme`）；
   主界面表面由 `CiPalette.IslandSurfaceBrush()` 按 `IsDarkTheme()` 返回粉白/深玫瑰渐变，不再依赖
   `SolidBackgroundFillColorSecondaryBrush`（不带主题变体取资源会返回浅色变体，深色主题下卡片会发白）。
