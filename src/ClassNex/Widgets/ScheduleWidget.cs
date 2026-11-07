@@ -240,7 +240,7 @@ public sealed class ScheduleWidget : WidgetBase
         UpdateProgressFill();
 
         var left = LeftOf(_currentEnd, now);
-        var text = "剩 " + FormatClock(left);
+        var text = "-" + FormatClock(left);
         var showPill = left >= TimeSpan.Zero && left.TotalSeconds <= CiCountdownSeconds;
 
         if (_timeText is not null)
@@ -304,7 +304,7 @@ public sealed class ScheduleWidget : WidgetBase
         name.VerticalAlignment = VerticalAlignment.Center;
 
         var left = LeftOf(end, now);
-        var remaining = "剩 " + FormatClock(left);
+        var remaining = "-" + FormatClock(left);
 
         var time = Text(remaining, Size(11.5), White(0.62));
         time.VerticalAlignment = VerticalAlignment.Center;
@@ -411,8 +411,7 @@ public sealed class ScheduleWidget : WidgetBase
         return left.TotalSeconds switch
         {
             >= 3600 => $"{(int)left.TotalHours}:{left.Minutes:00}:{left.Seconds:00}",
-            >= 60 => $"{left.Minutes}:{left.Seconds:00}",
-            _ => $"{left.Seconds}s",
+            _ => $"{(int)left.TotalMinutes}:{left.Seconds:00}",
         };
     }
 }

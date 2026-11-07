@@ -4,92 +4,194 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:ui="using:AvaloniaFluentUI.Controls"
         xmlns:wd="using:AvaloniaFluentUI.Windowing"
-        mc:Ignorable="d" d:DesignWidth="460" d:DesignHeight="720"
+        mc:Ignorable="d" d:DesignWidth="520" d:DesignHeight="560"
         x:Class="ClassNex.Views.LoginWindow"
-        Title="ClassNEX 账户"
+        Title="登录 ClassNEX"
         Icon="/Assets/icon.ico"
         TitleBarHeight="48"
         IsTitleBarContentVisible="False"
-        Width="460" Height="720"
+        Width="520" Height="560"
         CanResize="False"
         WindowStartupLocation="CenterScreen">
 
-    <StackPanel Margin="36,24,36,24" Spacing="16">
+    <Grid Margin="34,18,34,26" RowDefinitions="Auto,*,Auto">
 
-        <StackPanel Spacing="8">
-            <TextBlock Text="ClassNEX 账户" FontSize="22" FontWeight="SemiBold"
-                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-            <TextBlock Text="登录后，头像、用户名与邮箱会从账户服务同步到本机。"
-                       TextWrapping="Wrap" Opacity="0.75"/>
-        </StackPanel>
-
-        <StackPanel x:Name="StateForm" Spacing="14">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button x:Name="ModeLoginButton" Content="登录" Classes="Primary" MinWidth="72"/>
-                <Button x:Name="ModeSignupButton" Content="注册" MinWidth="72"/>
-            </StackPanel>
-
-            <StackPanel x:Name="LoginForm" Spacing="10">
-                <TextBox x:Name="LoginAccountBox" Watermark="用户名" FontSize="14"/>
-                <TextBox x:Name="LoginPasswordBox" Watermark="密码" PasswordChar="●" FontSize="14"/>
-                <Button x:Name="SignInButton" Content="登录" Classes="Primary" HorizontalAlignment="Stretch"/>
-                <TextBlock x:Name="LoginStatusText" FontSize="12" TextWrapping="Wrap" Opacity="0.8"/>
-            </StackPanel>
-
-            <StackPanel x:Name="SignupForm" IsVisible="False" Spacing="10">
-                <TextBox x:Name="SignupUsernameBox" Watermark="用户名" FontSize="14"/>
-                <TextBox x:Name="SignupDisplayNameBox" Watermark="显示名（可选）" FontSize="14"/>
-                <TextBox x:Name="SignupEmailBox" Watermark="邮箱" FontSize="14"/>
-                <TextBox x:Name="SignupPasswordBox" Watermark="密码" PasswordChar="●" FontSize="14"/>
-                <TextBox x:Name="SignupConfirmBox" Watermark="确认密码" PasswordChar="●" FontSize="14"/>
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                    <TextBox x:Name="SignupCodeBox" Watermark="邮箱验证码" FontSize="14"/>
-                    <Button Grid.Column="1" x:Name="SendCodeButton" Content="发送验证码" MinWidth="104"/>
-                </Grid>
-                <TextBlock x:Name="SignupStatusText" FontSize="12" TextWrapping="Wrap" Opacity="0.8"/>
-                <Button x:Name="SignUpButton" Content="创建账户" Classes="Primary" HorizontalAlignment="Stretch"/>
-            </StackPanel>
-        </StackPanel>
-
-        <StackPanel x:Name="StateDone" IsVisible="False" Spacing="12">
-            <Border CornerRadius="8" Padding="20" BorderThickness="1"
-                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+        <Grid ColumnDefinitions="64,*" ColumnSpacing="18">
+            <Border Width="64" Height="64" CornerRadius="18"
+                    BorderThickness="1"
+                    BorderBrush="{DynamicResource AccentFillColorDefaultBrush}"
                     Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
-                <StackPanel Spacing="14">
-                    <StackPanel Orientation="Horizontal" Spacing="16">
-                        <Border x:Name="DoneAvatar" Width="64" Height="64" CornerRadius="16"
-                                BorderThickness="3"/>
-                        <StackPanel VerticalAlignment="Center" Spacing="4">
-                            <TextBlock x:Name="DoneNameText" FontSize="18" FontWeight="SemiBold"/>
-                            <TextBlock x:Name="DoneEmailText" FontSize="13" Opacity="0.7"/>
+                <Image Source="/Assets/icon.ico" Width="48" Height="48"
+                       Stretch="Uniform"/>
+            </Border>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                <TextBlock Text="ClassNEX" FontSize="13" Opacity="0.62"/>
+                <TextBlock Text="登录账户" FontSize="25" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                <TextBlock Text="使用浏览器完成安全授权，资料会自动同步到本机。"
+                           FontSize="13" Opacity="0.7" TextWrapping="Wrap"/>
+            </StackPanel>
+        </Grid>
+
+        <Border Grid.Row="1" Margin="0,22,0,18" Padding="26" CornerRadius="18"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
+            <Grid>
+
+                <StackPanel x:Name="StateIdle" VerticalAlignment="Center" Spacing="20">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="在浏览器中登录或注册" FontSize="17"/>
+                        <TextBlock Text="点击下方按钮后会打开默认浏览器。登录成功后无需复制验证码或令牌，ClassNEX 会自动接收授权结果。"
+                                   FontSize="13" Opacity="0.72" TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <Border Padding="14,12" CornerRadius="12"
+                            Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                            <Border Width="28" Height="28" CornerRadius="14"
+                                    Background="{DynamicResource AccentFillColorDefaultBrush}">
+                                <TextBlock Text="✓" FontSize="16"
+                                           Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel Grid.Column="1" Spacing="3">
+                                <TextBlock Text="密码只提交给账户服务"/>
+                                <TextBlock Text="ClassNEX 不会读取或保存你的账户密码。"
+                                           FontSize="12" Opacity="0.66"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Button x:Name="StartLoginButton" Content="在浏览器中登录"
+                            Classes="Primary" HorizontalAlignment="Stretch" Height="42"
+                            HorizontalContentAlignment="Center"/>
+
+                    <TextBlock Text="还没有账户？可直接在浏览器登录页完成注册。"
+                               FontSize="12" Opacity="0.62" TextAlignment="Center"
+                               TextWrapping="Wrap"/>
+                </StackPanel>
+
+                <StackPanel x:Name="StateFlow" IsVisible="False"
+                            VerticalAlignment="Center" Spacing="18">
+                    <Border Width="64" Height="64" CornerRadius="32"
+                            HorizontalAlignment="Center"
+                            Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}">
+                        <TextBlock Text="↗" FontSize="30"
+                                   Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+
+                    <StackPanel Spacing="7">
+                        <TextBlock Text="等待浏览器完成授权" FontSize="18"
+                                   TextAlignment="Center"/>
+                        <TextBlock x:Name="FlowStatusText"
+                                   Text="已打开默认浏览器，请在浏览器中完成登录或注册。"
+                                   FontSize="13" Opacity="0.75"
+                                   TextAlignment="Center" TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <ProgressBar IsIndeterminate="True" Height="3"
+                                 HorizontalAlignment="Stretch"/>
+
+                    <Border Padding="16,14" CornerRadius="12"
+                            Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}">
+                        <StackPanel Spacing="9">
+                            <Grid ColumnDefinitions="24,*" ColumnSpacing="8">
+                                <TextBlock Text="1" Opacity="0.58"/>
+                                <TextBlock Grid.Column="1" Text="在浏览器中登录或注册 ClassNEX 账户"/>
+                            </Grid>
+                            <Grid ColumnDefinitions="24,*" ColumnSpacing="8">
+                                <TextBlock Text="2" Opacity="0.58"/>
+                                <TextBlock Grid.Column="1" Text="确认授权，然后回到这个窗口"/>
+                            </Grid>
+                            <Grid ColumnDefinitions="24,*" ColumnSpacing="8">
+                                <TextBlock Text="3" Opacity="0.58"/>
+                                <TextBlock Grid.Column="1" Text="头像、用户名和邮箱会自动同步"/>
+                            </Grid>
                         </StackPanel>
-                    </StackPanel>
-                    <TextBlock Text="登录成功，账号信息已同步到本机。"
-                               FontSize="13" Opacity="0.8" TextWrapping="Wrap"/>
-                </StackPanel>
-            </Border>
-            <Button x:Name="FinishButton" Content="完成" Classes="Primary"
-                    HorizontalAlignment="Left" MinWidth="120"/>
-        </StackPanel>
+                    </Border>
 
-        <StackPanel x:Name="StateLoggedIn" IsVisible="False" Spacing="12">
-            <Border CornerRadius="8" Padding="20" BorderThickness="1"
-                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
-                <StackPanel Orientation="Horizontal" Spacing="16">
-                    <Border x:Name="CurrentAvatar" Width="64" Height="64" CornerRadius="16"
-                            BorderThickness="3"/>
-                    <StackPanel VerticalAlignment="Center" Spacing="4">
-                        <TextBlock x:Name="CurrentNameText" FontSize="18" FontWeight="SemiBold"/>
-                        <TextBlock x:Name="CurrentEmailText" FontSize="13" Opacity="0.7"/>
+                    <StackPanel Orientation="Horizontal" Spacing="10"
+                                HorizontalAlignment="Center">
+                        <Button x:Name="ReopenBrowserButton" Content="重新打开浏览器"/>
+                        <Button x:Name="CancelFlowButton" Content="取消登录"/>
                     </StackPanel>
                 </StackPanel>
-            </Border>
-            <StackPanel Orientation="Horizontal" Spacing="10">
-                <Button x:Name="LogoutButton" Content="退出登录" HorizontalAlignment="Left"/>
-                <Button x:Name="CloseButton" Content="关闭" HorizontalAlignment="Left"/>
-            </StackPanel>
-        </StackPanel>
 
-    </StackPanel>
+                <StackPanel x:Name="StateDone" IsVisible="False"
+                            VerticalAlignment="Center" Spacing="20">
+                    <Border Width="66" Height="66" CornerRadius="33"
+                            HorizontalAlignment="Center"
+                            Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}">
+                        <TextBlock Text="✓" FontSize="30"
+                                   Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="账户已连接" FontSize="20"
+                                   TextAlignment="Center"/>
+                        <TextBlock Text="头像、用户名与邮箱已同步到 ClassNEX。"
+                                   FontSize="13" Opacity="0.7"
+                                   TextAlignment="Center" TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <Border Padding="18" CornerRadius="14"
+                            Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}">
+                        <StackPanel Orientation="Horizontal" Spacing="16">
+                            <Border x:Name="DoneAvatar" Width="64" Height="64"
+                                    CornerRadius="16" BorderThickness="3"/>
+                            <StackPanel VerticalAlignment="Center" Spacing="4">
+                                <TextBlock x:Name="DoneNameText" FontSize="18"
+                                           FontWeight="SemiBold"/>
+                                <TextBlock x:Name="DoneEmailText" FontSize="13"
+                                           Opacity="0.7"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <Button x:Name="FinishButton" Content="完成" Classes="Primary"
+                            HorizontalAlignment="Stretch" Height="40"
+                            HorizontalContentAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel x:Name="StateLoggedIn" IsVisible="False"
+                            VerticalAlignment="Center" Spacing="20">
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="已登录" FontSize="20" TextAlignment="Center"/>
+                        <TextBlock Text="当前账户资料会持续同步到 ClassNEX。"
+                                   FontSize="13" Opacity="0.7" TextAlignment="Center"/>
+                    </StackPanel>
+
+                    <Border Padding="18" CornerRadius="14"
+                            Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}">
+                        <StackPanel Orientation="Horizontal" Spacing="16">
+                            <Border x:Name="CurrentAvatar" Width="64" Height="64"
+                                    CornerRadius="16" BorderThickness="3"/>
+                            <StackPanel VerticalAlignment="Center" Spacing="4">
+                                <TextBlock x:Name="CurrentNameText" FontSize="18"
+                                           FontWeight="SemiBold"/>
+                                <TextBlock x:Name="CurrentEmailText" FontSize="13"
+                                           Opacity="0.7"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                        <Button x:Name="LogoutButton" Content="退出登录"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"/>
+                        <Button Grid.Column="1" x:Name="CloseButton" Content="关闭"
+                                Classes="Primary" HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"/>
+                    </Grid>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <TextBlock Grid.Row="2" Text="账户服务由 ClassNEX 提供，仅用于同步账户资料。"
+                   FontSize="11" Opacity="0.5"
+                   HorizontalAlignment="Center"/>
+    </Grid>
 </wd:AppWindow>

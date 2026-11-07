@@ -35,7 +35,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：修复课间通知涟漪越过岛形圆角后在底部露出蓝色半圆的问题；涟漪改为樱花强调色，并在播放时按主界面实际屏幕矩形裁切，兼容界面缩放
-改了文件：src/ClassNex/Controls/NotificationEffects/RippleEffect.axaml.cs、src/ClassNex/Services/NotificationService.cs、src/ClassNex/Views/MainWindow.axaml.cs、src/ClassNex/App.axaml.cs、HANDOFF.md、AGENTS.md
+上次完成：账户登录恢复为 Casdoor 浏览器授权码流程；登录窗口改为卡片式排版并收紧到 560 高度以适配 125% 缩放；OOBE 账户页同步提示浏览器登录；课表剩余时间统一显示为 `-m:ss`
+改了文件：src/ClassNex/Services/AccountService.cs、src/ClassNex/Views/LoginWindow.axaml、src/ClassNex/Views/LoginWindow.axaml.cs、src/ClassNex/Views/OobeWindow.axaml.cs、src/ClassNex/Widgets/ScheduleWidget.cs、src/ClassNex/App.axaml.cs、HANDOFF.md、AGENTS.md
 进行中：无
 下一步：待用户指定

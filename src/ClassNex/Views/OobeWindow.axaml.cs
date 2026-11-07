@@ -328,8 +328,8 @@ public partial class OobeWindow : AppWindow
             SemesterLabel.Text = "Term start date";
             RunAtStartupCheck.Content = "Start ClassNEX when Windows starts";
             AccountTitle.Text = "Account";
-            AccountBody.Text = "After signing in, your avatar, name and email are synced from the account service.";
-            OobeLoginButton.Content = "Sign in / Sign up";
+            AccountBody.Text = "Sign in or create an account securely in your browser. Your avatar, name and email are synced automatically.";
+            OobeLoginButton.Content = "Sign in / Sign up in browser";
             OobeLogoutButton.Content = "Sign out";
             MoreTitle.Text = "More settings";
             MoreBody.Text = "Reserved: more options will be added in a later version.";
@@ -356,8 +356,8 @@ public partial class OobeWindow : AppWindow
             SemesterLabel.Text = "开学日期";
             RunAtStartupCheck.Content = "开机时自动启动 ClassNEX";
             AccountTitle.Text = "账户";
-            AccountBody.Text = "登录后，头像、用户名与邮箱会从账户服务同步到本机。";
-            OobeLoginButton.Content = "登录 / 注册 ClassNEX 账号";
+            AccountBody.Text = "在浏览器中安全登录或注册，头像、用户名与邮箱会自动同步到本机。";
+            OobeLoginButton.Content = "使用浏览器登录 / 注册";
             OobeLogoutButton.Content = "退出登录";
             MoreTitle.Text = "更多设置";
             MoreBody.Text = "此页面预留：后续版本继续补充。";
@@ -379,6 +379,9 @@ public partial class OobeWindow : AppWindow
 
     private void StartOobeLogin()
     {
+        OobeLoginStatus.Text = _isEnglish
+            ? "Opening the secure sign-in window…"
+            : "正在打开安全登录窗口…";
         App.OpenLoginWindow();
     }
 
@@ -392,7 +395,12 @@ public partial class OobeWindow : AppWindow
         OobeLoginButton.IsEnabled = !loggedIn;
 
         if (!loggedIn)
+        {
+            OobeLoginStatus.Text = _isEnglish
+                ? "You can sign in or register in your default browser."
+                : "可以在默认浏览器中登录或注册 ClassNEX 账户。";
             return;
+        }
 
         OobeAccountName.Text = profile!.DisplayName;
         OobeAccountEmail.Text = profile.Email;

@@ -265,6 +265,8 @@ public partial class App : Application
                             SaveWindowShot(_profileEditor, "_shot_editor.png");
                         if (_oobeWindow is not null)
                             SaveWindowShot(_oobeWindow, "_shot_oobe.png");
+                        if (_loginWindow is not null)
+                            SaveWindowShot(_loginWindow, "_shot_login.png");
                         if (_nexChatWindow is not null)
                             SaveWindowShot(_nexChatWindow, "_shot_nex.png");
                         if (_nexVoice?.GlowWindow is { IsVisible: true } glow)

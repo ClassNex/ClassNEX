@@ -166,6 +166,8 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 - 课表项语义 = CI LessonsListBox：当前项(上课/课间)=全名 Bold + 剩余时间 + **进度线贴项底**
   （当前项高 36，进度线在胶囊内部底边）、其他课=简称胶囊、**已上完 `Opacity=0.42` 带 160ms CubicEaseInOut 过渡**、
   课间项隐藏（仅当前课间显示「课间休息」）；课间当前项使用较淡的强调色胶囊
+- 当前项剩余时间统一显示为 `-m:ss`（超过一小时为 `-h:mm:ss`，不足一分钟为 `-0:ss`），
+  不再使用「剩 x:y」或 `xs`。
 - **动画参数**：启动动画 = `LinePanel` 组合层 opacity 0→1（420ms，`0.16,1,0.3,1`）+ scale
   `(0.94,0.90)→(1.012,1.006)→(1,1)`（760ms，带回弹）；组件按 90ms + 45ms/个错峰淡入。
   组件不再用 composition `Offset` 做上浮位移（部分合成器/DPI 下会把子视觉叠到同一位置，表现为启动时组件堆在一起）；
@@ -225,8 +227,12 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   （文本 / 分割线 / 课程表 / 日期 / 时钟 / 当前·下节课 / 倒计时），
   支持启用、字号、显示秒、自定义文本（占位符 `{date} {day} {time} {parity} {current} {next} {countdown}`）、排序、删除
 - 课表、关于
-- **账户**：Win11 默认账户头像（`Assets\avatar.png`，取自系统 user.png）+ 用户名 + 邮箱（可编辑，
-  存 `AppSettings.UserName/Email`）；导航栏账户卡 + 搜索框布局**模板取自 FluentUI-Gallery**（zhuzichu520 的 Qt/QML 版）
+- **账户登录**：恢复 Casdoor **浏览器授权码流程**，软件内不再显示用户名密码或邮箱验证码表单。
+  `AccountService` 使用本机 `HttpListener` 接收 `http://localhost:17171/callback` 回调，校验随机 `state`
+  后用授权码换取令牌并同步头像、用户名、邮箱；浏览器回调页只提示「浏览器授权完成，正在同步」，
+  最终成功状态由应用确认。Casdoor 的 `app-classnex` 必须允许该回调地址。
+  登录窗口采用居中卡片式排版，窗口固定为 `520x560`，已验证 125% 显示缩放；关闭窗口会停止本地回调监听。
+  OOBE 账户页与应用设置账户页共用该浏览器登录窗口。
 
 ### 档案编辑器
 - **顶部栏**：结构与应用设置一致，左侧返回历史按钮、应用图标和标题，中间显示当前 CSES 文件路径，
