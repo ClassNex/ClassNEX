@@ -15,8 +15,15 @@ ClassNEX 是一款功能强大、可定制、跨平台的课表信息显示工�
 >
 > 项目仍在快速迭代中，部分功能尚未完成，API、配置格式及项目结构可能发生变化。
 > **目前不建议将 ClassNEX 用于生产环境。**
+## 贡献者
 
-
+<p align="center">
+  <img
+    src="assets/contributors.svg"
+    width="100%"
+    alt="ClassNEX Contributors"
+  />
+</p>
 ---
 
 ## 当前实现（阶段一：桌面端课表）
@@ -209,9 +216,6 @@ ClassNEX 使用 GNU General Public License v3.0 开源协议。
 详见 [LICENSE](LICENSE)。
 
 ---
-
-<div align="center">
-
 **ClassNEX · Powered by LingOfficial**
 
 </div>

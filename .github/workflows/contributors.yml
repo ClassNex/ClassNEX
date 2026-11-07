@@ -1,0 +1,204 @@
+
+name: Update Contributors
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * *"
+  push:
+    branches: [main]
+    paths-ignore:
+      - assets/contributors.svg
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate SVG
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            let data;
+
+            // 等待 GitHub 生成统计数据
+            for (let i = 0; i < 8; i++) {
+              const res = await github.request(
+                "GET /repos/{owner}/{repo}/stats/contributors",
+                { owner, repo }
+              );
+
+              if (res.status === 200) {
+                data = res.data;
+                break;
+              }
+
+              if (res.status === 204) {
+                data = [];
+                break;
+              }
+
+              if (res.status === 202) {
+                await new Promise(r => setTimeout(r, 5000));
+                continue;
+              }
+
+              throw new Error(`GitHub API: ${res.status}`);
+            }
+
+            if (data === undefined) {
+              throw new Error("统计数据尚未生成，请重新运行");
+            }
+
+            const rows = data
+              .filter(x => x.author?.login)
+              .map(x => ({
+                name: x.author.login,
+                commits: x.total || 0,
+                additions: (x.weeks || []).reduce((s,w) => s+w.a, 0),
+                deletions: (x.weeks || []).reduce((s,w) => s+w.d, 0)
+              }))
+              .sort((a,b) => b.additions-a.additions)
+              .slice(0, 12);
+
+            const fmt = n => n.toLocaleString("en-US");
+            const max = Math.max(1, ...rows.map(x => x.additions));
+
+            const totalAdd = rows.reduce((s,x) => s+x.additions, 0);
+            const totalDel = rows.reduce((s,x) => s+x.deletions, 0);
+
+            const esc = s => String(s).replace(/[&<>"']/g, c => ({
+              "&":"&amp;", "<":"&lt;", ">":"&gt;",
+              '"':"&quot;", "'":"&apos;"
+            })[c]);
+
+            const height = 245 + rows.length * 52;
+
+            const cards = [
+              ["CONTRIBUTORS", fmt(data.length)],
+              ["ADDITIONS", fmt(data.reduce((s,x) =>
+                s+(x.weeks || []).reduce((a,w)=>a+w.a,0), 0))],
+              ["DELETIONS", fmt(data.reduce((s,x) =>
+                s+(x.weeks || []).reduce((a,w)=>a+w.d,0), 0))]
+            ];
+
+            const cardSvg = cards.map((c,i) => `
+              <rect x="${30+i*285}" y="95" width="270"
+                height="62" rx="10" fill="#161b22"
+                stroke="#30363d"/>
+              <text x="${48+i*285}" y="119"
+                fill="#8b949e" font-size="10"
+                font-weight="600">${c[0]}</text>
+              <text x="${48+i*285}" y="143"
+                fill="#f0f6fc" font-size="19"
+                font-weight="700">${c[1]}</text>
+            `).join("");
+
+            const memberSvg = rows.map((x,i) => {
+              const y = 230+i*52;
+              const width = Math.max(2, x.additions/max*280);
+
+              return `
+                <text x="48" y="${y}" fill="#8b949e"
+                  font-size="13">${String(i+1).padStart(2,"0")}</text>
+
+                <text x="100" y="${y}" fill="#e6edf3"
+                  font-size="14" font-weight="600">
+                  ${esc(x.name)}
+                </text>
+
+                <rect x="285" y="${y-12}" width="280"
+                  height="9" rx="5" fill="#21262d"/>
+
+                <rect x="285" y="${y-12}" width="${width}"
+                  height="9" rx="5" fill="url(#blue)"/>
+
+                <text x="600" y="${y}" fill="#3fb950"
+                  text-anchor="end" font-size="13">
+                  +${fmt(x.additions)}
+                </text>
+
+                <text x="730" y="${y}" fill="#f0883e"
+                  text-anchor="end" font-size="13">
+                  -${fmt(x.deletions)}
+                </text>
+
+                <text x="860" y="${y}" fill="#8b949e"
+                  text-anchor="end" font-size="13">
+                  ${fmt(x.commits)}
+                </text>
+              `;
+            }).join("");
+
+            const svg = `
+            <svg xmlns="http://www.w3.org/2000/svg"
+              width="900" height="${height}"
+              viewBox="0 0 900 ${height}">
+
+              <defs>
+                <linearGradient id="blue" x1="0" x2="1">
+                  <stop offset="0%" stop-color="#388bfd"/>
+                  <stop offset="100%" stop-color="#a371f7"/>
+                </linearGradient>
+              </defs>
+
+              <rect width="900" height="${height}"
+                rx="18" fill="#0d1117"
+                stroke="#30363d"/>
+
+              <text x="30" y="48" fill="#f0f6fc"
+                font-size="25" font-weight="700">
+                ClassNEX Contributors
+              </text>
+
+              <text x="30" y="72" fill="#8b949e"
+                font-size="12">
+                PROJECT CONTRIBUTION OVERVIEW
+              </text>
+
+              ${cardSvg}
+
+              <text x="48" y="200" fill="#8b949e"
+                font-size="11">MEMBER</text>
+
+              <text x="285" y="200" fill="#8b949e"
+                font-size="11">CODE CONTRIBUTION</text>
+
+              <text x="600" y="200" fill="#8b949e"
+                text-anchor="end" font-size="11">ADDED</text>
+
+              <text x="730" y="200" fill="#8b949e"
+                text-anchor="end" font-size="11">DELETED</text>
+
+              <text x="860" y="200" fill="#8b949e"
+                text-anchor="end" font-size="11">COMMITS</text>
+
+              ${memberSvg}
+
+              <text x="30" y="${height-20}"
+                fill="#6e7681" font-size="10">
+                Automatically updated by GitHub Actions · Top 12
+              </text>
+            </svg>`;
+
+            fs.mkdirSync("assets", { recursive: true });
+            fs.writeFileSync("assets/contributors.svg", svg);
+
+      - name: Commit SVG
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/contributors.svg
+          git diff --cached --quiet || (
+            git commit -m "docs: update contributor statistics"
+            git push
+          )
