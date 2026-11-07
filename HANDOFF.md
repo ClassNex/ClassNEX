@@ -1,6 +1,6 @@
 # ClassNEX 续作指南（HANDOFF）
 
-> 最后更新：2026-11-07　｜　当前版本 **26w45a**　｜　发布标签 **26w45a_Alpha**
+> 最后更新：2026-11-07　｜　当前版本 **26w45b**　｜　发布标签 **26w45b_Alpha**
 > 已发布：`26w41a_Alpha` ~ `26w45a_Alpha`（GitHub Releases，均为预发布）
 > 这份文档的目的：**第二天打开新会话，照着它就能无缝继续写。**
 
@@ -494,7 +494,7 @@ python tools\gh_release.py "E:\ClassNex\build\ClassNEX-26w41f-Alpha-win-x64.zip"
 - `WW` = 该年的第几周（ISO 周号）
 - `a` = 当周发布的第几个快照（a、b、c…）
 
-当前：**`26w44a`** = 2026 年第 44 周的第 1 个快照（2026-11-01 通过 GitHub Actions 发布）。
+当前：**`26w45b`** = 2026 年第 45 周的第 2 个快照（2026-11-07 通过 GitHub Actions 发布）。
 
 落地方式：
 - `ClassNex.csproj` → `<InformationalVersion>26w41a</InformationalVersion>`

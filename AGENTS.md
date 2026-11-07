@@ -34,8 +34,8 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 
 ## 当前状态
 
-持有者：无
+持有者：Codex
 上次完成：重做设置中的账户页，删除本地更换头像、编辑用户名和邮箱的整套入口与逻辑，改为只读账户总览、浏览器授权状态、切换账户和退出登录；同步修正账户搜索项与隐私说明
 改了文件：src/ClassNex/Views/SettingsWindow.axaml、src/ClassNex/Views/SettingsWindow.axaml.cs、HANDOFF.md、AGENTS.md
-进行中：无
-下一步：待用户指定
+进行中：打包并发布 26w45b_Alpha
+下一步：推送版本提交与发布标签，核对 GitHub Actions 和 Release 产物
