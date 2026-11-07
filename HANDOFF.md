@@ -1,7 +1,7 @@
 # ClassNEX 续作指南（HANDOFF）
 
 > 最后更新：2026-11-07　｜　当前版本 **26w45b**　｜　发布标签 **26w45b_Alpha**
-> 已发布：`26w41a_Alpha` ~ `26w45a_Alpha`（GitHub Releases，均为预发布）
+> 已发布：`26w41a_Alpha` ~ `26w45b_Alpha`（GitHub Releases，均为预发布）
 > 这份文档的目的：**第二天打开新会话，照着它就能无缝继续写。**
 
 ---
