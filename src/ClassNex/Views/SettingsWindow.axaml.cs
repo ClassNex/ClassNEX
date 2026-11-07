@@ -110,7 +110,7 @@ public partial class SettingsWindow : AppWindow
         ("时钟组件显示秒", 3),
         ("自定义文本占位符", 3),
         ("版本信息", 4),
-        ("用户名", 5),
+        ("账户与浏览器授权", 9),
     };
 
     public SettingsWindow()
@@ -456,8 +456,6 @@ public partial class SettingsWindow : AppWindow
         VersionText.Text = version;
         AboutVersionText.Text = $"版本 {version}";
 
-        UserNameBox.Text = AppServices.Settings.UserName;
-        EmailBox.Text = AppServices.Settings.Email;
         RefreshAccountName();
 
         SearchResults.ItemsSource = _searchEntries;
@@ -504,24 +502,31 @@ public partial class SettingsWindow : AppWindow
     private void RefreshAccountName()
     {
         var profile = AccountService.Current;
-        var name = profile?.DisplayName ?? AppServices.Settings.UserName;
-        var email = profile?.Email ?? AppServices.Settings.Email;
-        var displayName = string.IsNullOrWhiteSpace(name) ? "未设置用户名" : name.Trim();
-        var displayEmail = string.IsNullOrWhiteSpace(email) ? "未设置邮箱" : email.Trim();
+        var loggedIn = profile is not null;
+        var displayName = loggedIn ? profile!.DisplayName.Trim() : "尚未登录";
+        var displayEmail = loggedIn ? profile!.Email.Trim() : "登录后自动同步账户资料";
+        if (string.IsNullOrWhiteSpace(displayName))
+            displayName = loggedIn ? "ClassNEX 用户" : "尚未登录";
+        if (string.IsNullOrWhiteSpace(displayEmail))
+            displayEmail = loggedIn ? "未提供邮箱" : "登录后自动同步账户资料";
 
         AccountNameText.Text = displayName;
         AccountEmailText.Text = displayEmail;
         AccountPageNameText.Text = displayName;
         AccountPageEmailText.Text = displayEmail;
-        AccountLogoutButton.IsEnabled = profile is not null;
+        AccountPageStatusText.Text = loggedIn ? "已连接" : "未登录";
+        AccountPageSyncText.Text = loggedIn
+            ? "账户资料已通过浏览器授权同步到本机"
+            : "使用浏览器完成登录或注册，头像、用户名和邮箱会自动同步";
+        AccountLoginButton.Content = loggedIn ? "切换账户" : "浏览器登录";
+        AccountLogoutButton.IsVisible = loggedIn;
 
-        
-        if (CiPalette.TryResource("AccentFillColorDefaultBrush", out var accentBrush) &&
-            accentBrush is ISolidColorBrush solid)
-        {
-            AccountAvatarRing.BorderBrush = new SolidColorBrush(solid.Color);
-            AccountPageAvatarRing.BorderBrush = new SolidColorBrush(solid.Color);
-        }
+        var accent = CiPalette.SakuraAccentBrush();
+        AccountAvatarRing.BorderBrush = accent;
+        AccountPageAvatarRing.BorderBrush = accent;
+        AccountPageStatusBadge.Background = CiPalette.SakuraAccentTint(0.14);
+        AccountPageStatusBadge.BorderBrush = CiPalette.SakuraAccentTint(0.32);
+        AccountPageStatusText.Foreground = accent;
 
         RefreshAvatarImages();
     }
@@ -612,78 +617,13 @@ public partial class SettingsWindow : AppWindow
         NavigateTo("account");
     }
 
-    
-    private static string CustomAvatarPath =>
-        System.IO.Path.Combine(AppContext.BaseDirectory, "data", "avatar.png");
-
-    private const string DefaultAvatarUri = "avares://ClassNex/Assets/avatar.png";
-
-    
-    
     private void RefreshAvatarImages()
     {
-        var name = AccountService.Current?.DisplayName ??
-                   AppServices.Settings.UserName;
-        var imagePath = AccountService.AvatarImagePath ??
-                        (System.IO.File.Exists(CustomAvatarPath) ? CustomAvatarPath : null);
+        var name = AccountService.Current?.DisplayName ?? "";
+        var imagePath = AccountService.AvatarImagePath;
 
-        AccountAvatar.Apply(AccountAvatarRing, name ?? "", imagePath);
-        AccountAvatar.Apply(AccountPageAvatarRing, name ?? "", imagePath);
-    }
-
-    
-    private async void OnChangeAvatar(object? sender, RoutedEventArgs e)
-    {
-        try
-        {
-            var files = await StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
-            {
-                Title = "选择头像图片",
-                AllowMultiple = false,
-                FileTypeFilter = new[]
-                {
-                    new Avalonia.Platform.Storage.FilePickerFileType("图片")
-                    {
-                        Patterns = new[] { "*.png", "*.jpg", "*.jpeg", "*.bmp", "*.webp", "*.gif" },
-                    },
-                },
-            });
-
-            var file = files.FirstOrDefault();
-            if (file is null)
-                return;
-
-            var dir = System.IO.Path.GetDirectoryName(CustomAvatarPath)!;
-            System.IO.Directory.CreateDirectory(dir);
-
-            await using (var src = await file.OpenReadAsync())
-            await using (var dst = System.IO.File.Create(CustomAvatarPath))
-            {
-                await src.CopyToAsync(dst);
-            }
-
-            RefreshAvatarImages();
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[头像] 更换失败：{ex.Message}");
-        }
-    }
-
-    
-    private void OnResetAvatar(object? sender, RoutedEventArgs e)
-    {
-        try
-        {
-            if (System.IO.File.Exists(CustomAvatarPath))
-                System.IO.File.Delete(CustomAvatarPath);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[头像] 删除失败：{ex.Message}");
-        }
-
-        RefreshAvatarImages();
+        AccountAvatar.Apply(AccountAvatarRing, name, imagePath);
+        AccountAvatar.Apply(AccountPageAvatarRing, name, imagePath);
     }
 
     
@@ -767,24 +707,6 @@ public partial class SettingsWindow : AppWindow
         TrayBehaviorCombo.SelectionChanged += (_, _) => ApplyGeneral();
 
         
-        UserNameBox.TextChanged += (_, _) =>
-        {
-            if (_loading)
-                return;
-            AppServices.Settings.UserName = UserNameBox.Text ?? "";
-            AppServices.SaveSettings();
-            RefreshAccountName();
-        };
-
-        EmailBox.TextChanged += (_, _) =>
-        {
-            if (_loading)
-                return;
-            AppServices.Settings.Email = EmailBox.Text ?? "";
-            AppServices.SaveSettings();
-            RefreshAccountName();
-        };
-
         
         ThemeCombo.SelectionChanged += (_, _) =>
         {
@@ -1627,9 +1549,9 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             Content = new TextBlock
             {
                 TextWrapping = TextWrapping.Wrap,
-                Text = "ClassNEX 是一款完全在本机运行的桌面课表悬浮窗。" +
-                       "课表、设置与账户信息（头像 / 昵称 / 邮箱，仅用于界面展示）全部保存在你自己的电脑上，不会上传到任何服务器。" +
-                       "应用联网的唯一用途是从 GitHub 获取开源代码与发布包。" +
+                Text = "ClassNEX 是一款本地运行的桌面课表悬浮窗。课程表和设置保存在你的电脑上；" +
+                       "登录账户后，头像、昵称和邮箱会由 ClassNEX 账户服务同步到本机，仅用于界面展示。" +
+                       "应用还会连接 GitHub 获取版本信息与发布包。" +
                        "我们不会收集、出售或与第三方共享你的任何数据。"
             },
             PrimaryButtonText = "知道了",

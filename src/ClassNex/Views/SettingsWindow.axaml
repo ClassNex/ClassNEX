@@ -847,64 +847,88 @@
                         </StackPanel>
 
                         
-                        <StackPanel x:Name="PageAccount" Spacing="10" IsVisible="False">
-                            
-                            <Border CornerRadius="8" Padding="20" BorderThickness="1"
+                        <StackPanel x:Name="PageAccount" Spacing="14" IsVisible="False"
+                                    HorizontalAlignment="Stretch">
+
+                            <Border x:Name="AccountPageHero" CornerRadius="18" Padding="24"
+                                    BorderThickness="1"
                                     BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                                     Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
-                                <StackPanel Orientation="Horizontal" Spacing="18">
-                                    
-                                    <Border x:Name="AccountPageAvatarRing" Width="88" Height="88" CornerRadius="20"
-                                            BorderThickness="5"/>
-                                    <StackPanel VerticalAlignment="Center" Spacing="4">
-                                        <TextBlock x:Name="AccountPageNameText" FontSize="24" FontWeight="SemiBold"/>
-                                        <TextBlock x:Name="AccountPageEmailText" FontSize="14" Opacity="0.65"/>
-                                    </StackPanel>
-                                </StackPanel>
+                                <Grid RowDefinitions="Auto,Auto" RowSpacing="20">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="20">
+                                        <Border x:Name="AccountPageAvatarRing" Width="88" Height="88"
+                                                CornerRadius="22" BorderThickness="4"/>
+
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="6">
+                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <TextBlock x:Name="AccountPageNameText"
+                                                           FontSize="25" FontWeight="SemiBold"
+                                                           VerticalAlignment="Center"/>
+                                                <Border x:Name="AccountPageStatusBadge"
+                                                        Padding="9,3" CornerRadius="10"
+                                                        BorderThickness="1"
+                                                        VerticalAlignment="Center">
+                                                    <TextBlock x:Name="AccountPageStatusText"
+                                                               FontSize="12"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock x:Name="AccountPageEmailText"
+                                                       FontSize="14" Opacity="0.7"/>
+                                            <TextBlock x:Name="AccountPageSyncText"
+                                                       FontSize="12" Opacity="0.55"
+                                                       TextWrapping="Wrap"/>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="2"
+                                                    Orientation="Horizontal" Spacing="8"
+                                                    VerticalAlignment="Center">
+                                            <Button x:Name="AccountLoginButton"
+                                                    Content="浏览器登录"
+                                                    Click="OnAccountLogin"/>
+                                            <Button x:Name="AccountLogoutButton"
+                                                    Content="退出登录"
+                                                    Click="OnAccountLogout"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <Grid Grid.Row="1" ColumnDefinitions="Auto,*"
+                                          ColumnSpacing="12">
+                                        <Border Width="32" Height="32" CornerRadius="10"
+                                                Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}">
+                                            <TextBlock Text="✓" FontSize="16"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Spacing="3"
+                                                    VerticalAlignment="Center">
+                                            <TextBlock Text="账户资料由 ClassNEX 账户服务同步"/>
+                                            <TextBlock Text="头像、用户名和邮箱不可在应用内单独修改；需要变更时请前往账户服务中心。"
+                                                       FontSize="12" Opacity="0.58"
+                                                       TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Grid>
                             </Border>
 
-                            <ui:SettingsExpander Header="头像" Description="支持 PNG / JPG / BMP / WebP，上传后会复制到应用数据目录">
-                                <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0F6;"/>
-                                </ui:SettingsExpander.IconSource>
-                                <ui:SettingsExpander.Footer>
-                                    <StackPanel Orientation="Horizontal" Spacing="10">
-                                        <Button x:Name="ChangeAvatarButton" Content="更换头像…" Click="OnChangeAvatar"/>
-                                        <Button x:Name="ResetAvatarButton" Content="恢复默认" Click="OnResetAvatar"/>
+                            <Border CornerRadius="12" Padding="18" BorderThickness="1"
+                                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                    Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}">
+                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                                    <Border Width="38" Height="38" CornerRadius="12"
+                                            Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
+                                        <TextBlock Text="↗" FontSize="20"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="4"
+                                                VerticalAlignment="Center">
+                                        <TextBlock Text="浏览器安全授权"/>
+                                        <TextBlock Text="登录和注册都会在默认浏览器中完成，ClassNEX 不读取也不保存账户密码。"
+                                                   FontSize="12" Opacity="0.58"
+                                                   TextWrapping="Wrap"/>
                                     </StackPanel>
-                                </ui:SettingsExpander.Footer>
-                            </ui:SettingsExpander>
-
-                            <ui:SettingsExpander Header="用户名" Description="显示在账户区的名称">
-                                <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE19F;"/>
-                                </ui:SettingsExpander.IconSource>
-                                <ui:SettingsExpander.Footer>
-                                    <TextBox x:Name="UserNameBox" Width="300" Watermark="输入用户名"/>
-                                </ui:SettingsExpander.Footer>
-                            </ui:SettingsExpander>
-
-                            <ui:SettingsExpander Header="邮箱" Description="显示在账户区的邮箱地址">
-                                <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE10F;"/>
-                                </ui:SettingsExpander.IconSource>
-                                <ui:SettingsExpander.Footer>
-                                    <TextBox x:Name="EmailBox" Width="300" Watermark="输入邮箱"/>
-                                </ui:SettingsExpander.Footer>
-                            </ui:SettingsExpander>
-
-                            <ui:SettingsExpander Header="账户服务"
-                                                 Description="登录后头像、用户名与邮箱自动同步，在浏览器中完成登录">
-                                <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE10D;"/>
-                                </ui:SettingsExpander.IconSource>
-                                <ui:SettingsExpander.Footer>
-                                    <StackPanel Orientation="Horizontal" Spacing="10">
-                                        <Button x:Name="AccountLoginButton" Content="登录…" Click="OnAccountLogin"/>
-                                        <Button x:Name="AccountLogoutButton" Content="退出登录" Click="OnAccountLogout"/>
-                                    </StackPanel>
-                                </ui:SettingsExpander.Footer>
-                            </ui:SettingsExpander>
+                                </Grid>
+                            </Border>
                         </StackPanel>
 
                     </Grid>
