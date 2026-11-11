@@ -203,6 +203,10 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   中间 290 宽搜索框，右侧版本号/更多；左右 152 给系统窗口按钮留位。
   设置搜索的 `SearchIndex` 现在与实际页面顺序对齐，搜索结果会跳到正确的设置页；
   「主界面缩放」数值标签加宽，避免显示被截断，界面文案不再出现内部代号。
+- **设置内容区**：页面标题改成「大标题 + 说明副标题」，内容宿主 `PageHost` 最大宽度提高到 1120，
+  水平方向拉伸并左右居中；`SettingsExpander` 统一设为 Stretch，所有设置卡片铺满内容区。
+  主要页面增加功能分组标题（通用行为、显示与缩放、布局与交互、助手设置、提醒规则、组件布局），
+  层级和卡片宽度参照 CI 的 `SettingsContainerWidth` 与 Win11 设置页。实测外观页四张卡片同宽 `1125px`。
   标题“应用设置”使用资源圆体 Bold，字体子集在
   `Assets/Fonts/ResourceHanRounded-Bold-Subset.ttf`（只含“应用设置”四字，许可证见同目录 txt）。
 - **欢迎设置窗口入场**：`OobeWindow` 保留 Fluent `AppWindow`，把首屏拆成四组：

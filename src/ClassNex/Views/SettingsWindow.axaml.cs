@@ -89,6 +89,20 @@ public partial class SettingsWindow : AppWindow
     
     private static readonly string[] PageNames = { "主页", "基本", "外观", "窗口", "组件", "NEX Intelligence", "提醒", "关于 ClassNEX", "调试", "账户" };
 
+    private static readonly string[] PageSubtitles =
+    {
+        "查看今天的状态与常用入口",
+        "设置启动行为、课表周期和托盘交互",
+        "调整主题、透明度与界面缩放",
+        "控制悬浮窗口的布局与交互方式",
+        "选择主界面组件并调整显示顺序",
+        "配置 AI 助手、权限与语音唤醒",
+        "设置课前、上课和下课提醒",
+        "查看版本、许可与项目信息",
+        "开发与调试工具",
+        "查看账户状态与同步方式",
+    };
+
     
     private static readonly (string Title, int PageIndex)[] SearchIndex =
     {
@@ -675,6 +689,7 @@ public partial class SettingsWindow : AppWindow
             HomePetals.IsVisible = false;
             StopSakuraBlossoms();
             PageTitleText.Text = "账户";
+            PageSubtitleText.Text = PageSubtitles[9];
             PageTitleText.Opacity = 1;
             MetroTransitions.Play(previousAccountPage, PageAccount, true, null, PageTitleText);
             AttachTiltToPage(PageAccount);
@@ -888,6 +903,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
         var title = PageNames[Math.Clamp(index, 0, PageNames.Length - 1)];
         PageTitleText.Text = title;
+        PageSubtitleText.Text = PageSubtitles[Math.Clamp(index, 0, PageSubtitles.Length - 1)];
         PageTitleText.Opacity = 1;
         MetroTransitions.Play(previousPage, page, index >= previousIndex, null, PageTitleText);
 

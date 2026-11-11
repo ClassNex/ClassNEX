@@ -261,15 +261,26 @@
                         IsVisible="False"
                         ClipToBounds="True"
                         Opacity="0.9"/>
-                <TextBlock x:Name="PageTitleText" Grid.Row="0" FontSize="28"
-                           MinHeight="48" VerticalAlignment="Top"
-                           Margin="32,24,32,0" HorizontalAlignment="Left"/>
+                <StackPanel Grid.Row="0" Margin="32,18,32,8" Spacing="3">
+                    <TextBlock x:Name="PageTitleText" FontSize="30"
+                               VerticalAlignment="Top"/>
+                    <TextBlock x:Name="PageSubtitleText" FontSize="13"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               TextWrapping="Wrap"/>
+                </StackPanel>
                 <ScrollViewer x:Name="PageScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                    <Grid x:Name="PageHost" Margin="32,12,32,24" MaxWidth="880"
-                          HorizontalAlignment="Left" VerticalAlignment="Top">
+                    <Grid x:Name="PageHost" Margin="28,8,28,28" MaxWidth="1120"
+                          HorizontalAlignment="Stretch" VerticalAlignment="Top">
                         <Grid.Styles>
                             <Style Selector="Grid#PageHost > StackPanel">
                                 <Setter Property="VerticalAlignment" Value="Top"/>
+                                <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                            </Style>
+                            <Style Selector="ui|SettingsExpander">
+                                <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                            </Style>
+                            <Style Selector="ui|InfoBar">
+                                <Setter Property="HorizontalAlignment" Value="Stretch"/>
                             </Style>
                         </Grid.Styles>
 
@@ -291,6 +302,12 @@
                             <StackPanel Orientation="Horizontal" Spacing="12">
                                 <Button x:Name="NexOpenChatButton" Content="打开 NEX 对话框" Classes="Primary" MinWidth="150"/>
                                 <Button x:Name="NexGlowEntryButton" Content="预览跑马灯"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,2">
+                                <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
+                                             Glyph="&#xE1F9;" FontSize="16" Opacity="0.82"/>
+                                <TextBlock Text="助手设置" FontSize="15" VerticalAlignment="Center"/>
                             </StackPanel>
 
                             <ui:SettingsExpander Header="接口"
@@ -372,6 +389,12 @@
                         <StackPanel x:Name="PageNotification" Spacing="12" IsVisible="False">
                             <ui:InfoBar Message="此处的设置可以在档案设置中被附加设置覆盖。"
                                         IsOpen="True" IsClosable="False"/>
+
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2,0,0">
+                                <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
+                                             Glyph="&#xE059;" FontSize="16" Opacity="0.82"/>
+                                <TextBlock Text="提醒规则" FontSize="15" VerticalAlignment="Center"/>
+                            </StackPanel>
 
                             <ui:SettingsExpander Header="在课前准备时发出提醒"
                                                  Description="在上课前一段时间发出醒目提醒，提示做好上课准备。">
@@ -477,7 +500,7 @@
                         <StackPanel x:Name="PageGeneral" Spacing="10">
                             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,2">
                                 <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE29A;" FontSize="16" VerticalAlignment="Center" Opacity="0.85"/>
-                                <TextBlock Text="行为" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <TextBlock Text="通用行为" FontSize="15" VerticalAlignment="Center"/>
                             </StackPanel>
 
                             <ui:SettingsExpander Header="开机自启"
@@ -554,7 +577,7 @@
                         <StackPanel x:Name="PageInterface" Spacing="10" IsVisible="False">
                             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,2">
                                 <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE1DD;" FontSize="16" VerticalAlignment="Center" Opacity="0.85"/>
-                                <TextBlock Text="外观" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <TextBlock Text="显示与缩放" FontSize="15" VerticalAlignment="Center"/>
                             </StackPanel>
 
                             <ui:SettingsExpander Header="主题" Description="跟随系统 / 浅色 / 深色">
@@ -616,7 +639,7 @@
                         <StackPanel x:Name="PageWindow" Spacing="10" IsVisible="False">
                             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,2">
                                 <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE426;" FontSize="16" VerticalAlignment="Center" Opacity="0.85"/>
-                                <TextBlock Text="窗口" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <TextBlock Text="布局与交互" FontSize="15" VerticalAlignment="Center"/>
                             </StackPanel>
 
                             <ui:SettingsExpander Header="组件排列方向">
@@ -644,8 +667,13 @@
 
                         
                         <StackPanel x:Name="PageWidgets" Spacing="10" IsVisible="False">
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2,0,2">
+                                <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
+                                             Glyph="&#xE0FF;" FontSize="16" Opacity="0.82"/>
+                                <TextBlock Text="组件布局" FontSize="15" VerticalAlignment="Center"/>
+                            </StackPanel>
                             <TextBlock Text="决定悬浮主界面上显示哪些内容。双击组件卡片添加；点组件右侧「⋯」上移/下移/删除。"
-                                       Opacity="0.7" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                                       Opacity="0.65" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,2"/>
 
                             <Border CornerRadius="6" Padding="4"
                                     Background="{DynamicResource ControlFillColorSecondaryBrush}"
