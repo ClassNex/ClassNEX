@@ -20,6 +20,11 @@
             <Setter Property="TextElement.FontFamily" Value="{DynamicResource AppFontFamily}" />
         </Style>
 
+        <Style Selector="ToggleSwitch">
+            <Setter Property="OnContent" Value="开" />
+            <Setter Property="OffContent" Value="关" />
+        </Style>
+
         
 
         

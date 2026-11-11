@@ -24,6 +24,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 8. 仓库代码不带注释，发布说明与 md 文件不带注释
 9. 字体加粗前先征得用户同意，颜色一律用 CiPalette
 10. 运行验证优先用 CLASSNEX_VERIFY 环境变量自检
+11. 所有布尔设置一律使用 Avalonia `ToggleSwitch`，默认显示「开 / 关」，禁止再使用方形 `CheckBox`
 
 ## 交接协议
 
@@ -35,7 +36,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：大幅整改应用设置界面：内容区加宽并居中、设置卡片全部横向铺满、页面标题增加说明副标题、主要页面增加功能分组标题，整体层级对齐 CI 与 Win11 设置
-改了文件：src/ClassNex/Views/SettingsWindow.axaml、src/ClassNex/Views/SettingsWindow.axaml.cs、HANDOFF.md、AGENTS.md
+上次完成：把设置、组件参数、档案编辑器和 OOBE 中所有布尔复选框统一替换为带「开 / 关」文本的 ToggleSwitch；外观页三条滑块统一为固定网格列并完成对齐
+改了文件：src/ClassNex/App.axaml、src/ClassNex/Views/SettingsWindow.axaml、src/ClassNex/Views/SettingsWindow.axaml.cs、src/ClassNex/Views/ProfileEditorWindow.axaml、src/ClassNex/Views/ProfileEditorWindow.axaml.cs、src/ClassNex/Views/OobeWindow.axaml、src/ClassNex/Views/OobeWindow.axaml.cs、src/ClassNex/Services/WidgetSettingsBuilder.cs、HANDOFF.md、AGENTS.md
 进行中：无
 下一步：待用户指定

@@ -179,7 +179,7 @@ public partial class ProfileEditorWindow : AppWindow
 
         AutoAdvanceCheck.PropertyChanged += (_, e) =>
         {
-            if (e.Property == CheckBox.IsCheckedProperty)
+            if (e.Property == ToggleSwitch.IsCheckedProperty)
                 RefreshPaletteHint();
         };
 
@@ -225,7 +225,7 @@ public partial class ProfileEditorWindow : AppWindow
         SubjectTeacherBox.TextChanged += (_, _) => PushSubjectEdit();
         OutdoorCheck.PropertyChanged += (_, e) =>
         {
-            if (!_loading && e.Property == CheckBox.IsCheckedProperty)
+            if (!_loading && e.Property == ToggleSwitch.IsCheckedProperty)
                 PushSubjectEdit();
         };
 

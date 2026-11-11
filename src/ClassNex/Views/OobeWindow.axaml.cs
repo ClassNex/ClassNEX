@@ -326,7 +326,7 @@ public partial class OobeWindow : AppWindow
             PreferencesBody.Text = "You can change all of these later in app settings.";
             ThemeLabel.Text = "Appearance";
             SemesterLabel.Text = "Term start date";
-            RunAtStartupCheck.Content = "Start ClassNEX when Windows starts";
+            RunAtStartupText.Text = "Start ClassNEX when Windows starts";
             AccountTitle.Text = "Account";
             AccountBody.Text = "Sign in or create an account securely in your browser. Your avatar, name and email are synced automatically.";
             OobeLoginButton.Content = "Sign in / Sign up in browser";
@@ -354,7 +354,7 @@ public partial class OobeWindow : AppWindow
             PreferencesBody.Text = "这些设置稍后都能在「应用设置」里修改。";
             ThemeLabel.Text = "外观";
             SemesterLabel.Text = "开学日期";
-            RunAtStartupCheck.Content = "开机时自动启动 ClassNEX";
+            RunAtStartupText.Text = "开机时自动启动 ClassNEX";
             AccountTitle.Text = "账户";
             AccountBody.Text = "在浏览器中安全登录或注册，头像、用户名与邮箱会自动同步到本机。";
             OobeLoginButton.Content = "使用浏览器登录 / 注册";

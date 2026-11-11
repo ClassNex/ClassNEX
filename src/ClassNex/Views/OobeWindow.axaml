@@ -115,7 +115,11 @@
                     <DatePicker x:Name="SemesterPicker" Width="280" HorizontalAlignment="Left"/>
                 </StackPanel>
 
-                <CheckBox x:Name="RunAtStartupCheck" Content="开机时自动启动 ClassNEX"/>
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock x:Name="RunAtStartupText" Text="开机时自动启动 ClassNEX"
+                               VerticalAlignment="Center"/>
+                    <ToggleSwitch Grid.Column="1" x:Name="RunAtStartupCheck"/>
+                </Grid>
             </StackPanel>
 
             

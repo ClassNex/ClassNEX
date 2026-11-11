@@ -207,6 +207,10 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   水平方向拉伸并左右居中；`SettingsExpander` 统一设为 Stretch，所有设置卡片铺满内容区。
   主要页面增加功能分组标题（通用行为、显示与缩放、布局与交互、助手设置、提醒规则、组件布局），
   层级和卡片宽度参照 CI 的 `SettingsContainerWidth` 与 Win11 设置页。实测外观页四张卡片同宽 `1125px`。
+  **所有布尔设置统一使用 Avalonia `ToggleSwitch`**，全局 On/Off 文本为「开 / 关」；
+  设置页、组件参数、档案编辑器和 OOBE 均不得回退到方形 `CheckBox`。
+  外观页不透明度、全局字号、主界面缩放三条滑块使用相同的 `180 + 12 + 64` 网格列，
+  实测三条滑块 `X=1358`、宽度 `225px`，起止位置完全对齐。
   标题“应用设置”使用资源圆体 Bold，字体子集在
   `Assets/Fonts/ResourceHanRounded-Bold-Subset.ttf`（只含“应用设置”四字，许可证见同目录 txt）。
 - **欢迎设置窗口入场**：`OobeWindow` 保留 Fluent `AppWindow`，把首屏拆成四组：

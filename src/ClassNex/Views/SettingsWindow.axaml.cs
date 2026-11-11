@@ -1692,7 +1692,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
         OpacityValueText.Text = $"{s.BackgroundOpacity:P0}";
         FontScaleValueText.Text = $"{s.FontScale:0.00}x";
-        MainWindowScaleValueText.Text = $"{s.MainWindowScale:0.00}x（CI 1.9）";
+        MainWindowScaleValueText.Text = $"{s.MainWindowScale:0.00}x";
 
         AppServices.SaveSettings();
     }

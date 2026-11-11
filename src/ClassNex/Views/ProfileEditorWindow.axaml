@@ -340,8 +340,12 @@
                     <DockPanel Grid.Row="2" Grid.Column="2" Margin="12,0,0,0">
                         <TextBlock DockPanel.Dock="Top" Text="编辑科目" FontSize="15" FontWeight="SemiBold"
                                    Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        <CheckBox DockPanel.Dock="Bottom" x:Name="AutoAdvanceCheck"
-                                  Content="选完科目自动移动到下一个课程" Margin="0,10,0,0"/>
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="10"
+                                    Margin="0,10,0,0">
+                            <TextBlock Text="选完科目自动移动到下一个课程"
+                                       VerticalAlignment="Center"/>
+                            <ToggleSwitch x:Name="AutoAdvanceCheck"/>
+                        </StackPanel>
                         <TextBlock DockPanel.Dock="Bottom" x:Name="PaletteHintText" FontSize="11" TextWrapping="Wrap"
                                    Margin="0,6,0,0"
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
@@ -503,7 +507,11 @@
                                     <TextBox x:Name="SubjectTeacherBox"/>
                                 </StackPanel>
 
-                                <CheckBox x:Name="OutdoorCheck" Content="该科目是户外课程"/>
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="该科目是户外课程"
+                                               VerticalAlignment="Center"/>
+                                    <ToggleSwitch Grid.Column="1" x:Name="OutdoorCheck"/>
+                                </Grid>
 
                                 <Button x:Name="SaveSubjectsButton" Content="保存" HorizontalAlignment="Left"/>
 

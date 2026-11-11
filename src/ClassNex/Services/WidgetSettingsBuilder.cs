@@ -237,10 +237,16 @@ public static class WidgetSettingsBuilder
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
 
-    private static CheckBox Check(bool value, Action<bool> set)
+    private static ToggleSwitch Check(bool value, Action<bool> set)
     {
-        var box = new CheckBox { IsChecked = value, MinWidth = 0 };
-        box.IsCheckedChanged += (_, _) => set(box.IsChecked == true);
-        return box;
+        var toggle = new ToggleSwitch
+        {
+            IsChecked = value,
+            OnContent = "开",
+            OffContent = "关",
+            MinWidth = 0,
+        };
+        toggle.IsCheckedChanged += (_, _) => set(toggle.IsChecked == true);
+        return toggle;
     }
 }
