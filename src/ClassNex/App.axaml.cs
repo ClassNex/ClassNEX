@@ -85,6 +85,8 @@ public partial class App : Application
             Services.AppServices.NotificationService = _notificationService;
             _notificationService.Start();
 
+            Dispatcher.UIThread.Post(EnsureTrayMenu, DispatcherPriority.Background);
+
             
             _nexVoice = new Services.NexVoiceCoordinator();
             Services.AppServices.NexVoice = _nexVoice;
@@ -679,33 +681,61 @@ public partial class App : Application
 
     private Views.TrayMenuWindow? _trayMenu;
 
-    private DispatcherTimer? _trayDebounce;
-
-    
-    
-    
-    
     private void OnTrayIconClick(object? sender, EventArgs e)
     {
-        
-        _trayDebounce?.Stop();
-        var t = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
-        t.Tick += (_, _) =>
-        {
-            t.Stop();
-            OpenTrayMenuOnce();
-        };
-        _trayDebounce = t;
-        t.Start();
+        OpenTrayMenuOnce();
     }
 
     private void OpenTrayMenuOnce()
     {
-        if (_trayMenu is { } openMenu)
+        EnsureTrayMenu();
+
+        if (_trayMenu is not { } menu)
+            return;
+
+        if (menu.IsVisible)
         {
-            openMenu.CloseAnimated();
+            menu.CloseAnimated();
             return;
         }
+
+        menu.PrepareForOpen();
+
+        var cursor = TryGetCursorPos(out var pt) ? pt : default;
+        var hasCursor = cursor != default;
+
+        if (hasCursor)
+        {
+            menu.Position = new PixelPoint(
+                Math.Max(0, cursor.X - 120),
+                Math.Max(0, cursor.Y - 320));
+        }
+
+        menu.Show();
+        menu.Activate();
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (!menu.IsVisible)
+                return;
+
+            if (hasCursor)
+            {
+                var w = menu.Bounds.Width > 0 ? menu.Bounds.Width : 280;
+                var h = menu.Bounds.Height > 0 ? menu.Bounds.Height : 320;
+                menu.Position = new PixelPoint(
+                    Math.Max(0, (int)(cursor.X - w / 2)),
+                    Math.Max(0, (int)(cursor.Y - h + 20)));
+            }
+
+            menu.PlayOpenAnimation();
+        }, DispatcherPriority.Render);
+    }
+
+    private void EnsureTrayMenu()
+    {
+        if (_trayMenu is not null)
+            return;
 
         var menu = new Views.TrayMenuWindow();
         menu.Build(new[]
@@ -719,8 +749,6 @@ public partial class App : Application
             new Views.TrayMenuWindow.Item("\uE12C", "编辑主界面…", () => OpenSettings("interface")),
             new Views.TrayMenuWindow.Item("\uE154", "应用设置…", () => OpenSettings()),
             Views.TrayMenuWindow.Separator,
-            
-            
             new Views.TrayMenuWindow.Item("\uE412", "NEX Intelligence…", OpenNexChat,
                 "avares://ClassNex/Assets/Fonts/#lucide"),
             Views.TrayMenuWindow.Separator,
@@ -728,38 +756,14 @@ public partial class App : Application
             new Views.TrayMenuWindow.Item("\uE140", "退出", ExitApp),
         });
 
-        
-        
-        
-        var cursor = TryGetCursorPos(out var pt) ? pt : default;
-        var hasCursor = cursor != default;
-
-        if (hasCursor)
+        menu.Closed += (_, _) =>
         {
-            
-            menu.Position = new PixelPoint(
-                Math.Max(0, cursor.X - 120),
-                Math.Max(0, cursor.Y - 320));
-        }
-
-        menu.Show();
-        menu.Activate();
-
-        
-        Dispatcher.UIThread.Post(() =>
-        {
-            if (hasCursor && menu.IsVisible)
-            {
-                var w = menu.Bounds.Width > 0 ? menu.Bounds.Width : 280;
-                var h = menu.Bounds.Height > 0 ? menu.Bounds.Height : 320;
-                menu.Position = new PixelPoint(
-                    Math.Max(0, (int)(cursor.X - w / 2)),
-                    Math.Max(0, (int)(cursor.Y - h + 20)));
-            }
-        }, DispatcherPriority.Background);
+            if (ReferenceEquals(_trayMenu, menu))
+                _trayMenu = null;
+        };
 
         _trayMenu = menu;
-        menu.Closed += (_, _) => _trayMenu = null;
+        menu.Prewarm();
     }
 
     [System.Runtime.InteropServices.DllImport("user32.dll")]

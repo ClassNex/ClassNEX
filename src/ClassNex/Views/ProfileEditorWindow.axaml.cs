@@ -7,6 +7,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Rendering.Composition;
 using Avalonia.VisualTree;
 using ClassNex.Controls;
 using ClassNex.Models;
@@ -49,6 +50,9 @@ public partial class ProfileEditorWindow : AppWindow
     public ProfileEditorWindow()
     {
         InitializeComponent();
+        Opened += (_, _) => MetroTransitions.PrewarmPagesAtIdle(
+            new Control[] { PageProfile, PageSchedule, PageTime, PageSubject, PageSwap },
+            _currentPageView ?? PageProfile);
         foreach (var item in NavView.MenuItems.OfType<Control>())
             MetroTilt.Attach(item);
         ProfileVersionText.Text = typeof(ProfileEditorWindow).Assembly
@@ -106,7 +110,6 @@ public partial class ProfileEditorWindow : AppWindow
             TransparencyLevelHint = new[]
             {
                 WindowTransparencyLevel.Mica,
-                WindowTransparencyLevel.AcrylicBlur,
                 WindowTransparencyLevel.None,
             };
             Background = Brushes.Transparent;
@@ -277,11 +280,6 @@ public partial class ProfileEditorWindow : AppWindow
         BackButton.IsVisible = _pageHistory.Count > 0;
         if (index == 0)
             RefreshInfo();
-        PageProfile.IsVisible = index == 0;
-        PageSchedule.IsVisible = index == 1;
-        PageTime.IsVisible = index == 2;
-        PageSubject.IsVisible = index == 3;
-        PageSwap.IsVisible = index == 4;
         var title = PageNames[index];
 
         var page = index switch
@@ -294,11 +292,24 @@ public partial class ProfileEditorWindow : AppWindow
         };
 
         _currentPageView = page;
+        KeepOnlyPages(previousPage, page);
+        page.IsVisible = true;
         PageTitleText.Text = title;
         PageTitleText.Opacity = 1;
         MetroTransitions.Play(previousPage, page, index > previousIndex, null, PageTitleText);
 
         AttachTiltToPage(page);
+    }
+
+    private void KeepOnlyPages(Control? keepA, Control? keepB)
+    {
+        foreach (var page in new Control[] { PageProfile, PageSchedule, PageTime, PageSubject, PageSwap })
+        {
+            var keep = ReferenceEquals(page, keepB);
+            page.IsVisible = true;
+            page.Opacity = keep ? 1 : 0;
+            page.IsHitTestVisible = keep;
+        }
     }
 
     private static void AttachTiltToPage(Control page)

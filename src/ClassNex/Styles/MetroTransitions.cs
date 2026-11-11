@@ -1,33 +1,27 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
+using System.Numerics;
 using Avalonia;
+using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.Rendering.Composition;
+using Avalonia.Rendering.Composition.Animations;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 
 namespace ClassNex.Styles;
 
-/// <summary>
-/// Avalonia implementation of a Metro/WP8.1 turnstile page transition.
-/// Avalonia has no CSS perspective, so the 3D rotation is approximated with
-/// scaleX + skew around an off-page vertical hinge, while all motion stays
-/// limited to RenderTransform and Opacity (no layout invalidation).
-/// </summary>
 public static class MetroTransitions
 {
-    private const double PageDuration = 420;
-    private const double ChildDuration = 420;
-    private const double CrossFadeDuration = 220;
+    private const double FlipMs = 360;
+    private const double StepDelayMs = 28;
+    private const float HingeShiftX = 18;
+    private const int MaxAnimatedItems = 12;
 
-    private static readonly List<Entry> Entries = new();
-    private static readonly Stopwatch Clock = new();
-
-    private static DispatcherTimer? _timer;
-    private static Control? _from;
-    private static Control? _to;
-    private static Action? _completed;
+    private static readonly HashSet<Control> TouchedControls = new();
+    private static Control? _activePage;
 
     public static void Play(
         Control? from,
@@ -36,207 +30,282 @@ public static class MetroTransitions
         Action? completed = null,
         Control? header = null)
     {
-        Finish();
+        _activePage = to;
 
-        if (from is not null && ReferenceEquals(from, to))
-            from = null;
-
-        _from = from;
-        _to = to;
-        _completed = completed;
-        Entries.Clear();
-
-        if (from is not null)
-            ResetPageVisual(from);
-        ResetPageVisual(to);
-
-        to.IsVisible = true;
-        to.IsHitTestVisible = true;
-
-        if (from is not null)
+        if (from is not null && !ReferenceEquals(from, to))
         {
-            from.IsVisible = true;
-            from.ZIndex = 1;
-            AddFade(from, 1, 0);
+            from.IsHitTestVisible = false;
+            from.Opacity = 0;
         }
 
-        to.ZIndex = 2;
-        AddFade(to, 0, 1);
+        var needsLayout = to.Bounds.Width <= 0 || header?.Bounds.Height <= 0;
+        if (!to.IsVisible)
+            to.IsVisible = true;
+
+        if (needsLayout)
+            to.UpdateLayout();
+
+        to.Opacity = 1;
+        to.IsHitTestVisible = true;
+        RenderOptions.SetTextRenderingMode(to, TextRenderingMode.Antialias);
+
+        var scroll = to.GetVisualAncestors().OfType<ScrollViewer>().FirstOrDefault();
+        var viewportHeight = scroll is { Viewport.Height: > 100 }
+            ? scroll.Viewport.Height
+            : to.Bounds.Height > 100 ? to.Bounds.Height : 680.0;
 
         var sequence = new List<Control>();
         if (header is not null)
             sequence.Add(header);
-        sequence.AddRange(CollectChildren(to));
 
-        // WP8 direction: forward = title -> items top-to-bottom;
-        // backward = bottom item -> ... -> title.
+        foreach (var child in CollectChildren(to).Where(c => c.IsVisible))
+        {
+            var top = scroll is not null
+                ? child.TranslatePoint(new Point(0, 0), scroll)?.Y ?? double.MaxValue
+                : child.Bounds.Y;
+            var bottom = top + child.Bounds.Height;
+
+            if (top < viewportHeight + 24 && bottom > -24)
+                sequence.Add(child);
+            else if (TouchedControls.Contains(child))
+                ResetVisualToStatic(child);
+        }
+
         if (!forward)
             sequence.Reverse();
 
-        for (var i = 0; i < sequence.Count; i++)
-            AddChild(sequence[i], i * 35.0);
-
-        Clock.Restart();
-        _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
-        _timer.Tick += OnTick;
-        _timer.Start();
+        StartHardwareAnimations(sequence);
+        completed?.Invoke();
     }
 
-    private static void AddFade(Control control, double startOpacity, double endOpacity)
+    public static void PrewarmPagesAtIdle(IEnumerable<Control> pages, Control currentActivePage)
     {
-        var scale = new ScaleTransform(1, 1);
-        var skew = new SkewTransform(0, 0);
-        var shift = new TranslateTransform(0, 0);
-
-        control.Opacity = startOpacity;
-
-        Entries.Add(new Entry
+        foreach (var page in pages)
         {
-            Control = control,
-            Scale = scale,
-            Skew = skew,
-            Shift = shift,
-            StartScale = 1,
-            EndScale = 1,
-            StartScaleY = 1,
-            EndScaleY = 1,
-            StartX = 0,
-            EndX = 0,
-            StartY = 0,
-            EndY = 0,
-            StartOpacity = startOpacity,
-            EndOpacity = endOpacity,
-            StartSkew = 0,
-            EndSkew = 0,
-            StartSkewY = 0,
-            EndSkewY = 0,
-            Delay = 0,
-            Duration = CrossFadeDuration,
-            OriginalTransform = control.RenderTransform,
-            OriginalOrigin = control.RenderTransformOrigin,
-            OriginalOpacity = 1,
-            KeepLeftOrigin = false,
-        });
+            if (ReferenceEquals(page, currentActivePage))
+                continue;
+
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (ReferenceEquals(page, currentActivePage) ||
+                    ReferenceEquals(page, _activePage))
+                    return;
+
+                if (!page.IsVisible)
+                    page.IsVisible = true;
+                if (page.Bounds.Width <= 0)
+                    page.UpdateLayout();
+
+                if (!ReferenceEquals(page, _activePage) &&
+                    !ReferenceEquals(page, currentActivePage))
+                    page.Opacity = 0;
+            }, DispatcherPriority.Background);
+        }
     }
 
     public static void PlayList(Panel panel, int direction = 1)
     {
-        Finish();
-        Entries.Clear();
+        panel.UpdateLayout();
 
-        var index = 0;
-        foreach (var child in panel.Children.OfType<Control>())
+        var sequence = panel.Children
+            .OfType<Control>()
+            .Where(c => c.IsVisible)
+            .Take(MaxAnimatedItems)
+            .ToList();
+
+        StartHardwareAnimations(sequence);
+    }
+
+    public static void PlayTrayMenuTransition(Panel menuItemsContainer)
+    {
+        if (menuItemsContainer.Bounds.Width <= 0)
+            menuItemsContainer.UpdateLayout();
+
+        var sequence = new List<Control>(menuItemsContainer.Children.Count);
+        foreach (var child in menuItemsContainer.Children)
         {
-            AddChild(child, index * 35.0);
-            index++;
+            if (child is Control { IsVisible: true } c)
+                sequence.Add(c);
         }
 
-        if (Entries.Count == 0)
+        if (sequence.Count == 0)
             return;
 
-        Clock.Restart();
-        _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
-        _timer.Tick += OnTick;
-        _timer.Start();
+        sequence.Reverse();
+
+        var first = ElementComposition.GetElementVisual(sequence[0]);
+        if (first is null)
+            return;
+
+        var compositor = first.Compositor;
+        var smoothOut = Easing.Parse("0.18,1,0.30,1");
+        var linear = new LinearEasing();
+
+        const double menuFlipMs = 280;
+        const double menuStepMs = 16;
+        const float menuHingeShift = 16;
+
+        for (var i = 0; i < sequence.Count; i++)
+        {
+            var control = sequence[i];
+            RenderOptions.SetTextRenderingMode(control, TextRenderingMode.Antialias);
+            var visual = ElementComposition.GetElementVisual(control);
+            if (visual is null)
+                continue;
+
+            var basePos = new System.Numerics.Vector3(
+                (float)control.Bounds.X,
+                (float)control.Bounds.Y,
+                0f);
+            var startPos = new System.Numerics.Vector3(
+                basePos.X - menuHingeShift,
+                basePos.Y,
+                0f);
+            var height = (float)Math.Max(control.Bounds.Height, 24.0);
+
+            visual.StopAnimation("Opacity");
+            visual.StopAnimation("Scale");
+            visual.StopAnimation("Offset");
+            visual.CenterPoint = new Vector3D(-24f, height * 0.5f, 0f);
+            visual.Scale = new Vector3D(1, 1, 1);
+            visual.Offset = new Vector3D(basePos.X, basePos.Y, 0);
+            visual.Opacity = 1f;
+
+            var startScale = new System.Numerics.Vector3(0.25f, 0.92f, 1f);
+            var delayMs = i * menuStepMs;
+            var totalMs = delayMs + menuFlipMs;
+            var startCue = (float)(delayMs / totalMs);
+            var fastOpacityCue = startCue + (1f - startCue) * 0.30f;
+            var duration = TimeSpan.FromMilliseconds(totalMs);
+
+            var opacity = compositor.CreateScalarKeyFrameAnimation();
+            opacity.Duration = duration;
+            opacity.InsertKeyFrame(0f, 0f);
+            if (startCue > 0.001f)
+                opacity.InsertKeyFrame(startCue, 0f, linear);
+            opacity.InsertKeyFrame(fastOpacityCue, 0.92f, smoothOut);
+            opacity.InsertKeyFrame(1f, 1f, smoothOut);
+
+            var scale = compositor.CreateVector3KeyFrameAnimation();
+            scale.Duration = duration;
+            scale.InsertKeyFrame(0f, startScale);
+            if (startCue > 0.001f)
+                scale.InsertKeyFrame(startCue, startScale, linear);
+            scale.InsertKeyFrame(1f, System.Numerics.Vector3.One, smoothOut);
+
+            var offset = compositor.CreateVector3KeyFrameAnimation();
+            offset.Duration = duration;
+            offset.InsertKeyFrame(0f, startPos);
+            if (startCue > 0.001f)
+                offset.InsertKeyFrame(startCue, startPos, linear);
+            offset.InsertKeyFrame(1f, basePos, smoothOut);
+
+            visual.StartAnimation("Opacity", opacity);
+            visual.StartAnimation("Scale", scale);
+            visual.StartAnimation("Offset", offset);
+        }
     }
 
-    private static void AddPage(
-        Control control,
-        double originX,
-        double startScale,
-        double endScale,
-        double startX,
-        double endX,
-        double startOpacity,
-        double endOpacity,
-        double startSkew,
-        double endSkew,
-        double delay)
+    private static void StartHardwareAnimations(IReadOnlyList<Control> items)
     {
-        var scale = new ScaleTransform(startScale, 1);
-        var skew = new SkewTransform(startSkew, 0);
-        var shift = new TranslateTransform(startX, 0);
-        var group = new TransformGroup { Children = { scale, skew, shift } };
+        if (items.Count == 0)
+            return;
 
-        var entry = new Entry
+        var first = ElementComposition.GetElementVisual(items[0]);
+        if (first is null)
+            return;
+
+        var compositor = first.Compositor;
+        var crisp = Easing.Parse("0.08,0.82,0.18,1");
+        var linear = new LinearEasing();
+
+        for (var i = 0; i < items.Count; i++)
         {
-            Control = control,
-            Scale = scale,
-            Skew = skew,
-            Shift = shift,
-            StartScale = startScale,
-            EndScale = endScale,
-            StartScaleY = 1,
-            EndScaleY = 1,
-            StartX = startX,
-            EndX = endX,
-            StartOpacity = startOpacity,
-            EndOpacity = endOpacity,
-            StartSkew = startSkew,
-            EndSkew = endSkew,
-            StartSkewY = 0,
-            EndSkewY = 0,
-            Delay = delay,
-            Duration = PageDuration,
-            OriginalTransform = control.RenderTransform,
-            OriginalOrigin = control.RenderTransformOrigin,
-            OriginalOpacity = control.Opacity,
-        };
+            var control = items[i];
+            RenderOptions.SetTextRenderingMode(control, TextRenderingMode.Antialias);
+            var visual = ElementComposition.GetElementVisual(control);
+            if (visual is null)
+                continue;
 
-        control.RenderTransformOrigin = new RelativePoint(originX, 0.5, RelativeUnit.Relative);
-        control.RenderTransform = group;
-        control.Opacity = startOpacity;
-        Entries.Add(entry);
+            TouchedControls.Add(control);
+
+            var basePos = new System.Numerics.Vector3(
+                (float)control.Bounds.X,
+                (float)control.Bounds.Y,
+                0f);
+            var startPos = new System.Numerics.Vector3(
+                basePos.X - HingeShiftX,
+                basePos.Y,
+                0f);
+            var height = (float)Math.Max(control.Bounds.Height, 36.0);
+
+            visual.StopAnimation("Opacity");
+            visual.StopAnimation("Scale");
+            visual.StopAnimation("Offset");
+            visual.CenterPoint = new Vector3D(-32f, height * 0.5f, 0f);
+            visual.Scale = new Vector3D(1, 1, 1);
+            visual.Offset = new Vector3D(basePos.X, basePos.Y, 0);
+            visual.Opacity = 1f;
+
+            var startScale = new System.Numerics.Vector3(0.58f, 1f, 1f);
+            var delayMs = i * StepDelayMs;
+            var totalMs = delayMs + FlipMs;
+            var startCue = (float)(delayMs / totalMs);
+            var opacityDoneCue = Math.Min(1f, (float)((delayMs + 65) / totalMs));
+            var duration = TimeSpan.FromMilliseconds(totalMs);
+
+            var opacity = compositor.CreateScalarKeyFrameAnimation();
+            opacity.Duration = duration;
+            opacity.InsertKeyFrame(0f, 0f);
+            if (startCue > 0.001f)
+                opacity.InsertKeyFrame(startCue, 0f, linear);
+            if (opacityDoneCue < 0.999f)
+                opacity.InsertKeyFrame(opacityDoneCue, 1f, linear);
+            opacity.InsertKeyFrame(1f, 1f, linear);
+
+            var scale = compositor.CreateVector3KeyFrameAnimation();
+            scale.Duration = duration;
+            scale.InsertKeyFrame(0f, startScale);
+            if (startCue > 0.001f)
+                scale.InsertKeyFrame(startCue, startScale, linear);
+            scale.InsertKeyFrame(1f, System.Numerics.Vector3.One, crisp);
+
+            var offset = compositor.CreateVector3KeyFrameAnimation();
+            offset.Duration = duration;
+            offset.InsertKeyFrame(0f, startPos);
+            if (startCue > 0.001f)
+                offset.InsertKeyFrame(startCue, startPos, linear);
+            offset.InsertKeyFrame(1f, basePos, crisp);
+
+            visual.StartAnimation("Opacity", opacity);
+            visual.StartAnimation("Scale", scale);
+            visual.StartAnimation("Offset", offset);
+        }
     }
 
-    private static void AddChild(Control control, double delay)
+    private static void ResetVisualToStatic(Control control)
     {
-        var originalTransform = control.RenderTransform;
-        var originalOrigin = control.RenderTransformOrigin;
-        var originalOpacity = control.Opacity;
+        var visual = ElementComposition.GetElementVisual(control);
+        if (visual is null)
+            return;
 
-        var scale = new ScaleTransform(0.70, 1);
-        var skew = new SkewTransform(0, 0);
-        var shift = new TranslateTransform(-45, 0);
+        var basePos = new System.Numerics.Vector3(
+            (float)control.Bounds.X,
+            (float)control.Bounds.Y,
+            0f);
 
-        // Fixed hinge: left edge, vertical center. No Y movement, no shear.
-        control.RenderTransformOrigin = new RelativePoint(0, 0.5, RelativeUnit.Relative);
-        control.RenderTransform = new TransformGroup { Children = { scale, shift } };
-        control.Opacity = 0;
-
-        Entries.Add(new Entry
-        {
-            Control = control,
-            Scale = scale,
-            Skew = skew,
-            Shift = shift,
-            StartScale = 0.70,
-            EndScale = 1,
-            StartScaleY = 1,
-            EndScaleY = 1,
-            StartX = -45,
-            EndX = 0,
-            StartY = 0,
-            EndY = 0,
-            StartOpacity = 0,
-            EndOpacity = 1,
-            StartSkew = 0,
-            EndSkew = 0,
-            StartSkewY = 0,
-            EndSkewY = 0,
-            Delay = delay,
-            Duration = ChildDuration,
-            OriginalTransform = originalTransform,
-            OriginalOrigin = originalOrigin,
-            OriginalOpacity = originalOpacity,
-            KeepLeftOrigin = true,
-        });
+        visual.StopAnimation("Opacity");
+        visual.StopAnimation("Scale");
+        visual.StopAnimation("Offset");
+        visual.Scale = new Vector3D(1, 1, 1);
+        visual.Offset = new Vector3D(basePos.X, basePos.Y, 0);
+        visual.Opacity = 1f;
     }
 
     private static IEnumerable<Control> CollectChildren(Control page)
     {
         if (page is Panel panel)
-            return panel.Children.OfType<Control>().Take(8);
+            return panel.Children.OfType<Control>();
 
         if (page is ContentControl { Content: Control content })
             return CollectChildren(content);
@@ -245,134 +314,5 @@ public static class MetroTransitions
             return CollectChildren(child);
 
         return Array.Empty<Control>();
-    }
-
-    private static void OnTick(object? sender, EventArgs e)
-    {
-        var elapsed = Clock.Elapsed.TotalMilliseconds;
-        var allDone = true;
-
-        foreach (var entry in Entries)
-        {
-            var progress = Math.Clamp((elapsed - entry.Delay) / entry.Duration, 0, 1);
-            if (progress < 1)
-                allDone = false;
-
-            var eased = Bezier(progress);
-            entry.Scale.ScaleX = Lerp(entry.StartScale, entry.EndScale, eased);
-            entry.Scale.ScaleY = Lerp(
-                entry.StartScaleY == 0 ? entry.StartScale : entry.StartScaleY,
-                entry.EndScaleY == 0 ? entry.EndScale : entry.EndScaleY,
-                eased);
-            entry.Skew.AngleX = Lerp(entry.StartSkew, entry.EndSkew, eased);
-            entry.Skew.AngleY = Lerp(entry.StartSkewY, entry.EndSkewY, eased);
-            entry.Shift.X = Lerp(entry.StartX, entry.EndX, eased);
-            entry.Shift.Y = Lerp(entry.StartY, entry.EndY, eased);
-            entry.Control.Opacity = Lerp(entry.StartOpacity, entry.EndOpacity, eased);
-        }
-
-        if (allDone)
-            Finish();
-    }
-
-    private static void Finish()
-    {
-        _timer?.Stop();
-        _timer = null;
-
-        foreach (var entry in Entries)
-        {
-            entry.Control.RenderTransform = entry.OriginalTransform;
-            entry.Control.RenderTransformOrigin = entry.KeepLeftOrigin
-                ? new RelativePoint(0, 0.5, RelativeUnit.Relative)
-                : entry.OriginalOrigin;
-            entry.Control.Opacity = entry.OriginalOpacity;
-        }
-
-        if (_from is not null)
-        {
-            ResetPageVisual(_from);
-            _from.IsVisible = false;
-            _from.IsHitTestVisible = false;
-            _from.ZIndex = 0;
-        }
-
-        if (_to is not null)
-        {
-            ResetPageVisual(_to);
-            _to.IsVisible = true;
-            _to.IsHitTestVisible = true;
-            _to.ZIndex = 0;
-        }
-
-        Entries.Clear();
-
-        var completed = _completed;
-        _from = null;
-        _to = null;
-        _completed = null;
-        completed?.Invoke();
-    }
-
-    private static void ResetPageVisual(Control page)
-    {
-        page.RenderTransform = null;
-        page.RenderTransformOrigin = RelativePoint.Center;
-        page.Opacity = 1;
-    }
-
-    private static double Lerp(double from, double to, double t) => from + (to - from) * t;
-
-    private static double Bezier(double t)
-    {
-        // cubic-bezier(0, 0, 0.2, 1): exponential ease-out, no overshoot
-        const double x1 = 0.0, y1 = 0.0, x2 = 0.2, y2 = 1.0;
-        var low = 0.0;
-        var high = 1.0;
-        var u = t;
-
-        for (var i = 0; i < 10; i++)
-        {
-            var x = 3 * (1 - u) * (1 - u) * u * x1
-                    + 3 * (1 - u) * u * u * x2
-                    + u * u * u;
-            if (x < t)
-                low = u;
-            else
-                high = u;
-            u = (low + high) / 2;
-        }
-
-        return 3 * (1 - u) * (1 - u) * u * y1
-               + 3 * (1 - u) * u * u * y2
-               + u * u * u;
-    }
-
-    private sealed class Entry
-    {
-        public Control Control = null!;
-        public ScaleTransform Scale = null!;
-        public SkewTransform Skew = null!;
-        public TranslateTransform Shift = null!;
-        public double StartScale;
-        public double EndScale;
-        public double StartScaleY;
-        public double EndScaleY;
-        public double StartX;
-        public double EndX;
-        public double StartY;
-        public double EndY;
-        public double StartOpacity;
-        public double EndOpacity;
-        public double StartSkew;
-        public double EndSkew;
-        public double StartSkewY;
-        public double EndSkewY;
-        public double Delay;
-        public double Duration;
-        public bool KeepLeftOrigin;
-        public ITransform? OriginalTransform;
-        public RelativePoint OriginalOrigin;
-        public double OriginalOpacity;
     }
 }

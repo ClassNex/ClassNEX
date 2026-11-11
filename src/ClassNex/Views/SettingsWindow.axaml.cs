@@ -145,6 +145,13 @@ public partial class SettingsWindow : AppWindow
         {
             PlayEntrance();
             StartSakuraBlossoms();
+            MetroTransitions.PrewarmPagesAtIdle(
+                new Control[]
+                {
+                    PageHome, PageGeneral, PageInterface, PageWindow, PageWidgets,
+                    PageNex, PageNotification, PageAbout, PageDebug, PageAccount,
+                },
+                _currentPageView ?? PageHome);
         };
 
         if (Application.Current is { } app)
@@ -453,7 +460,6 @@ public partial class SettingsWindow : AppWindow
             TransparencyLevelHint = new[]
             {
                 WindowTransparencyLevel.Mica,
-                WindowTransparencyLevel.AcrylicBlur,
                 WindowTransparencyLevel.None,
             };
             Background = Brushes.Transparent;
@@ -681,9 +687,7 @@ public partial class SettingsWindow : AppWindow
         if (page == "account")
         {
             var previousAccountPage = _currentPageView;
-            PageHome.IsVisible = PageGeneral.IsVisible = PageInterface.IsVisible = PageWindow.IsVisible =
-                PageWidgets.IsVisible = PageNotification.IsVisible = PageAbout.IsVisible =
-                PageDebug.IsVisible = PageNex.IsVisible = PageAccount.IsVisible = false;
+            KeepOnlyPages(previousAccountPage, PageAccount);
             PageAccount.IsVisible = true;
             _currentPageView = PageAccount;
             HomePetals.IsVisible = false;
@@ -884,16 +888,8 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         var page = PageFor(index);
         _currentPageView = page;
 
-        PageHome.IsVisible = index == 0;
-        PageGeneral.IsVisible = index == 1;
-        PageInterface.IsVisible = index == 2;
-        PageWindow.IsVisible = index == 3;
-        PageWidgets.IsVisible = index == 4;
-        PageNex.IsVisible = index == 5;
-        PageNotification.IsVisible = index == 6;
-        PageAbout.IsVisible = index == 7;
-        PageDebug.IsVisible = index == 8;
-        PageAccount.IsVisible = false;   
+        KeepOnlyPages(previousPage, page);
+        page.IsVisible = true;
 
         HomePetals.IsVisible = index == 0;
         if (index == 0)
@@ -1288,6 +1284,21 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         8 => PageDebug,
         _ => (Control)PageHome,
     };
+
+    private void KeepOnlyPages(Control? keepA, Control? keepB)
+    {
+        foreach (var page in new Control[]
+                 {
+                     PageHome, PageGeneral, PageInterface, PageWindow, PageWidgets,
+                     PageNex, PageNotification, PageAbout, PageDebug, PageAccount,
+                 })
+        {
+            var keep = ReferenceEquals(page, keepB);
+            page.IsVisible = true;
+            page.Opacity = keep ? 1 : 0;
+            page.IsHitTestVisible = keep;
+        }
+    }
 
     private static void AttachTiltToPage(Control page)
     {

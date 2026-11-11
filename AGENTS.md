@@ -36,7 +36,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：把设置、组件参数、档案编辑器和 OOBE 中所有布尔复选框统一替换为带「开 / 关」文本的 ToggleSwitch；外观页三条滑块统一为固定网格列并完成对齐
-改了文件：src/ClassNex/App.axaml、src/ClassNex/Views/SettingsWindow.axaml、src/ClassNex/Views/SettingsWindow.axaml.cs、src/ClassNex/Views/ProfileEditorWindow.axaml、src/ClassNex/Views/ProfileEditorWindow.axaml.cs、src/ClassNex/Views/OobeWindow.axaml、src/ClassNex/Views/OobeWindow.axaml.cs、src/ClassNex/Services/WidgetSettingsBuilder.cs、HANDOFF.md、AGENTS.md
+上次完成：合并联合开发者 Desktop 源码快照中的 Composition 硬件转场、页面预布局缓存、托盘菜单常驻预热与级联动画；保留并整合当前大设置页、ToggleSwitch 和滑块对齐改动
+改了文件：src/ClassNex/Styles/MetroTransitions.cs、src/ClassNex/App.axaml.cs、src/ClassNex/Views/TrayMenuWindow.axaml(.cs)、src/ClassNex/Views/SettingsWindow.axaml(.cs)、src/ClassNex/Views/ProfileEditorWindow.axaml.cs、HANDOFF.md、AGENTS.md
 进行中：无
 下一步：待用户指定

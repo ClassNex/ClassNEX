@@ -193,10 +193,9 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 - **设置窗口启动动画**：`Opened` 时对 `SettingsRoot` 组合层 opacity 0→1（430ms，
   `0.16,1,0.3,1`）+ scale `0.965→1.006→1`（620ms，回弹）+ offsetY 16→0（520ms）。
   `SettingsRoot.Opacity` 先设为 0，播放时恢复 1，避免闪出完整页面。
-- **托盘菜单**：`TrayMenuWindow` 的 `MenuRoot` 加入 open/close 动画；打开时 scale
-  `0.93→1.012→1` + fade 190ms + offsetY 10→0，以右下角为变换中心，朝向托盘弹出；
-  关闭时 130~150ms 缩小淡出后 `Close()`。失焦、点菜单项、再次点托盘图标都走
-  `CloseAnimated()`；`App.OpenTrayMenuOnce` 不再手动改 `Window.Opacity`（否则会和组合层动画打架）。
+- **托盘菜单**：`TrayMenuWindow` 改为常驻单例并在启动空闲时 `Prewarm()`，保留原生窗口句柄和布局缓存；
+  打开前 `PrepareForOpen()` 清理旧帧，显示后按自下而上的 280ms/16ms 级联执行 Composition 动画。
+  失焦、点菜单项、再次点托盘图标都走 `CloseAnimated()` 后 `Hide()`，不再关闭并重建窗口；托盘点击不再有 300ms debounce。
   菜单项的逐条 stagger 已移除，避免组合层偏移/关闭时出现半截列表。
 - **设置窗口顶栏**：顶部 48px 区域改成 `152,*,152` 三列，中间放最大 700 宽的胶囊
   `TopBarCapsule`（高 42、圆角 21、ChipSurface + 樱花描边），左侧返回/图标/标题，
@@ -284,22 +283,17 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
     原来的「测试跑马灯」也保留。
   - ⚠️ **接口密钥绝不写进源码/仓库**（仓库是公开的）：只在设置页填写，落盘到本机 `data\Settings.json`；新机器要重新填一次
   - 自检：`CLASSNEX_VERIFY_NEX=<文本>` 打开对话框并自动发一条消息；出图看 `_shot_nex.png`
-- **Metro 转场统一层**：`Styles/MetroTransitions.cs` 负责设置/档案编辑等页面切换：
-  页面父级只做 220ms CrossFade，**不施加任何页面级 RenderTransform/位移**；设置页页面宿主必须是
-  单格 `Grid#PageHost`（严禁 StackPanel：新旧页同时可见时会被上下串联，隐藏旧页后新页会从底部弹回），
-  所有页面同格重叠并 `VerticalAlignment=Top`。列表条目 420ms
-  纯水平偏心翻门，轴心固定 `0%,50%`，`scaleX .70→1`、`scaleY 1`、`translateX -45→0`、
-  `translateY` 全程 0，**无 Skew/剪切**，延迟 `35ms * index`，
-  cubic-bezier(0,0,0.2,1)，无反向回弹；结束恢复 RenderTransform/Opacity 但保留左轴心，
-  避免影响 Tilt。标题作为序列第 0 项一起入场（`PageTitleText.MinHeight=48` 固定占位），
-  前进为标题→条目，后退反转序列为底部条目→标题；Page 实例常驻缓存，不重建。
+- **Metro 转场统一层**：`Styles/MetroTransitions.cs` 使用 Avalonia Composition 硬件动画，不再用 UI 线程计时器；
+  旧页以 `Opacity=0` 保留布局，新页只做 360ms 单段翻门，条目按视口筛选并以 28ms 级联；
+  页面标题作为序列第 0 项，后退时反转。设置页和档案编辑器在窗口打开后通过 `PrewarmPagesAtIdle()` 预热页面布局，
+  切页不再反复触发 Measure/Arrange；设置页页面宿主仍必须是单格 `Grid#PageHost`。
   `Styles/MetroTilt.cs` 给设置/档案导航项、长条 SettingsExpander/Card、托盘菜单项和 OOBE 按钮
   做按压倾斜：原点永久锁定 50%,50%，不修改任何布局属性；使用
   `TransformOperationsTransition`（按下 70ms / 回弹 180ms，cubic-bezier(0.1,0.9,0.2,1)），
   倾斜按长条阻尼公式 `skewY=dx*150/max(W,100)`、`skewX=-dy*0.6`、位移 1.5/0.8px、scale 0.985，
   不再逐帧计时，也不会把卡片整体拉下去。若模板内有名为 `TiltHost` 的内层 Border 会优先使用它。
-  `MetroTransitions` 在切换开始/结束强制清空旧页 RenderTransform/Origin/Opacity 并关闭命中测试；
-  切页期间标题先隐藏，过渡完成后再写入新标题，避免「新标题 + 旧内容」同屏。
+  `MetroTransitions` 切页时旧页保留布局但关闭绘制和命中测试，新页由 Composition 动画进入；
+  标题先隐藏，过渡完成后再写入新标题，避免「新标题 + 旧内容」同屏。
 - 首次启动向导（OOBE，五页）：多语言问候 + 隐私/许可链接 + 语言选择 + 外观/开学日期/开机自启动 + 账户与更多设置预留页 + 烟花完成页；走完向导前不显示浮窗。
   页脚圆点已移除，顶部显示「第 n 步 / 共 5 步」；切页为 360ms 的 WP8.1 风格翻页
   （左外侧轴心、ScaleX 收拢 + skew，cubic-bezier(0.1,0.9,0.2,1)，两页交叉淡出；切换期间锁输入）。

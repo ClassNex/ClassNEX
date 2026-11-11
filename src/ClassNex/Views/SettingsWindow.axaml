@@ -39,8 +39,7 @@
                         MaxWidth="700" Height="42"
                         HorizontalAlignment="Stretch" VerticalAlignment="Center"
                         CornerRadius="21"
-                        BorderThickness="1"
-                        BoxShadow="0 8 22 2 #24000000">
+                        BorderThickness="1">
                     <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="8,0,10,0">
                         <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
                             <Button x:Name="BackButton" Theme="{StaticResource TransparentButton}"
@@ -270,6 +269,8 @@
                 </StackPanel>
                 <ScrollViewer x:Name="PageScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto">
                     <Grid x:Name="PageHost" Margin="28,8,28,28" MaxWidth="1120"
+                          RenderOptions.TextRenderingMode="Antialias"
+                          RenderOptions.BitmapInterpolationMode="LowQuality"
                           HorizontalAlignment="Stretch" VerticalAlignment="Top">
                         <Grid.Styles>
                             <Style Selector="Grid#PageHost > StackPanel">

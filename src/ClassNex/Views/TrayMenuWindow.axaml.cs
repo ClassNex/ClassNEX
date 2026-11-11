@@ -14,89 +14,130 @@ namespace ClassNex.Views;
 public partial class TrayMenuWindow : Window
 {
     private bool _closing;
+    private bool _prewarmed;
+    private bool _prewarming;
+    private int _closeVersion;
 
     public TrayMenuWindow()
     {
         InitializeComponent();
-        Opened += (_, _) => PlayOpenAnimation();
-        Deactivated += (_, _) => CloseAnimated();
+        Deactivated += (_, _) =>
+        {
+            if (!_prewarming)
+                CloseAnimated();
+        };
     }
 
-    private void PlayOpenAnimation()
+    public void Prewarm()
     {
-        MenuRoot.Opacity = 1;
-        ClassNex.Styles.MetroTransitions.PlayList(ItemsPanel);
-
-        var visual = ElementComposition.GetElementVisual(MenuRoot);
-        if (visual is null)
+        if (_prewarmed)
             return;
 
-        var bounds = MenuRoot.Bounds;
-        visual.CenterPoint = new Vector3D(bounds.Width, bounds.Height, 0);
-        visual.Opacity = 0f;
-        visual.Scale = new Vector3D(0.96f, 0.96f, 1f);
-        visual.Offset = new Vector3D(0f, 8f, 0f);
+        _prewarmed = true;
+        _prewarming = true;
 
-        var compositor = visual.Compositor;
+        try
+        {
+            Position = new PixelPoint(-10000, -10000);
+            Opacity = 0;
+            Show();
+            UpdateLayout();
+            Hide();
+        }
+        finally
+        {
+            Opacity = 1;
+            _prewarming = false;
+        }
+    }
 
-        var fade = compositor.CreateScalarKeyFrameAnimation();
-        fade.InsertKeyFrame(0f, 0f);
-        fade.InsertKeyFrame(1f, 1f, Easing.Parse("0.16, 1, 0.3, 1"));
-        fade.Duration = TimeSpan.FromMilliseconds(180);
-        visual.StartAnimation(nameof(visual.Opacity), fade);
+    public void PrepareForOpen()
+    {
+        _closeVersion++;
+        _closing = false;
+        MenuRoot.Opacity = 0;
 
-        var scale = compositor.CreateVector3KeyFrameAnimation();
-        scale.InsertKeyFrame(0f, new System.Numerics.Vector3(0.96f, 0.96f, 1f));
-        scale.InsertKeyFrame(1f, new System.Numerics.Vector3(1f, 1f, 1f), Easing.Parse("0.16, 1, 0.3, 1"));
-        scale.Duration = TimeSpan.FromMilliseconds(280);
-        visual.StartAnimation(nameof(visual.Scale), scale);
+        var rootVisual = ElementComposition.GetElementVisual(MenuRoot);
+        if (rootVisual is not null)
+        {
+            rootVisual.StopAnimation("Opacity");
+            rootVisual.Opacity = 0;
+        }
 
-        var slide = compositor.CreateVector3KeyFrameAnimation();
-        slide.InsertKeyFrame(0f, new System.Numerics.Vector3(0f, 8f, 0f));
-        slide.InsertKeyFrame(1f, new System.Numerics.Vector3(0f, 0f, 0f), Easing.Parse("0.16, 1, 0.3, 1"));
-        slide.Duration = TimeSpan.FromMilliseconds(280);
-        visual.StartAnimation(nameof(visual.Offset), slide);
+        foreach (var child in ItemsPanel.Children)
+        {
+            if (child is not Control control)
+                continue;
+
+            var visual = ElementComposition.GetElementVisual(control);
+            if (visual is null)
+                continue;
+
+            visual.StopAnimation("Opacity");
+            visual.StopAnimation("Scale");
+            visual.StopAnimation("Offset");
+            visual.Opacity = 0;
+        }
+
+        if (Bounds.Width <= 0)
+            UpdateLayout();
+    }
+
+    public void PlayOpenAnimation()
+    {
+        if (!IsVisible || _closing)
+            return;
+
+        MenuRoot.Opacity = 1;
+
+        var rootVisual = ElementComposition.GetElementVisual(MenuRoot);
+        if (rootVisual is not null)
+        {
+            rootVisual.StopAnimation("Opacity");
+            rootVisual.Opacity = 0;
+
+            var fade = rootVisual.Compositor.CreateScalarKeyFrameAnimation();
+            fade.Duration = TimeSpan.FromMilliseconds(140);
+            fade.InsertKeyFrame(0f, 0f);
+            fade.InsertKeyFrame(1f, 1f, Easing.Parse("0.16,1,0.3,1"));
+            rootVisual.StartAnimation("Opacity", fade);
+        }
+
+        ClassNex.Styles.MetroTransitions.PlayTrayMenuTransition(ItemsPanel);
     }
 
     public void CloseAnimated()
     {
-        if (_closing)
+        if (_closing || !IsVisible)
             return;
 
         _closing = true;
+        var version = ++_closeVersion;
 
         var visual = ElementComposition.GetElementVisual(MenuRoot);
         if (visual is null)
         {
-            Close();
+            Hide();
+            _closing = false;
             return;
         }
 
-        var compositor = visual.Compositor;
-
-        var fade = compositor.CreateScalarKeyFrameAnimation();
+        visual.StopAnimation("Opacity");
+        var fade = visual.Compositor.CreateScalarKeyFrameAnimation();
+        fade.Duration = TimeSpan.FromMilliseconds(120);
         fade.InsertKeyFrame(0f, 1f);
-        fade.InsertKeyFrame(1f, 0f, Easing.Parse("0.4, 0, 1, 1"));
-        fade.Duration = TimeSpan.FromMilliseconds(130);
-        visual.StartAnimation(nameof(visual.Opacity), fade);
-
-        var scale = compositor.CreateVector3KeyFrameAnimation();
-        scale.InsertKeyFrame(0f, new System.Numerics.Vector3(1f, 1f, 1f));
-        scale.InsertKeyFrame(1f, new System.Numerics.Vector3(0.97f, 0.97f, 1f), Easing.Parse("0.4, 0, 1, 1"));
-        scale.Duration = TimeSpan.FromMilliseconds(150);
-        visual.StartAnimation(nameof(visual.Scale), scale);
-
-        var slide = compositor.CreateVector3KeyFrameAnimation();
-        slide.InsertKeyFrame(0f, new System.Numerics.Vector3(0f, 0f, 0f));
-        slide.InsertKeyFrame(1f, new System.Numerics.Vector3(0f, 6f, 0f), Easing.Parse("0.4, 0, 1, 1"));
-        slide.Duration = TimeSpan.FromMilliseconds(150);
-        visual.StartAnimation(nameof(visual.Offset), slide);
+        fade.InsertKeyFrame(1f, 0f, Easing.Parse("0.4,0,1,1"));
+        visual.StartAnimation("Opacity", fade);
 
         DispatcherTimer.RunOnce(() =>
         {
+            if (version != _closeVersion)
+                return;
+
             if (IsVisible)
-                Close();
-        }, TimeSpan.FromMilliseconds(150));
+                Hide();
+            _closing = false;
+        }, TimeSpan.FromMilliseconds(140));
     }
 
     
