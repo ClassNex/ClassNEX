@@ -216,6 +216,6 @@ ClassNEX 使用 GNU General Public License v3.0 开源协议。
 详见 [LICENSE](LICENSE)。
 
 ---
-**ClassNEX · Powered by LingOfficial**
+**ClassNEX · Produced by LING & Washiyin**
 
 </div>
