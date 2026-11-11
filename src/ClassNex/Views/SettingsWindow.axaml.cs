@@ -92,24 +92,29 @@ public partial class SettingsWindow : AppWindow
     
     private static readonly (string Title, int PageIndex)[] SearchIndex =
     {
-        ("单周开始日期", 0),
-        ("点击托盘图标行为", 0),
-        ("当前课表文件", 0),
-        ("重新加载课表", 0),
-        ("主题（浅色 / 深色 / 跟随系统）", 1),
-        ("主界面背景不透明度", 1),
-        ("全局字号缩放", 1),
-        ("主界面缩放", 1),
-        ("组件排列方向", 2),
-        ("鼠标穿透", 2),
-        ("组件库（添加组件）", 3),
-        ("恢复默认布局", 3),
-        ("组件列表（上移 / 下移 / 删除）", 3),
-        ("组件设置：启用该组件", 3),
-        ("组件设置：字号缩放", 3),
-        ("时钟组件显示秒", 3),
-        ("自定义文本占位符", 3),
-        ("版本信息", 4),
+        ("开机自启", 1),
+        ("注册 Url 协议", 1),
+        ("学期开始时间", 1),
+        ("点击托盘图标行为", 1),
+        ("教学安全模式", 1),
+        ("主题（浅色 / 深色 / 跟随系统）", 2),
+        ("主界面背景不透明度", 2),
+        ("全局字号缩放", 2),
+        ("主界面缩放", 2),
+        ("组件排列方向", 3),
+        ("鼠标穿透", 3),
+        ("组件库（添加组件）", 4),
+        ("恢复默认布局", 4),
+        ("组件列表（上移 / 下移 / 删除）", 4),
+        ("组件设置：启用该组件", 4),
+        ("组件设置：字号缩放", 4),
+        ("时钟组件显示秒", 4),
+        ("自定义文本占位符", 4),
+        ("NEX Intelligence 接口", 5),
+        ("语音唤醒", 5),
+        ("提醒", 6),
+        ("课前提醒", 6),
+        ("版本信息", 7),
         ("账户与浏览器授权", 9),
     };
 
@@ -820,7 +825,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         MainWindowScaleSlider.Value = Math.Clamp(s.MainWindowScale, 0.6, 3.0);
         OpacityValueText.Text = $"{s.BackgroundOpacity:P0}";
         FontScaleValueText.Text = $"{s.FontScale:0.00}x";
-        MainWindowScaleValueText.Text = $"{s.MainWindowScale:0.00}x（CI 1.9）";
+        MainWindowScaleValueText.Text = $"{s.MainWindowScale:0.00}x";
         OrientationCombo.SelectedIndex = s.Orientation == LayoutOrientation.Vertical ? 1 : 0;
         ClickThroughSwitch.IsChecked = s.IsClickThrough;
 

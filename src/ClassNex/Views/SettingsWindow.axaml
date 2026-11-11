@@ -598,7 +598,7 @@
                             </ui:SettingsExpander>
 
                             <ui:SettingsExpander Header="主界面缩放"
-                                                 Description="对应 CI 的「主界面缩放」（CI 默认 1.9），整体放大主界面">
+                                                 Description="整体放大悬浮主界面，默认 1.9 倍">
                                 <ui:SettingsExpander.IconSource>
                                     <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE1B6;"/>
                                 </ui:SettingsExpander.IconSource>
@@ -606,7 +606,7 @@
                                     <StackPanel Orientation="Horizontal" Spacing="12">
                                         <Slider x:Name="MainWindowScaleSlider" Minimum="0.6" Maximum="3.0" Width="180"
                                                 TickFrequency="0.05" IsSnapToTickEnabled="True"/>
-                                        <TextBlock x:Name="MainWindowScaleValueText" Width="46" TextAlignment="Right" VerticalAlignment="Center" Opacity="0.7"/>
+                                        <TextBlock x:Name="MainWindowScaleValueText" MinWidth="64" TextAlignment="Right" VerticalAlignment="Center" Opacity="0.7"/>
                                     </StackPanel>
                                 </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>

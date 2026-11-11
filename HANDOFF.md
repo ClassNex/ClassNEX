@@ -201,6 +201,8 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 - **设置窗口顶栏**：顶部 48px 区域改成 `152,*,152` 三列，中间放最大 700 宽的胶囊
   `TopBarCapsule`（高 42、圆角 21、ChipSurface + 樱花描边），左侧返回/图标/标题，
   中间 290 宽搜索框，右侧版本号/更多；左右 152 给系统窗口按钮留位。
+  设置搜索的 `SearchIndex` 现在与实际页面顺序对齐，搜索结果会跳到正确的设置页；
+  「主界面缩放」数值标签加宽，避免显示被截断，界面文案不再出现内部代号。
   标题“应用设置”使用资源圆体 Bold，字体子集在
   `Assets/Fonts/ResourceHanRounded-Bold-Subset.ttf`（只含“应用设置”四字，许可证见同目录 txt）。
 - **欢迎设置窗口入场**：`OobeWindow` 保留 Fluent `AppWindow`，把首屏拆成四组：

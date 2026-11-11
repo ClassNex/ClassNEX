@@ -35,7 +35,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：发布 26w45b_Alpha；GitHub Actions 构建与发布成功，Release 附件已核对，包结构、files.json、启动器图标和版本号均正确，且不含 data 与测试课表
-改了文件：src/ClassNex/ClassNex.csproj、RELEASE_NOTES.md、HANDOFF.md、AGENTS.md
+上次完成：优化应用设置选项：修正设置搜索索引与页面映射，清理过期搜索项；修复主界面缩放数值标签过窄被截断，并移除界面上的内部代号说明
+改了文件：src/ClassNex/Views/SettingsWindow.axaml、src/ClassNex/Views/SettingsWindow.axaml.cs、HANDOFF.md、AGENTS.md
 进行中：无
 下一步：待用户指定
