@@ -43,7 +43,7 @@
     font-weight="600">ADDITIONS</text>
   <text x="333" y="143"
     fill="#f0f6fc" font-size="19"
-    font-weight="700">11,664</text>
+    font-weight="700">11,670</text>
 
   <rect x="600" y="95" width="270"
     height="62" rx="10" fill="#161b22"
@@ -53,7 +53,7 @@
     font-weight="600">DELETIONS</text>
   <text x="618" y="143"
     fill="#f0f6fc" font-size="19"
-    font-weight="700">6,454</text>
+    font-weight="700">6,460</text>
 
 
   <text x="48" y="200" fill="#8b949e"
@@ -112,22 +112,22 @@
     <rect x="285" y="270" width="280"
       height="9" rx="5" fill="#21262d"/>
 
-    <rect x="285" y="270" width="10.14004103113014"
+    <rect x="285" y="270" width="10.28989385425029"
       height="9" rx="5" fill="url(#blue)"/>
 
     <text x="600" y="282" fill="#3fb950"
       text-anchor="end" font-size="13">
-      +406
+      +412
     </text>
 
     <text x="730" y="282" fill="#f0883e"
       text-anchor="end" font-size="13">
-      -239
+      -245
     </text>
 
     <text x="860" y="282" fill="#8b949e"
       text-anchor="end" font-size="13">
-      30
+      31
     </text>
   
     <text x="48" y="334" fill="#8b949e"
