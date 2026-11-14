@@ -840,6 +840,7 @@
                                 <ui:SettingsExpander.IconSource>
                                     <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE059;"/>
                                 </ui:SettingsExpander.IconSource>
+                                <ui:SettingsExpanderItem x:Name="DebugTriggerClassPreparingItem" Content="触发课前准备提醒" IsClickEnabled="True"/>
                                 <ui:SettingsExpanderItem x:Name="DebugTriggerClassOnItem" Content="触发上课提醒" IsClickEnabled="True"/>
                                 <ui:SettingsExpanderItem x:Name="DebugTriggerClassOffItem" Content="触发下课提醒" IsClickEnabled="True"/>
                             </ui:SettingsExpander>

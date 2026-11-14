@@ -95,7 +95,8 @@ public sealed class TimeService : ITimeService
                     subject?.Teacher,
                     subject?.Room,
                     start,
-                    end));
+                    end,
+                    subject?.IsOutDoor ?? false));
             }
         }
 

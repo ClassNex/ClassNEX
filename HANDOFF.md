@@ -113,6 +113,12 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   现在 `RippleEffect` 在播放时读取 `MainWindow.GetIslandScreenRect()`，按实际屏幕矩形和圆角建立 `RectangleGeometry` 裁切；
   颜色统一走 `CiPalette.SakuraAccentBrush()`。`GetIslandScreenRect()` 用岛的两个角 `PointToScreen` 计算尺寸，
   能正确包含 `LayoutTransform` 缩放和系统 DPI。⚠️ 不要改成直接给岛开 `ClipToBounds`。
+- **通知提醒**：`NotificationService` 按 CI 的事件模型处理课前准备、上课、下课三类提醒；
+  课前使用室内/室外各自的提前量和文案，下课显示下一节课、剩余休息时长与可选教师名。
+  `CourseSlot.IsOutDoor` 由 `TimeService` 从科目配置填充。每个事件有独立语音开关，
+  Windows 下用 `SpeechSynthesizer` 异步播报；提醒使用代次编号取消旧计时器，避免上一段通知的
+  `HideNotificationMask` 覆盖下一段通知。关闭提醒特效只关闭涟漪，不会连带关闭遮罩和浮层。
+  调试页可单独触发课前准备、上课、下课提醒。
 - **取色跟随主题，组件强调色改为樱花玫瑰**：主题明暗 = `ThemeMode=system`（`PreferSystemTheme`）；
   主界面表面由 `CiPalette.IslandSurfaceBrush()` 按 `IsDarkTheme()` 返回粉白/深玫瑰渐变，不再依赖
   `SolidBackgroundFillColorSecondaryBrush`（不带主题变体取资源会返回浅色变体，深色主题下卡片会发白）。
@@ -324,7 +330,7 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 | P2 | **全面审查文字溢出** | 已修「关于页 header / 组件卡片 / 搜索框」；还需逐页过一遍（界面页 Description、课表页长路径、编辑器长科目名） |
 | P2 | 主界面编辑模式 | CI `HasEditModeTutorialShown` / 编辑模式 |
 | P2 | 多显示器支持 | 目前固定主屏 |
-| P3 | 通知/提醒（上课铃等） | CI 有完整通知系统 |
+| P3 | 提醒音效/铃声 | 当前已支持遮罩、浮层、语音和三类课堂事件；自定义音效与音量仍待补齐 |
 
 ---
 

@@ -1568,6 +1568,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
     
     private void WireDebugPageEvents()
     {
+        DebugTriggerClassPreparingItem.Click += (_, _) => AppServices.NotificationService?.DebugTriggerClassPreparing();
         DebugTriggerClassOnItem.Click += (_, _) => OnDebugTriggerClassOn();
         DebugTriggerClassOffItem.Click += (_, _) => OnDebugTriggerClassOff();
         DebugCloseItem.Click += (_, _) => OnDebugClose();

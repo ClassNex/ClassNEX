@@ -7,7 +7,8 @@ public sealed record CourseSlot(
     string? Teacher,
     string? Room,
     TimeSpan Start,
-    TimeSpan End)
+    TimeSpan End,
+    bool IsOutDoor = false)
 {
     public string StartText => Start.ToString(@"hh\:mm");
 

@@ -112,34 +112,12 @@ public partial class App : Application
             
             if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_NOTIFY") == "1")
             {
-                foreach (var delay in new[] { 3, 8, 13 })
-                {
-                    DispatcherTimer.RunOnce(() =>
-                    {
-                        var center = _mainWindow?.GetIslandCenterOnScreen() ?? new Avalonia.PixelPoint(200, 200);
-                        _effectWindow!.PlayEffect(new Controls.NotificationEffects.RippleEffect(
-                            center,
-                            ClassNex.Styles.CiPalette.SakuraAccentBrush(),
-                            () => _mainWindow?.GetIslandScreenRect(),
-                            14 * Math.Max(0.1, Services.AppServices.Settings.EffectiveScale)));
-                        _mainWindow?.ShowNotificationMask("课间休息");
-
-                        var summary = Services.AppServices.Time.GetTodaySummary(
-                            Services.AppServices.Schedule.Profile, DateTime.Now);
-                        var next = Services.AppServices.Time.GetNextCourse(summary.Slots, DateTime.Now.TimeOfDay);
-                        DispatcherTimer.RunOnce(() =>
-                        {
-                            if (next is { } nxt)
-                                _mainWindow?.ShowNotificationOverlay(
-                                    "本节课间休息长 20 分钟", nxt.DisplayName, "", nxt.TimeRange);
-                            else
-                                _mainWindow?.ShowNotificationOverlay(
-                                    "本节课间休息", "今日课程已结束。", "", "");
-                        }, TimeSpan.FromMilliseconds(1500));
-                        DispatcherTimer.RunOnce(() => _mainWindow?.HideNotificationMask(),
-                            TimeSpan.FromMilliseconds(3500));
-                    }, TimeSpan.FromSeconds(delay));
-                }
+                DispatcherTimer.RunOnce(() => _notificationService?.DebugTriggerClassPreparing(),
+                    TimeSpan.FromSeconds(3));
+                DispatcherTimer.RunOnce(() => _notificationService?.DebugTriggerClassOn(),
+                    TimeSpan.FromSeconds(8));
+                DispatcherTimer.RunOnce(() => _notificationService?.DebugTriggerClassOff(),
+                    TimeSpan.FromSeconds(13));
             }
 #endif
 
