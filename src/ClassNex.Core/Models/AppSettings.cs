@@ -12,6 +12,8 @@ public sealed class AppSettings
 {
     public const string DefaultAccountEndpoint = "https://auth.smart-teach.cn";
 
+    public const string DefaultCentralEndpoint = "http://206.187.201.60:7010";
+
     
     
     public string? TimetablePath { get; set; }

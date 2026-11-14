@@ -172,10 +172,18 @@ public partial class SettingsWindow : AppWindow
         LoadFromSettings();
 
         AccountService.Changed += () =>
-            Dispatcher.UIThread.Post(RefreshAccountName, DispatcherPriority.Background);
+            Dispatcher.UIThread.Post(() =>
+            {
+                RefreshAccountName();
+                RefreshCentralAccountUi();
+            }, DispatcherPriority.Background);
         AppServices.Management?.StatusChanged += OnCentralManagementStatusChanged;
+        AppServices.Management?.ClassesChanged += OnCentralClassesChanged;
         Closed += (_, _) =>
+        {
             AppServices.Management?.StatusChanged -= OnCentralManagementStatusChanged;
+            AppServices.Management?.ClassesChanged -= OnCentralClassesChanged;
+        };
 
         
         
@@ -807,13 +815,31 @@ public partial class SettingsWindow : AppWindow
             AppServices.SaveSettings();
         };
         CentralServerBox.TextChanged += (_, _) => SaveCentralManagementFields();
-        CentralEnrollmentTokenBox.TextChanged += (_, _) => SaveCentralManagementFields();
+        CentralAccountLoginButton.Click += (_, _) => App.OpenLoginWindow();
+        CentralRefreshClassesButton.Click += async (_, _) => await RefreshCentralClassesAsync();
         CentralConnectButton.Click += async (_, _) => await ConnectCentralManagementAsync();
         CentralSyncButton.Click += async (_, _) => await SyncCentralManagementAsync();
         CentralDisconnectButton.Click += (_, _) =>
         {
             AppServices.Management?.Disconnect();
             LoadCentralManagementSettings();
+        };
+        CentralClassCombo.SelectionChanged += async (_, _) =>
+        {
+            if (_centralClassesLoading ||
+                CentralClassCombo.SelectedItem is not CentralClassOption option ||
+                AppServices.Management is null)
+                return;
+
+            try
+            {
+                await AppServices.Management.SelectClassAsync(option.ClassId);
+                LoadCentralManagementSettings();
+            }
+            catch (Exception ex)
+            {
+                CentralStatusText.Text = "切换班级失败：" + ex.Message;
+            }
         };
 
         WidgetEnabledCheck.PropertyChanged += (_, e) =>
@@ -833,11 +859,6 @@ public partial class SettingsWindow : AppWindow
         WireDebugPageEvents();
 
         
-        WidgetLibraryList.DoubleTapped += (_, _) =>
-        {
-            if (WidgetLibraryList.SelectedItem is WidgetTypeItem item)
-                AddWidget(item.Type);
-        };
 #if DEBUG
         VerifyDialogHook();
 #endif
@@ -1866,9 +1887,114 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
     private void RefreshWidgetLibrary()
     {
-        WidgetLibraryList.ItemsSource = AppServices.Widgets.AvailableTypes
-            .Select(t => new WidgetTypeItem(t.DisplayName, t.Description, t.Glyph, t.Type))
-            .ToList();
+        WidgetLibraryPanel.Children.Clear();
+        foreach (var type in AppServices.Widgets.AvailableTypes)
+        {
+            var item = new WidgetTypeItem(
+                type.DisplayName,
+                type.Description,
+                type.Glyph,
+                type.Type);
+
+            var icon = new AvaloniaFluentUI.Controls.FontIcon
+            {
+                FontFamily = new Avalonia.Media.FontFamily("avares://ClassNex/Assets/Fonts/#lucide"),
+                Glyph = item.Glyph,
+                FontSize = 28,
+                Width = 40,
+                Height = 40,
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center,
+            };
+
+            var description = new TextBlock
+            {
+                Text = item.Description,
+                FontSize = 13,
+                Opacity = 0.68,
+                TextWrapping = TextWrapping.Wrap,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+            };
+            var sample = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 14,
+                VerticalAlignment = VerticalAlignment.Center,
+                Children = { icon, description },
+            };
+            var add = new Button
+            {
+                Content = "添加到主界面",
+                MinWidth = 132,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+            };
+            add.Click += (_, _) => AddWidget(item.Type);
+
+            var display = new Border
+            {
+                MinHeight = 88,
+                Padding = new Thickness(16, 12),
+                Background = CiPalette.ChipSurfaceBrush(),
+                Child = sample,
+            };
+            var options = new Border
+            {
+                Width = 176,
+                Padding = new Thickness(16),
+                Background = CiPalette.SurfaceBrush("CardBackgroundFillColorSecondaryBrush", 0.06),
+                BorderThickness = new Thickness(1, 0, 0, 0),
+                BorderBrush = CiPalette.ChipBorderBrush(),
+                Child = new StackPanel
+                {
+                    Spacing = 10,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Text = "操作",
+                            FontSize = 12,
+                            Opacity = 0.62,
+                        },
+                        add,
+                    },
+                },
+            };
+            var exampleGrid = new Grid
+            {
+                ColumnDefinitions = new ColumnDefinitions("*,176"),
+                Children = { display, options },
+            };
+            Grid.SetColumn(options, 1);
+
+            var card = new Border
+            {
+                CornerRadius = new CornerRadius(8),
+                BorderThickness = new Thickness(1),
+                BorderBrush = CiPalette.ChipBorderBrush(),
+                Background = CiPalette.ChipSurfaceBrush(),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                ClipToBounds = true,
+                Child = exampleGrid,
+            };
+            card.DoubleTapped += (_, _) => AddWidget(item.Type);
+
+            WidgetLibraryPanel.Children.Add(new StackPanel
+            {
+                Spacing = 6,
+                Margin = new Thickness(0, 12, 0, 0),
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = item.DisplayName,
+                        FontSize = 14,
+                        Margin = new Thickness(0, 0, 0, 6),
+                    },
+                    card,
+                },
+            });
+        }
     }
 
     private void RefreshWidgetList()
@@ -1916,6 +2042,8 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
     private ToggleSwitch CentralManagementToggle =>
         (ToggleSwitch)CentralManagementToggleHost.Child!;
+
+    private bool _centralClassesLoading;
 
     
     
@@ -1974,13 +2102,13 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         var value = AppServices.Settings.CentralManagement;
         CentralManagementToggle.IsChecked = value.IsEnabled;
         CentralServerBox.Text = value.ServerUrl;
-        CentralEnrollmentTokenBox.Text = value.EnrollmentToken;
-        CentralClientIdText.Text = string.IsNullOrWhiteSpace(value.ClientId)
-            ? "尚未注册"
-            : value.ClientId;
+        CentralAccountText.Text = AccountService.Current is null
+            ? "未登录"
+            : AccountService.Current.DisplayName;
         CentralStatusText.Text = string.IsNullOrWhiteSpace(value.LastStatus)
             ? "未配置"
             : value.LastStatus;
+        RefreshCentralClassCombo(AppServices.Management?.AvailableClasses ?? []);
     }
 
     private void SaveCentralManagementFields()
@@ -1990,7 +2118,6 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
         var value = AppServices.Settings.CentralManagement;
         value.ServerUrl = CentralServerBox.Text?.Trim() ?? "";
-        value.EnrollmentToken = CentralEnrollmentTokenBox.Text?.Trim() ?? "";
         AppServices.SaveSettings();
     }
 
@@ -2006,7 +2133,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         {
             if (AppServices.Management is null)
                 throw new InvalidOperationException("集控服务尚未初始化");
-            await AppServices.Management.RegisterAndSyncAsync();
+            await AppServices.Management.ConnectAndSyncAsync();
             LoadCentralManagementSettings();
         }
         catch (Exception ex)
@@ -2031,6 +2158,61 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         }
     }
 
+    private async Task RefreshCentralClassesAsync()
+    {
+        SaveCentralManagementFields();
+        try
+        {
+            if (AppServices.Management is null)
+                throw new InvalidOperationException("集控服务尚未初始化");
+            await AppServices.Management.RefreshClassesAsync();
+            LoadCentralManagementSettings();
+        }
+        catch (Exception ex)
+        {
+            CentralStatusText.Text = "班级加载失败：" + ex.Message;
+        }
+    }
+
+    private void RefreshCentralAccountUi()
+    {
+        if (!IsVisible)
+            return;
+
+        CentralAccountText.Text = AccountService.Current is null
+            ? "未登录"
+            : AccountService.Current.DisplayName;
+        if (AccountService.Current is not null &&
+            !string.IsNullOrWhiteSpace(AppServices.Settings.CentralManagement.ServerUrl))
+            _ = RefreshCentralClassesAsync();
+    }
+
+    private void OnCentralClassesChanged(IReadOnlyList<CentralClassSummary> classes) =>
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (IsVisible)
+                RefreshCentralClassCombo(classes);
+        });
+
+    private void RefreshCentralClassCombo(IReadOnlyList<CentralClassSummary> classes)
+    {
+        _centralClassesLoading = true;
+        try
+        {
+            var selectedId = AppServices.Settings.CentralManagement.SelectedClassId;
+            var options = classes
+                .Select(item => new CentralClassOption(item.Name, item.ClassId))
+                .ToList();
+            CentralClassCombo.ItemsSource = options;
+            CentralClassCombo.SelectedItem = options.FirstOrDefault(item =>
+                string.Equals(item.ClassId, selectedId, StringComparison.Ordinal));
+        }
+        finally
+        {
+            _centralClassesLoading = false;
+        }
+    }
+
     private void OnCentralManagementStatusChanged(string status)
     {
         Dispatcher.UIThread.Post(() =>
@@ -2038,12 +2220,13 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             if (IsVisible)
             {
                 CentralStatusText.Text = status;
-                var value = AppServices.Settings.CentralManagement;
-                CentralClientIdText.Text = string.IsNullOrWhiteSpace(value.ClientId)
-                    ? "尚未注册"
-                    : value.ClientId;
             }
         });
+    }
+
+    private sealed record CentralClassOption(string Name, string ClassId)
+    {
+        public override string ToString() => Name;
     }
 
     

@@ -101,7 +101,7 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 ### 主界面（悬浮课表）
 - **结构**：`CardHost`(淡入) → `HoverHost`(悬停淡化) → `LayoutTransformControl RootScale`
   （`ScaleTransform = MainWindowScale×FontScale`，默认 1.9，**CI 的 RootLayoutTransformControl**）
-  → `IslandBackground`（高 44、圆角 14、1px 渐变描边、柔和投影、顶部高光 `IslandSheen`；
+  → `IslandBackground`（高 44、圆角 14、无外部描边、柔和投影、顶部高光 `IslandSheen`；
   表面色按主题取樱花渐变：浅色 `#FFFDFE → #FFF4F8 → #FFE6EF → #FFD8E6`，
   深色 `#2A1722 → #3A1E2C → #4A2434 → #562B3D`，整体透明度 = `BackgroundOpacity`）→ `CardContent`（Margin="16 0"）
 - ⚠️ **三个必须记住的坑（都踩过）**：
@@ -264,8 +264,9 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 ### 应用设置（FluentUI：`NavigationView` + `SettingsExpander` + `InfoBar`）
 - 通用：单周开始日期、托盘点击行为
 - 界面：主题、背景不透明度、**主界面缩放（默认 1.9）**、全局字号缩放、排列方向、鼠标穿透
-- 主界面组件：**组件库卡片网格**，7 种组件
+- 主界面组件：**WinUI Gallery ControlExample 风格的全宽组件库**，7 种组件
   （文本 / 分割线 / 课程表 / 日期 / 时钟 / 当前·下节课 / 倒计时），
+  每个组件由标题、示例显示区和独立操作区组成，双击整卡也可添加，
   支持启用、字号、显示秒、自定义文本（占位符 `{date} {day} {time} {parity} {current} {next} {countdown}`）、排序、删除
 - 课表、关于
 - **账户登录**：恢复 Casdoor **浏览器授权码流程**，软件内不再显示用户名密码或邮箱验证码表单。
@@ -306,14 +307,16 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   `app-classnex` 的 Client ID 为 `fa7664d772fac4b5097ce15c`，`smart-teach` OIDC 提供商的
   Client ID 为 `913736707004a6f7c323`；Client Secret 只存在于 Casdoor 数据库，禁止写入仓库或交接文档。
   Casdoor 已从 `124.221.160.188` 迁移至 `206.187.201.60`，新机使用 Docker Compose 运行
-  Casdoor、MariaDB、Nginx 和头像服务，静态资源由 `/casdoor-static/` 与 `/img/` 同源自托管。
-  `staticBaseUrl` 固定为相对路径 `/casdoor-static`，因此通过 IP、HTTP、HTTPS 或任意域名访问时，
-  前端都会从当前页面同源加载动态资源。正式环境通过 `auth.smart-teach.cn` 访问。
+  Casdoor、MariaDB、Nginx 和头像服务。`staticBaseUrl` 固定为相对路径 `/casdoor-static`，
+  Nginx 将该路径直接反向代理到当前 Casdoor 容器的 `/static/`，不再使用容易过期的静态文件副本；
+  因此 Casdoor 升级或重建容器后，图标、提供商图片和站点资源仍会跟随当前版本。
 - **集控管理**：`src/ClassNex.Central` 是独立 ASP.NET Core 集控服务，默认端口 `7010`，
-  `docs/CENTRAL_MANAGEMENT.md` 记录运行和 API。管理端可查看并修改客户端完整 `Settings.json`
-  与 `timetable.yaml`；客户端在“基本 → 集中管理”注册，每 30 秒拉取修订号，
-  应用远端设置前保留本机集控连接参数，随后刷新主界面和课程。服务端注册令牌和管理员令牌
-  支持环境变量配置，不可写入公开仓库。
+  `docs/CENTRAL_MANAGEMENT.md` 记录运行和 API。管理端和客户端统一使用 ClassNEX ID 登录，
+  管理端通过 Casdoor 授权码与 PKCE 建立 HttpOnly 会话，客户端复用当前账户的 AccessToken；
+  同一账户会看到同一班级列表。管理端可查看并修改完整 `Settings.json` 与 `timetable.yaml`，
+  客户端每 30 秒拉取修订号，应用远端设置前保留本机集控连接参数，随后刷新主界面和课程。
+  已移除管理员令牌、注册令牌和客户端令牌方案。历史设置中的空集控地址和旧服务器地址
+  会在加载时迁移到 `http://206.187.201.60:7010`，避免旧安装只显示示例地址。
 - **NEX Intelligence（内置 AI Agent，2026-10-11 新增）**
   - 设置里新增「NEX Intelligence」页（导航项在「组件」之后）+ 独立对话窗（沉浸标题栏 + 云母）
   - 代码在 `Services\NexIntelligence\`：`NexAiClient`（OpenAI 兼容 /v1/chat/completions，流式 SSE；增量为 `delta.content` 与 `delta.reasoning_content`，工具调用分片在 `delta.tool_calls` 里按 index 拼装）、`NexAgent`（一轮 = 发消息 → 流式收正文/思考 → 执行工具 → 回填 → 继续，最多 8 轮）、`NexAgentTools`（六个工具：读应用状态/读课表/列目录/读文件/写文件/执行命令）、`NexModelCatalog`（拉模型列表/测连接）

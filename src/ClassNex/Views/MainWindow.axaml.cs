@@ -180,7 +180,6 @@ public partial class MainWindow : Window
         
         
         IslandBackground.Background = CiPalette.IslandSurfaceBrush();
-        IslandBackground.BorderBrush = CiPalette.IslandBorderBrush();
         IslandBackground.BoxShadow = CiPalette.IslandShadow();
         IslandBackground.Opacity = Math.Clamp(s.BackgroundOpacity, 0.05, 1.0);
         IslandBackground.Height = CiPalette.IslandHeight;
@@ -433,7 +432,8 @@ public partial class MainWindow : Window
             
             
             NexPanel.Background = IslandBackground.Background;
-            NexPanel.BorderBrush = IslandBackground.BorderBrush;
+            NexPanel.BorderBrush = null;
+            NexPanel.BorderThickness = new Thickness(0);
             IslandBackground.Opacity = 0;
             NexPanel.IsVisible = true;
             CardContent.IsVisible = false;

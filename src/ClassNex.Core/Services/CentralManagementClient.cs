@@ -12,33 +12,54 @@ public sealed class CentralManagementClient : IDisposable
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(20) };
 
-    public async Task<CentralRegistrationResponse> RegisterAsync(
+    public async Task RegisterDeviceAsync(
         string serverUrl,
-        CentralRegistrationRequest request,
+        string accessToken,
+        CentralDeviceRegistrationRequest request,
         CancellationToken cancellationToken = default)
     {
-        using var response = await _http.PostAsJsonAsync(
-            BuildUri(serverUrl, "/api/v1/client/register"),
-            request,
-            JsonOptions,
+        using var response = await SendAsync(
+            serverUrl,
+            "/api/v1/client/device",
+            HttpMethod.Post,
+            accessToken,
+            JsonSerializer.Serialize(request, JsonOptions),
             cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
-        return await response.Content.ReadFromJsonAsync<CentralRegistrationResponse>(
+    }
+
+    public async Task<IReadOnlyList<CentralClassSummary>> GetClassesAsync(
+        string serverUrl,
+        string accessToken,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await SendAsync(
+            serverUrl,
+            "/api/v1/client/classes",
+            HttpMethod.Get,
+            accessToken,
+            null,
+            cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<List<CentralClassSummary>>(
                    JsonOptions,
                    cancellationToken)
-               ?? throw new InvalidOperationException("集控服务没有返回注册结果");
+               ?? [];
     }
 
     public async Task<CentralConfigEnvelope> PullAsync(
         string serverUrl,
-        string clientToken,
+        string accessToken,
+        string classId,
         CancellationToken cancellationToken = default)
     {
-        using var request = new HttpRequestMessage(
+        using var response = await SendAsync(
+            serverUrl,
+            $"/api/v1/client/classes/{Uri.EscapeDataString(classId)}/config",
             HttpMethod.Get,
-            BuildUri(serverUrl, "/api/v1/client/config"));
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", clientToken);
-        using var response = await _http.SendAsync(request, cancellationToken);
+            accessToken,
+            null,
+            cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<CentralConfigEnvelope>(
                    JsonOptions,
@@ -48,26 +69,40 @@ public sealed class CentralManagementClient : IDisposable
 
     public async Task ReportAsync(
         string serverUrl,
-        string clientToken,
+        string accessToken,
+        string classId,
         CentralReportRequest report,
         CancellationToken cancellationToken = default)
     {
-        using var request = new HttpRequestMessage(
+        using var response = await SendAsync(
+            serverUrl,
+            $"/api/v1/client/classes/{Uri.EscapeDataString(classId)}/report",
             HttpMethod.Post,
-            BuildUri(serverUrl, "/api/v1/client/report"))
-        {
-            Content = new StringContent(
-                JsonSerializer.Serialize(report, JsonOptions),
-                Encoding.UTF8,
-                "application/json"),
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", clientToken);
-        using var response = await _http.SendAsync(request, cancellationToken);
+            accessToken,
+            JsonSerializer.Serialize(report, JsonOptions),
+            cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
     }
 
-    private static Uri BuildUri(string serverUrl, string path) =>
-        new(serverUrl.TrimEnd('/') + path, UriKind.Absolute);
+    private async Task<HttpResponseMessage> SendAsync(
+        string serverUrl,
+        string path,
+        HttpMethod method,
+        string accessToken,
+        string? json,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(
+            method,
+            new Uri(serverUrl.TrimEnd('/') + path, UriKind.Absolute));
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        if (json is not null)
+        {
+            request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+        }
+
+        return await _http.SendAsync(request, cancellationToken);
+    }
 
     private static async Task EnsureSuccessAsync(
         HttpResponseMessage response,
@@ -79,7 +114,7 @@ public sealed class CentralManagementClient : IDisposable
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
         if (response.StatusCode == HttpStatusCode.Unauthorized)
             throw new UnauthorizedAccessException(
-                string.IsNullOrWhiteSpace(body) ? "集控客户端令牌无效" : body);
+                string.IsNullOrWhiteSpace(body) ? "ClassNEX ID 登录已失效" : body);
 
         throw new HttpRequestException(
             string.IsNullOrWhiteSpace(body)

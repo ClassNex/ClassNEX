@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Text;
 using System.Text.Json;
 using Avalonia.Threading;
 using ClassNex.Models;
@@ -19,7 +18,9 @@ public sealed class CentralManagementService : IDisposable
 
     public event Action<string>? StatusChanged;
 
-    public string CurrentStatus => AppServices.Settings.CentralManagement.LastStatus;
+    public event Action<IReadOnlyList<CentralClassSummary>>? ClassesChanged;
+
+    public IReadOnlyList<CentralClassSummary> AvailableClasses { get; private set; } = [];
 
     public void Start()
     {
@@ -30,11 +31,57 @@ public sealed class CentralManagementService : IDisposable
             TimeSpan.FromSeconds(30));
     }
 
-    public async Task RegisterAndSyncAsync(CancellationToken cancellationToken = default)
+    public async Task ConnectAndSyncAsync(CancellationToken cancellationToken = default)
+    {
+        await RegisterDeviceAsync(cancellationToken);
+        await RefreshClassesAsync(cancellationToken);
+        if (!string.IsNullOrWhiteSpace(AppServices.Settings.CentralManagement.SelectedClassId))
+            await SyncNowAsync(cancellationToken);
+    }
+
+    public async Task RefreshClassesAsync(CancellationToken cancellationToken = default)
     {
         var management = AppServices.Settings.CentralManagement;
         NormalizeServerUrl(management);
-        await RegisterAsync(cancellationToken);
+        var accessToken = RequireAccessToken();
+        AvailableClasses = await _client.GetClassesAsync(
+            management.ServerUrl,
+            accessToken,
+            cancellationToken);
+
+        var selected = AvailableClasses.FirstOrDefault(item =>
+            string.Equals(item.ClassId, management.SelectedClassId, StringComparison.Ordinal));
+        if (selected is null)
+        {
+            management.SelectedClassId = "";
+            management.SelectedClassName = "";
+            management.AppliedRevision = 0;
+        }
+        else
+        {
+            management.SelectedClassName = selected.Name;
+        }
+
+        SaveManagement();
+        ClassesChanged?.Invoke(AvailableClasses);
+        SetStatus(AvailableClasses.Count == 0
+            ? "账户下还没有班级，请先在集控中心创建"
+            : $"已加载 {AvailableClasses.Count} 个班级");
+    }
+
+    public async Task SelectClassAsync(string classId, CancellationToken cancellationToken = default)
+    {
+        var management = AppServices.Settings.CentralManagement;
+        var selected = AvailableClasses.FirstOrDefault(item =>
+            string.Equals(item.ClassId, classId, StringComparison.Ordinal));
+        if (selected is null)
+            throw new InvalidOperationException("选择的班级不存在");
+
+        management.SelectedClassId = selected.ClassId;
+        management.SelectedClassName = selected.Name;
+        management.AppliedRevision = 0;
+        management.IsEnabled = true;
+        SaveManagement();
         await SyncNowAsync(cancellationToken);
     }
 
@@ -46,34 +93,24 @@ public sealed class CentralManagementService : IDisposable
         try
         {
             var management = AppServices.Settings.CentralManagement;
-            if (!management.IsEnabled || string.IsNullOrWhiteSpace(management.ServerUrl))
+            if (!management.IsEnabled)
             {
                 SetStatus("集控未启用");
                 return;
             }
+            if (string.IsNullOrWhiteSpace(management.SelectedClassId))
+            {
+                SetStatus("请先选择班级");
+                return;
+            }
 
             NormalizeServerUrl(management);
-            if (string.IsNullOrWhiteSpace(management.ClientToken))
-                await RegisterAsync(cancellationToken);
-
-            CentralConfigEnvelope config;
-            try
-            {
-                config = await _client.PullAsync(
-                    management.ServerUrl,
-                    management.ClientToken,
-                    cancellationToken);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                management.ClientToken = "";
-                SaveManagement();
-                await RegisterAsync(cancellationToken);
-                config = await _client.PullAsync(
-                    management.ServerUrl,
-                    management.ClientToken,
-                    cancellationToken);
-            }
+            var accessToken = RequireAccessToken();
+            var config = await _client.PullAsync(
+                management.ServerUrl,
+                accessToken,
+                management.SelectedClassId,
+                cancellationToken);
 
             if (config.Revision > management.AppliedRevision &&
                 !string.IsNullOrWhiteSpace(config.SettingsJson))
@@ -89,17 +126,18 @@ public sealed class CentralManagementService : IDisposable
             }
 
             management.LastSyncTime = DateTime.Now;
-            SetStatus(config.Revision > management.AppliedRevision
-                ? "发现新配置但内容为空"
-                : $"已同步 · 修订 {management.AppliedRevision}");
-            await ReportAsync(null, cancellationToken);
+            SetStatus($"已同步 · {management.SelectedClassName} · 修订 {management.AppliedRevision}");
+            await ReportAsync(accessToken, null, cancellationToken);
         }
         catch (Exception ex)
         {
             SetStatus("同步失败：" + ex.Message);
             try
             {
-                await ReportAsync(ex.Message, cancellationToken);
+                await ReportAsync(
+                    AccountService.Current?.AccessToken ?? "",
+                    ex.Message,
+                    cancellationToken);
             }
             catch
             {
@@ -115,10 +153,12 @@ public sealed class CentralManagementService : IDisposable
     {
         var management = AppServices.Settings.CentralManagement;
         management.IsEnabled = false;
-        management.ClientToken = "";
-        management.EnrollmentToken = "";
+        management.SelectedClassId = "";
+        management.SelectedClassName = "";
         management.AppliedRevision = 0;
         management.LastSyncTime = null;
+        AvailableClasses = [];
+        SaveManagement();
         SetStatus("已断开集控");
     }
 
@@ -129,46 +169,45 @@ public sealed class CentralManagementService : IDisposable
         await SyncNowAsync();
     }
 
-    private async Task RegisterAsync(CancellationToken cancellationToken)
+    private async Task RegisterDeviceAsync(CancellationToken cancellationToken)
     {
         var management = AppServices.Settings.CentralManagement;
-        if (string.IsNullOrWhiteSpace(management.ServerUrl))
-            throw new InvalidOperationException("请填写集控服务地址");
-        if (string.IsNullOrWhiteSpace(management.EnrollmentToken))
-            throw new InvalidOperationException("请填写客户端注册令牌");
-
+        NormalizeServerUrl(management);
+        var accessToken = RequireAccessToken();
         if (string.IsNullOrWhiteSpace(management.ClientId))
             management.ClientId = Guid.NewGuid().ToString("N");
 
-        SetStatus("正在注册客户端...");
-        var result = await _client.RegisterAsync(
+        await _client.RegisterDeviceAsync(
             management.ServerUrl,
-            new CentralRegistrationRequest(
-                management.EnrollmentToken,
+            accessToken,
+            new CentralDeviceRegistrationRequest(
                 management.ClientId,
                 Environment.MachineName,
                 Environment.MachineName,
                 AppVersion),
             cancellationToken);
-        management.ClientId = result.ClientId;
-        management.ClientToken = result.ClientToken;
-        SetStatus("客户端注册成功");
-        await ReportAsync(null, cancellationToken);
+        SaveManagement();
     }
 
-    private async Task ReportAsync(string? error, CancellationToken cancellationToken)
+    private async Task ReportAsync(
+        string accessToken,
+        string? error,
+        CancellationToken cancellationToken)
     {
         var management = AppServices.Settings.CentralManagement;
-        if (string.IsNullOrWhiteSpace(management.ClientToken))
+        if (string.IsNullOrWhiteSpace(accessToken) ||
+            string.IsNullOrWhiteSpace(management.SelectedClassId))
             return;
 
-        var timetable = File.Exists(SettingsService.TimetableStoragePath)
-            ? await File.ReadAllTextAsync(SettingsService.TimetableStoragePath, cancellationToken)
+        var timetable = File.Exists(AppServices.TimetablePath)
+            ? await File.ReadAllTextAsync(AppServices.TimetablePath, cancellationToken)
             : "";
         await _client.ReportAsync(
             management.ServerUrl,
-            management.ClientToken,
+            accessToken,
+            management.SelectedClassId,
             new CentralReportRequest(
+                management.ClientId,
                 AppVersion,
                 Environment.MachineName,
                 JsonSerializer.Serialize(AppServices.Settings, JsonOptions),
@@ -177,9 +216,22 @@ public sealed class CentralManagementService : IDisposable
             cancellationToken);
     }
 
+    private static string RequireAccessToken()
+    {
+        var token = AccountService.Current?.AccessToken;
+        if (string.IsNullOrWhiteSpace(token))
+            throw new InvalidOperationException("请先登录 ClassNEX ID");
+        return token;
+    }
+
     private static void NormalizeServerUrl(CentralManagementSettings management)
     {
         var value = management.ServerUrl.Trim().TrimEnd('/');
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            management.ServerUrl = AppSettings.DefaultCentralEndpoint;
+            return;
+        }
         if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) ||
             uri.Scheme is not ("http" or "https"))
             throw new InvalidOperationException("集控服务地址必须是有效的 HTTP/HTTPS 地址");
@@ -198,10 +250,8 @@ public sealed class CentralManagementService : IDisposable
         StatusChanged?.Invoke(status);
     }
 
-    private static void SaveManagement()
-    {
+    private static void SaveManagement() =>
         SettingsService.Save(AppServices.Settings);
-    }
 
     public void Dispose()
     {

@@ -4,13 +4,13 @@ public sealed class CentralManagementSettings
 {
     public bool IsEnabled { get; set; }
 
-    public string ServerUrl { get; set; } = "";
-
-    public string EnrollmentToken { get; set; } = "";
+    public string ServerUrl { get; set; } = AppSettings.DefaultCentralEndpoint;
 
     public string ClientId { get; set; } = "";
 
-    public string ClientToken { get; set; } = "";
+    public string SelectedClassId { get; set; } = "";
+
+    public string SelectedClassName { get; set; } = "";
 
     public long AppliedRevision { get; set; }
 

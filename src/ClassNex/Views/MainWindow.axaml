@@ -57,7 +57,7 @@
                                     Height="44"
                                     HorizontalAlignment="Center"
                                     CornerRadius="14"
-                                    BorderThickness="1"
+                                    BorderThickness="0"
                                     BoxShadow="0 10 30 2 #66000000">
                                 <Border x:Name="IslandSheen"
                                         CornerRadius="13"
@@ -109,7 +109,7 @@
                                     Margin="16,0"
                                     MinWidth="240" MaxWidth="820"
                                     CornerRadius="14"
-                                    BorderThickness="1"
+                                    BorderThickness="0"
                                     IsVisible="False"
                                     Opacity="0"
                                     HorizontalAlignment="Center"

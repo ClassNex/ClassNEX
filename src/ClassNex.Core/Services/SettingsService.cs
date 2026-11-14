@@ -68,7 +68,9 @@ public static class SettingsService
                 if (!string.IsNullOrWhiteSpace(json))
                 {
                     var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
-                    if (MigrateAccountEndpoint(settings))
+                    var changed = MigrateAccountEndpoint(settings);
+                    changed |= MigrateCentralEndpoint(settings);
+                    if (changed)
                         Save(settings);
                     return settings;
                 }
@@ -94,6 +96,22 @@ public static class SettingsService
             return false;
 
         settings.AccountEndpoint = AppSettings.DefaultAccountEndpoint;
+        return true;
+    }
+
+    private static bool MigrateCentralEndpoint(AppSettings settings)
+    {
+        var value = settings.CentralManagement.ServerUrl.Trim();
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var endpoint))
+        {
+            settings.CentralManagement.ServerUrl = AppSettings.DefaultCentralEndpoint;
+            return true;
+        }
+
+        if (endpoint.Host is not ("124.221.140.188" or "124.221.160.188"))
+            return false;
+
+        settings.CentralManagement.ServerUrl = AppSettings.DefaultCentralEndpoint;
         return true;
     }
 

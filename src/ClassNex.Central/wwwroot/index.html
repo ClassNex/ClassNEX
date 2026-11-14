@@ -6,17 +6,19 @@
   <title>ClassNEX 集控中心</title>
   <style>
     :root{color-scheme:light dark;font-family:"Segoe UI","Microsoft YaHei UI",sans-serif;background:#f5f5f5;color:#1b1b1b}
-    body{margin:0;min-height:100vh}.shell{display:grid;grid-template-columns:320px 1fr;min-height:100vh}
-    aside{padding:24px;background:#fff;border-right:1px solid #ddd}.main{padding:24px}
-    h1{font-size:24px;margin:0 0 6px}h2{font-size:18px}.muted{opacity:.65;font-size:12px}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh}.shell{display:grid;grid-template-columns:330px 1fr;min-height:100vh}
+    aside{padding:24px;background:#fff;border-right:1px solid #ddd}.main{padding:24px;min-width:0}
+    h1{font-size:24px;margin:0 0 6px}h2{font-size:20px;margin:0}.muted{opacity:.65;font-size:12px}
     input,textarea,button{font:inherit;border:1px solid #bbb;border-radius:7px;padding:9px 11px;background:transparent;color:inherit}
-    input{width:100%;box-sizing:border-box}button{cursor:pointer;background:#0067c0;color:#fff;border-color:#0067c0}
-    button.secondary{background:transparent;color:inherit;border-color:#bbb}button:disabled{opacity:.45;cursor:default}
-    .row{display:flex;gap:8px;align-items:center}.clients{display:grid;gap:8px;margin-top:18px}
-    .client{padding:12px;border:1px solid #ddd;border-radius:9px;cursor:pointer}.client.active{border-color:#0067c0;background:#0067c010}
-    .toolbar{display:flex;gap:8px;margin:14px 0}.editor{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-    textarea{width:100%;height:calc(100vh - 260px);box-sizing:border-box;resize:none;font:12px/1.5 ui-monospace,Consolas,monospace}
-    .status{margin-top:10px;font-size:13px;white-space:pre-wrap}.danger{background:#c42b1c;border-color:#c42b1c}
+    input{width:100%}button,a.button{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;cursor:pointer;background:#0067c0;color:#fff;border-color:#0067c0;border-radius:7px;padding:9px 12px}
+    button.secondary,a.secondary{background:transparent;color:inherit;border:1px solid #bbb}button.danger{background:#c42b1c;border-color:#c42b1c}
+    button:disabled{opacity:.45;cursor:default}.row{display:flex;gap:8px;align-items:center}.account{padding:14px;border:1px solid #ddd;border-radius:10px;margin:18px 0}
+    .classes{display:grid;gap:8px;margin-top:12px}.class-card{padding:12px;border:1px solid #ddd;border-radius:9px;cursor:pointer}
+    .class-card.active{border-color:#0067c0;background:#0067c018}.toolbar{display:flex;gap:8px;margin:14px 0;flex-wrap:wrap}
+    .editor{display:grid;grid-template-columns:1fr 1fr;gap:14px}.editor label{min-width:0}
+    textarea{width:100%;height:calc(100vh - 285px);resize:none;font:12px/1.55 ui-monospace,Consolas,monospace}
+    .status{margin-top:10px;font-size:13px;white-space:pre-wrap}.login{text-align:center;padding:28px 8px}.login h2{margin-bottom:10px}
+    .login p{line-height:1.65}.hidden{display:none!important}
     @media(max-width:900px){.shell{grid-template-columns:1fr}.editor{grid-template-columns:1fr}textarea{height:40vh}}
   </style>
 </head>
@@ -24,16 +26,29 @@
 <div class="shell">
   <aside>
     <h1>ClassNEX 集控中心</h1>
-    <div class="muted">完全读写客户端设置与课程表</div>
-    <div style="margin-top:18px"><input id="adminToken" type="password" placeholder="管理员令牌"></div>
-    <div class="row" style="margin-top:8px"><button id="loadButton">连接</button><button id="refreshButton" class="secondary">刷新</button></div>
-    <div id="enrollment" class="status"></div>
-    <div id="clients" class="clients"></div>
+    <div class="muted">使用 ClassNEX ID 管理班级、客户端设置与课程</div>
+    <div id="loginPanel" class="login hidden">
+      <h2>登录 ClassNEX ID</h2>
+      <p class="muted">管理端和客户端使用同一个 ClassNEX 账户，登录后即可看到同一份班级列表。</p>
+      <a class="button" href="/auth/login">登录 ClassNEX ID</a>
+    </div>
+    <section id="accountPanel" class="hidden">
+      <div class="account">
+        <div id="accountName" style="font-weight:600"></div>
+        <div id="accountEmail" class="muted"></div>
+        <div class="row" style="margin-top:10px"><a class="button secondary" href="/auth/logout">退出登录</a></div>
+      </div>
+      <div class="row"><input id="className" placeholder="新班级名称"><button id="createClass">创建班级</button></div>
+      <div id="classes" class="classes"></div>
+    </section>
   </aside>
-  <main class="main">
-    <h2 id="clientTitle">选择客户端</h2>
-    <div id="clientMeta" class="muted"></div>
-    <div class="toolbar"><button id="saveButton" disabled>发布设置与课程</button><button id="deleteButton" class="danger" disabled>移除客户端</button></div>
+  <main id="editorPanel" class="main hidden">
+    <h2 id="classTitle">选择班级</h2>
+    <div id="classMeta" class="muted"></div>
+    <div class="toolbar">
+      <button id="saveClass" disabled>发布设置与课程</button>
+      <button id="deleteClass" class="danger" disabled>删除班级</button>
+    </div>
     <div class="editor">
       <label>Settings.json<textarea id="settingsEditor" spellcheck="false" disabled></textarea></label>
       <label>timetable.yaml<textarea id="timetableEditor" spellcheck="false" disabled></textarea></label>
@@ -42,81 +57,85 @@
   </main>
 </div>
 <script>
-const state={token:"",clients:[],selected:null};
+const state={user:null,classes:[],selected:null};
 const $=id=>document.getElementById(id);
 const api=async(path,options={})=>{
-  const headers={...(options.headers||{}),Authorization:`Bearer ${state.token}`};
-  const response=await fetch(path,{...options,headers});
+  const response=await fetch(path,{...options,headers:{"Content-Type":"application/json",...(options.headers||{})}});
+  if(response.status===401){showLogin();throw new Error("请登录 ClassNEX ID")}
   const text=await response.text();
   if(!response.ok)throw new Error(text||response.statusText);
   return text?JSON.parse(text):null;
 };
 const setStatus=(text,error=false)=>{$("status").textContent=text;$("status").style.color=error?"#c42b1c":""};
-const loadClients=async()=>{
-  if(!state.token)return;
+const showLogin=()=>{$("loginPanel").classList.remove("hidden");$("accountPanel").classList.add("hidden");$("editorPanel").classList.add("hidden")};
+const showApp=()=>{$("loginPanel").classList.add("hidden");$("accountPanel").classList.remove("hidden");$("editorPanel").classList.remove("hidden")};
+const loadSession=async()=>{
   try{
-    const [clients,enrollment]=await Promise.all([api("/api/v1/admin/clients"),api("/api/v1/admin/enrollment")]);
-    state.clients=clients;
-    $("enrollment").textContent=`客户端注册令牌：${enrollment.token}`;
-    renderClients();
-  }catch(error){setStatus(String(error),true)}
+    state.user=await api("/api/v1/auth/me");
+    showApp();
+    $("accountName").textContent=state.user.name||state.user.preferredUsername||"ClassNEX 用户";
+    $("accountEmail").textContent=state.user.email||"";
+    await loadClasses();
+  }catch{showLogin()}
 };
-const renderClients=()=>{
-  $("clients").innerHTML="";
-  for(const client of state.clients){
+const loadClasses=async()=>{
+  state.classes=await api("/api/v1/client/classes");
+  renderClasses();
+};
+const renderClasses=()=>{
+  $("classes").innerHTML="";
+  for(const item of state.classes){
     const element=document.createElement("div");
-    element.className="client"+(client.clientId===state.selected?".active":"");
-    element.innerHTML=`<div><strong>${escapeHtml(client.displayName||client.machineName||client.clientId)}</strong></div><div class="muted">${escapeHtml(client.machineName||"")} · r${client.revision}</div><div class="muted">${client.lastSeen?new Date(client.lastSeen).toLocaleString():"从未连接"}</div>`;
-    element.onclick=()=>loadClient(client.clientId);
-    $("clients").append(element);
+    element.className="class-card"+(item.classId===state.selected?".active":"");
+    element.innerHTML=`<div><strong>${escapeHtml(item.name)}</strong></div><div class="muted">修订 ${item.revision} · ${item.deviceCount} 台设备</div>`;
+    element.onclick=()=>loadClass(item.classId);
+    $("classes").append(element);
   }
-  if(!state.clients.length)$("clients").innerHTML='<div class="muted">暂无客户端</div>';
+  if(!state.classes.length)$("classes").innerHTML='<div class="muted">还没有班级，先创建一个。</div>';
 };
-const loadClient=async(id)=>{
+const loadClass=async(id)=>{
   try{
-    const client=await api(`/api/v1/admin/clients/${encodeURIComponent(id)}`);
+    const item=await api(`/api/v1/classes/${encodeURIComponent(id)}`);
     state.selected=id;
-    $("clientTitle").textContent=client.displayName||client.machineName||client.clientId;
-    $("clientMeta").textContent=`${client.machineName} · ${client.appVersion} · 修订 ${client.revision} · ${client.lastSeen?new Date(client.lastSeen).toLocaleString():"离线"}`;
-    $("settingsEditor").value=prettyJson(client.settingsJson);
-    $("timetableEditor").value=client.timetableYaml||"";
-    for(const id of ["settingsEditor","timetableEditor","saveButton","deleteButton"])$(id).disabled=false;
-    renderClients();
+    $("classTitle").textContent=item.name;
+    $("classMeta").textContent=`修订 ${item.revision} · 更新 ${new Date(item.updatedAt).toLocaleString()}`;
+    $("settingsEditor").value=prettyJson(item.settingsJson);
+    $("timetableEditor").value=item.timetableYaml||"";
+    for(const target of ["settingsEditor","timetableEditor","saveClass","deleteClass"])$(target).disabled=false;
+    renderClasses();
   }catch(error){setStatus(String(error),true)}
 };
 const prettyJson=value=>{
   if(!value)return"";
   try{return JSON.stringify(JSON.parse(value),null,2)}catch{return value}
 };
-$("loadButton").onclick=async()=>{
-  state.token=$("adminToken").value.trim();
-  if(!state.token)return setStatus("请输入管理员令牌",true);
-  localStorage.setItem("classnex-central-token",state.token);
-  await loadClients();
+$("createClass").onclick=async()=>{
+  const name=$("className").value.trim();if(!name)return setStatus("请输入班级名称",true);
+  try{
+    const item=await api("/api/v1/classes",{method:"POST",body:JSON.stringify({name})});
+    $("className").value="";await loadClasses();await loadClass(item.classId);setStatus("班级已创建");
+  }catch(error){setStatus(String(error),true)}
 };
-$("refreshButton").onclick=loadClients;
-$("saveButton").onclick=async()=>{
+$("saveClass").onclick=async()=>{
   if(!state.selected)return;
   try{
     JSON.parse($("settingsEditor").value);
-    const client=await api(`/api/v1/admin/clients/${encodeURIComponent(state.selected)}`,{
-      method:"PUT",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({settingsJson:$("settingsEditor").value,timetableYaml:$("timetableEditor").value,message:"由集控中心发布"})
+    const item=await api(`/api/v1/classes/${encodeURIComponent(state.selected)}`,{
+      method:"PUT",body:JSON.stringify({settingsJson:$("settingsEditor").value,timetableYaml:$("timetableEditor").value,message:"由集控中心发布"})
     });
-    setStatus(`已发布修订 ${client.revision}`);
-    await loadClients();
+    setStatus(`已发布修订 ${item.revision}`);await loadClasses();
   }catch(error){setStatus(String(error),true)}
 };
-$("deleteButton").onclick=async()=>{
+$("deleteClass").onclick=async()=>{
   if(!state.selected)return;
   try{
-    await api(`/api/v1/admin/clients/${encodeURIComponent(state.selected)}`,{method:"DELETE"});
+    await api(`/api/v1/classes/${encodeURIComponent(state.selected)}`,{method:"DELETE"});
     state.selected=null;$("settingsEditor").value="";$("timetableEditor").value="";
-    await loadClients();setStatus("客户端已移除");
+    $("saveClass").disabled=true;$("deleteClass").disabled=true;await loadClasses();setStatus("班级已删除");
   }catch(error){setStatus(String(error),true)}
 };
 function escapeHtml(value){return String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-$("adminToken").value=localStorage.getItem("classnex-central-token")||"";
+loadSession();
 </script>
 </body>
 </html>

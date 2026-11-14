@@ -267,7 +267,9 @@
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                TextWrapping="Wrap"/>
                 </StackPanel>
-                <ScrollViewer x:Name="PageScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <ScrollViewer x:Name="PageScroll" Grid.Row="1"
+                              HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto">
                     <Grid x:Name="PageHost" Margin="28,8,28,28" MaxWidth="1120"
                           RenderOptions.TextRenderingMode="Antialias"
                           RenderOptions.BitmapInterpolationMode="LowQuality"
@@ -863,24 +865,30 @@
                                 </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>
 
-                            <ui:SettingsExpander Header="客户端注册令牌"
-                                                 Description="由集控中心管理员提供，仅用于首次注册客户端。">
-                                <ui:SettingsExpander.IconSource>
-                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE192;"/>
-                                </ui:SettingsExpander.IconSource>
-                                <ui:SettingsExpander.Footer>
-                                    <TextBox x:Name="CentralEnrollmentTokenBox" Width="280" PasswordChar="●"/>
-                                </ui:SettingsExpander.Footer>
-                            </ui:SettingsExpander>
-
-                            <ui:SettingsExpander Header="客户端身份"
-                                                 Description="注册后由集控中心分配，用于接收本机专属配置。">
+                            <ui:SettingsExpander Header="ClassNEX ID"
+                                                 Description="集控中心和客户端必须登录同一个 ClassNEX 账户。">
                                 <ui:SettingsExpander.IconSource>
                                     <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE13D;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
-                                    <TextBlock x:Name="CentralClientIdText" VerticalAlignment="Center"
-                                               FontSize="12" Opacity="0.7"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock x:Name="CentralAccountText" VerticalAlignment="Center" MaxWidth="220"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <Button x:Name="CentralAccountLoginButton" Content="登录 ClassNEX ID"/>
+                                    </StackPanel>
+                                </ui:SettingsExpander.Footer>
+                            </ui:SettingsExpander>
+
+                            <ui:SettingsExpander Header="选择班级"
+                                                 Description="班级由同一 ClassNEX ID 在集控中心创建。">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE1F9;"/>
+                                </ui:SettingsExpander.IconSource>
+                                <ui:SettingsExpander.Footer>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <ComboBox x:Name="CentralClassCombo" Width="220"/>
+                                        <Button x:Name="CentralRefreshClassesButton" Content="刷新班级"/>
+                                    </StackPanel>
                                 </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>
 
@@ -894,7 +902,7 @@
                                         <TextBlock x:Name="CentralStatusText" FontSize="12"
                                                    MaxWidth="250" TextTrimming="CharacterEllipsis"
                                                    VerticalAlignment="Center"/>
-                                        <Button x:Name="CentralConnectButton" Content="注册并连接"/>
+                                        <Button x:Name="CentralConnectButton" Content="连接集控"/>
                                         <Button x:Name="CentralSyncButton" Content="立即同步"/>
                                         <Button x:Name="CentralDisconnectButton" Content="断开"/>
                                     </StackPanel>
@@ -1063,28 +1071,7 @@
                                 <TabItem Header="组件库">
                                     <StackPanel x:Name="WidgetLibraryPage" Spacing="10" Margin="0,10,0,0">
                                         
-                                        <ListBox x:Name="WidgetLibraryList" BorderThickness="0" Background="Transparent"
-                                                 SelectionMode="Single" MinHeight="44">
-                                            <ListBox.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <WrapPanel/>
-                                                </ItemsPanelTemplate>
-                                            </ListBox.ItemsPanel>
-                                            <ListBox.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Grid ColumnDefinitions="Auto,*" Height="54" Margin="0,2,16,8">
-                                                        <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="{Binding Glyph}"
-                                                                     FontSize="28" VerticalAlignment="Center" Margin="2,0,12,0"/>
-                                                        <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                                                            <TextBlock Text="{Binding DisplayName}" FontSize="14"
-                                                                       TextTrimming="CharacterEllipsis"/>
-                                                            <TextBlock Text="{Binding Description}" FontSize="12" Opacity="0.7"
-                                                                       TextWrapping="Wrap" TextTrimming="CharacterEllipsis"/>
-                                                        </StackPanel>
-                                                    </Grid>
-                                                </DataTemplate>
-                                            </ListBox.ItemTemplate>
-                                        </ListBox>
+                                        <StackPanel x:Name="WidgetLibraryPanel" Spacing="8"/>
                                         <Button x:Name="ResetWidgetButton" Content="恢复默认布局"/>
                                     </StackPanel>
                                 </TabItem>
