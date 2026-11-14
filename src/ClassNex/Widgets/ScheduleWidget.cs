@@ -309,8 +309,8 @@ public sealed class ScheduleWidget : WidgetBase
         var time = Text(remaining, Size(CiSecondary), White());
         time.VerticalAlignment = VerticalAlignment.Center;
         time.TextAlignment = TextAlignment.Left;
-        time.MinWidth = 52;
-        time.Margin = new Thickness(8, 0, 0, 0);
+        time.MinWidth = 50;
+        time.Margin = new Thickness(4, 0, 0, 0);
 
         var (pill, pillText) = BuildCountdownPill(remaining);
         pill.Margin = new Thickness(8, 0, 0, 0);

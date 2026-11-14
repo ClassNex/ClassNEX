@@ -36,7 +36,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：当前课程剩余时间使用白色 14 号和等宽数字，最小宽度 52、左边距 8 并按内容自然扩展，收紧课程名与时间间距；新增“下课前准备提醒”分钟设置，室内课程默认在下课剩余 3 分钟时触发下一节课的课前提醒，提醒页对应设置默认展开，室外课程保留独立提前量
+上次完成：当前课程剩余时间使用白色 14 号和等宽数字，最小宽度 50、左边距 4 并按内容自然扩展，课程名与时间保持紧凑但不贴连；新增“下课前准备提醒”分钟设置，室内课程默认在下课剩余 3 分钟时触发下一节课的课前提醒，提醒页对应设置默认展开，室外课程保留独立提前量
 改了文件：src/ClassNex/Widgets/ScheduleWidget.cs、src/ClassNex.Core/Models/AppSettings.cs、src/ClassNex.Notification/NotificationService.cs、src/ClassNex/Views/SettingsWindow.axaml(.cs)、HANDOFF.md、AGENTS.md
 进行中：无
 下一步：待用户指定
