@@ -1842,11 +1842,8 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
     {
         var n = AppServices.Settings.Notification;
         PreparingEnabledCheck.IsChecked = n.IsClassOnPreparingNotificationEnabled;
-        PreparingSpeechCheck.IsChecked = n.IsSpeechEnabledOnClassPreparing;
         ClassOnEnabledCheck.IsChecked = n.IsClassOnNotificationEnabled;
-        ClassOnSpeechCheck.IsChecked = n.IsSpeechEnabledOnClassOn;
         ClassOffEnabledCheck.IsChecked = n.IsClassOffNotificationEnabled;
-        ClassOffSpeechCheck.IsChecked = n.IsSpeechEnabledOnClassOff;
         ShowTeacherCheck.IsChecked = n.ShowTeacherName;
         IndoorPreparingBox.Value = Math.Clamp(n.InDoorClassPreparingDeltaTime, 0, 3600);
         OutdoorPreparingBox.Value = Math.Clamp(n.OutDoorClassPreparingDeltaTime, 0, 3600);
@@ -1858,11 +1855,8 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         ClassOffOverlayBox.Text = n.ClassOffOverlayText;
 
         PreparingEnabledCheck.IsCheckedChanged += (_, _) => SaveNotificationSettings();
-        PreparingSpeechCheck.IsCheckedChanged += (_, _) => SaveNotificationSettings();
         ClassOnEnabledCheck.IsCheckedChanged += (_, _) => SaveNotificationSettings();
-        ClassOnSpeechCheck.IsCheckedChanged += (_, _) => SaveNotificationSettings();
         ClassOffEnabledCheck.IsCheckedChanged += (_, _) => SaveNotificationSettings();
-        ClassOffSpeechCheck.IsCheckedChanged += (_, _) => SaveNotificationSettings();
         ShowTeacherCheck.IsCheckedChanged += (_, _) => SaveNotificationSettings();
         IndoorPreparingBox.ValueChanged += (_, _) => SaveNotificationSettings();
         OutdoorPreparingBox.ValueChanged += (_, _) => SaveNotificationSettings();
@@ -1882,11 +1876,8 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
         var n = AppServices.Settings.Notification;
         n.IsClassOnPreparingNotificationEnabled = PreparingEnabledCheck.IsChecked == true;
-        n.IsSpeechEnabledOnClassPreparing = PreparingSpeechCheck.IsChecked == true;
         n.IsClassOnNotificationEnabled = ClassOnEnabledCheck.IsChecked == true;
-        n.IsSpeechEnabledOnClassOn = ClassOnSpeechCheck.IsChecked == true;
         n.IsClassOffNotificationEnabled = ClassOffEnabledCheck.IsChecked == true;
-        n.IsSpeechEnabledOnClassOff = ClassOffSpeechCheck.IsChecked == true;
         n.ShowTeacherName = ShowTeacherCheck.IsChecked == true;
         n.InDoorClassPreparingDeltaTime = (int)Math.Clamp(IndoorPreparingBox.Value, 0, 3600);
         n.OutDoorClassPreparingDeltaTime = (int)Math.Clamp(OutdoorPreparingBox.Value, 0, 3600);

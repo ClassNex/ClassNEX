@@ -405,11 +405,6 @@
                                 <ui:SettingsExpander.Footer>
                                     <ToggleSwitch x:Name="PreparingEnabledCheck"/>
                                 </ui:SettingsExpander.Footer>
-                                <ui:SettingsExpanderItem Content="启用语音">
-                                    <ui:SettingsExpanderItem.Footer>
-                                        <ToggleSwitch x:Name="PreparingSpeechCheck"/>
-                                    </ui:SettingsExpanderItem.Footer>
-                                </ui:SettingsExpanderItem>
                                 <ui:SettingsExpanderItem Content="室内课程课前提醒时间"
                                                          Description="在室内课程的上课前指定时间进行上课提醒。">
                                     <ui:SettingsExpanderItem.Footer>
@@ -460,11 +455,6 @@
                                 <ui:SettingsExpander.Footer>
                                     <ToggleSwitch x:Name="ClassOnEnabledCheck"/>
                                 </ui:SettingsExpander.Footer>
-                                <ui:SettingsExpanderItem Content="启用语音">
-                                    <ui:SettingsExpanderItem.Footer>
-                                        <ToggleSwitch x:Name="ClassOnSpeechCheck"/>
-                                    </ui:SettingsExpanderItem.Footer>
-                                </ui:SettingsExpanderItem>
                                 <ui:SettingsExpanderItem Content="上课遮罩文字">
                                     <ui:SettingsExpanderItem.Footer>
                                         <TextBox x:Name="ClassOnMaskBox" MinWidth="150"/>
@@ -480,11 +470,6 @@
                                 <ui:SettingsExpander.Footer>
                                     <ToggleSwitch x:Name="ClassOffEnabledCheck"/>
                                 </ui:SettingsExpander.Footer>
-                                <ui:SettingsExpanderItem Content="启用语音">
-                                    <ui:SettingsExpanderItem.Footer>
-                                        <ToggleSwitch x:Name="ClassOffSpeechCheck"/>
-                                    </ui:SettingsExpanderItem.Footer>
-                                </ui:SettingsExpanderItem>
                                 <ui:SettingsExpanderItem Content="下课提醒文字">
                                     <ui:SettingsExpanderItem.Footer>
                                         <TextBox x:Name="ClassOffOverlayBox" MinWidth="150" Watermark="（禁用）"/>

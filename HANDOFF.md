@@ -115,11 +115,11 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   能正确包含 `LayoutTransform` 缩放和系统 DPI。⚠️ 不要改成直接给岛开 `ClipToBounds`。
 - **通知提醒**：`NotificationService` 按 CI 的事件模型处理课前准备、上课、下课三类提醒；
   课前使用室内/室外各自的提前量和文案，下课显示下一节课、剩余休息时长与可选教师名。
-  `CourseSlot.IsOutDoor` 由 `TimeService` 从科目配置填充。每个事件有独立语音开关，
-  Windows 下用 `SpeechSynthesizer` 异步播报；提醒使用代次编号取消旧计时器，避免上一段通知的
-  `HideNotificationMask` 覆盖下一段通知。关闭提醒特效只关闭涟漪，不会连带关闭遮罩和浮层。
-  调试页可单独触发课前准备、上课、下课提醒，并新增“拉起测试提醒”完整演示遮罩、浮层和底部轨道；
-  测试提醒不播放 TTS，正式课堂提醒仍按各自语音开关播报。底部轨道出现时立即为满格，
+  `CourseSlot.IsOutDoor` 由 `TimeService` 从科目配置填充。**项目禁用所有 TTS 合成语音**，
+  通知不再显示“启用语音”选项；麦克风识别和 NEX 唤醒属于语音识别，不受影响。
+  提醒使用代次编号取消旧计时器，避免上一段通知的 `HideNotificationMask` 覆盖下一段通知。
+  关闭提醒特效只关闭涟漪，不会连带关闭遮罩和浮层。调试页可单独触发课前准备、上课、下课提醒，
+  并新增“拉起测试提醒”完整演示遮罩、浮层和底部轨道。底部轨道出现时立即为满格，
   使用 6.8 秒线性 ScaleX 收缩，不再有先空白后突然填充的双重延迟。
 - **取色跟随主题，组件强调色改为樱花玫瑰**：主题明暗 = `ThemeMode=system`（`PreferSystemTheme`）；
   主界面表面由 `CiPalette.IslandSurfaceBrush()` 按 `IsDarkTheme()` 返回粉白/深玫瑰渐变，不再依赖
@@ -332,7 +332,7 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 | P2 | **全面审查文字溢出** | 已修「关于页 header / 组件卡片 / 搜索框」；还需逐页过一遍（界面页 Description、课表页长路径、编辑器长科目名） |
 | P2 | 主界面编辑模式 | CI `HasEditModeTutorialShown` / 编辑模式 |
 | P2 | 多显示器支持 | 目前固定主屏 |
-| P3 | 提醒音效/铃声 | 当前已支持遮罩、浮层、语音和三类课堂事件；自定义音效与音量仍待补齐 |
+| P3 | 提醒音效/铃声 | 当前已支持遮罩、浮层和三类课堂事件；项目禁用 TTS，自定义音效与音量仍待补齐 |
 
 ---
 

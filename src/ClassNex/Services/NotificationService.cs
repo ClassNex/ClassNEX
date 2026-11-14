@@ -1,4 +1,3 @@
-using System.Speech.Synthesis;
 using Avalonia;
 using Avalonia.Threading;
 using ClassNex.Controls.NotificationEffects;
@@ -17,7 +16,6 @@ public sealed class NotificationService
     private string? _prepareKey;
     private bool _started;
     private int _displayGeneration;
-    private SpeechSynthesizer? _speech;
 
     public NotificationService(TopmostEffectWindow effectWindow)
     {
@@ -41,7 +39,6 @@ public sealed class NotificationService
         _timer.Stop();
         _started = false;
         _prepareKey = null;
-        _speech?.SpeakAsyncCancelAll();
     }
 
     private void OnTick()
@@ -119,15 +116,11 @@ public sealed class NotificationService
             ? notification.OutdoorClassOnPreparingText
             : notification.ClassOnPreparingText;
         var teacher = notification.ShowTeacherName ? next.Teacher ?? "" : "";
-        var speech = $"距上课还剩{FormatDuration(remaining)}。{message}下节课是{next.DisplayName}" +
-                     (teacher.Length > 0 ? $"，由{teacher}老师任教。" : "。");
-
         var generation = BeginDisplay();
         ShowMask(mainWindow, mask);
         Schedule(generation, TimeSpan.FromMilliseconds(1200), () =>
             mainWindow.ShowNotificationOverlay(message, next.DisplayName, teacher, next.TimeRange));
         Schedule(generation, TimeSpan.FromSeconds(8), mainWindow.HideNotificationMask);
-        Speak(notification.IsSpeechEnabledOnClassPreparing, speech);
     }
 
     private void ShowClassOn(DateTime now, (string Title, TimeSpan Start, TimeSpan End)? current)
@@ -143,7 +136,6 @@ public sealed class NotificationService
         var generation = BeginDisplay();
         ShowMask(mainWindow, notification.ClassOnMaskText);
         Schedule(generation, TimeSpan.FromSeconds(3), mainWindow.HideNotificationMask);
-        Speak(notification.IsSpeechEnabledOnClassOn, notification.ClassOnMaskText);
     }
 
     private void ShowClassOff(
@@ -166,7 +158,6 @@ public sealed class NotificationService
         if (next is null)
         {
             Schedule(generation, TimeSpan.FromSeconds(5), mainWindow.HideNotificationMask);
-            Speak(notification.IsSpeechEnabledOnClassOff, notification.ClassOffMaskText);
             return;
         }
 
@@ -175,13 +166,9 @@ public sealed class NotificationService
             ? $"本节{notification.ClassOffMaskText}长 {FormatDuration(gap)}"
             : $"{notification.ClassOffOverlayText} · {FormatDuration(gap)}";
         var teacher = notification.ShowTeacherName ? next.Teacher ?? "" : "";
-        var speech = $"{overlay}。下节课是{next.DisplayName}" +
-                     (teacher.Length > 0 ? $"，由{teacher}老师任教。" : "。");
-
         Schedule(generation, TimeSpan.FromMilliseconds(1200), () =>
             mainWindow.ShowNotificationOverlay(overlay, next.DisplayName, teacher, next.TimeRange));
         Schedule(generation, TimeSpan.FromSeconds(8), mainWindow.HideNotificationMask);
-        Speak(notification.IsSpeechEnabledOnClassOff, speech);
     }
 
     private MainWindow? NotificationWindow =>
@@ -219,34 +206,6 @@ public sealed class NotificationService
         }
 
         mainWindow.ShowNotificationMask(text);
-    }
-
-    private void Speak(bool enabled, string text)
-    {
-        if (!enabled || string.IsNullOrWhiteSpace(text) || !OperatingSystem.IsWindows())
-            return;
-
-        try
-        {
-            _speech ??= new SpeechSynthesizer();
-            if (_speech.Voice is null)
-            {
-                var chineseVoice = _speech.GetInstalledVoices()
-                    .FirstOrDefault(voice => voice.Enabled &&
-                                             voice.VoiceInfo.Culture.Name.StartsWith("zh",
-                                                 StringComparison.OrdinalIgnoreCase));
-                if (chineseVoice is not null)
-                    _speech.SelectVoice(chineseVoice.VoiceInfo.Name);
-            }
-
-            _speech.Volume = 100;
-            _speech.Rate = 0;
-            _speech.SpeakAsyncCancelAll();
-            _speech.SpeakAsync(text);
-        }
-        catch
-        {
-        }
     }
 
     public void DebugTriggerClassPreparing()

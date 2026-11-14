@@ -202,11 +202,5 @@ public sealed class NotificationSettings
 
     public string ClassOffOverlayText { get; set; } = "";
 
-    public bool IsSpeechEnabledOnClassPreparing { get; set; } = true;
-
-    public bool IsSpeechEnabledOnClassOn { get; set; } = true;
-
-    public bool IsSpeechEnabledOnClassOff { get; set; } = true;
-
     public bool ShowTeacherName { get; set; }
 }
