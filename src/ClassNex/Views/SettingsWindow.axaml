@@ -836,6 +836,71 @@
                                 </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>
 
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,2">
+                                <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
+                                             Glyph="&#xE1F9;" FontSize="16" VerticalAlignment="Center" Opacity="0.85"/>
+                                <TextBlock Text="集中管理" FontSize="15" VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <ui:SettingsExpander Header="启用集控"
+                                                 Description="从集控中心接收完整的应用设置和课程表，并将本机状态报告给管理员。">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0EF;"/>
+                                </ui:SettingsExpander.IconSource>
+                                <ui:SettingsExpander.Footer>
+                                    <Border x:Name="CentralManagementToggleHost"><ToggleSwitch/></Border>
+                                </ui:SettingsExpander.Footer>
+                            </ui:SettingsExpander>
+
+                            <ui:SettingsExpander Header="集控服务地址"
+                                                 Description="例如 https://central.example.com">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0D3;"/>
+                                </ui:SettingsExpander.IconSource>
+                                <ui:SettingsExpander.Footer>
+                                    <TextBox x:Name="CentralServerBox" Width="280"
+                                             Watermark="https://central.example.com"/>
+                                </ui:SettingsExpander.Footer>
+                            </ui:SettingsExpander>
+
+                            <ui:SettingsExpander Header="客户端注册令牌"
+                                                 Description="由集控中心管理员提供，仅用于首次注册客户端。">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE192;"/>
+                                </ui:SettingsExpander.IconSource>
+                                <ui:SettingsExpander.Footer>
+                                    <TextBox x:Name="CentralEnrollmentTokenBox" Width="280" PasswordChar="●"/>
+                                </ui:SettingsExpander.Footer>
+                            </ui:SettingsExpander>
+
+                            <ui:SettingsExpander Header="客户端身份"
+                                                 Description="注册后由集控中心分配，用于接收本机专属配置。">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE13D;"/>
+                                </ui:SettingsExpander.IconSource>
+                                <ui:SettingsExpander.Footer>
+                                    <TextBlock x:Name="CentralClientIdText" VerticalAlignment="Center"
+                                               FontSize="12" Opacity="0.7"/>
+                                </ui:SettingsExpander.Footer>
+                            </ui:SettingsExpander>
+
+                            <ui:SettingsExpander Header="同步状态"
+                                                 Description="客户端每 30 秒检查一次新版本，也可手动立即同步。">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE154;"/>
+                                </ui:SettingsExpander.IconSource>
+                                <ui:SettingsExpander.Footer>
+                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <TextBlock x:Name="CentralStatusText" FontSize="12"
+                                                   MaxWidth="250" TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center"/>
+                                        <Button x:Name="CentralConnectButton" Content="注册并连接"/>
+                                        <Button x:Name="CentralSyncButton" Content="立即同步"/>
+                                        <Button x:Name="CentralDisconnectButton" Content="断开"/>
+                                    </StackPanel>
+                                </ui:SettingsExpander.Footer>
+                            </ui:SettingsExpander>
+
                             
                         </StackPanel>
 
@@ -994,9 +1059,9 @@
                                 </ListBox>
                             </Border>
 
-                            <TabControl HorizontalContentAlignment="Stretch" Padding="0">
+                            <TabControl x:Name="WidgetTabs" HorizontalContentAlignment="Stretch" Padding="0">
                                 <TabItem Header="组件库">
-                                    <StackPanel Spacing="10" Margin="0,10,0,0">
+                                    <StackPanel x:Name="WidgetLibraryPage" Spacing="10" Margin="0,10,0,0">
                                         
                                         <ListBox x:Name="WidgetLibraryList" BorderThickness="0" Background="Transparent"
                                                  SelectionMode="Single" MinHeight="44">

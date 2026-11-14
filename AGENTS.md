@@ -36,7 +36,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：ClassNEX 账户服务默认地址切换到 `https://auth.smart-teach.cn`，旧配置中的 `124.221.140.188`、`124.221.160.188` 和临时新机 IP 会在设置加载时自动迁移；Casdoor 已迁移到 `206.187.201.60`，静态资源改为新机同源自托管
-改了文件：src/ClassNex.Core/Models/AppSettings.cs、src/ClassNex.Core/Services/SettingsService.cs、HANDOFF.md、AGENTS.md
+上次完成：Casdoor 动态资源改为相对路径 `/casdoor-static` 并由新机 Nginx 同源自托管；组件库加入 WinUI PageTransition 的左右滑动转场；新增可部署的 ClassNEX 集控服务和客户端注册、心跳、完整设置与课程表双向同步，管理端可发布版本化配置
+改了文件：src/ClassNex.Central/*、src/ClassNex.Core/Models/CentralManagement*.cs、src/ClassNex.Core/Services/CentralManagementClient.cs、src/ClassNex/Services/CentralManagementService.cs、src/ClassNex/Styles/WinUIPageTransitions.cs、src/ClassNex/Views/SettingsWindow.axaml(.cs)、src/ClassNex/Services/AppServices.cs、src/ClassNex/Views/MainWindow.axaml.cs、src/ClassNex/App.axaml.cs、ClassNex.sln、docs/CENTRAL_MANAGEMENT.md、HANDOFF.md、AGENTS.md
 进行中：无
 下一步：待用户指定

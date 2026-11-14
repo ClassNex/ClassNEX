@@ -1,5 +1,6 @@
 using ClassNex.Models;
 using ClassNex.Core.Abstractions;
+using System.Text;
 
 namespace ClassNex.Services;
 
@@ -32,8 +33,12 @@ public static class AppServices
     
     public static NexVoiceCoordinator? NexVoice { get; set; }
 
+    public static CentralManagementService? Management { get; set; }
+
     
     public static event Action? SettingsChanged;
+
+    public static event Action? ManagedSettingsApplied;
 
     
     private const int SampleSeedVersion = 3;
@@ -108,6 +113,35 @@ public static class AppServices
     {
         SettingsService.Save(Settings);
         SettingsChanged?.Invoke();
+    }
+
+    public static void ApplyManagedSettings(AppSettings remote, string? timetableYaml)
+    {
+        var management = Settings.CentralManagement;
+        remote.Widgets ??= AppSettings.CreateDefaultWidgets();
+        remote.Notification ??= new NotificationSettings();
+        remote.TimeLayout ??= new TimeLayout();
+        remote.CentralManagement = management;
+        remote.BackgroundOpacity = Math.Clamp(remote.BackgroundOpacity, 0.1, 1);
+        remote.FontScale = Math.Clamp(remote.FontScale, 0.8, 2.4);
+        remote.MainWindowScale = Math.Clamp(remote.MainWindowScale, 0.5, 4);
+
+        if (!string.IsNullOrWhiteSpace(timetableYaml))
+        {
+            File.WriteAllText(
+                SettingsService.TimetableStoragePath,
+                timetableYaml,
+                new UTF8Encoding(false));
+            remote.TimetablePath = SettingsService.TimetableStoragePath;
+        }
+
+        Settings = remote;
+        SettingsService.Save(Settings);
+        Schedule.Load(ResolveTimetablePath());
+        TimeLayout.EnsureFromProfile(Schedule.Profile);
+        SettingsChanged?.Invoke();
+        MainWindow?.ReloadManagedSettings();
+        ManagedSettingsApplied?.Invoke();
     }
 
     public static string TimetableFileName => Schedule.FileName;

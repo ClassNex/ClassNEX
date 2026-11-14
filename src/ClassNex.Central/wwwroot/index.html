@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ClassNEX 集控中心</title>
+  <style>
+    :root{color-scheme:light dark;font-family:"Segoe UI","Microsoft YaHei UI",sans-serif;background:#f5f5f5;color:#1b1b1b}
+    body{margin:0;min-height:100vh}.shell{display:grid;grid-template-columns:320px 1fr;min-height:100vh}
+    aside{padding:24px;background:#fff;border-right:1px solid #ddd}.main{padding:24px}
+    h1{font-size:24px;margin:0 0 6px}h2{font-size:18px}.muted{opacity:.65;font-size:12px}
+    input,textarea,button{font:inherit;border:1px solid #bbb;border-radius:7px;padding:9px 11px;background:transparent;color:inherit}
+    input{width:100%;box-sizing:border-box}button{cursor:pointer;background:#0067c0;color:#fff;border-color:#0067c0}
+    button.secondary{background:transparent;color:inherit;border-color:#bbb}button:disabled{opacity:.45;cursor:default}
+    .row{display:flex;gap:8px;align-items:center}.clients{display:grid;gap:8px;margin-top:18px}
+    .client{padding:12px;border:1px solid #ddd;border-radius:9px;cursor:pointer}.client.active{border-color:#0067c0;background:#0067c010}
+    .toolbar{display:flex;gap:8px;margin:14px 0}.editor{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    textarea{width:100%;height:calc(100vh - 260px);box-sizing:border-box;resize:none;font:12px/1.5 ui-monospace,Consolas,monospace}
+    .status{margin-top:10px;font-size:13px;white-space:pre-wrap}.danger{background:#c42b1c;border-color:#c42b1c}
+    @media(max-width:900px){.shell{grid-template-columns:1fr}.editor{grid-template-columns:1fr}textarea{height:40vh}}
+  </style>
+</head>
+<body>
+<div class="shell">
+  <aside>
+    <h1>ClassNEX 集控中心</h1>
+    <div class="muted">完全读写客户端设置与课程表</div>
+    <div style="margin-top:18px"><input id="adminToken" type="password" placeholder="管理员令牌"></div>
+    <div class="row" style="margin-top:8px"><button id="loadButton">连接</button><button id="refreshButton" class="secondary">刷新</button></div>
+    <div id="enrollment" class="status"></div>
+    <div id="clients" class="clients"></div>
+  </aside>
+  <main class="main">
+    <h2 id="clientTitle">选择客户端</h2>
+    <div id="clientMeta" class="muted"></div>
+    <div class="toolbar"><button id="saveButton" disabled>发布设置与课程</button><button id="deleteButton" class="danger" disabled>移除客户端</button></div>
+    <div class="editor">
+      <label>Settings.json<textarea id="settingsEditor" spellcheck="false" disabled></textarea></label>
+      <label>timetable.yaml<textarea id="timetableEditor" spellcheck="false" disabled></textarea></label>
+    </div>
+    <div id="status" class="status"></div>
+  </main>
+</div>
+<script>
+const state={token:"",clients:[],selected:null};
+const $=id=>document.getElementById(id);
+const api=async(path,options={})=>{
+  const headers={...(options.headers||{}),Authorization:`Bearer ${state.token}`};
+  const response=await fetch(path,{...options,headers});
+  const text=await response.text();
+  if(!response.ok)throw new Error(text||response.statusText);
+  return text?JSON.parse(text):null;
+};
+const setStatus=(text,error=false)=>{$("status").textContent=text;$("status").style.color=error?"#c42b1c":""};
+const loadClients=async()=>{
+  if(!state.token)return;
+  try{
+    const [clients,enrollment]=await Promise.all([api("/api/v1/admin/clients"),api("/api/v1/admin/enrollment")]);
+    state.clients=clients;
+    $("enrollment").textContent=`客户端注册令牌：${enrollment.token}`;
+    renderClients();
+  }catch(error){setStatus(String(error),true)}
+};
+const renderClients=()=>{
+  $("clients").innerHTML="";
+  for(const client of state.clients){
+    const element=document.createElement("div");
+    element.className="client"+(client.clientId===state.selected?".active":"");
+    element.innerHTML=`<div><strong>${escapeHtml(client.displayName||client.machineName||client.clientId)}</strong></div><div class="muted">${escapeHtml(client.machineName||"")} · r${client.revision}</div><div class="muted">${client.lastSeen?new Date(client.lastSeen).toLocaleString():"从未连接"}</div>`;
+    element.onclick=()=>loadClient(client.clientId);
+    $("clients").append(element);
+  }
+  if(!state.clients.length)$("clients").innerHTML='<div class="muted">暂无客户端</div>';
+};
+const loadClient=async(id)=>{
+  try{
+    const client=await api(`/api/v1/admin/clients/${encodeURIComponent(id)}`);
+    state.selected=id;
+    $("clientTitle").textContent=client.displayName||client.machineName||client.clientId;
+    $("clientMeta").textContent=`${client.machineName} · ${client.appVersion} · 修订 ${client.revision} · ${client.lastSeen?new Date(client.lastSeen).toLocaleString():"离线"}`;
+    $("settingsEditor").value=prettyJson(client.settingsJson);
+    $("timetableEditor").value=client.timetableYaml||"";
+    for(const id of ["settingsEditor","timetableEditor","saveButton","deleteButton"])$(id).disabled=false;
+    renderClients();
+  }catch(error){setStatus(String(error),true)}
+};
+const prettyJson=value=>{
+  if(!value)return"";
+  try{return JSON.stringify(JSON.parse(value),null,2)}catch{return value}
+};
+$("loadButton").onclick=async()=>{
+  state.token=$("adminToken").value.trim();
+  if(!state.token)return setStatus("请输入管理员令牌",true);
+  localStorage.setItem("classnex-central-token",state.token);
+  await loadClients();
+};
+$("refreshButton").onclick=loadClients;
+$("saveButton").onclick=async()=>{
+  if(!state.selected)return;
+  try{
+    JSON.parse($("settingsEditor").value);
+    const client=await api(`/api/v1/admin/clients/${encodeURIComponent(state.selected)}`,{
+      method:"PUT",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({settingsJson:$("settingsEditor").value,timetableYaml:$("timetableEditor").value,message:"由集控中心发布"})
+    });
+    setStatus(`已发布修订 ${client.revision}`);
+    await loadClients();
+  }catch(error){setStatus(String(error),true)}
+};
+$("deleteButton").onclick=async()=>{
+  if(!state.selected)return;
+  try{
+    await api(`/api/v1/admin/clients/${encodeURIComponent(state.selected)}`,{method:"DELETE"});
+    state.selected=null;$("settingsEditor").value="";$("timetableEditor").value="";
+    await loadClients();setStatus("客户端已移除");
+  }catch(error){setStatus(String(error),true)}
+};
+function escapeHtml(value){return String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+$("adminToken").value=localStorage.getItem("classnex-central-token")||"";
+</script>
+</body>
+</html>

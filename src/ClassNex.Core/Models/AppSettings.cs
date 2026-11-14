@@ -76,6 +76,8 @@ public sealed class AppSettings
     
     public int TrayClickBehavior { get; set; }
 
+    public CentralManagementSettings CentralManagement { get; set; } = new();
+
     
     
     public string UserName { get; set; } = "LingOfficial";

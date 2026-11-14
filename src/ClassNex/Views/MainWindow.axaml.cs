@@ -365,6 +365,13 @@ public partial class MainWindow : Window
         RefreshWidgets();
     });
 
+    public void ReloadManagedSettings()
+    {
+        ApplySettings();
+        RebuildWidgets();
+        RefreshWidgets();
+    }
+
     
 
     protected override void OnOpened(EventArgs e)

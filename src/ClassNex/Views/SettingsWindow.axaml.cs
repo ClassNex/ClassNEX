@@ -42,6 +42,7 @@ public partial class SettingsWindow : AppWindow
 
     private bool _loading;
     private WidgetItem? _currentWidget;
+    private int _lastWidgetTabIndex;
 
     private bool _entrancePlayed;
     private EventHandler? _themeChangedHandler;
@@ -172,6 +173,9 @@ public partial class SettingsWindow : AppWindow
 
         AccountService.Changed += () =>
             Dispatcher.UIThread.Post(RefreshAccountName, DispatcherPriority.Background);
+        AppServices.Management?.StatusChanged += OnCentralManagementStatusChanged;
+        Closed += (_, _) =>
+            AppServices.Management?.StatusChanged -= OnCentralManagementStatusChanged;
 
         
         
@@ -687,8 +691,8 @@ public partial class SettingsWindow : AppWindow
         var index = page switch
         {
             "home" => 0,
-            "general" => 1,
-            "appearance" => 2,
+            "general" or "basic" => 1,
+            "appearance" or "interface" => 2,
             "window" => 3,
             "widgets" => 4,
             "nex" => 5,
@@ -779,6 +783,38 @@ public partial class SettingsWindow : AppWindow
         
         ResetWidgetButton.Click += (_, _) => ResetWidgets();
         WidgetList.SelectionChanged += (_, _) => SelectWidget();
+        _lastWidgetTabIndex = WidgetTabs.SelectedIndex;
+        WidgetTabs.SelectionChanged += (_, _) =>
+        {
+            var index = WidgetTabs.SelectedIndex;
+            if (index < 0 || index == _lastWidgetTabIndex)
+                return;
+
+            var page = index == 0 ? (Control)WidgetLibraryPage : WidgetEditor;
+            var kind = index > _lastWidgetTabIndex
+                ? WinUIPageTransitionKind.SlideFromRight
+                : WinUIPageTransitionKind.SlideFromLeft;
+            _lastWidgetTabIndex = index;
+            WinUIPageTransitions.Play(page, kind);
+        };
+
+        CentralManagementToggle.IsCheckedChanged += (_, _) =>
+        {
+            if (_loading)
+                return;
+            AppServices.Settings.CentralManagement.IsEnabled =
+                CentralManagementToggle.IsChecked == true;
+            AppServices.SaveSettings();
+        };
+        CentralServerBox.TextChanged += (_, _) => SaveCentralManagementFields();
+        CentralEnrollmentTokenBox.TextChanged += (_, _) => SaveCentralManagementFields();
+        CentralConnectButton.Click += async (_, _) => await ConnectCentralManagementAsync();
+        CentralSyncButton.Click += async (_, _) => await SyncCentralManagementAsync();
+        CentralDisconnectButton.Click += (_, _) =>
+        {
+            AppServices.Management?.Disconnect();
+            LoadCentralManagementSettings();
+        };
 
         WidgetEnabledCheck.PropertyChanged += (_, e) =>
         {
@@ -869,6 +905,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
         
         LoadBehaviorSettings();
+        LoadCentralManagementSettings();
 
         RefreshWidgetLibrary();
         RefreshWidgetList();
@@ -1877,6 +1914,9 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
     private ToggleSwitch SafeModeToggle =>
         (ToggleSwitch)SafeModeToggleHost.Child!;
 
+    private ToggleSwitch CentralManagementToggle =>
+        (ToggleSwitch)CentralManagementToggleHost.Child!;
+
     
     
     private void LoadBehaviorSettings()
@@ -1927,6 +1967,83 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             AppServices.Settings.CrashHandlingMode = Math.Clamp(SafeModeCombo.SelectedIndex, 0, 2);
             AppServices.SaveSettings();
         };
+    }
+
+    private void LoadCentralManagementSettings()
+    {
+        var value = AppServices.Settings.CentralManagement;
+        CentralManagementToggle.IsChecked = value.IsEnabled;
+        CentralServerBox.Text = value.ServerUrl;
+        CentralEnrollmentTokenBox.Text = value.EnrollmentToken;
+        CentralClientIdText.Text = string.IsNullOrWhiteSpace(value.ClientId)
+            ? "尚未注册"
+            : value.ClientId;
+        CentralStatusText.Text = string.IsNullOrWhiteSpace(value.LastStatus)
+            ? "未配置"
+            : value.LastStatus;
+    }
+
+    private void SaveCentralManagementFields()
+    {
+        if (_loading)
+            return;
+
+        var value = AppServices.Settings.CentralManagement;
+        value.ServerUrl = CentralServerBox.Text?.Trim() ?? "";
+        value.EnrollmentToken = CentralEnrollmentTokenBox.Text?.Trim() ?? "";
+        AppServices.SaveSettings();
+    }
+
+    private async Task ConnectCentralManagementAsync()
+    {
+        SaveCentralManagementFields();
+        var value = AppServices.Settings.CentralManagement;
+        value.IsEnabled = true;
+        CentralManagementToggle.IsChecked = true;
+        AppServices.SaveSettings();
+
+        try
+        {
+            if (AppServices.Management is null)
+                throw new InvalidOperationException("集控服务尚未初始化");
+            await AppServices.Management.RegisterAndSyncAsync();
+            LoadCentralManagementSettings();
+        }
+        catch (Exception ex)
+        {
+            CentralStatusText.Text = "连接失败：" + ex.Message;
+        }
+    }
+
+    private async Task SyncCentralManagementAsync()
+    {
+        SaveCentralManagementFields();
+        try
+        {
+            if (AppServices.Management is null)
+                throw new InvalidOperationException("集控服务尚未初始化");
+            await AppServices.Management.SyncNowAsync();
+            LoadCentralManagementSettings();
+        }
+        catch (Exception ex)
+        {
+            CentralStatusText.Text = "同步失败：" + ex.Message;
+        }
+    }
+
+    private void OnCentralManagementStatusChanged(string status)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (IsVisible)
+            {
+                CentralStatusText.Text = status;
+                var value = AppServices.Settings.CentralManagement;
+                CentralClientIdText.Text = string.IsNullOrWhiteSpace(value.ClientId)
+                    ? "尚未注册"
+                    : value.ClientId;
+            }
+        });
     }
 
     

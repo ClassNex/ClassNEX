@@ -199,6 +199,9 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   视觉层执行 220ms 淡入和 10px 纵向归位，cubic-bezier(0.1,0.9,0.2,1)；旧页停止动画后保持布局并隐藏，
   新页只创建一个整页视觉动画，不再给页面内每个卡片分别创建动画。动画目标必须是单个页面面板
   （不能是 PageScroll 滚动容器），否则整个内容加滚动条一起位移会产生上下抖动。
+  组件页的“组件库 / 组件设置”切换使用 `Styles/WinUIPageTransitions.cs` 的
+  `SlideNavigationTransitionInfo` 效果：前进从右侧进入、后退从左侧进入，300ms、
+  cubic-bezier(0.13,0.96,0.22,1)，只动画新页面层。该类同时提供 Entrance、DrillIn 和 Suppress 模式。
 - **强制置顶**（每秒自检 + 失焦重声明）、贴屏幕顶部水平居中（窗口比屏宽时向两侧对称溢出，岛保持居中）、**不可拖动**
 - **主界面宽度变化**：扩展时立即把岛背景切到目标宽度，只有缩小时播放 300ms Composition Scale；
   否则新内容已按更大宽度排版，而背景仍从旧宽度放大，右端课程会短暂露出圆角背景之外。
@@ -304,7 +307,13 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   Client ID 为 `913736707004a6f7c323`；Client Secret 只存在于 Casdoor 数据库，禁止写入仓库或交接文档。
   Casdoor 已从 `124.221.160.188` 迁移至 `206.187.201.60`，新机使用 Docker Compose 运行
   Casdoor、MariaDB、Nginx 和头像服务，静态资源由 `/casdoor-static/` 与 `/img/` 同源自托管。
-  正式环境通过 `auth.smart-teach.cn` 访问，EdgeOne 源站应保持域名不变并指向新机 `8000` 端口。
+  `staticBaseUrl` 固定为相对路径 `/casdoor-static`，因此通过 IP、HTTP、HTTPS 或任意域名访问时，
+  前端都会从当前页面同源加载动态资源。正式环境通过 `auth.smart-teach.cn` 访问。
+- **集控管理**：`src/ClassNex.Central` 是独立 ASP.NET Core 集控服务，默认端口 `7010`，
+  `docs/CENTRAL_MANAGEMENT.md` 记录运行和 API。管理端可查看并修改客户端完整 `Settings.json`
+  与 `timetable.yaml`；客户端在“基本 → 集中管理”注册，每 30 秒拉取修订号，
+  应用远端设置前保留本机集控连接参数，随后刷新主界面和课程。服务端注册令牌和管理员令牌
+  支持环境变量配置，不可写入公开仓库。
 - **NEX Intelligence（内置 AI Agent，2026-10-11 新增）**
   - 设置里新增「NEX Intelligence」页（导航项在「组件」之后）+ 独立对话窗（沉浸标题栏 + 云母）
   - 代码在 `Services\NexIntelligence\`：`NexAiClient`（OpenAI 兼容 /v1/chat/completions，流式 SSE；增量为 `delta.content` 与 `delta.reasoning_content`，工具调用分片在 `delta.tool_calls` 里按 index 拼装）、`NexAgent`（一轮 = 发消息 → 流式收正文/思考 → 执行工具 → 回填 → 继续，最多 8 轮）、`NexAgentTools`（六个工具：读应用状态/读课表/列目录/读文件/写文件/执行命令）、`NexModelCatalog`（拉模型列表/测连接）

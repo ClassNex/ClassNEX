@@ -89,6 +89,8 @@ public partial class App : Application
 
             Services.AppServices.MainWindow = _mainWindow;
             Services.AppServices.NotificationService = _notificationService;
+            Services.AppServices.Management = new Services.CentralManagementService();
+            Services.AppServices.Management.Start();
             _notificationService.Start();
 
             var pluginServices = new PluginServiceProvider();
@@ -624,6 +626,8 @@ public partial class App : Application
             app._nexVoice = null;
             app._pluginService?.StopAll();
             app._pluginService = null;
+            AppServices.Management?.Dispose();
+            AppServices.Management = null;
             app._notificationService?.Dispose();
             app._notificationService = null;
             app._mainWindow?.Hide();
