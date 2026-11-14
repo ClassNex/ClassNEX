@@ -118,7 +118,7 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   `CourseSlot.IsOutDoor` 由 `TimeService` 从科目配置填充。每个事件有独立语音开关，
   Windows 下用 `SpeechSynthesizer` 异步播报；提醒使用代次编号取消旧计时器，避免上一段通知的
   `HideNotificationMask` 覆盖下一段通知。关闭提醒特效只关闭涟漪，不会连带关闭遮罩和浮层。
-  调试页可单独触发课前准备、上课、下课提醒。
+  调试页可单独触发课前准备、上课、下课提醒，并新增“拉起测试提醒”完整演示遮罩、浮层和语音。
 - **取色跟随主题，组件强调色改为樱花玫瑰**：主题明暗 = `ThemeMode=system`（`PreferSystemTheme`）；
   主界面表面由 `CiPalette.IslandSurfaceBrush()` 按 `IsDarkTheme()` 返回粉白/深玫瑰渐变，不再依赖
   `SolidBackgroundFillColorSecondaryBrush`（不带主题变体取资源会返回浅色变体，深色主题下卡片会发白）。

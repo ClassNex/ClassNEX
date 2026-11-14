@@ -36,7 +36,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：参照 CI 重构通知提醒：补齐课前准备、上课、下课三类事件，室内/室外独立提前量，定制遮罩与浮层文案，教师名、中文语音播报、提醒代次防旧计时器覆盖，并在调试页增加课前提醒测试入口
+上次完成：参照 CI 重构通知提醒：补齐课前准备、上课、下课三类事件，室内/室外独立提前量，定制遮罩与浮层文案，教师名、中文语音播报、提醒代次防旧计时器覆盖；开发者设置新增“拉起测试提醒”和课前提醒测试入口
 改了文件：src/ClassNex/Services/NotificationService.cs、src/ClassNex/Models/CourseSlot.cs、src/ClassNex/Services/TimeService.cs、src/ClassNex/Views/SettingsWindow.axaml(.cs)、HANDOFF.md、AGENTS.md
 进行中：无
 下一步：待用户指定

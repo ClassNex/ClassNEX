@@ -289,6 +289,24 @@ public sealed class NotificationService
         ShowClassOff(now, current, summary);
     }
 
+    public void DebugTriggerTestNotification()
+    {
+        var mainWindow = NotificationWindow;
+        if (mainWindow is null)
+            return;
+
+        var generation = BeginDisplay();
+        ShowMask(mainWindow, "测试提醒");
+        Schedule(generation, TimeSpan.FromMilliseconds(1200), () =>
+            mainWindow.ShowNotificationOverlay(
+                "这是一条测试提醒",
+                "通知系统工作正常",
+                "",
+                DateTime.Now.ToString("HH:mm")));
+        Schedule(generation, TimeSpan.FromSeconds(6), mainWindow.HideNotificationMask);
+        Speak(true, "这是一条 ClassNEX 通知测试提醒。");
+    }
+
     private string CurrentKey(DateTime now)
     {
         var summary = AppServices.Time.GetTodaySummary(AppServices.Schedule.Profile, now);
