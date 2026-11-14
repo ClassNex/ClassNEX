@@ -36,7 +36,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：当前课程改为“标题 * + 时间 Auto”两列布局，剩余时间使用白色 14 号和等宽数字，右对齐并贴课程胶囊右侧内边距；通知底部滑轨改为使用真实剩余倒计时时长，与“距上课还剩 N 秒”同步，非倒计时提醒按各自可见时长运行
-改了文件：src/ClassNex/Widgets/ScheduleWidget.cs、src/ClassNex.Core/Abstractions/INotificationService.cs、src/ClassNex.Notification/NotificationService.cs、src/ClassNex/Services/MainWindowNotificationSurface.cs、src/ClassNex/Views/MainWindow.axaml.cs、HANDOFF.md、AGENTS.md
+上次完成：设置窗口与档案编辑器切页改为单个页面 Composition 视觉层 220ms 淡入和 10px 纵向归位，移除页面内逐项错峰动画；切页只修改旧页和新页，页面预热合并为一次后台布局
+改了文件：src/ClassNex/Styles/MetroTransitions.cs、src/ClassNex/Views/SettingsWindow.axaml.cs、HANDOFF.md、AGENTS.md
 进行中：无
 下一步：待用户指定

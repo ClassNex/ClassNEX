@@ -1,6 +1,6 @@
 # ClassNEX 续作指南（HANDOFF）
 
-> 最后更新：2026-11-07　｜　当前版本 **26w45b**　｜　发布标签 **26w45b_Alpha**
+> 最后更新：2026-11-14　｜　当前版本 **26w45b**　｜　发布标签 **26w45b_Alpha**
 > 已发布：`26w41a_Alpha` ~ `26w45b_Alpha`（GitHub Releases，均为预发布）
 > 这份文档的目的：**第二天打开新会话，照着它就能无缝继续写。**
 
@@ -195,12 +195,10 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   之后显示用 250ms `0.25,1,0.5,1` 淡入；岛宽变化 300ms `0.65,0,0.35,1.0`
   （CI BackgroundWidth；Avalonia 的 Width 过渡在 LayoutTransformControl 内会卡布局，改用 composition Scale 补间）；
   组件位移动画 = 移植的 `Controls/WrapPanelResizingAnimationAssist.cs`；进度线随每秒刷新；悬停淡化 0.05/100ms
-- **页面切换动画**（设置窗口/OOBE/档案编辑器）：`Styles/PageTransitions.cs` 单条 `Animation` 关键帧 +
-  `RunAsync(目标, CancellationToken)`，参数照 WinUI 主题动画表 TAS_ENTERPAGE=32 实测值：位移 24→0 与透明度
-  0→1 均 667ms、cubic-bezier(0.1,0.9,0.2,1)；新动画开始前取消上一个动画，目标 `IsEffectivelyVisible=false`
-  时直接落位不播动画（避免窗口未显示时重复触发）；动画目标必须是单个页面面板（不能是 PageScroll 滚动容器，
-  否则整个内容+滚动条一起位移会产生上下抖动）；不要用两段式 `Dispatcher.UIThread.Post`（Background→Render）
-  驱动过渡，会丢动画并卡顿
+- **页面切换动画**（设置窗口/档案编辑器）：`Styles/MetroTransitions.cs` 对一个页面面板的 Composition
+  视觉层执行 220ms 淡入和 10px 纵向归位，cubic-bezier(0.1,0.9,0.2,1)；旧页停止动画后保持布局并隐藏，
+  新页只创建一个整页视觉动画，不再给页面内每个卡片分别创建动画。动画目标必须是单个页面面板
+  （不能是 PageScroll 滚动容器），否则整个内容加滚动条一起位移会产生上下抖动。
 - **强制置顶**（每秒自检 + 失焦重声明）、贴屏幕顶部水平居中（窗口比屏宽时向两侧对称溢出，岛保持居中）、**不可拖动**
 - **主界面宽度变化**：扩展时立即把岛背景切到目标宽度，只有缩小时播放 300ms Composition Scale；
   否则新内容已按更大宽度排版，而背景仍从旧宽度放大，右端课程会短暂露出圆角背景之外。
@@ -323,9 +321,10 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   - ⚠️ **接口密钥绝不写进源码/仓库**（仓库是公开的）：只在设置页填写，落盘到本机 `data\Settings.json`；新机器要重新填一次
   - 自检：`CLASSNEX_VERIFY_NEX=<文本>` 打开对话框并自动发一条消息；出图看 `_shot_nex.png`
 - **Metro 转场统一层**：`Styles/MetroTransitions.cs` 使用 Avalonia Composition 硬件动画，不再用 UI 线程计时器；
-  旧页以 `Opacity=0` 保留布局，新页只做 360ms 单段翻门，条目按视口筛选并以 28ms 级联；
-  页面标题作为序列第 0 项，后退时反转。设置页和档案编辑器在窗口打开后通过 `PrewarmPagesAtIdle()` 预热页面布局，
-  切页不再反复触发 Measure/Arrange；设置页页面宿主仍必须是单格 `Grid#PageHost`。
+  旧页以 `Opacity=0` 保留布局，新页整页只做一次 220ms 淡入和 10px 纵向归位，不再逐项错峰。
+  设置页切页只修改旧页和新页两个控件，不再遍历十个页面重复写属性；`PrewarmPagesAtIdle()` 在窗口打开后
+  一次把所有非当前页设为可见并统一执行一次布局，避免每个页面依次触发 Measure/Arrange。
+  设置页页面宿主仍必须是单格 `Grid#PageHost`，页面本身继续保持可见布局，不能靠反复折叠重排。
   `Styles/MetroTilt.cs` 给设置/档案导航项、长条 SettingsExpander/Card、托盘菜单项和 OOBE 按钮
   做按压倾斜：原点永久锁定 50%,50%，不修改任何布局属性；使用
   `TransformOperationsTransition`（按下 70ms / 回弹 180ms，cubic-bezier(0.1,0.9,0.2,1)），

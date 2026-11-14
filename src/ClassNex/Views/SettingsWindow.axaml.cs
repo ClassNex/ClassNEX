@@ -1335,16 +1335,17 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
     private void KeepOnlyPages(Control? keepA, Control? keepB)
     {
-        foreach (var page in new Control[]
-                 {
-                     PageHome, PageGeneral, PageInterface, PageWindow, PageWidgets,
-                     PageNex, PageNotification, PageAbout, PageDebug, PageAccount,
-                 })
+        if (keepA is not null && !ReferenceEquals(keepA, keepB))
         {
-            var keep = ReferenceEquals(page, keepB);
-            page.IsVisible = true;
-            page.Opacity = keep ? 1 : 0;
-            page.IsHitTestVisible = keep;
+            keepA.Opacity = 0;
+            keepA.IsHitTestVisible = false;
+        }
+
+        if (keepB is not null)
+        {
+            keepB.IsVisible = true;
+            keepB.Opacity = 1;
+            keepB.IsHitTestVisible = true;
         }
     }
 

@@ -9,7 +9,6 @@ using Avalonia.Media;
 using Avalonia.Rendering.Composition;
 using Avalonia.Rendering.Composition.Animations;
 using Avalonia.Threading;
-using Avalonia.VisualTree;
 
 namespace ClassNex.Styles;
 
@@ -19,6 +18,8 @@ public static class MetroTransitions
     private const double StepDelayMs = 28;
     private const float HingeShiftX = 18;
     private const int MaxAnimatedItems = 12;
+    private const double PageTransitionMs = 220;
+    private const float PageTransitionOffsetY = 10;
 
     private static readonly HashSet<Control> TouchedControls = new();
     private static Control? _activePage;
@@ -34,73 +35,95 @@ public static class MetroTransitions
 
         if (from is not null && !ReferenceEquals(from, to))
         {
+            StopPageAnimation(from);
             from.IsHitTestVisible = false;
             from.Opacity = 0;
         }
 
-        var needsLayout = to.Bounds.Width <= 0 || header?.Bounds.Height <= 0;
         if (!to.IsVisible)
             to.IsVisible = true;
 
-        if (needsLayout)
+        if (to.Bounds.Width <= 0)
             to.UpdateLayout();
 
+        StopPageAnimation(to);
         to.Opacity = 1;
         to.IsHitTestVisible = true;
-        RenderOptions.SetTextRenderingMode(to, TextRenderingMode.Antialias);
 
-        var scroll = to.GetVisualAncestors().OfType<ScrollViewer>().FirstOrDefault();
-        var viewportHeight = scroll is { Viewport.Height: > 100 }
-            ? scroll.Viewport.Height
-            : to.Bounds.Height > 100 ? to.Bounds.Height : 680.0;
-
-        var sequence = new List<Control>();
-        if (header is not null)
-            sequence.Add(header);
-
-        foreach (var child in CollectChildren(to).Where(c => c.IsVisible))
+        var visual = ElementComposition.GetElementVisual(to);
+        if (visual is null)
         {
-            var top = scroll is not null
-                ? child.TranslatePoint(new Point(0, 0), scroll)?.Y ?? double.MaxValue
-                : child.Bounds.Y;
-            var bottom = top + child.Bounds.Height;
-
-            if (top < viewportHeight + 24 && bottom > -24)
-                sequence.Add(child);
-            else if (TouchedControls.Contains(child))
-                ResetVisualToStatic(child);
+            completed?.Invoke();
+            return;
         }
 
-        if (!forward)
-            sequence.Reverse();
+        var basePos = new System.Numerics.Vector3(
+            (float)to.Bounds.X,
+            (float)to.Bounds.Y,
+            0f);
+        var startPos = new System.Numerics.Vector3(
+            basePos.X,
+            basePos.Y + (forward ? PageTransitionOffsetY : -PageTransitionOffsetY),
+            0f);
+        var easing = Easing.Parse("0.10,0.90,0.20,1");
+        var duration = TimeSpan.FromMilliseconds(PageTransitionMs);
 
-        StartHardwareAnimations(sequence);
+        visual.Offset = new Vector3D(basePos.X, basePos.Y, 0);
+        visual.Opacity = 1f;
+
+        var offset = visual.Compositor.CreateVector3KeyFrameAnimation();
+        offset.Duration = duration;
+        offset.InsertKeyFrame(0f, startPos);
+        offset.InsertKeyFrame(1f, basePos, easing);
+
+        var opacity = visual.Compositor.CreateScalarKeyFrameAnimation();
+        opacity.Duration = duration;
+        opacity.InsertKeyFrame(0f, 0.25f);
+        opacity.InsertKeyFrame(1f, 1f, easing);
+
+        visual.StartAnimation(nameof(visual.Offset), offset);
+        visual.StartAnimation(nameof(visual.Opacity), opacity);
         completed?.Invoke();
+    }
+
+    private static void StopPageAnimation(Control page)
+    {
+        var visual = ElementComposition.GetElementVisual(page);
+        if (visual is null)
+            return;
+
+        visual.StopAnimation(nameof(visual.Offset));
+        visual.StopAnimation(nameof(visual.Opacity));
     }
 
     public static void PrewarmPagesAtIdle(IEnumerable<Control> pages, Control currentActivePage)
     {
-        foreach (var page in pages)
+        var candidates = pages
+            .Where(page => !ReferenceEquals(page, currentActivePage))
+            .Distinct()
+            .ToList();
+        if (candidates.Count == 0)
+            return;
+
+        Dispatcher.UIThread.Post(() =>
         {
-            if (ReferenceEquals(page, currentActivePage))
-                continue;
-
-            Dispatcher.UIThread.Post(() =>
+            foreach (var page in candidates)
             {
-                if (ReferenceEquals(page, currentActivePage) ||
-                    ReferenceEquals(page, _activePage))
-                    return;
+                if (ReferenceEquals(page, _activePage))
+                    continue;
 
-                if (!page.IsVisible)
-                    page.IsVisible = true;
-                if (page.Bounds.Width <= 0)
-                    page.UpdateLayout();
+                page.IsVisible = true;
+                page.Opacity = 0;
+            }
 
-                if (!ReferenceEquals(page, _activePage) &&
-                    !ReferenceEquals(page, currentActivePage))
-                    page.Opacity = 0;
-            }, DispatcherPriority.Background);
-        }
+            if (candidates.Any(page => page.Bounds.Width <= 0))
+            {
+                if (currentActivePage.Parent is Control owner)
+                    owner.UpdateLayout();
+                else
+                    currentActivePage.UpdateLayout();
+            }
+        }, DispatcherPriority.Background);
     }
 
     public static void PlayList(Panel panel, int direction = 1)
@@ -283,36 +306,4 @@ public static class MetroTransitions
         }
     }
 
-    private static void ResetVisualToStatic(Control control)
-    {
-        var visual = ElementComposition.GetElementVisual(control);
-        if (visual is null)
-            return;
-
-        var basePos = new System.Numerics.Vector3(
-            (float)control.Bounds.X,
-            (float)control.Bounds.Y,
-            0f);
-
-        visual.StopAnimation("Opacity");
-        visual.StopAnimation("Scale");
-        visual.StopAnimation("Offset");
-        visual.Scale = new Vector3D(1, 1, 1);
-        visual.Offset = new Vector3D(basePos.X, basePos.Y, 0);
-        visual.Opacity = 1f;
-    }
-
-    private static IEnumerable<Control> CollectChildren(Control page)
-    {
-        if (page is Panel panel)
-            return panel.Children.OfType<Control>();
-
-        if (page is ContentControl { Content: Control content })
-            return CollectChildren(content);
-
-        if (page is Decorator { Child: Control child })
-            return CollectChildren(child);
-
-        return Array.Empty<Control>();
-    }
 }
