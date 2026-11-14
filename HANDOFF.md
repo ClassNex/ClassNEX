@@ -544,19 +544,24 @@ python tools\gh_release.py "E:\ClassNex\build\ClassNEX-26w41f-Alpha-win-x64.zip"
 ## 9. 项目结构速查
 
 ```
+src/ClassNex.Core/          无项目依赖：模型、核心服务、通知/AI/插件接口
+src/ClassNex.Notification/  通知调度，依赖 Core，通过 INotificationSurface 调用界面
+src/ClassNex.Plugins/       插件发现、清单、可回收 AssemblyLoadContext 与生命周期
+src/ClassNex.AI/            NEX HTTP 客户端、Agent、工具和模型目录
 src/ClassNex/
-  App.axaml(.cs)          应用入口：FluentAvaloniaTheme、全局字体、托盘、静态窗口操作
+  App.axaml(.cs)          应用入口、组合根、窗口与托盘
   Styles/CiPalette.cs     颜色集中定义（全部来自 CI 或系统主题）
-  Models/                 Subject / Course / Schedule / ScheduleProfile /
-                          ClassTime / TimeLayout / CourseSlot / WidgetConfig / AppSettings
-  Services/               ScheduleService / TimeService / TimeLayoutService /
-                          WidgetService / WidgetRegistry / CsesCodec /
-                          SettingsService / AppServices(组合根) / WindowsOverlay
+  Services/               AppServices(组合根) / 语音协调 / UI Surface / 账户与平台服务
   Widgets/                WidgetBase + 7 个组件 + WidgetFactory
   Controls/               TimetableGridBuilder（周课表网格）
   Views/                  MainWindow（浮窗）/ SettingsWindow / ProfileEditorWindow
   Assets/                 icon.ico / timetable.yaml / Fonts/（MiSans 字体+授权）
 ```
+
+依赖方向固定为 `Main -> {Notification, AI, Plugins} -> Core`。`Core` 不允许引用任何模块或
+Avalonia UI；通知模块不允许引用 `MainWindow`；AI 模块不允许直接访问 `AppServices`；
+插件只能通过 `PluginContext` 获取服务。详细结构见 `docs/ARCHITECTURE.md`，
+插件清单格式见 `docs/PLUGIN_SDK.md`。
 
 ---
 

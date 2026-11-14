@@ -38,6 +38,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ClassNex.Core\ClassNex.Core.csproj" />
+    <ProjectReference Include="..\ClassNex.Notification\ClassNex.Notification.csproj" />
+    <ProjectReference Include="..\ClassNex.Plugins\ClassNex.Plugins.csproj" />
+    <ProjectReference Include="..\ClassNex.AI\ClassNex.AI.csproj" />
     <PackageReference Include="Avalonia" Version="11.3.12" />
     <PackageReference Include="Avalonia.Desktop" Version="11.3.12" />
     <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.3.12" />

@@ -33,8 +33,13 @@ public interface IWidgetService
 public sealed class WidgetService : IWidgetService
 {
     private readonly Func<AppSettings> _settings;
+    private readonly Action _saveSettings;
 
-    public WidgetService(Func<AppSettings> settingsAccessor) => _settings = settingsAccessor;
+    public WidgetService(Func<AppSettings> settingsAccessor, Action saveSettings)
+    {
+        _settings = settingsAccessor;
+        _saveSettings = saveSettings;
+    }
 
     public IReadOnlyList<WidgetConfig> Widgets => _settings().Widgets;
 
@@ -81,7 +86,7 @@ public sealed class WidgetService : IWidgetService
 
     public void Save()
     {
-        AppServices.SaveSettings();
+        _saveSettings();
         Changed?.Invoke();
     }
 

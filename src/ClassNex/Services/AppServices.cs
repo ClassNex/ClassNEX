@@ -1,4 +1,5 @@
 using ClassNex.Models;
+using ClassNex.Core.Abstractions;
 
 namespace ClassNex.Services;
 
@@ -18,11 +19,15 @@ public static class AppServices
 
     public static IWidgetService Widgets { get; private set; } = null!;
 
+    public static IAiService Ai { get; private set; } = null!;
+
+    public static IPluginService? Plugins { get; set; }
+
     
     public static Views.MainWindow? MainWindow { get; set; }
 
     
-    public static NotificationService? NotificationService { get; set; }
+    public static INotificationService? NotificationService { get; set; }
 
     
     public static NexVoiceCoordinator? NexVoice { get; set; }
@@ -73,8 +78,9 @@ public static class AppServices
 
         Time = new TimeService(() => Settings);
         Schedule = new ScheduleService(() => Settings);
-        TimeLayout = new TimeLayoutService(() => Settings, Schedule);
-        Widgets = new WidgetService(() => Settings);
+        TimeLayout = new TimeLayoutService(() => Settings, Schedule, SaveSettings);
+        Widgets = new WidgetService(() => Settings, SaveSettings);
+        Ai = new NexAiService(new AppServicesAiContext());
 
         
         Schedule.ProfileChanged += () => TimeLayout.EnsureFromProfile(Schedule.Profile);

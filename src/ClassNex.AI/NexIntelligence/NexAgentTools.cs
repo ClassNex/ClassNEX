@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using ClassNex.Core.Abstractions;
 
 namespace ClassNex.Services.NexIntelligence;
 
@@ -16,10 +17,6 @@ namespace ClassNex.Services.NexIntelligence;
 
 public static class NexAgentTools
 {
-    
-    public static string WorkspaceRoot => SettingsService.DataDirectory;
-
-    
     private const int CommandTimeoutMs = 30_000;
 
     private const int MaxReadBytes = 200_000;
@@ -66,7 +63,11 @@ public static class NexAgentTools
 
     
     public static async Task<(string Result, bool Ok)> ExecuteAsync(
-        NexPermission permission, string name, string argumentsJson, CancellationToken ct)
+        IAiApplicationContext context,
+        NexPermission permission,
+        string name,
+        string argumentsJson,
+        CancellationToken ct)
     {
         try
         {
@@ -75,13 +76,13 @@ public static class NexAgentTools
             switch (name)
             {
                 case "get_classnex_info":
-                    return (GetInfo(), true);
+                    return (GetInfo(context), true);
 
                 case "get_schedule":
-                    return (GetSchedule(GetString(args, "day", "today")), true);
+                    return (GetSchedule(context, GetString(args, "day", "today")), true);
 
                 case "list_files":
-                    return (ListFiles(GetString(args, "path", "")), true);
+                    return (ListFiles(context.WorkspaceRoot, GetString(args, "path", "")), true);
 
                 case "read_file":
                     return (ReadFile(GetString(args, "path", "")), true);
@@ -94,8 +95,8 @@ public static class NexAgentTools
                         return ("权限不足：当前是「仅可查看」，不能写入文件。请让用户在权限下拉框里切换到「工作区内修改」或「完全权限」。", false);
 
                     var full = Path.GetFullPath(path);
-                    if (permission == NexPermission.WorkspaceWrite && !IsInWorkspace(full))
-                        return ($"权限不足：当前是「工作区内修改」，只能写工作区（{WorkspaceRoot}）里的文件，{full} 在工作区之外。", false);
+                    if (permission == NexPermission.WorkspaceWrite && !IsInWorkspace(context.WorkspaceRoot, full))
+                        return ($"权限不足：当前是「工作区内修改」，只能写工作区（{context.WorkspaceRoot}）里的文件，{full} 在工作区之外。", false);
 
                     Directory.CreateDirectory(Path.GetDirectoryName(full)!);
                     await File.WriteAllTextAsync(full, content, new UTF8Encoding(false), ct);
@@ -109,7 +110,7 @@ public static class NexAgentTools
 
                     var command = GetString(args, "command", "");
                     var cwd = GetString(args, "working_directory", "");
-                    return (await RunCommandAsync(command, cwd, ct), true);
+                    return (await RunCommandAsync(context.WorkspaceRoot, command, cwd, ct), true);
                 }
 
                 default:
@@ -124,29 +125,29 @@ public static class NexAgentTools
 
     
 
-    private static string GetInfo()
+    private static string GetInfo(IAiApplicationContext context)
     {
-        var s = AppServices.Settings;
+        var s = context.Settings;
         var now = DateTime.Now;
-        var profile = AppServices.Schedule.Profile;
-        var slots = AppServices.Time.GetTodaySlots(profile, now);
-        var current = AppServices.Time.GetCurrentCourse(slots, now.TimeOfDay);
-        var next = AppServices.Time.GetNextCourse(slots, now.TimeOfDay);
+        var profile = context.Profile;
+        var slots = context.GetTodaySlots(now);
+        var current = context.GetCurrentCourse(slots, now.TimeOfDay);
+        var next = context.GetNextCourse(slots, now.TimeOfDay);
         var widgets = string.Join("、", s.Widgets.Where(w => w.IsEnabled).Select(w => w.Type));
 
         var sb = new StringBuilder();
-        sb.AppendLine($"ClassNEX 版本：{s.GetType().Assembly.GetName().Version}");
+        sb.AppendLine($"ClassNEX 版本：{context.Version}");
         sb.AppendLine($"当前时间：{now:yyyy-MM-dd HH:mm:ss}（{now:dddd}）");
         sb.AppendLine($"是否已导入课表：{(profile.Schedules.Count > 0 || profile.Subjects.Count > 0 ? "是" : "否")}");
         sb.AppendLine($"今天课程数：{slots.Count}");
         sb.AppendLine($"当前课程：{(current is null ? "无" : $"{current.DisplayName} {current.TimeRange}")}");
         sb.AppendLine($"下一节课：{(next is null ? "无" : $"{next.DisplayName} {next.TimeRange}")}");
         sb.AppendLine($"已启用组件：{(string.IsNullOrWhiteSpace(widgets) ? "无" : widgets)}");
-        sb.AppendLine($"数据目录（工作区）：{SettingsService.DataDirectory}");
+        sb.AppendLine($"数据目录（工作区）：{context.WorkspaceRoot}");
         return sb.ToString();
     }
 
-    private static string GetSchedule(string day)
+    private static string GetSchedule(IAiApplicationContext context, string day)
     {
         var now = DateTime.Now;
         var target = day.Trim().ToLowerInvariant() switch
@@ -156,7 +157,7 @@ public static class NexAgentTools
             _ => DateTime.TryParse(day, out var parsed) ? parsed : now,
         };
 
-        var slots = AppServices.Time.GetTodaySlots(AppServices.Schedule.Profile, target);
+        var slots = context.GetTodaySlots(target);
         if (slots.Count == 0)
             return $"{target:yyyy-MM-dd}（{target:dddd}）没有课程，或者还没有导入课表。";
 
@@ -170,9 +171,9 @@ public static class NexAgentTools
         return sb.ToString();
     }
 
-    private static string ListFiles(string path)
+    private static string ListFiles(string workspaceRoot, string path)
     {
-        var target = string.IsNullOrWhiteSpace(path) ? WorkspaceRoot : Path.GetFullPath(path);
+        var target = string.IsNullOrWhiteSpace(path) ? workspaceRoot : Path.GetFullPath(path);
         if (!Directory.Exists(target))
             return $"目录不存在：{target}";
 
@@ -201,7 +202,11 @@ public static class NexAgentTools
         return text;
     }
 
-    private static async Task<string> RunCommandAsync(string command, string cwd, CancellationToken ct)
+    private static async Task<string> RunCommandAsync(
+        string workspaceRoot,
+        string command,
+        string cwd,
+        CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(command))
             return "命令为空。";
@@ -218,7 +223,7 @@ public static class NexAgentTools
             StandardErrorEncoding = Encoding.UTF8,
         };
 
-        var workDir = string.IsNullOrWhiteSpace(cwd) ? WorkspaceRoot : cwd;
+        var workDir = string.IsNullOrWhiteSpace(cwd) ? workspaceRoot : cwd;
         if (Directory.Exists(workDir))
             psi.WorkingDirectory = workDir;
 
@@ -255,9 +260,9 @@ public static class NexAgentTools
         static string Clamp(string s) => s.Length > 8000 ? s[..8000] + "\n…（已截断）" : s;
     }
 
-    private static bool IsInWorkspace(string fullPath)
+    private static bool IsInWorkspace(string workspaceRoot, string fullPath)
     {
-        var root = Path.GetFullPath(WorkspaceRoot)
+        var root = Path.GetFullPath(workspaceRoot)
             .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
             + Path.DirectorySeparatorChar;
         return fullPath.StartsWith(root, StringComparison.OrdinalIgnoreCase);

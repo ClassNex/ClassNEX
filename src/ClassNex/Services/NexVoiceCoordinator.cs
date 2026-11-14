@@ -3,6 +3,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
+using ClassNex.Core.Abstractions;
 using ClassNex.Services.NexIntelligence;
 using ClassNex.Views;
 
@@ -199,17 +200,15 @@ public sealed class NexVoiceCoordinator : IDisposable
     
 
     
-    private NexAgent? _sessionAgent;
+    private INexAgent? _sessionAgent;
 
-    private NexAgent EnsureSessionAgent()
+    private INexAgent EnsureSessionAgent()
     {
         if (_sessionAgent is not null)
             return _sessionAgent;
 
-        _sessionAgent = new NexAgent
-        {
-            Permission = NexPermissionNames.FromKey(AppServices.Settings.NexPermission),
-        };
+        _sessionAgent = AppServices.Ai.CreateAgent(
+            NexPermissionNames.FromKey(AppServices.Settings.NexPermission));
 
         return _sessionAgent;
     }

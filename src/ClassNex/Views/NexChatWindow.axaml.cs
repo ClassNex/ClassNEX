@@ -10,6 +10,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
 using AvaloniaFluentUI.Windowing;
+using ClassNex.Core.Abstractions;
 using ClassNex.Services;
 using ClassNex.Services.NexIntelligence;
 
@@ -21,7 +22,7 @@ namespace ClassNex.Views;
 
 public partial class NexChatWindow : AppWindow
 {
-    private readonly NexAgent _agent = new();
+    private readonly INexAgent _agent;
     private CancellationTokenSource? _cts;
 
     
@@ -38,7 +39,8 @@ public partial class NexChatWindow : AppWindow
     {
         InitializeComponent();
 
-        _agent.Permission = NexPermissionNames.FromKey(AppServices.Settings.NexPermission);
+        _agent = AppServices.Ai.CreateAgent(
+            NexPermissionNames.FromKey(AppServices.Settings.NexPermission));
         PermissionCombo.SelectedIndex = (int)_agent.Permission;
 
         WireEvents();

@@ -42,11 +42,16 @@ public sealed class TimeLayoutService : ITimeLayoutService
 {
     private readonly Func<AppSettings> _settings;
     private readonly IScheduleService _schedule;
+    private readonly Action _saveSettings;
 
-    public TimeLayoutService(Func<AppSettings> settingsAccessor, IScheduleService schedule)
+    public TimeLayoutService(
+        Func<AppSettings> settingsAccessor,
+        IScheduleService schedule,
+        Action saveSettings)
     {
         _settings = settingsAccessor;
         _schedule = schedule;
+        _saveSettings = saveSettings;
     }
 
     public TimeLayout Layout => _settings().TimeLayout;
@@ -279,7 +284,7 @@ public sealed class TimeLayoutService : ITimeLayoutService
 
     public void Save()
     {
-        AppServices.SaveSettings();
+        _saveSettings();
         Changed?.Invoke();
     }
 

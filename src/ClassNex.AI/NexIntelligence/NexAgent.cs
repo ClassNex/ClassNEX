@@ -4,15 +4,22 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using ClassNex.Core.Abstractions;
 
 namespace ClassNex.Services.NexIntelligence;
 
 
 
 
-public sealed class NexAgent
+public sealed class NexAgent : INexAgent
 {
     private readonly NexAiClient _client = new();
+    private readonly IAiApplicationContext _context;
+
+    public NexAgent(IAiApplicationContext context)
+    {
+        _context = context;
+    }
 
     
     public List<NexMessage> History { get; } = new();
@@ -51,7 +58,7 @@ public sealed class NexAgent
         if (IsRunning)
             return;
 
-        var settings = AppServices.Settings;
+        var settings = _context.Settings;
         var apiKey = NexConfig.ResolveApiKey(settings);
         if (string.IsNullOrWhiteSpace(apiKey))
         {
@@ -91,7 +98,12 @@ public sealed class NexAgent
                     ct.ThrowIfCancellationRequested();
 
                     ToolStarted?.Invoke(call);
-                    var (result, ok) = await NexAgentTools.ExecuteAsync(Permission, call.Name, call.Arguments, ct);
+                    var (result, ok) = await NexAgentTools.ExecuteAsync(
+                        _context,
+                        Permission,
+                        call.Name,
+                        call.Arguments,
+                        ct);
                     ToolFinished?.Invoke(call, result, ok);
 
                     History.Add(new NexMessage
@@ -121,15 +133,15 @@ public sealed class NexAgent
     
     private NexMessage BuildSystemMessage()
     {
-        var settings = AppServices.Settings;
+        var settings = _context.Settings;
         var now = DateTime.Now;
-        var profile = AppServices.Schedule.Profile;
+        var profile = _context.Profile;
         var hasTimetable = profile.Schedules.Count > 0 || profile.Subjects.Count > 0;
 
         var permissionText = Permission switch
         {
             NexPermission.WorkspaceWrite =>
-                $"「工作区内修改」——你可以读写工作区（{SettingsService.DataDirectory}）里的文件，但不能动工作区之外的东西，也不能执行命令。",
+                $"「工作区内修改」——你可以读写工作区（{_context.WorkspaceRoot}）里的文件，但不能动工作区之外的东西，也不能执行命令。",
             NexPermission.FullAccess =>
                 "「完全权限」——你可以读写任意路径的文件，也可以执行系统命令。执行破坏性操作前先跟用户确认。",
             _ =>
@@ -149,7 +161,7 @@ public sealed class NexAgent
         sb.AppendLine("【当前环境】");
         sb.AppendLine($"- 时间：{now:yyyy-MM-dd HH:mm:ss}（{now:dddd}）");
         sb.AppendLine($"- 是否已导入课表：{(hasTimetable ? "是" : "否")}（若为否，可以提示用户去档案编辑器导入 CSES 课表）");
-        sb.AppendLine($"- 工作区（应用数据目录）：{SettingsService.DataDirectory}");
+        sb.AppendLine($"- 工作区（应用数据目录）：{_context.WorkspaceRoot}");
         sb.AppendLine($"- 当前权限档位：{permissionText}");
         sb.AppendLine();
         sb.AppendLine("【工作方式】");

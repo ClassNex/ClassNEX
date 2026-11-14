@@ -6,6 +6,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using ClassNex.Core.Abstractions;
 using ClassNex.Services;
 using ClassNex.Styles;
 using ClassNex.Views;
@@ -25,6 +26,7 @@ public partial class App : Application
     private Views.NexChatWindow? _nexChatWindow;
     private Services.NexVoiceCoordinator? _nexVoice;
     private Services.NotificationService? _notificationService;
+    private Services.PluginService? _pluginService;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
@@ -73,7 +75,11 @@ public partial class App : Application
 
             
             _effectWindow = new Views.TopmostEffectWindow();
-            _notificationService = new Services.NotificationService(_effectWindow);
+            _notificationService = new Services.NotificationService(
+                new Services.MainWindowNotificationSurface(_effectWindow),
+                () => AppServices.Settings,
+                AppServices.Time,
+                AppServices.Schedule);
 
             
             
@@ -84,6 +90,22 @@ public partial class App : Application
             Services.AppServices.MainWindow = _mainWindow;
             Services.AppServices.NotificationService = _notificationService;
             _notificationService.Start();
+
+            var pluginServices = new PluginServiceProvider();
+            pluginServices.Add(AppServices.Schedule);
+            pluginServices.Add(AppServices.Time);
+            pluginServices.Add(AppServices.TimeLayout);
+            pluginServices.Add(AppServices.Widgets);
+            pluginServices.Add<INotificationService>(_notificationService);
+            pluginServices.Add(AppServices.Ai);
+
+            _pluginService = new Services.PluginService(
+                Path.Combine(AppContext.BaseDirectory, "plugins"),
+                pluginServices,
+                _notificationService,
+                AppServices.Ai);
+            Services.AppServices.Plugins = _pluginService;
+            _ = _pluginService.LoadAllAsync();
 
             Dispatcher.UIThread.Post(EnsureTrayMenu, DispatcherPriority.Background);
 
@@ -600,6 +622,10 @@ public partial class App : Application
         {
             app._nexVoice?.Dispose();
             app._nexVoice = null;
+            app._pluginService?.StopAll();
+            app._pluginService = null;
+            app._notificationService?.Dispose();
+            app._notificationService = null;
             app._mainWindow?.Hide();
         }
 

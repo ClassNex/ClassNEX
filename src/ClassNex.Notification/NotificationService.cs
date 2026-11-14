@@ -1,16 +1,15 @@
-using Avalonia;
-using Avalonia.Threading;
-using ClassNex.Controls.NotificationEffects;
+using ClassNex.Core.Abstractions;
 using ClassNex.Models;
-using ClassNex.Styles;
-using ClassNex.Views;
 
 namespace ClassNex.Services;
 
-public sealed class NotificationService
+public sealed class NotificationService : INotificationService, IDisposable
 {
-    private readonly DispatcherTimer _timer;
-    private readonly TopmostEffectWindow _effectWindow;
+    private readonly INotificationSurface _surface;
+    private readonly Func<AppSettings> _settings;
+    private readonly ITimeService _time;
+    private readonly IScheduleService _schedule;
+    private Timer? _timer;
 
     private string _lastKey = "\0";
     private string? _prepareKey;
@@ -18,11 +17,16 @@ public sealed class NotificationService
     private int _displayGeneration;
     private DateTime? _prepareCountdownTarget;
 
-    public NotificationService(TopmostEffectWindow effectWindow)
+    public NotificationService(
+        INotificationSurface surface,
+        Func<AppSettings> settings,
+        ITimeService time,
+        IScheduleService schedule)
     {
-        _effectWindow = effectWindow;
-        _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-        _timer.Tick += (_, _) => OnTick();
+        _surface = surface;
+        _settings = settings;
+        _time = time;
+        _schedule = schedule;
     }
 
     public void Start()
@@ -32,12 +36,13 @@ public sealed class NotificationService
 
         _started = true;
         _lastKey = CurrentKey(DateTime.Now);
-        _timer.Start();
+        _timer ??= new Timer(_ => OnTick(), null, Timeout.Infinite, Timeout.Infinite);
+        _timer.Change(TimeSpan.Zero, TimeSpan.FromSeconds(1));
     }
 
     public void Stop()
     {
-        _timer.Stop();
+        _timer?.Change(Timeout.Infinite, Timeout.Infinite);
         _started = false;
         _prepareKey = null;
         _prepareCountdownTarget = null;
@@ -45,13 +50,13 @@ public sealed class NotificationService
 
     private void OnTick()
     {
-        if (!AppServices.Settings.AllowNotification)
+        if (!_settings().AllowNotification)
             return;
 
         UpdatePrepareCountdown();
 
         var now = DateTime.Now;
-        var summary = AppServices.Time.GetTodaySummary(AppServices.Schedule.Profile, now);
+        var summary = _time.GetTodaySummary(_schedule.Profile, now);
         var current = FindCurrent(summary.Slots, now.TimeOfDay);
         var key = CurrentKey(summary, now.TimeOfDay, current);
 
@@ -73,7 +78,7 @@ public sealed class NotificationService
 
     private void TryShowPreparing(TodaySummary summary, DateTime now)
     {
-        var settings = AppServices.Settings;
+        var settings = _settings();
         var notification = settings.Notification;
         if (!settings.AllowMinorNotification ||
             !notification.IsClassOnPreparingNotificationEnabled)
@@ -109,8 +114,7 @@ public sealed class NotificationService
 
     private void ShowPreparing(CourseSlot next, TimeSpan remaining, NotificationSettings notification)
     {
-        var mainWindow = NotificationWindow;
-        if (mainWindow is null)
+        if (!_surface.IsAvailable)
             return;
 
         var mask = next.IsOutDoor
@@ -123,7 +127,7 @@ public sealed class NotificationService
         var generation = BeginDisplay();
         var countdownTarget = DateTime.Now.Add(remaining);
         _prepareCountdownTarget = countdownTarget;
-        ShowMask(mainWindow, mask, "\uE0FF", "\uE54F");
+        ShowMask(mask, "\uE0FF", "\uE54F");
         var maskDuration = TimeSpan.FromSeconds(3);
         var overlayDelay = remaining > maskDuration ? maskDuration : remaining;
         var hideDelay = remaining > maskDuration ? remaining : maskDuration;
@@ -132,7 +136,7 @@ public sealed class NotificationService
             var countdown = countdownTarget - DateTime.Now;
             if (countdown < TimeSpan.Zero)
                 countdown = TimeSpan.Zero;
-            mainWindow.ShowNotificationOverlay(
+            _surface.ShowOverlay(
                 FormatPrepareCountdown(countdown),
                 next.DisplayName,
                 teacher,
@@ -141,22 +145,21 @@ public sealed class NotificationService
                 message,
                 true);
         });
-        Schedule(generation, hideDelay, mainWindow.HideNotificationMask);
+        Schedule(generation, hideDelay, _surface.Hide);
     }
 
     private void ShowClassOn(DateTime now, (string Title, TimeSpan Start, TimeSpan End)? current)
     {
-        var notification = AppServices.Settings.Notification;
+        var notification = _settings().Notification;
         if (!notification.IsClassOnNotificationEnabled || current is null)
             return;
 
-        var mainWindow = NotificationWindow;
-        if (mainWindow is null)
+        if (!_surface.IsAvailable)
             return;
 
         var generation = BeginDisplay();
-        ShowMask(mainWindow, notification.ClassOnMaskText, "\uE0FF", "\uE54F");
-        Schedule(generation, TimeSpan.FromSeconds(5), mainWindow.HideNotificationMask);
+        ShowMask(notification.ClassOnMaskText, "\uE0FF", "\uE54F");
+        Schedule(generation, TimeSpan.FromSeconds(5), _surface.Hide);
     }
 
     private void ShowClassOff(
@@ -164,21 +167,20 @@ public sealed class NotificationService
         (string Title, TimeSpan Start, TimeSpan End)? current,
         TodaySummary summary)
     {
-        var notification = AppServices.Settings.Notification;
+        var notification = _settings().Notification;
         if (!notification.IsClassOffNotificationEnabled || current is null)
             return;
 
-        var mainWindow = NotificationWindow;
-        if (mainWindow is null)
+        if (!_surface.IsAvailable)
             return;
 
         var next = summary.Slots.FirstOrDefault(slot => slot.Start > now.TimeOfDay);
         var generation = BeginDisplay();
-        ShowMask(mainWindow, notification.ClassOffMaskText, "\uE0FF", "\uE250");
+        ShowMask(notification.ClassOffMaskText, "\uE0FF", "\uE250");
 
         if (next is null)
         {
-            Schedule(generation, TimeSpan.FromSeconds(5), mainWindow.HideNotificationMask);
+            Schedule(generation, TimeSpan.FromSeconds(5), _surface.Hide);
             return;
         }
 
@@ -188,15 +190,9 @@ public sealed class NotificationService
             : $"{notification.ClassOffOverlayText} · {FormatDuration(gap)}";
         var teacher = notification.ShowTeacherName ? next.Teacher ?? "" : "";
         Schedule(generation, TimeSpan.FromMilliseconds(1200), () =>
-            mainWindow.ShowNotificationOverlay(overlay, next.DisplayName, teacher, next.TimeRange));
-        Schedule(generation, TimeSpan.FromSeconds(8), mainWindow.HideNotificationMask);
+            _surface.ShowOverlay(overlay, next.DisplayName, teacher, next.TimeRange, "下节课是：", "", false));
+        Schedule(generation, TimeSpan.FromSeconds(8), _surface.Hide);
     }
-
-    private MainWindow? NotificationWindow =>
-        AppServices.Settings.IsMainWindowVisible &&
-        AppServices.MainWindow is { IsEditMode: false } mainWindow
-            ? mainWindow
-            : null;
 
     private int BeginDisplay()
     {
@@ -217,7 +213,7 @@ public sealed class NotificationService
             return;
         }
 
-        NotificationWindow?.UpdateNotificationOverlayCountdown(FormatPrepareCountdown(remaining));
+        _surface.UpdateCountdown(FormatPrepareCountdown(remaining));
     }
 
     private static string FormatPrepareCountdown(TimeSpan remaining)
@@ -226,61 +222,47 @@ public sealed class NotificationService
         return $"距上课还剩 {seconds} 秒";
     }
 
-    private void Schedule(int generation, TimeSpan delay, Action action)
+    private async void Schedule(int generation, TimeSpan delay, Action action)
     {
-        DispatcherTimer.RunOnce(() =>
-        {
-            if (generation == _displayGeneration)
-                action();
-        }, delay);
+        await Task.Delay(delay);
+        if (generation == _displayGeneration)
+            action();
     }
 
     private void ShowMask(
-        MainWindow mainWindow,
         string text,
         string leftGlyph = "\uE0FF",
         string rightGlyph = "\uE54F")
     {
-        if (AppServices.Settings.AllowNotificationEffect)
-        {
-            var center = mainWindow.GetIslandCenterOnScreen() ?? new PixelPoint(0, 0);
-            var clipCornerRadius = 14 * Math.Max(0.1, AppServices.Settings.EffectiveScale);
-            _effectWindow.PlayEffect(new RippleEffect(
-                center,
-                CiPalette.SakuraAccentBrush(),
-                mainWindow.GetIslandScreenRect,
-                clipCornerRadius));
-        }
-
-        mainWindow.ShowNotificationMask(text, leftGlyph, rightGlyph);
+        _surface.ShowMask(text, leftGlyph, rightGlyph, _settings().AllowNotificationEffect);
     }
 
     public void DebugTriggerClassPreparing()
     {
         var now = DateTime.Now;
-        var summary = AppServices.Time.GetTodaySummary(AppServices.Schedule.Profile, now);
+        var summary = _time.GetTodaySummary(_schedule.Profile, now);
         var next = summary.Slots.FirstOrDefault(slot => slot.Start > now.TimeOfDay);
         if (next is not null)
         {
-            ShowPreparing(next, next.Start - now.TimeOfDay, AppServices.Settings.Notification);
+            ShowPreparing(next, next.Start - now.TimeOfDay, _settings().Notification);
             return;
         }
 
         if (summary.Slots.Count > 0)
-            ShowPreparing(summary.Slots[0], TimeSpan.FromSeconds(60), AppServices.Settings.Notification);
+            ShowPreparing(summary.Slots[0], TimeSpan.FromSeconds(60), _settings().Notification);
         else
             ShowPreparing(
                 new CourseSlot("演示课程", "演示课程", "", "", now.TimeOfDay + TimeSpan.FromMinutes(1),
                     now.TimeOfDay + TimeSpan.FromMinutes(41)),
                 TimeSpan.FromMinutes(1),
-                AppServices.Settings.Notification);
+                _settings().Notification);
     }
 
     public void DebugTriggerClassOn()
     {
         var now = DateTime.Now;
         var current = FindCurrent(
-            AppServices.Time.GetTodaySummary(AppServices.Schedule.Profile, now).Slots,
+            _time.GetTodaySummary(_schedule.Profile, now).Slots,
             now.TimeOfDay);
         current ??= ("演示课程", now.TimeOfDay, now.TimeOfDay + TimeSpan.FromMinutes(40));
         ShowClassOn(now, current);
@@ -289,7 +271,7 @@ public sealed class NotificationService
     public void DebugTriggerClassOff()
     {
         var now = DateTime.Now;
-        var summary = AppServices.Time.GetTodaySummary(AppServices.Schedule.Profile, now);
+        var summary = _time.GetTodaySummary(_schedule.Profile, now);
         var current = FindCurrent(summary.Slots, now.TimeOfDay);
         current ??= ("课间休息", now.TimeOfDay, now.TimeOfDay + TimeSpan.FromMinutes(10));
         ShowClassOff(now, current, summary);
@@ -297,25 +279,26 @@ public sealed class NotificationService
 
     public void DebugTriggerTestNotification()
     {
-        var mainWindow = NotificationWindow;
-        if (mainWindow is null)
+        if (!_surface.IsAvailable)
             return;
 
         var generation = BeginDisplay();
-        ShowMask(mainWindow, "测试提醒", "\uE0FF", "\uE54F");
+        ShowMask("测试提醒", "\uE0FF", "\uE54F");
         Schedule(generation, TimeSpan.FromMilliseconds(1200), () =>
-            mainWindow.ShowNotificationOverlay(
+            _surface.ShowOverlay(
                 "这是一条测试提醒",
                 "通知系统工作正常",
                 "",
                 DateTime.Now.ToString("HH:mm"),
-                ""));
-        Schedule(generation, TimeSpan.FromSeconds(8), mainWindow.HideNotificationMask);
+                "",
+                "",
+                false));
+        Schedule(generation, TimeSpan.FromSeconds(8), _surface.Hide);
     }
 
     private string CurrentKey(DateTime now)
     {
-        var summary = AppServices.Time.GetTodaySummary(AppServices.Schedule.Profile, now);
+        var summary = _time.GetTodaySummary(_schedule.Profile, now);
         return CurrentKey(summary, now.TimeOfDay, FindCurrent(summary.Slots, now.TimeOfDay));
     }
 
@@ -347,6 +330,13 @@ public sealed class NotificationService
             parts.Add($"{span.Seconds} 秒");
 
         return string.Join(" ", parts);
+    }
+
+    public void Dispose()
+    {
+        Stop();
+        _timer?.Dispose();
+        _timer = null;
     }
 
     private static (string Title, TimeSpan Start, TimeSpan End)? FindCurrent(
