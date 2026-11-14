@@ -303,8 +303,7 @@ public sealed class NotificationService
                 "通知系统工作正常",
                 "",
                 DateTime.Now.ToString("HH:mm")));
-        Schedule(generation, TimeSpan.FromSeconds(6), mainWindow.HideNotificationMask);
-        Speak(true, "这是一条 ClassNEX 通知测试提醒。");
+        Schedule(generation, TimeSpan.FromSeconds(8), mainWindow.HideNotificationMask);
     }
 
     private string CurrentKey(DateTime now)

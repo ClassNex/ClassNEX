@@ -549,26 +549,18 @@ public partial class MainWindow : Window
         NotificationTrackFill.Width = _trackFullWidth;
         NotificationTrack.IsVisible = true;
 
-        if (ElementComposition.GetElementVisual(NotificationTrackFill) is { } fillVisual)
-        {
-            fillVisual.CenterPoint = new Vector3D(0, fillVisual.Size.Y / 2, 0); 
-            fillVisual.Scale = new Vector3D(1, 1, 1);
-        }
+        var visual = ElementComposition.GetElementVisual(NotificationTrackFill);
+        if (visual is null)
+            return;
 
-        
-        DispatcherTimer.RunOnce(() =>
-        {
-            var visual = ElementComposition.GetElementVisual(NotificationTrackFill);
-            if (visual is null)
-                return;
-
-            visual.CenterPoint = new Vector3D(0, visual.Size.Y / 2, 0);
-            var anim = visual.Compositor.CreateVector3DKeyFrameAnimation();
-            anim.InsertKeyFrame(0f, new Vector3D(1, 1, 1));
-            anim.InsertKeyFrame(1f, new Vector3D(0, 1, 1), new LinearEasing());
-            anim.Duration = TimeSpan.FromMilliseconds(1500);
-            visual.StartAnimation(nameof(visual.Scale), anim);
-        }, TimeSpan.FromMilliseconds(500));
+        visual.StopAnimation(nameof(visual.Scale));
+        visual.CenterPoint = new Vector3D(0, visual.Size.Y / 2, 0);
+        visual.Scale = new Vector3D(1, 1, 1);
+        var anim = visual.Compositor.CreateVector3DKeyFrameAnimation();
+        anim.InsertKeyFrame(0f, new Vector3D(1, 1, 1));
+        anim.InsertKeyFrame(1f, new Vector3D(0, 1, 1), new LinearEasing());
+        anim.Duration = TimeSpan.FromMilliseconds(6800);
+        visual.StartAnimation(nameof(visual.Scale), anim);
     }
 
     private double _trackFullWidth;
@@ -734,7 +726,7 @@ public partial class MainWindow : Window
         NotificationOverlayTime.Text = time;
         NotificationOverlay.IsVisible = true;
         NotificationOverlay.Opacity = 0;
-        DispatcherTimer.RunOnce(StartNotificationTrack, TimeSpan.FromMilliseconds(500));
+        StartNotificationTrack();
 
         var fade = new Animation
         {
