@@ -552,7 +552,7 @@ public partial class MainWindow : Window
     
     
     
-    private void StartNotificationTrack()
+    private void StartNotificationTrack(TimeSpan duration)
     {
         
         _trackFullWidth = Math.Max(1, IslandBackground.Width - IslandContentMargin * 2);
@@ -570,7 +570,7 @@ public partial class MainWindow : Window
         var anim = visual.Compositor.CreateVector3DKeyFrameAnimation();
         anim.InsertKeyFrame(0f, new Vector3D(1, 1, 1));
         anim.InsertKeyFrame(1f, new Vector3D(0, 1, 1), new LinearEasing());
-        anim.Duration = TimeSpan.FromMilliseconds(6800);
+        anim.Duration = TimeSpan.FromMilliseconds(Math.Max(1, duration.TotalMilliseconds));
         visual.StartAnimation(nameof(visual.Scale), anim);
     }
 
@@ -747,7 +747,8 @@ public partial class MainWindow : Window
         string time,
         string prefix = "下节课是：",
         string message = "",
-        bool verticalPageTurn = false)
+        bool verticalPageTurn = false,
+        TimeSpan trackDuration = default)
     {
         var generation = ++_notificationTransitionGeneration;
         StopNotificationOverlayMessageTicker();
@@ -761,7 +762,9 @@ public partial class MainWindow : Window
         NotificationOverlayPrefix.IsVisible = !string.IsNullOrWhiteSpace(prefix);
         NotificationOverlayMessagePage.Text = message;
         NotificationOverlay.IsVisible = true;
-        StartNotificationTrack();
+        StartNotificationTrack(trackDuration > TimeSpan.Zero
+            ? trackDuration
+            : TimeSpan.FromSeconds(6.8));
 
         if (!string.IsNullOrWhiteSpace(message))
         {

@@ -143,7 +143,8 @@ public sealed class NotificationService : INotificationService, IDisposable
                 next.TimeRange,
                 "下节课是：",
                 message,
-                true);
+                true,
+                countdown);
         });
         Schedule(generation, hideDelay, _surface.Hide);
     }
@@ -190,7 +191,15 @@ public sealed class NotificationService : INotificationService, IDisposable
             : $"{notification.ClassOffOverlayText} · {FormatDuration(gap)}";
         var teacher = notification.ShowTeacherName ? next.Teacher ?? "" : "";
         Schedule(generation, TimeSpan.FromMilliseconds(1200), () =>
-            _surface.ShowOverlay(overlay, next.DisplayName, teacher, next.TimeRange, "下节课是：", "", false));
+            _surface.ShowOverlay(
+                overlay,
+                next.DisplayName,
+                teacher,
+                next.TimeRange,
+                "下节课是：",
+                "",
+                false,
+                TimeSpan.FromSeconds(6.8)));
         Schedule(generation, TimeSpan.FromSeconds(8), _surface.Hide);
     }
 
@@ -292,7 +301,8 @@ public sealed class NotificationService : INotificationService, IDisposable
                 DateTime.Now.ToString("HH:mm"),
                 "",
                 "",
-                false));
+                false,
+                TimeSpan.FromSeconds(6.8)));
         Schedule(generation, TimeSpan.FromSeconds(8), _surface.Hide);
     }
 

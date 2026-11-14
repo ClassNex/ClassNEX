@@ -54,7 +54,8 @@ public sealed class MainWindowNotificationSurface : INotificationSurface
         string time,
         string prefix,
         string message,
-        bool verticalPageTurn)
+        bool verticalPageTurn,
+        TimeSpan trackDuration)
     {
         Dispatcher.UIThread.Post(() => Window?.ShowNotificationOverlay(
             left,
@@ -63,7 +64,8 @@ public sealed class MainWindowNotificationSurface : INotificationSurface
             time,
             prefix,
             message,
-            verticalPageTurn));
+            verticalPageTurn,
+            trackDuration));
     }
 
     public void Hide()

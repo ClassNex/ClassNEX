@@ -308,8 +308,8 @@ public sealed class ScheduleWidget : WidgetBase
 
         var time = Text(remaining, Size(CiSecondary), White());
         time.VerticalAlignment = VerticalAlignment.Center;
-        time.TextAlignment = TextAlignment.Left;
-        time.MinWidth = 50;
+        time.TextAlignment = TextAlignment.Right;
+        time.MinWidth = 46;
         time.Margin = new Thickness(4, 0, 0, 0);
 
         var (pill, pillText) = BuildCountdownPill(remaining);
@@ -319,13 +319,16 @@ public sealed class ScheduleWidget : WidgetBase
         time.IsVisible = !showPill;
         pill.IsVisible = showPill;
 
-        var row = new StackPanel
+        var row = new Grid
         {
-            Orientation = Orientation.Horizontal,
+            ColumnDefinitions = new ColumnDefinitions("*,Auto"),
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(12, 0, 12, 0),
             Children = { name, time, pill },
         };
+        Grid.SetColumn(name, 0);
+        Grid.SetColumn(time, 1);
+        Grid.SetColumn(pill, 1);
 
         var track = new Border
         {

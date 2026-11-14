@@ -30,7 +30,8 @@ public interface INotificationSurface
         string time,
         string prefix,
         string message,
-        bool verticalPageTurn);
+        bool verticalPageTurn,
+        TimeSpan trackDuration);
 
     void Hide();
 
