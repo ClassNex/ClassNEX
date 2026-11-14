@@ -489,8 +489,6 @@ public partial class SettingsWindow : AppWindow
 
         VersionText.Text = version;
         AboutVersionText.Text = $"版本 {version}";
-        HomeDeviceNameText.Text = Environment.MachineName;
-        HomeDeviceMetaText.Text = $"ClassNEX {version} · 当前设备";
 
         RefreshAccountName();
 
@@ -857,8 +855,8 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         };
 
         OpacitySlider.Value = Math.Clamp(s.BackgroundOpacity, 0.1, 1);
-        FontScaleSlider.Value = Math.Clamp(s.FontScale, 0.8, 1.6);
-        MainWindowScaleSlider.Value = Math.Clamp(s.MainWindowScale, 0.6, 3.0);
+        FontScaleSlider.Value = Math.Clamp(s.FontScale, 0.8, 2.4);
+        MainWindowScaleSlider.Value = Math.Clamp(s.MainWindowScale, 0.5, 4.0);
         OpacityValueText.Text = $"{s.BackgroundOpacity:P0}";
         FontScaleValueText.Text = $"{s.FontScale:0.00}x";
         MainWindowScaleValueText.Text = $"{s.MainWindowScale:0.00}x";
@@ -1766,6 +1764,39 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         MainWindowScaleValueText.Text = $"{s.MainWindowScale:0.00}x";
 
         AppServices.SaveSettings();
+    }
+
+    private void OnOpacityDecrease(object? sender, RoutedEventArgs e) =>
+        OpacitySlider.Value = Math.Clamp(OpacitySlider.Value - 0.05, 0.1, 1);
+
+    private void OnOpacityIncrease(object? sender, RoutedEventArgs e) =>
+        OpacitySlider.Value = Math.Clamp(OpacitySlider.Value + 0.05, 0.1, 1);
+
+    private void OnFontScaleDecrease(object? sender, RoutedEventArgs e) =>
+        FontScaleSlider.Value = Math.Clamp(FontScaleSlider.Value - 0.05, 0.8, 2.4);
+
+    private void OnFontScaleIncrease(object? sender, RoutedEventArgs e) =>
+        FontScaleSlider.Value = Math.Clamp(FontScaleSlider.Value + 0.05, 0.8, 2.4);
+
+    private void OnMainScaleDecrease(object? sender, RoutedEventArgs e) =>
+        MainWindowScaleSlider.Value = Math.Clamp(MainWindowScaleSlider.Value - 0.05, 0.5, 4.0);
+
+    private void OnMainScaleIncrease(object? sender, RoutedEventArgs e) =>
+        MainWindowScaleSlider.Value = Math.Clamp(MainWindowScaleSlider.Value + 0.05, 0.5, 4.0);
+
+    private void OnScalePresetStandard(object? sender, RoutedEventArgs e) =>
+        ApplyScalePreset(1.0, 1.9);
+
+    private void OnScalePresetClassroom(object? sender, RoutedEventArgs e) =>
+        ApplyScalePreset(1.35, 2.6);
+
+    private void ApplyScalePreset(double fontScale, double mainScale)
+    {
+        _loading = true;
+        FontScaleSlider.Value = fontScale;
+        MainWindowScaleSlider.Value = mainScale;
+        _loading = false;
+        ApplyInterface();
     }
 
     

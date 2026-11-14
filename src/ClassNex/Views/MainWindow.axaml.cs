@@ -429,6 +429,8 @@ public partial class MainWindow : Window
             NexPanel.BorderBrush = IslandBackground.BorderBrush;
             IslandBackground.Opacity = 0;
             NexPanel.IsVisible = true;
+            CardContent.IsVisible = false;
+            CardContent.Opacity = 0;
 
             if (CardShift is { } card)
                 card.Y = 0;
@@ -441,9 +443,6 @@ public partial class MainWindow : Window
                 
                 if (CardShift is { } c)
                     c.Y = -26;
-                CardContent.Opacity = 0;
-
-                
                 if (NexShift is { } n)
                     n.Y = 0;
                 NexPanel.Opacity = 1;
@@ -453,6 +452,8 @@ public partial class MainWindow : Window
         }
         else
         {
+            CardContent.IsVisible = false;
+            CardContent.Opacity = 0;
             SetIslandWidth(NexPanel.Bounds.Width + IslandContentMargin * 2);
         }
 
@@ -476,16 +477,16 @@ public partial class MainWindow : Window
             n.Y = 24;
         NexPanel.Opacity = 0;
 
-        if (CardShift is { } c)
-            c.Y = 0;
-        CardContent.Opacity = 1;
-
         DispatcherTimer.RunOnce(() =>
         {
             if (_nexPanelActive)
                 return;
 
             NexPanel.IsVisible = false;
+            CardContent.IsVisible = true;
+            CardContent.Opacity = 1;
+            if (CardShift is { } c)
+                c.Y = 0;
 
             
             IslandBackground.Opacity = Math.Clamp(AppServices.Settings.BackgroundOpacity, 0.05, 1.0);
@@ -1158,6 +1159,13 @@ public partial class MainWindow : Window
             : (float)(previous / target);
         if (Math.Abs(from - 1f) < 0.001f)
             return;
+
+        if (target > previous)
+        {
+            visual.StopAnimation(nameof(visual.Scale));
+            visual.Scale = new System.Numerics.Vector3(1f, 1f, 1f);
+            return;
+        }
 
         var compositor = visual.Compositor;
         var anim = compositor.CreateVector3KeyFrameAnimation();

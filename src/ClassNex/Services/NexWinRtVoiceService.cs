@@ -561,6 +561,9 @@ public sealed class NexWinRtVoiceService : INexVoiceService
             NexVoiceLog.Write("停止听写会话失败（忽略）：" + ex.Message.Split('\n')[0]);
         }
 
+        _dictationRecognizer?.Dispose();
+        _dictationRecognizer = null;
+
         
         await EnsureWakeSessionAsync();
     }

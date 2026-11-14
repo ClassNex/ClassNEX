@@ -197,6 +197,8 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   否则整个内容+滚动条一起位移会产生上下抖动）；不要用两段式 `Dispatcher.UIThread.Post`（Background→Render）
   驱动过渡，会丢动画并卡顿
 - **强制置顶**（每秒自检 + 失焦重声明）、贴屏幕顶部水平居中（窗口比屏宽时向两侧对称溢出，岛保持居中）、**不可拖动**
+- **主界面宽度变化**：扩展时立即把岛背景切到目标宽度，只有缩小时播放 300ms Composition Scale；
+  否则新内容已按更大宽度排版，而背景仍从旧宽度放大，右端课程会短暂露出圆角背景之外。
 - **鼠标穿透**（Win32 `WS_EX_TRANSPARENT`）+ **鼠标移入淡化**（淡到 0.05、100ms 线性过渡；
   因穿透后收不到鼠标消息，用 30ms 轮询 `GetCursorPos` 近似 CI 的 RawInput 即时判定 → `Services/WindowsOverlay.cs`）
 - 浅色粉白樱花渐变 / 深色深玫瑰渐变玻璃底 + 不透明度设置 + 圆角 14 + 顶部高光 + 玫瑰色柔和投影
@@ -226,6 +228,9 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   左栏为账户卡和今日课程卡，右栏为推荐设置列表和个性化主题预览。账户头像/名称/邮箱、
   今日课程数量、已完成数量、下一节课程与时间均来自实时状态；推荐设置可直接跳到外观、
   窗口和提醒页。主页不再运行樱花飘落装饰，避免卡片层上出现漂浮元素。
+  主页问候不再显示设备名，使用大号 `Noto Serif SC / Source Han Serif SC / SimSun`。
+  外观页三条滑块都提供加减按钮；全局字号上限 2.4，主界面缩放范围 0.5–4.0，
+  并提供“标准”和“教室远距离”两种快速预设。
   **所有布尔设置统一使用 Avalonia `ToggleSwitch`**，全局 On/Off 文本为「开 / 关」；
   设置页、组件参数、档案编辑器和 OOBE 均不得回退到方形 `CheckBox`。
   外观页不透明度、全局字号、主界面缩放三条滑块使用相同的 `180 + 12 + 64` 网格列，
@@ -301,6 +306,11 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
     「请讲」浮窗在该模式下会 `SetWindowPos(HWND_TOPMOST)` + `Activate()`，确保压在
     其他置顶窗口（包括花瓣层）之上。设置页「NEX Intelligence」顶部有「预览跑马灯」按钮，
     原来的「测试跑马灯」也保留。
+  - **NEX 会话收尾**：唤醒后 12 秒没有识别到语音会自动收起；语音超时、错误和无回答都会进入短超时后关闭。
+    延迟显示“思考中”时会校验会话代次，取消后不会把旧浮窗重新贴出来。每次对话使用独立
+    `CancellationTokenSource`，结束、取消或关闭聊天窗都会取消请求；聊天窗关闭后清空历史和工具卡。
+    跑马灯结束后关闭全屏窗口，控制控件缓存花瓣几何与画笔，不再每帧创建数百个对象；
+    会话结束时执行一次受控 GC 和工作集回收。实测唤醒时工作集约 374 MB，结束回收后约 89 MB。
   - ⚠️ **接口密钥绝不写进源码/仓库**（仓库是公开的）：只在设置页填写，落盘到本机 `data\Settings.json`；新机器要重新填一次
   - 自检：`CLASSNEX_VERIFY_NEX=<文本>` 打开对话框并自动发一条消息；出图看 `_shot_nex.png`
 - **Metro 转场统一层**：`Styles/MetroTransitions.cs` 使用 Avalonia Composition 硬件动画，不再用 UI 线程计时器；

@@ -543,7 +543,11 @@ public partial class App : Application
         }
 
         app._settingsWindow = new SettingsWindow();
-        app._settingsWindow.Closed += (_, _) => app._settingsWindow = null;
+        app._settingsWindow.Closed += (_, _) =>
+        {
+            app._settingsWindow = null;
+            Dispatcher.UIThread.Post(MemoryTrimmer.Trim, DispatcherPriority.Background);
+        };
         app._settingsWindow.NavigateTo(page);
         app._settingsWindow.Show();
     }
@@ -561,7 +565,11 @@ public partial class App : Application
         }
 
         app._profileEditor = new ProfileEditorWindow();
-        app._profileEditor.Closed += (_, _) => app._profileEditor = null;
+        app._profileEditor.Closed += (_, _) =>
+        {
+            app._profileEditor = null;
+            Dispatcher.UIThread.Post(MemoryTrimmer.Trim, DispatcherPriority.Background);
+        };
         app._profileEditor.SelectTab(tabIndex);
         app._profileEditor.Show();
     }
@@ -578,14 +586,22 @@ public partial class App : Application
         }
 
         app._loginWindow = new LoginWindow();
-        app._loginWindow.Closed += (_, _) => app._loginWindow = null;
+        app._loginWindow.Closed += (_, _) =>
+        {
+            app._loginWindow = null;
+            Dispatcher.UIThread.Post(MemoryTrimmer.Trim, DispatcherPriority.Background);
+        };
         app._loginWindow.Show();
     }
 
     public static void ExitApp()
     {
         if (Current is App app)
+        {
+            app._nexVoice?.Dispose();
+            app._nexVoice = null;
             app._mainWindow?.Hide();
+        }
 
         Lifetime?.Shutdown();
     }
@@ -635,9 +651,35 @@ public partial class App : Application
             return;
         }
 
-        app._nexChatWindow = new Views.NexChatWindow();
-        app._nexChatWindow.Show();
-        app._nexChatWindow.Activate();
+        var window = new Views.NexChatWindow();
+        app._nexChatWindow = window;
+        window.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(app._nexChatWindow, window))
+                app._nexChatWindow = null;
+        };
+        PositionNexChatWindow(window, app._mainWindow);
+        window.Show();
+        window.Activate();
+    }
+
+    private static void PositionNexChatWindow(NexChatWindow window, MainWindow? mainWindow)
+    {
+        if (mainWindow?.Screens.Primary is not { } screen)
+            return;
+
+        var scale = screen.Scaling > 0 ? screen.Scaling : 1;
+        var top = mainWindow.GetIslandScreenRect()?.Bottom ?? screen.WorkingArea.Y + (int)(96 * scale);
+        top += (int)(12 * scale);
+        var availableHeight = Math.Max((int)(window.MinHeight * scale), screen.WorkingArea.Bottom - top - 8);
+        var availableWidth = Math.Max((int)(window.MinWidth * scale), screen.WorkingArea.Width - 24);
+
+        window.WindowStartupLocation = WindowStartupLocation.Manual;
+        window.Width = Math.Min(window.Width, availableWidth / scale);
+        window.Height = Math.Min(window.Height, availableHeight / scale);
+        window.Position = new PixelPoint(
+            screen.WorkingArea.X + (screen.WorkingArea.Width - (int)(window.Width * scale)) / 2,
+            top);
     }
 
     

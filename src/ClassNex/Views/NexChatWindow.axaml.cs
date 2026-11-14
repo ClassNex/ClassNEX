@@ -30,6 +30,7 @@ public partial class NexChatWindow : AppWindow
     private SelectableTextBlock? _thinkingText;
     private Button? _thinkingToggle;
     private bool _thinkingExpanded;
+    private bool _closed;
 
     private readonly Dictionary<string, Border> _toolCards = new();
 
@@ -42,6 +43,7 @@ public partial class NexChatWindow : AppWindow
 
         WireEvents();
         ShowWelcome();
+        Closed += OnClosed;
     }
 
     private void WireEvents()
@@ -80,6 +82,9 @@ public partial class NexChatWindow : AppWindow
 
         _agent.DeltaReceived += delta => Dispatcher.UIThread.Post(() =>
         {
+            if (_closed)
+                return;
+
             if (!string.IsNullOrEmpty(delta.Reasoning))
                 AppendThinking(delta.Reasoning);
 
@@ -87,18 +92,47 @@ public partial class NexChatWindow : AppWindow
                 AppendBody(delta.Content);
         });
 
-        _agent.ToolStarted += call => Dispatcher.UIThread.Post(() => AddToolCard(call));
+        _agent.ToolStarted += call => Dispatcher.UIThread.Post(() =>
+        {
+            if (!_closed)
+                AddToolCard(call);
+        });
 
-        _agent.ToolFinished += (call, result, ok) => Dispatcher.UIThread.Post(() => UpdateToolCard(call, result, ok));
+        _agent.ToolFinished += (call, result, ok) => Dispatcher.UIThread.Post(() =>
+        {
+            if (!_closed)
+                UpdateToolCard(call, result, ok);
+        });
 
         _agent.AssistantMessageCompleted += message => Dispatcher.UIThread.Post(() =>
         {
+            if (_closed)
+                return;
+
             
             if (_thinkingToggle is not null && _thinkingText is not null && _thinkingText.Text?.Length > 0)
                 _thinkingToggle.Content = $"已思考（{_thinkingText.Text!.Length} 字）· 点击展开";
         });
 
-        _agent.ErrorOccurred += message => Dispatcher.UIThread.Post(() => AddNotice("出错了：" + message, true));
+        _agent.ErrorOccurred += message => Dispatcher.UIThread.Post(() =>
+        {
+            if (!_closed)
+                AddNotice("出错了：" + message, true);
+        });
+    }
+
+    private void OnClosed(object? sender, EventArgs e)
+    {
+        _closed = true;
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = null;
+        _agent.Reset();
+        _toolCards.Clear();
+        MessagePanel.Children.Clear();
+        Dispatcher.UIThread.Post(
+            MemoryTrimmer.Trim,
+            DispatcherPriority.Background);
     }
 
     
@@ -136,8 +170,11 @@ public partial class NexChatWindow : AppWindow
         }
         finally
         {
-            SetRunning(false);
-            ScrollToEnd();
+            if (!_closed)
+            {
+                SetRunning(false);
+                ScrollToEnd();
+            }
         }
     }
 

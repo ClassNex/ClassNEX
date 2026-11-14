@@ -17,6 +17,9 @@ public sealed class NexVoiceCoordinator : IDisposable
     private INexVoiceService _voice = new NexWinRtVoiceService();
     private NexGlowWindow? _glow;
     private DispatcherTimer? _followUpTimer;
+    private DispatcherTimer? _wakeTimeoutTimer;
+    private CancellationTokenSource? _requestCts;
+    private int _conversationVersion;
     private bool _started;
 
     
@@ -96,9 +99,9 @@ public sealed class NexVoiceCoordinator : IDisposable
         if (!_started)
             return;
 
+        HideEverything();
         _voice.Stop();
         _started = false;
-        Dispatcher.UIThread.Post(HideEverything);
         StatusChanged?.Invoke("语音唤醒已关闭");
     }
 
@@ -124,8 +127,8 @@ public sealed class NexVoiceCoordinator : IDisposable
             
             if (_glow?.IsVisible == true)
             {
-                _followUpTimer?.Stop();
-                _sessionAgent = null;
+                StopConversationTimers();
+                CancelCurrentRequest();
             }
 
             _active = true;
@@ -137,6 +140,7 @@ public sealed class NexVoiceCoordinator : IDisposable
 
             ShowGlow();
             main?.ShowNexPanel("请讲", true);
+            StartWakeTimeout();
         });
     }
 
@@ -146,28 +150,50 @@ public sealed class NexVoiceCoordinator : IDisposable
             return;
 
         
-        Dispatcher.UIThread.Post(() => AppServices.MainWindow?.ShowNexPanel(text, false));
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (!_active)
+                return;
+
+            AppServices.MainWindow?.ShowNexPanel(text, false);
+            StartWakeTimeout();
+        });
     }
 
     private void OnSpeechTimeout()
     {
-        Dispatcher.UIThread.Post(() => AppServices.MainWindow?.ShowNexPanel("请讲", true));
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (!_active)
+                return;
+
+            StopWakeTimeout();
+            HideEverything();
+        });
     }
 
     private void OnSpeech(string text)
     {
-        
-        _followUpTimer?.Stop();
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (!_active)
+                return;
 
-        
-        
-        Dispatcher.UIThread.Post(() => AppServices.MainWindow?.ShowNexPanel(text, false));
+            StopWakeTimeout();
+            _followUpTimer?.Stop();
+            CancelCurrentRequest();
 
-        DispatcherTimer.RunOnce(
-            () => AppServices.MainWindow?.ShowNexPanel("思考中…", true),
-            TimeSpan.FromMilliseconds(600));
+            var version = ++_conversationVersion;
+            AppServices.MainWindow?.ShowNexPanel(text, false);
 
-        _ = AskNexAsync(text);
+            DispatcherTimer.RunOnce(() =>
+            {
+                if (_active && version == _conversationVersion)
+                    AppServices.MainWindow?.ShowNexPanel("思考中…", true);
+            }, TimeSpan.FromMilliseconds(600));
+
+            _ = AskNexAsync(text, version);
+        });
     }
 
     
@@ -190,52 +216,81 @@ public sealed class NexVoiceCoordinator : IDisposable
 
     
 
-    private async Task AskNexAsync(string question)
+    private async Task AskNexAsync(string question, int version)
     {
-        
         var agent = EnsureSessionAgent();
-
         var buffer = new StringBuilder();
         var thinkingShown = true;
+        var hasAnswer = false;
+        var cts = new CancellationTokenSource();
+        _requestCts = cts;
 
-        agent.DeltaReceived += delta =>
+        Action<NexDelta> deltaHandler = delta =>
         {
-            if (string.IsNullOrEmpty(delta.Content) || !_active)
+            if (string.IsNullOrEmpty(delta.Content) ||
+                !_active ||
+                version != _conversationVersion)
                 return;
 
             buffer.Append(delta.Content);
             thinkingShown = false;
+            hasAnswer = true;
             var text = buffer.ToString();
             Dispatcher.UIThread.Post(() =>
             {
-                if (!_active)
+                if (!_active || version != _conversationVersion)
                     return;
 
                 AppServices.MainWindow?.ShowNexPanel(text, false);
             });
         };
 
-        agent.ErrorOccurred += message =>
+        Action<string> errorHandler = message =>
+        {
+            thinkingShown = false;
             Dispatcher.UIThread.Post(() =>
             {
-                if (_active)
+                if (_active && version == _conversationVersion)
+                {
                     AppServices.MainWindow?.ShowNexPanel("出错：" + message, true);
+                    StartFollowUpTimeout(false, TimeSpan.FromSeconds(5));
+                }
             });
+        };
+
+        agent.DeltaReceived += deltaHandler;
+        agent.ErrorOccurred += errorHandler;
 
         try
         {
-            await agent.RunAsync(question, CancellationToken.None);
+            await agent.RunAsync(question, cts.Token);
 
-            
-            if (thinkingShown)
-                Dispatcher.UIThread.Post(() => AppServices.MainWindow?.ShowNexPanel("没有收到回答，可以说「NEX」再试一次", true));
+            if (thinkingShown && _active && version == _conversationVersion)
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (_active && version == _conversationVersion)
+                    {
+                        AppServices.MainWindow?.ShowNexPanel(
+                            "没有收到回答，可以说「NEX」再试一次",
+                            true);
+                    }
+                });
+                StartFollowUpTimeout(false, TimeSpan.FromSeconds(6));
+            }
         }
         finally
         {
-            
+            agent.DeltaReceived -= deltaHandler;
+            agent.ErrorOccurred -= errorHandler;
+
+            if (ReferenceEquals(_requestCts, cts))
+                _requestCts = null;
+            cts.Dispose();
+
             Dispatcher.UIThread.Post(() =>
             {
-                if (_active)
+                if (_active && version == _conversationVersion && hasAnswer)
                     BeginFollowUp();
             });
         }
@@ -247,19 +302,62 @@ public sealed class NexVoiceCoordinator : IDisposable
         if (!_active)
             return;
 
+        AppServices.MainWindow?.ShowNexPanel("请讲，还可以接着问…", true);
+        StartFollowUpTimeout(true, TimeSpan.FromSeconds(20));
+    }
+
+    private void StartFollowUpTimeout(bool listen, TimeSpan duration)
+    {
+        StopWakeTimeout();
         _followUpTimer?.Stop();
 
-        
-        _voice.ListenForFollowUp();
-        AppServices.MainWindow?.ShowNexPanel("请讲，还可以接着问…", true);
+        if (listen)
+            _voice.ListenForFollowUp();
 
-        _followUpTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(20) };
+        _followUpTimer = new DispatcherTimer { Interval = duration };
         _followUpTimer.Tick += (_, _) =>
         {
             _followUpTimer?.Stop();
             HideEverything();
         };
         _followUpTimer.Start();
+    }
+
+    private void StartWakeTimeout()
+    {
+        if (!_active)
+            return;
+
+        StopWakeTimeout();
+        _wakeTimeoutTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(12) };
+        _wakeTimeoutTimer.Tick += (_, _) =>
+        {
+            StopWakeTimeout();
+            if (_active)
+                HideEverything();
+        };
+        _wakeTimeoutTimer.Start();
+    }
+
+    private void StopWakeTimeout()
+    {
+        _wakeTimeoutTimer?.Stop();
+        _wakeTimeoutTimer = null;
+    }
+
+    private void StopConversationTimers()
+    {
+        _followUpTimer?.Stop();
+        _followUpTimer = null;
+        StopWakeTimeout();
+    }
+
+    private void CancelCurrentRequest()
+    {
+        _conversationVersion++;
+        _requestCts?.Cancel();
+        _requestCts = null;
+        _sessionAgent = null;
     }
 
     
@@ -287,8 +385,14 @@ public sealed class NexVoiceCoordinator : IDisposable
 
         if (_glow is null)
         {
-            _glow = new NexGlowWindow();
-            _glow.CancelRequested += () => Dispatcher.UIThread.Post(CancelAiMode);
+            var glow = new NexGlowWindow();
+            glow.CancelRequested += () => Dispatcher.UIThread.Post(CancelAiMode);
+            glow.Stopped += () =>
+            {
+                if (ReferenceEquals(_glow, glow))
+                    _glow = null;
+            };
+            _glow = glow;
         }
 
         
@@ -316,12 +420,12 @@ public sealed class NexVoiceCoordinator : IDisposable
     private void HideEverything()
     {
         _active = false;
+        StopConversationTimers();
+        CancelCurrentRequest();
         _glow?.StopGlow();
         AppServices.MainWindow?.HideNexPanel();
         _voice.BackToWakeWord();
-
-        
-        _sessionAgent = null;
+        DispatcherTimer.RunOnce(MemoryTrimmer.Trim, TimeSpan.FromSeconds(1));
         StatusChanged?.Invoke("正在听「嘿 NEX」…");
     }
 
@@ -377,32 +481,23 @@ public sealed class NexVoiceCoordinator : IDisposable
         
         if (_glow?.IsVisible == true)
         {
-            _followUpTimer?.Stop();
-            _sessionAgent = null;
+            StopConversationTimers();
+            CancelCurrentRequest();
         }
 
         _active = true;
 
         ShowGlow();
         main?.ShowNexPanel("请讲", true);
-
-        _followUpTimer?.Stop();
-        _voice.ListenForFollowUp();
-
-        
-        _followUpTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(20) };
-        _followUpTimer.Tick += (_, _) =>
-        {
-            _followUpTimer?.Stop();
-            HideEverything();
-        };
-        _followUpTimer.Start();
+        StartFollowUpTimeout(true, TimeSpan.FromSeconds(20));
     }
 
     public void Dispose()
     {
-        _followUpTimer?.Stop();
+        HideEverything();
         _glow?.StopGlow();
+        _edgeBar?.Close();
+        _edgeBar = null;
         _voice.Dispose();
     }
 }

@@ -26,6 +26,9 @@ public sealed class NexGlowControl : Control
         Color.FromRgb(0xD9, 0x5C, 0x7C),
     };
 
+    private static readonly Geometry PetalGeometry = CreatePetalGeometry();
+    private static readonly IBrush[] PetalBrushes = CreatePetalBrushes();
+    private static readonly Pen[] GlowPens = CreateGlowPens();
     private readonly List<Petal> _petals = new();
 
     static NexGlowControl()
@@ -39,7 +42,6 @@ public sealed class NexGlowControl : Control
 
         for (var i = 0; i < 150; i++)
         {
-            var color = PetalColors[i % PetalColors.Length];
             _petals.Add(new Petal
             {
                 Edge = random.Next(4),
@@ -51,7 +53,7 @@ public sealed class NexGlowControl : Control
                 Size = 12 + random.NextDouble() * 16,
                 Rotation = random.NextDouble() * Math.PI * 2,
                 Spin = -1.6 + random.NextDouble() * 3.2,
-                Color = color,
+                Brush = PetalBrushes[i % PetalBrushes.Length],
             });
         }
     }
@@ -140,8 +142,8 @@ public sealed class NexGlowControl : Control
 
             using (context.PushOpacity(fade * intensity))
             {
-                DrawPetal(context, x, y, size * 2.1, rotation, petal.Color, 0.18);
-                DrawPetal(context, x, y, size, rotation, petal.Color, 1.0);
+                DrawPetal(context, x, y, size * 2.1, rotation, petal.Brush, 0.18);
+                DrawPetal(context, x, y, size, rotation, petal.Brush, 1.0);
             }
         }
     }
@@ -149,27 +151,17 @@ public sealed class NexGlowControl : Control
     private static void DrawEdgeGlow(DrawingContext context, double w, double h, double intensity)
     {
         const double depth = 48;
-        const int rings = 44;
-        var white = Color.FromRgb(0xFF, 0xF4, 0xF8);
-        var pink = Color.FromRgb(0xF0, 0x8A, 0xA3);
-
         using (context.PushOpacity(intensity))
         {
-            for (var i = 0; i < rings; i++)
+            for (var i = 0; i < GlowPens.Length; i++)
             {
-                var t = (i + 0.5) / rings;
+                var t = (i + 0.5) / GlowPens.Length;
                 var d = t * depth;
-                var alpha = (1 - t) * (1 - t) * 0.20;
-                var color = Lerp(white, pink, t * 0.9);
                 var rect = new Rect(1.5 + d, 1.5 + d, w - 3 - d * 2, h - 3 - d * 2);
                 if (rect.Width <= 0 || rect.Height <= 0)
                     break;
 
-                DrawRounded(
-                    context,
-                    rect,
-                    2.6,
-                    Color.FromArgb((byte)Math.Clamp(alpha * 255, 0, 255), color.R, color.G, color.B));
+                context.DrawRectangle(null, GlowPens[i], rect, 12, 12);
             }
         }
     }
@@ -183,63 +175,83 @@ public sealed class NexGlowControl : Control
             (byte)(from.B + (to.B - from.B) * t));
     }
 
-    private static void DrawRounded(DrawingContext context, Rect rect, double thickness, Color color)
-    {
-        var pen = new Pen(
-            new SolidColorBrush(color),
-            thickness,
-            lineCap: PenLineCap.Round,
-            lineJoin: PenLineJoin.Round);
-        context.DrawRectangle(null, pen, rect, 12, 12);
-    }
-
     private static void DrawPetal(
         DrawingContext context,
         double cx,
         double cy,
         double size,
         double rotation,
-        Color color,
+        IBrush brush,
         double alpha)
     {
-        var cos = Math.Cos(rotation);
-        var sin = Math.Sin(rotation);
+        if (alpha <= 0.001)
+            return;
 
-        Point Transform(double lx, double ly)
+        var transform = Matrix.CreateScale(size, size * 1.35)
+                        * Matrix.CreateRotation(rotation)
+                        * Matrix.CreateTranslation(cx, cy);
+
+        using (context.PushOpacity(Math.Clamp(alpha, 0, 1)))
+        using (context.PushTransform(transform))
+            context.DrawGeometry(brush, null, PetalGeometry);
+    }
+
+    private static IBrush[] CreatePetalBrushes()
+    {
+        var brushes = new IBrush[PetalColors.Length];
+        for (var i = 0; i < brushes.Length; i++)
+            brushes[i] = new SolidColorBrush(PetalColors[i]);
+        return brushes;
+    }
+
+    private static Pen[] CreateGlowPens()
+    {
+        const int rings = 32;
+        var white = Color.FromRgb(0xFF, 0xF4, 0xF8);
+        var pink = Color.FromRgb(0xF0, 0x8A, 0xA3);
+        var pens = new Pen[rings];
+
+        for (var i = 0; i < rings; i++)
         {
-            var px = lx * size;
-            var py = (ly + 0.5) * size * 1.35;
-            return new Point(
-                cx + px * cos - py * sin,
-                cy + px * sin + py * cos);
+            var t = (i + 0.5) / rings;
+            var alpha = (1 - t) * (1 - t) * 0.20;
+            var color = Lerp(white, pink, t * 0.9);
+            pens[i] = new Pen(
+                new SolidColorBrush(Color.FromArgb(
+                    (byte)Math.Clamp(alpha * 255, 0, 255),
+                    color.R,
+                    color.G,
+                    color.B)),
+                2.6,
+                lineCap: PenLineCap.Round,
+                lineJoin: PenLineJoin.Round);
         }
 
+        return pens;
+    }
+
+    private static Geometry CreatePetalGeometry()
+    {
         var geometry = new StreamGeometry();
-        using (var ctx = geometry.Open())
+        using (var context = geometry.Open())
         {
-            ctx.BeginFigure(Transform(0, 0), true);
-            ctx.CubicBezierTo(
-                Transform(-0.55, -0.22),
-                Transform(-0.48, -0.82),
-                Transform(-0.10, -1));
-            ctx.CubicBezierTo(
-                Transform(-0.04, -0.86),
-                Transform(0.04, -0.86),
-                Transform(0.10, -1));
-            ctx.CubicBezierTo(
-                Transform(0.48, -0.82),
-                Transform(0.55, -0.22),
-                Transform(0, 0));
-            ctx.EndFigure(true);
+            context.BeginFigure(new Point(0, 0.5), true);
+            context.CubicBezierTo(
+                new Point(-0.55, 0.28),
+                new Point(-0.48, -0.32),
+                new Point(-0.10, -0.5));
+            context.CubicBezierTo(
+                new Point(-0.04, -0.36),
+                new Point(0.04, -0.36),
+                new Point(0.10, -0.5));
+            context.CubicBezierTo(
+                new Point(0.48, -0.32),
+                new Point(0.55, 0.28),
+                new Point(0, 0.5));
+            context.EndFigure(true);
         }
 
-        var brush = new SolidColorBrush(Color.FromArgb(
-            (byte)Math.Clamp(alpha * 255, 0, 255),
-            color.R,
-            color.G,
-            color.B));
-
-        context.DrawGeometry(brush, null, geometry);
+        return geometry;
     }
 
     private sealed class Petal
@@ -253,6 +265,6 @@ public sealed class NexGlowControl : Control
         public double Size;
         public double Rotation;
         public double Spin;
-        public Color Color;
+        public IBrush Brush = Brushes.Transparent;
     }
 }

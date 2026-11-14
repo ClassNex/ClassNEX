@@ -8,7 +8,7 @@ namespace ClassNex.Views;
 
 public partial class NexGlowWindow : Window
 {
-    private const double Fps = 60;
+    private const double Fps = 45;
 
     private readonly DispatcherTimer _timer;
 
@@ -27,6 +27,7 @@ public partial class NexGlowWindow : Window
 
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1000 / Fps) };
         _timer.Tick += (_, _) => Step();
+        Closed += (_, _) => _timer.Stop();
 
         PointerPressed += (_, _) => CancelRequested?.Invoke();
     }
@@ -43,7 +44,6 @@ public partial class NexGlowWindow : Window
 
         Glow.Time = 0;
         Glow.Intensity = 0;
-        Glow.InvalidateVisual();
 
         Step();
         _timer.Start();
@@ -61,7 +61,7 @@ public partial class NexGlowWindow : Window
     {
         if (!_timer.IsEnabled)
         {
-            Hide();
+            CompleteStop();
             return;
         }
 
@@ -75,10 +75,7 @@ public partial class NexGlowWindow : Window
             _outroOpacity -= 0.06;
             if (_outroOpacity <= 0.02)
             {
-                Root.Opacity = 0;
-                _closing = false;
-                _timer.Stop();
-                Hide();
+                CompleteStop();
             }
             else
             {
@@ -92,11 +89,26 @@ public partial class NexGlowWindow : Window
 
         Glow.Time = _time;
         Glow.Intensity = Math.Min(1, _time * 3.4);
-        Glow.InvalidateVisual();
         Root.Opacity = 0.98;
     }
 
     public event Action? CancelRequested;
+
+    public event Action? Stopped;
+
+    private void CompleteStop()
+    {
+        Root.Opacity = 0;
+        _closing = false;
+        _timer.Stop();
+        Glow.Intensity = 0;
+        Glow.Time = 0;
+        Width = 1;
+        Height = 1;
+        Hide();
+        Stopped?.Invoke();
+        Close();
+    }
 
     public void UpdateWindowPos(Avalonia.Platform.Screen screen, double scale, bool useWorkingArea)
     {
