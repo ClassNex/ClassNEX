@@ -36,7 +36,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：NEX 唤醒条增加 WS_EX_TOOLWINDOW，彻底从 Alt+Tab 中排除；扫描动画从 30ms DispatcherTimer 的逐帧正弦/余弦计算改为 Composition 关键帧循环，悬停、点击和边框画刷改为静态复用并由 BrushTransition 过渡
-改了文件：src/ClassNex/Views/NexEdgeBarWindow.axaml(.cs)、HANDOFF.md、AGENTS.md
+上次完成：提高当前课程剩余时间可见性，字号由 11.5 提升到 CI 次级字号 14，颜色改为樱花强调色，宽度扩大到 70，仍保留等宽数字与 60 秒内倒计时胶囊切换
+改了文件：src/ClassNex/Widgets/ScheduleWidget.cs、HANDOFF.md、AGENTS.md
 进行中：无
 下一步：待用户指定

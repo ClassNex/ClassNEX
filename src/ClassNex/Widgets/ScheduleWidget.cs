@@ -306,11 +306,11 @@ public sealed class ScheduleWidget : WidgetBase
         var left = LeftOf(end, now);
         var remaining = "-" + FormatClock(left);
 
-        var time = Text(remaining, Size(11.5), White(0.62));
+        var time = Text(remaining, Size(CiSecondary), CiPalette.SakuraAccentBrush());
         time.VerticalAlignment = VerticalAlignment.Center;
         time.TextAlignment = TextAlignment.Right;
-        time.Width = 58;
-        time.Margin = new Thickness(8, 0, 0, 0);
+        time.Width = 70;
+        time.Margin = new Thickness(10, 0, 0, 0);
 
         var (pill, pillText) = BuildCountdownPill(remaining);
         pill.Margin = new Thickness(8, 0, 0, 0);
