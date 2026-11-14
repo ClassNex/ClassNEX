@@ -44,6 +44,8 @@
         <Border.Transitions>
             <Transitions>
                 <DoubleTransition Property="Opacity" Duration="0:0:0.15"/>
+                <BrushTransition Property="Background" Duration="0:0:0.16"/>
+                <BrushTransition Property="BorderBrush" Duration="0:0:0.16"/>
             </Transitions>
         </Border.Transitions>
     </Border>

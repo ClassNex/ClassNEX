@@ -36,7 +36,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：按 CI 分层重构底层，新增 ClassNex.Core、ClassNex.Notification、ClassNex.Plugins、ClassNex.AI 四个项目；模型和课程/设置/时间/组件核心服务移入 Core，通知通过 INotificationSurface 与 UI 解耦，AI 通过 IAiApplicationContext 读取应用状态，插件通过 PluginContext 调用 Core/通知/AI；主程序只负责组合与 Avalonia UI，解决方案和文档已同步
-改了文件：ClassNex.sln、src/ClassNex.Core/**、src/ClassNex.Notification/**、src/ClassNex.Plugins/**、src/ClassNex.AI/**、src/ClassNex/App.axaml.cs、src/ClassNex/ClassNex.csproj、src/ClassNex/Services/AppServices.cs、src/ClassNex/Services/AppServicesAiContext.cs、src/ClassNex/Services/MainWindowNotificationSurface.cs、src/ClassNex/Services/NexVoiceCoordinator.cs、src/ClassNex/Views/NexChatWindow.axaml.cs、docs/ARCHITECTURE.md、docs/PLUGIN_SDK.md、HANDOFF.md、AGENTS.md
+上次完成：NEX 唤醒条增加 WS_EX_TOOLWINDOW，彻底从 Alt+Tab 中排除；扫描动画从 30ms DispatcherTimer 的逐帧正弦/余弦计算改为 Composition 关键帧循环，悬停、点击和边框画刷改为静态复用并由 BrushTransition 过渡
+改了文件：src/ClassNex/Views/NexEdgeBarWindow.axaml(.cs)、HANDOFF.md、AGENTS.md
 进行中：无
 下一步：待用户指定

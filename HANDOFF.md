@@ -312,6 +312,9 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
     `CancellationTokenSource`，结束、取消或关闭聊天窗都会取消请求；聊天窗关闭后清空历史和工具卡。
     跑马灯结束后关闭全屏窗口，控制控件缓存花瓣几何与画笔，不再每帧创建数百个对象；
     会话结束时执行一次受控 GC 和工作集回收。实测唤醒时工作集约 374 MB，结束回收后约 89 MB。
+  - **NEX 唤醒条**：窗口显示后额外设置 `WS_EX_TOOLWINDOW`，不进入 Alt+Tab；扫描高光使用
+    2.2 秒 Composition 关键帧循环移动 `Offset` 和透明度，不再用 30ms UI 计时器逐帧计算
+    正弦/余弦。悬停、闪烁和边框画刷均静态复用，颜色通过 `BrushTransition` 平滑过渡。
   - ⚠️ **接口密钥绝不写进源码/仓库**（仓库是公开的）：只在设置页填写，落盘到本机 `data\Settings.json`；新机器要重新填一次
   - 自检：`CLASSNEX_VERIFY_NEX=<文本>` 打开对话框并自动发一条消息；出图看 `_shot_nex.png`
 - **Metro 转场统一层**：`Styles/MetroTransitions.cs` 使用 Avalonia Composition 硬件动画，不再用 UI 线程计时器；
