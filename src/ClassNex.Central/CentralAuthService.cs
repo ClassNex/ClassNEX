@@ -11,15 +11,23 @@ public sealed class CentralAuthService
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(20) };
     private readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
 
-    public CentralAuthService(string casdoorUrl, string clientId, string clientSecret, string publicBaseUrl)
+    public CentralAuthService(
+        string casdoorUrl,
+        string casdoorInternalUrl,
+        string clientId,
+        string clientSecret,
+        string publicBaseUrl)
     {
         CasdoorUrl = casdoorUrl.TrimEnd('/');
+        CasdoorInternalUrl = casdoorInternalUrl.TrimEnd('/');
         ClientId = clientId;
         ClientSecret = clientSecret;
         PublicBaseUrl = publicBaseUrl.TrimEnd('/');
     }
 
     public string CasdoorUrl { get; }
+
+    public string CasdoorInternalUrl { get; }
 
     public string ClientId { get; }
 
@@ -53,7 +61,7 @@ public sealed class CentralAuthService
 
         using var form = new FormUrlEncodedContent(values);
         using var response = await _http.PostAsync(
-            CasdoorUrl + "/api/login/oauth/access_token",
+            CasdoorInternalUrl + "/api/login/oauth/access_token",
             form);
         var text = await response.Content.ReadAsStringAsync();
         if (!response.IsSuccessStatusCode)
@@ -78,13 +86,13 @@ public sealed class CentralAuthService
 
         using var request = new HttpRequestMessage(
             HttpMethod.Get,
-            CasdoorUrl + "/api/userinfo");
+            CasdoorInternalUrl + "/api/userinfo");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         using var response = await _http.SendAsync(request);
         if (!response.IsSuccessStatusCode)
         {
             using var fallback = await _http.GetAsync(
-                CasdoorUrl + "/api/userinfo?access_token=" +
+                CasdoorInternalUrl + "/api/userinfo?access_token=" +
                 Uri.EscapeDataString(accessToken));
             if (!fallback.IsSuccessStatusCode)
                 return null;

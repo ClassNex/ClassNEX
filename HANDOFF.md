@@ -305,6 +305,9 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   `auth.smart-teach.cn` 当前仍指向旧 Casdoor 源站，会导致 `invalid_client`。因此 ClassNEX 客户端
   临时使用 `AppSettings.DefaultAccountEndpoint = http://206.187.201.60:8000`，
   `SettingsService.Load()` 会把历史域名和新旧服务器 IP 自动迁移到当前可用源站。
+  `stcn` 登录生成的 AccessToken 约 14 KB，公共 Nginx 会拒绝这么大的请求头。集控容器已加入
+  `casdoor_casdoor-net` 并通过 `CASDOOR_INTERNAL_URL=http://casdoor:8000` 读取用户资料；
+  桌面客户端改用集控服务的 `/api/v1/auth/profile` 代理读取标准账户字段，不再直接请求 Casdoor userinfo。
   `app-classnex` 的 Client ID 为 `fa7664d772fac4b5097ce15c`，`smart-teach` OIDC 提供商的
   Client ID 为 `913736707004a6f7c323`；Client Secret 只存在于 Casdoor 数据库，禁止写入仓库或交接文档。
   Casdoor 已从 `124.221.160.188` 迁移至 `206.187.201.60`，新机使用 Docker Compose 运行

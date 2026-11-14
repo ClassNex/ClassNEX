@@ -246,11 +246,20 @@ public static class AccountService
 
     private static async Task<AccountProfile?> FetchProfileAsync(string accessToken)
     {
-        var endpoint = AppServices.Settings.AccountEndpoint.TrimEnd('/');
-        var url = $"{endpoint}/api/userinfo?access_token={Uri.EscapeDataString(accessToken)}";
+        var centralEndpoint = AppServices.Settings.CentralManagement.ServerUrl.Trim();
+        if (string.IsNullOrWhiteSpace(centralEndpoint))
+            centralEndpoint = AppSettings.DefaultCentralEndpoint;
+        var url = centralEndpoint.TrimEnd('/') + "/api/v1/auth/profile";
 
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
-        var text = await http.GetStringAsync(url);
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
+            "Bearer",
+            accessToken);
+        using var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+            return null;
+        var text = await response.Content.ReadAsStringAsync();
 
         using var doc = JsonDocument.Parse(text);
         var root = doc.RootElement;

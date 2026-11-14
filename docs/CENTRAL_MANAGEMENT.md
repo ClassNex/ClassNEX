@@ -14,6 +14,7 @@
 
 ```powershell
 $env:CASDOOR_URL="http://206.187.201.60:8000"
+$env:CASDOOR_INTERNAL_URL="http://casdoor:8000"
 $env:CASDOOR_CLIENT_ID="<Casdoor 应用 Client ID>"
 $env:CASDOOR_CLIENT_SECRET="<可选，公开客户端保持为空>"
 $env:CENTRAL_PUBLIC_URL="http://<服务器>:7010"
@@ -26,6 +27,8 @@ http://<服务器>:7010/auth/callback
 ```
 
 应用必须允许 `authorization_code` 授权类型。启用 PKCE 时由集控服务生成 State 与 S256 Code Challenge。
+`stcn` 等上游提供商可能返回较大的 AccessToken，集控容器应加入 Casdoor 的 Docker 网络，
+并通过 `CASDOOR_INTERNAL_URL` 在容器网络内读取用户资料，避免公共反向代理的请求头大小限制。
 
 ## 启动服务
 

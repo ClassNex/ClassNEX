@@ -15,6 +15,8 @@ await store.InitializeAsync();
 
 var casdoorUrl = Environment.GetEnvironmentVariable("CASDOOR_URL")
                  ?? "https://auth.smart-teach.cn";
+var casdoorInternalUrl = Environment.GetEnvironmentVariable("CASDOOR_INTERNAL_URL")
+                         ?? casdoorUrl;
 var casdoorClientId = Environment.GetEnvironmentVariable("CASDOOR_CLIENT_ID")
                       ?? "fa7664d772fac4b5097ce15c";
 var casdoorClientSecret = Environment.GetEnvironmentVariable("CASDOOR_CLIENT_SECRET") ?? "";
@@ -22,6 +24,7 @@ var publicBaseUrl = Environment.GetEnvironmentVariable("CENTRAL_PUBLIC_URL")
                     ?? "http://206.187.201.60:7010";
 var auth = new CentralAuthService(
     casdoorUrl,
+    casdoorInternalUrl,
     casdoorClientId,
     casdoorClientSecret,
     publicBaseUrl);
@@ -110,6 +113,24 @@ app.MapGet("/api/v1/auth/me", async (HttpRequest request) =>
 {
     var user = await GetCurrentUserAsync(request);
     return user is null ? Results.Unauthorized() : Results.Json(user);
+});
+
+app.MapGet("/api/v1/auth/profile", async (HttpRequest request) =>
+{
+    var header = request.Headers.Authorization.ToString();
+    if (!header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        return Results.Unauthorized();
+
+    var user = await auth.GetUserAsync(header["Bearer ".Length..].Trim());
+    return user is null
+        ? Results.Unauthorized()
+        : Results.Json(new
+        {
+            sub = user.Subject,
+            name = user.Name,
+            email = user.Email,
+            preferred_username = user.PreferredUsername,
+        });
 });
 
 app.MapPost("/api/v1/client/device", async (
