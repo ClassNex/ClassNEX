@@ -228,7 +228,8 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   左栏为账户卡和今日课程卡，右栏为推荐设置列表和个性化主题预览。账户头像/名称/邮箱、
   今日课程数量、已完成数量、下一节课程与时间均来自实时状态；推荐设置可直接跳到外观、
   窗口和提醒页。主页不再运行樱花飘落装饰，避免卡片层上出现漂浮元素。
-  主页问候不再显示设备名，使用大号 `Noto Serif SC / Source Han Serif SC / SimSun`。
+  主页问候不再显示设备名、顶部品牌图块和页面副标题，使用 36 号
+  `Noto Serif SC / Source Han Serif SC / SimSun`。
   外观页三条滑块都提供加减按钮；全局字号上限 2.4，主界面缩放范围 0.5–4.0，
   并提供“标准”和“教室远距离”两种快速预设。
   **所有布尔设置统一使用 Avalonia `ToggleSwitch`**，全局 On/Off 文本为「开 / 关」；

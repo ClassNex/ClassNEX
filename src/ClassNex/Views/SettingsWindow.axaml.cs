@@ -709,6 +709,7 @@ public partial class SettingsWindow : AppWindow
             StopSakuraBlossoms();
             PageTitleText.Text = "账户";
             PageSubtitleText.Text = PageSubtitles[9];
+            PageSubtitleText.IsVisible = true;
             PageTitleText.Opacity = 1;
             MetroTransitions.Play(previousAccountPage, PageAccount, true, null, PageTitleText);
             AttachTiltToPage(PageAccount);
@@ -912,6 +913,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         var title = PageNames[Math.Clamp(index, 0, PageNames.Length - 1)];
         PageTitleText.Text = title;
         PageSubtitleText.Text = PageSubtitles[Math.Clamp(index, 0, PageSubtitles.Length - 1)];
+        PageSubtitleText.IsVisible = index != 0;
         PageTitleText.Opacity = 1;
         MetroTransitions.Play(previousPage, page, index >= previousIndex, null, PageTitleText);
 

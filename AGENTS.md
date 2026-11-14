@@ -36,7 +36,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：修复主界面扩展时内容越出圆角背景、NEX 面板与课程内容重叠、唤醒无语音时浮窗长期不收起、无回答/错误后不自动结束等问题；聊天窗关闭会取消请求并释放界面；跑马灯改为缓存几何/画笔并在结束后销毁全屏窗口，会话结束执行受控内存回收；外观缩放增加加减按钮和远距离预设；主页移除设备名并将问候改为大号思源宋体
+上次完成：修复主界面扩展时内容越出圆角背景、NEX 面板与课程内容重叠、唤醒无语音时浮窗长期不收起、无回答/错误后不自动结束等问题；聊天窗关闭会取消请求并释放界面；跑马灯改为缓存几何/画笔并在结束后销毁全屏窗口，会话结束执行受控内存回收；外观缩放增加加减按钮和远距离预设；主页移除设备名、顶部品牌图块和副标题，问候改为 36 号思源宋体
 改了文件：src/ClassNex/App.axaml.cs、src/ClassNex/Controls/NexGlowControl.cs、src/ClassNex/Services/NexVoiceCoordinator.cs、src/ClassNex/Services/NexWinRtVoiceService.cs、src/ClassNex/Services/MemoryTrimmer.cs、src/ClassNex/Views/MainWindow.axaml.cs、src/ClassNex/Views/NexChatWindow.axaml.cs、src/ClassNex/Views/NexGlowWindow.axaml.cs、src/ClassNex/Views/SettingsWindow.axaml(.cs)、HANDOFF.md、AGENTS.md
 进行中：无
 下一步：待用户指定
