@@ -518,6 +518,7 @@ public partial class MainWindow : Window
 
     
     private double? _preNotificationIslandWidth;
+    private int _notificationTransitionGeneration;
 
     
     
@@ -604,30 +605,34 @@ public partial class MainWindow : Window
     
     
     
-    public void ShowNotificationMask(string text)
+    public void ShowNotificationMask(
+        string text,
+        string leftGlyph = "\uE0FF",
+        string rightGlyph = "\uE54F")
     {
+        _notificationTransitionGeneration++;
         NotificationMaskText.Text = text;
+        NotificationMaskLeftIcon.Text = leftGlyph;
+        NotificationMaskRightIcon.Text = rightGlyph;
+        NotificationMaskContent.Opacity = 0;
+        NotificationMaskContent.IsVisible = true;
+        NotificationOverlay.IsVisible = false;
+        NotificationTrack.IsVisible = false;
+        if (ElementComposition.GetElementVisual(NotificationTrackFill) is { } trackVisual)
+            trackVisual.StopAnimation(nameof(trackVisual.Scale));
         NotificationMask.IsVisible = true;
 
-        
         ExpandIslandForNotification();
 
-        
         CardContent.Opacity = 0;
 
-        
         NotificationMaskBg.IsOpened = true;
 
-        
-        
         Avalonia.Controls.Documents.TextElement.SetForeground(NotificationMask, Brushes.Black);
         NotificationMaskText.Foreground = Brushes.Black;
+        NotificationMaskLeftIcon.Foreground = Brushes.Black;
+        NotificationMaskRightIcon.Foreground = Brushes.Black;
 
-        
-        
-        
-        
-        
         var easing = Easing.Parse("0.25, 1, 0.5, 1");
 
         var fade = new Animation
@@ -678,10 +683,9 @@ public partial class MainWindow : Window
     
     public void HideNotificationMask()
     {
-        
+        var generation = ++_notificationTransitionGeneration;
         NotificationMaskBg.IsOpened = false;
 
-        
         var fade = new Animation
         {
             Duration = TimeSpan.FromMilliseconds(200),
@@ -692,46 +696,56 @@ public partial class MainWindow : Window
                 new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, 0.0) } },
             },
         };
-        _ = fade.RunAsync(NotificationMaskContent);
+        if (NotificationMask.IsVisible)
+            _ = fade.RunAsync(NotificationMaskContent);
+        if (NotificationOverlay.IsVisible)
+            _ = fade.RunAsync(NotificationOverlay);
 
-        
         DispatcherTimer.RunOnce(() =>
         {
+            if (generation != _notificationTransitionGeneration)
+                return;
+
             NotificationMask.IsVisible = false;
             NotificationOverlay.IsVisible = false;
-            
+
             CardContent.Opacity = 1;
-            
+
             RestoreIslandAfterNotification();
-        }, TimeSpan.FromMilliseconds(500));
+        }, TimeSpan.FromMilliseconds(240));
     }
 
     
     
     
     
-    public void ShowNotificationOverlay(string left, string subject, string teacher, string time)
+    public void ShowNotificationOverlay(
+        string left,
+        string subject,
+        string teacher,
+        string time,
+        string prefix = "下节课是：")
     {
-        
+        _notificationTransitionGeneration++;
         NotificationMaskBg.IsOpened = false;
-        DispatcherTimer.RunOnce(() => NotificationMask.IsVisible = false, TimeSpan.FromMilliseconds(500));
-
-        
-        
+        NotificationMaskContent.Opacity = 0;
+        NotificationMaskContent.IsVisible = false;
+        NotificationMask.IsVisible = false;
         
         NotificationOverlayLeft.Text = left;
         NotificationOverlaySubject.Text = subject;
         NotificationOverlayTeacher.Text = teacher;
-        NotificationOverlayTeacher.IsVisible = teacher.Length > 0;
+        NotificationOverlayTeacher.IsVisible = !string.IsNullOrWhiteSpace(teacher);
         NotificationOverlayTime.Text = time;
+        NotificationOverlayPrefix.Text = prefix;
+        NotificationOverlayPrefix.IsVisible = !string.IsNullOrWhiteSpace(prefix);
         NotificationOverlay.IsVisible = true;
         NotificationOverlay.Opacity = 0;
         StartNotificationTrack();
 
         var fade = new Animation
         {
-            Delay = TimeSpan.FromMilliseconds(500),
-            Duration = TimeSpan.FromMilliseconds(250),
+            Duration = TimeSpan.FromMilliseconds(180),
             FillMode = FillMode.Forward,
             Easing = Easing.Parse("0.25, 1, 0.5, 1"),
             Children =

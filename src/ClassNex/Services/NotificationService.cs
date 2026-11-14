@@ -117,7 +117,7 @@ public sealed class NotificationService
             : notification.ClassOnPreparingText;
         var teacher = notification.ShowTeacherName ? next.Teacher ?? "" : "";
         var generation = BeginDisplay();
-        ShowMask(mainWindow, mask);
+        ShowMask(mainWindow, mask, "\uE0FF", "\uE54F");
         Schedule(generation, TimeSpan.FromMilliseconds(1200), () =>
             mainWindow.ShowNotificationOverlay(message, next.DisplayName, teacher, next.TimeRange));
         Schedule(generation, TimeSpan.FromSeconds(8), mainWindow.HideNotificationMask);
@@ -134,8 +134,8 @@ public sealed class NotificationService
             return;
 
         var generation = BeginDisplay();
-        ShowMask(mainWindow, notification.ClassOnMaskText);
-        Schedule(generation, TimeSpan.FromSeconds(3), mainWindow.HideNotificationMask);
+        ShowMask(mainWindow, notification.ClassOnMaskText, "\uE0FF", "\uE54F");
+        Schedule(generation, TimeSpan.FromSeconds(5), mainWindow.HideNotificationMask);
     }
 
     private void ShowClassOff(
@@ -153,7 +153,7 @@ public sealed class NotificationService
 
         var next = summary.Slots.FirstOrDefault(slot => slot.Start > now.TimeOfDay);
         var generation = BeginDisplay();
-        ShowMask(mainWindow, notification.ClassOffMaskText);
+        ShowMask(mainWindow, notification.ClassOffMaskText, "\uE0FF", "\uE250");
 
         if (next is null)
         {
@@ -192,7 +192,11 @@ public sealed class NotificationService
         }, delay);
     }
 
-    private void ShowMask(MainWindow mainWindow, string text)
+    private void ShowMask(
+        MainWindow mainWindow,
+        string text,
+        string leftGlyph = "\uE0FF",
+        string rightGlyph = "\uE54F")
     {
         if (AppServices.Settings.AllowNotificationEffect)
         {
@@ -205,7 +209,7 @@ public sealed class NotificationService
                 clipCornerRadius));
         }
 
-        mainWindow.ShowNotificationMask(text);
+        mainWindow.ShowNotificationMask(text, leftGlyph, rightGlyph);
     }
 
     public void DebugTriggerClassPreparing()
@@ -255,13 +259,14 @@ public sealed class NotificationService
             return;
 
         var generation = BeginDisplay();
-        ShowMask(mainWindow, "测试提醒");
+        ShowMask(mainWindow, "测试提醒", "\uE0FF", "\uE54F");
         Schedule(generation, TimeSpan.FromMilliseconds(1200), () =>
             mainWindow.ShowNotificationOverlay(
                 "这是一条测试提醒",
                 "通知系统工作正常",
                 "",
-                DateTime.Now.ToString("HH:mm")));
+                DateTime.Now.ToString("HH:mm"),
+                ""));
         Schedule(generation, TimeSpan.FromSeconds(8), mainWindow.HideNotificationMask);
     }
 

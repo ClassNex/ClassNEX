@@ -155,13 +155,15 @@
                                             <StackPanel.RenderTransform>
                                                 <ScaleTransform/>
                                             </StackPanel.RenderTransform>
-                                            <TextBlock Text="&#xE087;" FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
+                                            <TextBlock x:Name="NotificationMaskLeftIcon"
+                                                       Text="&#xE0FF;" FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
                                                        FontSize="20" Height="20" Width="20" TextAlignment="Center"
                                                        Foreground="Black" VerticalAlignment="Center"/>
                                             <TextBlock x:Name="NotificationMaskText"
                                                        FontSize="18" FontWeight="Bold" Foreground="Black" Margin="8,0"
                                                        VerticalAlignment="Center"/>
-                                            <TextBlock Text="&#xE087;" FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
+                                            <TextBlock x:Name="NotificationMaskRightIcon"
+                                                       Text="&#xE54F;" FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
                                                        FontSize="20" Height="20" Width="20" TextAlignment="Center"
                                                        Foreground="Black" VerticalAlignment="Center"/>
                                         </StackPanel>
@@ -185,7 +187,8 @@
                                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6"
                                                 HorizontalAlignment="Center" VerticalAlignment="Center">
-                                        <TextBlock Text="下节课是：" FontSize="14" Opacity="0.7" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="NotificationOverlayPrefix" Text="下节课是："
+                                                   FontSize="14" Opacity="0.7" VerticalAlignment="Center"/>
                                         <TextBlock x:Name="NotificationOverlaySubject" FontSize="20" FontWeight="Bold"
                                                    VerticalAlignment="Center"/>
                                         <TextBlock x:Name="NotificationOverlayTeacher" FontSize="14" Opacity="0.7"

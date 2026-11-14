@@ -36,7 +36,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：彻底移除所有 TTS 合成语音及通知中的“启用语音”设置，保留麦克风识别和 NEX 唤醒；通知继续支持课前准备、上课、下课、室内/室外阈值、定制遮罩/浮层、教师名和连续收缩轨道
-改了文件：src/ClassNex/Services/NotificationService.cs、src/ClassNex/Models/AppSettings.cs、src/ClassNex/Views/SettingsWindow.axaml(.cs)、HANDOFF.md、AGENTS.md
+上次完成：修复通知遮罩与浮层切换时文字重叠；遮罩和浮层改为即时互斥，并用显示代次阻止旧计时器覆盖新提醒；上课/课前遮罩使用 CI 左 E0FF、右 E54F，下课使用左 E0FF、右 E250，上课遮罩停留 5 秒；测试提醒不再显示“下节课是”前缀
+改了文件：src/ClassNex/Views/MainWindow.axaml(.cs)、src/ClassNex/Services/NotificationService.cs、HANDOFF.md、AGENTS.md
 进行中：无
 下一步：待用户指定
