@@ -286,14 +286,302 @@
                         </Grid.Styles>
 
                         
-                        <StackPanel x:Name="PageHome" Spacing="6">
-                            <TextBlock x:Name="HomeGreetingText"
-                                       FontFamily="Noto Serif SC, Source Han Serif SC, SimSun"
-                                       TextTrimming="CharacterEllipsis"/>
-                            <TextBlock x:Name="HomeSubText"
-                                       FontSize="14"
-                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                        </StackPanel>
+                        <Grid x:Name="PageHome"
+                              RowDefinitions="Auto,Auto,Auto"
+                              ColumnDefinitions="*,*"
+                              RowSpacing="16" ColumnSpacing="16">
+                            <Grid.Styles>
+                                <Style Selector="Border.HomeCard">
+                                    <Setter Property="CornerRadius" Value="9"/>
+                                    <Setter Property="BorderThickness" Value="1"/>
+                                    <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}"/>
+                                    <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}"/>
+                                </Style>
+                                <Style Selector="Button.HomeActionRow">
+                                    <Setter Property="Height" Value="62"/>
+                                    <Setter Property="Padding" Value="18,0"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                    <Setter Property="CornerRadius" Value="0"/>
+                                </Style>
+                                <Style Selector="Button.HomeActionRow:pointerover /template/ ContentPresenter">
+                                    <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorSecondaryBrush}"/>
+                                </Style>
+                                <Style Selector="Button.HomeThemeTile">
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                </Style>
+                            </Grid.Styles>
+
+                            <Grid Grid.ColumnSpan="2" ColumnDefinitions="Auto,*,Auto,Auto"
+                                  ColumnSpacing="14" Margin="2,0,2,2">
+                                <Border Width="104" Height="68" CornerRadius="10"
+                                        BorderThickness="1" ClipToBounds="True"
+                                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                        Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}">
+                                    <Image Source="/Assets/icon.ico" Stretch="UniformToFill"
+                                           RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                                </Border>
+
+                                <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                                    <TextBlock x:Name="HomeDeviceNameText"
+                                               FontSize="20" FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock x:Name="HomeDeviceMetaText"
+                                               FontSize="13"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock x:Name="HomeGreetingText" FontSize="14"/>
+                                        <TextBlock Text="·" FontSize="14" Opacity="0.45"/>
+                                        <TextBlock x:Name="HomeSubText" FontSize="14"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10"
+                                            VerticalAlignment="Center" MinWidth="150">
+                                    <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
+                                                 Glyph="&#xE224;" FontSize="20"
+                                                 VerticalAlignment="Center" Opacity="0.85"/>
+                                    <StackPanel Spacing="1" VerticalAlignment="Center">
+                                        <TextBlock Text="今日课表" FontSize="14"/>
+                                        <TextBlock x:Name="HomeScheduleStatusText" FontSize="12"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="10"
+                                            VerticalAlignment="Center" MinWidth="150">
+                                    <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
+                                                 Glyph="&#xE0F9;" FontSize="20"
+                                                 VerticalAlignment="Center" Opacity="0.85"/>
+                                    <StackPanel Spacing="1" VerticalAlignment="Center">
+                                        <TextBlock Text="ClassNEX 账户" FontSize="14"/>
+                                        <TextBlock x:Name="HomeAccountStatusText" FontSize="12"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+
+                            <Border Grid.Row="1" Grid.Column="0" Classes="HomeCard" Padding="22">
+                                <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="18">
+                                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                                        <Border x:Name="HomeBrandTile" Width="44" Height="44"
+                                                CornerRadius="10" BorderThickness="1">
+                                            <Image Source="/Assets/icon.ico" Width="28" Height="28"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                                            <TextBlock Text="ClassNEX 账户" FontSize="20" FontWeight="SemiBold"/>
+                                            <TextBlock Text="登录后在本机同步头像、用户名和邮箱。"
+                                                       FontSize="13"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto"
+                                          ColumnSpacing="14">
+                                        <Border x:Name="HomeAccountAvatarRing" Width="58" Height="58"
+                                                CornerRadius="14" BorderThickness="3"/>
+                                        <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                                            <TextBlock x:Name="HomeAccountNameText" FontSize="17"/>
+                                            <TextBlock x:Name="HomeAccountEmailText" FontSize="13"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="2" x:Name="HomeLoginButton"
+                                                Content="登录账户" Click="OnAccountLogin"
+                                                VerticalAlignment="Center"/>
+                                    </Grid>
+
+                                    <Border Grid.Row="2" CornerRadius="8" Padding="14,11"
+                                            Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}">
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                            <StackPanel Spacing="2">
+                                                <TextBlock Text="浏览器安全授权" FontSize="13"/>
+                                                <TextBlock Text="登录与注册均在浏览器中完成，应用不会读取密码。"
+                                                           FontSize="12"
+                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                           TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                            <Button Grid.Column="1" Content="管理账户"
+                                                    Click="OnAccountClick" VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+                            </Border>
+
+                            <Border Grid.Row="2" Grid.Column="0" Classes="HomeCard" Padding="22">
+                                <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="16">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <StackPanel Spacing="3">
+                                            <TextBlock Text="今日课程" FontSize="20" FontWeight="SemiBold"/>
+                                            <TextBlock x:Name="HomeTodaySummaryText" FontSize="13"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Content="编辑课表"
+                                                Click="OnHomeEditProfile" VerticalAlignment="Center"/>
+                                    </Grid>
+
+                                    <Border Grid.Row="1" CornerRadius="8" Padding="16"
+                                            Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}">
+                                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
+                                            <Border Width="86" Height="64" CornerRadius="8"
+                                                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
+                                                <TextBlock x:Name="HomeCourseTimeText"
+                                                           FontSize="13"
+                                                           TextAlignment="Center"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"/>
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                                                <TextBlock x:Name="HomeCourseNameText" FontSize="18"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock x:Name="HomeCourseDetailText" FontSize="12"
+                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+                                            <Border Grid.Column="2" Padding="10,4" CornerRadius="10"
+                                                    VerticalAlignment="Center"
+                                                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
+                                                <TextBlock x:Name="HomeCourseStatusText" FontSize="12"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+
+                                    <Grid Grid.Row="2" ColumnDefinitions="*,*" ColumnSpacing="10">
+                                        <Button Content="查看主界面组件" HorizontalAlignment="Stretch"
+                                                Click="OnHomeOpenWidgets"/>
+                                        <Button Grid.Column="1" Content="打开档案编辑器" HorizontalAlignment="Stretch"
+                                                Click="OnHomeEditProfile"/>
+                                    </Grid>
+                                </Grid>
+                            </Border>
+
+                            <Border Grid.Row="1" Grid.Column="1" Classes="HomeCard">
+                                <Grid RowDefinitions="Auto,Auto">
+                                    <StackPanel Margin="22,20,22,14" Spacing="3">
+                                        <TextBlock Text="推荐设置" FontSize="20" FontWeight="SemiBold"/>
+                                        <TextBlock Text="最近使用的和常用的设置"
+                                                   FontSize="13"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="1">
+                                        <Border Height="1" Margin="16,0"
+                                                Background="{DynamicResource CardStrokeColorDefaultBrush}"/>
+                                        <Button Classes="HomeActionRow" Click="OnHomeOpenAppearance">
+                                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+                                                <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
+                                                             Glyph="&#xE1DD;" FontSize="20"
+                                                             VerticalAlignment="Center"/>
+                                                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                                    <TextBlock Text="外观" FontSize="14"/>
+                                                    <TextBlock Text="主题、透明度与界面缩放" FontSize="12"
+                                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                </StackPanel>
+                                                <ui:FontIcon Grid.Column="2"
+                                                             FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
+                                                             Glyph="&#xE06F;" FontSize="14"
+                                                             VerticalAlignment="Center" Opacity="0.65"/>
+                                            </Grid>
+                                        </Button>
+                                        <Border Height="1" Margin="16,0"
+                                                Background="{DynamicResource CardStrokeColorDefaultBrush}"/>
+                                        <Button Classes="HomeActionRow" Click="OnHomeOpenWindow">
+                                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+                                                <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
+                                                             Glyph="&#xE426;" FontSize="20"
+                                                             VerticalAlignment="Center"/>
+                                                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                                    <TextBlock Text="窗口" FontSize="14"/>
+                                                    <TextBlock Text="悬浮窗位置、交互与显示方式" FontSize="12"
+                                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                </StackPanel>
+                                                <ui:FontIcon Grid.Column="2"
+                                                             FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
+                                                             Glyph="&#xE06F;" FontSize="14"
+                                                             VerticalAlignment="Center" Opacity="0.65"/>
+                                            </Grid>
+                                        </Button>
+                                        <Border Height="1" Margin="16,0"
+                                                Background="{DynamicResource CardStrokeColorDefaultBrush}"/>
+                                        <Button Classes="HomeActionRow" Click="OnHomeOpenNotification">
+                                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+                                                <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
+                                                             Glyph="&#xE059;" FontSize="20"
+                                                             VerticalAlignment="Center"/>
+                                                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                                    <TextBlock Text="提醒" FontSize="14"/>
+                                                    <TextBlock Text="课前、上课与下课提醒" FontSize="12"
+                                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                </StackPanel>
+                                                <ui:FontIcon Grid.Column="2"
+                                                             FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
+                                                             Glyph="&#xE06F;" FontSize="14"
+                                                             VerticalAlignment="Center" Opacity="0.65"/>
+                                            </Grid>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <Border Grid.Row="2" Grid.Column="1" Classes="HomeCard" Padding="22">
+                                <StackPanel Spacing="16">
+                                    <StackPanel Spacing="3">
+                                        <TextBlock Text="个性化" FontSize="20" FontWeight="SemiBold"/>
+                                        <TextBlock Text="选择最适合当前环境的显示方式"
+                                                   FontSize="13"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                    </StackPanel>
+
+                                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+                                        <Button Classes="HomeThemeTile" Click="OnHomeOpenAppearance">
+                                            <StackPanel Spacing="7">
+                                                <Border x:Name="HomeThemePreviewSystem" Height="72"
+                                                        CornerRadius="8" BorderThickness="1"
+                                                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
+                                                    <Grid RowDefinitions="16,*" Margin="8">
+                                                        <Border Height="6" CornerRadius="3"
+                                                                Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                                                HorizontalAlignment="Stretch" VerticalAlignment="Top"/>
+                                                        <Border Grid.Row="1" Margin="0,8,0,0" CornerRadius="4"
+                                                                Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"/>
+                                                    </Grid>
+                                                </Border>
+                                                <TextBlock Text="跟随系统" FontSize="12" HorizontalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Grid.Column="1" Classes="HomeThemeTile"
+                                                Click="OnHomeOpenAppearance">
+                                            <StackPanel Spacing="7">
+                                                <Border x:Name="HomeThemePreviewLight" Height="72"
+                                                        CornerRadius="8" BorderThickness="1"
+                                                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"/>
+                                                <TextBlock Text="浅色" FontSize="12" HorizontalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Grid.Column="2" Classes="HomeThemeTile"
+                                                Click="OnHomeOpenAppearance">
+                                            <StackPanel Spacing="7">
+                                                <Border x:Name="HomeThemePreviewDark" Height="72"
+                                                        CornerRadius="8" BorderThickness="1"
+                                                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"/>
+                                                <TextBlock Text="深色" FontSize="12" HorizontalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
 
                         
                         <StackPanel x:Name="PageNex" Spacing="12" IsVisible="False">

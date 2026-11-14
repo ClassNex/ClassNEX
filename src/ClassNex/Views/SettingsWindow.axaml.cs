@@ -144,7 +144,8 @@ public partial class SettingsWindow : AppWindow
         Opened += (_, _) =>
         {
             PlayEntrance();
-            StartSakuraBlossoms();
+            HomePetals.IsVisible = false;
+            StopSakuraBlossoms();
             MetroTransitions.PrewarmPagesAtIdle(
                 new Control[]
                 {
@@ -186,6 +187,11 @@ public partial class SettingsWindow : AppWindow
         SettingsRoot.Background = brush;
         TopBarCapsule.Background = CiPalette.ChipSurfaceBrush();
         TopBarCapsule.BorderBrush = CiPalette.ChipBorderBrush();
+        HomeBrandTile.Background = CiPalette.SakuraAccentTint(0.16);
+        HomeBrandTile.BorderBrush = CiPalette.SakuraAccentTint(0.30);
+        HomeThemePreviewSystem.Background = CiPalette.SettingsSurfaceBrush();
+        HomeThemePreviewLight.Background = CiPalette.SakuraAccentTint(0.18);
+        HomeThemePreviewDark.Background = CiPalette.CardBrush;
     }
 
     private void PlayEntrance()
@@ -277,6 +283,9 @@ public partial class SettingsWindow : AppWindow
             visual.StopAnimation(nameof(visual.RotationAngle));
             visual.Opacity = 0;
         }
+
+        HomePetals.Children.Clear();
+        _blossoms.Clear();
     }
 
     private void CreateSakuraBlossoms(double width, double height)
@@ -480,6 +489,8 @@ public partial class SettingsWindow : AppWindow
 
         VersionText.Text = version;
         AboutVersionText.Text = $"版本 {version}";
+        HomeDeviceNameText.Text = Environment.MachineName;
+        HomeDeviceMetaText.Text = $"ClassNEX {version} · 当前设备";
 
         RefreshAccountName();
 
@@ -537,6 +548,10 @@ public partial class SettingsWindow : AppWindow
 
         AccountNameText.Text = displayName;
         AccountEmailText.Text = displayEmail;
+        HomeAccountNameText.Text = displayName;
+        HomeAccountEmailText.Text = displayEmail;
+        HomeAccountStatusText.Text = loggedIn ? "已连接，资料已同步" : "未登录";
+        HomeLoginButton.Content = loggedIn ? "切换账户" : "登录账户";
         AccountPageNameText.Text = displayName;
         AccountPageEmailText.Text = displayEmail;
         AccountPageStatusText.Text = loggedIn ? "已连接" : "未登录";
@@ -548,6 +563,7 @@ public partial class SettingsWindow : AppWindow
 
         var accent = CiPalette.SakuraAccentBrush();
         AccountAvatarRing.BorderBrush = accent;
+        HomeAccountAvatarRing.BorderBrush = accent;
         AccountPageAvatarRing.BorderBrush = accent;
         AccountPageStatusBadge.Background = CiPalette.SakuraAccentTint(0.14);
         AccountPageStatusBadge.BorderBrush = CiPalette.SakuraAccentTint(0.32);
@@ -648,6 +664,7 @@ public partial class SettingsWindow : AppWindow
         var imagePath = AccountService.AvatarImagePath;
 
         AccountAvatar.Apply(AccountAvatarRing, name, imagePath);
+        AccountAvatar.Apply(HomeAccountAvatarRing, name, imagePath);
         AccountAvatar.Apply(AccountPageAvatarRing, name, imagePath);
     }
 
@@ -891,11 +908,8 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         KeepOnlyPages(previousPage, page);
         page.IsVisible = true;
 
-        HomePetals.IsVisible = index == 0;
-        if (index == 0)
-            StartSakuraBlossoms();
-        else
-            StopSakuraBlossoms();
+        HomePetals.IsVisible = false;
+        StopSakuraBlossoms();
 
         var title = PageNames[Math.Clamp(index, 0, PageNames.Length - 1)];
         PageTitleText.Text = title;
@@ -1194,10 +1208,44 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         };
 
         
-        HomeGreetingText.Text = $"{greeting}, {name}";
+        HomeGreetingText.Text = $"{greeting}，{name}";
+        HomeSubText.Text = $"{now:yyyy年M月d日 dddd}";
 
-        var slots = AppServices.Time.GetTodaySlots(AppServices.Schedule.Profile, now);
-        HomeSubText.Text = $"{now:yyyy年M月d日 dddd} · 今日 {slots.Count} 节课";
+        var summary = AppServices.Time.GetTodaySummary(AppServices.Schedule.Profile, now);
+        var slots = summary.Slots;
+        var completed = slots.Count(slot => slot.End <= now.TimeOfDay);
+
+        HomeScheduleStatusText.Text = summary.Current is { } current
+            ? $"正在上 {current.DisplayName}"
+            : summary.Next is { } next
+                ? $"下一节 {next.StartText}"
+                : summary.IsEmpty
+                    ? "今天没有课程"
+                    : "今日课程已结束";
+        HomeTodaySummaryText.Text = summary.IsEmpty
+            ? "今天没有安排课程"
+            : $"今日 {slots.Count} 节课 · 已完成 {completed} 节";
+
+        var focus = summary.Current ?? summary.Next ?? slots.LastOrDefault();
+        if (focus is null)
+        {
+            HomeCourseTimeText.Text = "--:--";
+            HomeCourseNameText.Text = "今天没有课程";
+            HomeCourseDetailText.Text = "可以在档案编辑器中添加课程";
+            HomeCourseStatusText.Text = "暂无安排";
+            return;
+        }
+
+        HomeCourseTimeText.Text = focus.TimeRange;
+        HomeCourseNameText.Text = focus.DisplayName;
+        HomeCourseDetailText.Text = string.IsNullOrWhiteSpace(focus.Detail)
+            ? "课程信息"
+            : focus.Detail;
+        HomeCourseStatusText.Text = summary.Current is not null
+            ? "正在进行"
+            : summary.Next is not null
+                ? "即将开始"
+                : "今日已完成";
     }
 
     
@@ -1596,6 +1644,16 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
     private const string RepoUrl = "https://github.com/ClassNex/ClassNEX";
 
     private void OnOpenHomePage(object? sender, RoutedEventArgs e) => OpenUrl(RepoUrl);
+
+    private void OnHomeOpenAppearance(object? sender, RoutedEventArgs e) => NavigateTo("appearance");
+
+    private void OnHomeOpenWindow(object? sender, RoutedEventArgs e) => NavigateTo("window");
+
+    private void OnHomeOpenNotification(object? sender, RoutedEventArgs e) => NavigateTo("notification");
+
+    private void OnHomeOpenWidgets(object? sender, RoutedEventArgs e) => NavigateTo("widgets");
+
+    private void OnHomeEditProfile(object? sender, RoutedEventArgs e) => App.OpenProfileEditor(0);
 
     private void OnPreviewOobe(object? sender, RoutedEventArgs e) => App.ShowOobePreview();
 
