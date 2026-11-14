@@ -10,6 +10,8 @@ public enum LayoutOrientation
 
 public sealed class AppSettings
 {
+    public const string DefaultAccountEndpoint = "https://auth.smart-teach.cn";
+
     
     
     public string? TimetablePath { get; set; }
@@ -81,7 +83,7 @@ public sealed class AppSettings
     
     public string Email { get; set; } = "Lingofficial0423@gamil";
 
-    public string AccountEndpoint { get; set; } = "http://124.221.160.188:8000";
+    public string AccountEndpoint { get; set; } = DefaultAccountEndpoint;
 
     public string AccountClientId { get; set; } = "fa7664d772fac4b5097ce15c";
 

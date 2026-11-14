@@ -36,7 +36,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：设置窗口与档案编辑器切页改为单个页面 Composition 视觉层 220ms 淡入和 10px 纵向归位，移除页面内逐项错峰动画；切页只修改旧页和新页，页面预热合并为一次后台布局
-改了文件：src/ClassNex/Styles/MetroTransitions.cs、src/ClassNex/Views/SettingsWindow.axaml.cs、HANDOFF.md、AGENTS.md
+上次完成：ClassNEX 账户服务默认地址切换到 `https://auth.smart-teach.cn`，旧配置中的 `124.221.140.188`、`124.221.160.188` 和临时新机 IP 会在设置加载时自动迁移；Casdoor 已迁移到 `206.187.201.60`，静态资源改为新机同源自托管
+改了文件：src/ClassNex.Core/Models/AppSettings.cs、src/ClassNex.Core/Services/SettingsService.cs、HANDOFF.md、AGENTS.md
 进行中：无
 下一步：待用户指定

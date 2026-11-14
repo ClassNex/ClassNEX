@@ -66,7 +66,12 @@ public static class SettingsService
             {
                 var json = File.ReadAllText(SettingsPath);
                 if (!string.IsNullOrWhiteSpace(json))
-                    return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                {
+                    var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                    if (MigrateAccountEndpoint(settings))
+                        Save(settings);
+                    return settings;
+                }
             }
         }
         catch
@@ -75,6 +80,21 @@ public static class SettingsService
         }
 
         return new AppSettings();
+    }
+
+    private static bool MigrateAccountEndpoint(AppSettings settings)
+    {
+        if (!Uri.TryCreate(settings.AccountEndpoint, UriKind.Absolute, out var endpoint))
+        {
+            settings.AccountEndpoint = AppSettings.DefaultAccountEndpoint;
+            return true;
+        }
+
+        if (endpoint.Host is not ("124.221.140.188" or "124.221.160.188" or "206.187.201.60"))
+            return false;
+
+        settings.AccountEndpoint = AppSettings.DefaultAccountEndpoint;
+        return true;
     }
 
     public static void Save(AppSettings settings)
