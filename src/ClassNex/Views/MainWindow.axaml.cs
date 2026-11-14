@@ -525,6 +525,9 @@ public partial class MainWindow : Window
     private ScaleTransform _notificationOverlayTurnScale = new();
     private SkewTransform _notificationOverlayTurnSkew = new();
     private TranslateTransform _notificationOverlayTurnShift = new();
+    private DispatcherTimer? _notificationOverlayMessageTimer;
+    private bool _notificationMessagePageShown;
+    private bool _notificationMessagePageSwitching;
 
     
     
@@ -617,6 +620,8 @@ public partial class MainWindow : Window
         string rightGlyph = "\uE54F")
     {
         _notificationTransitionGeneration++;
+        StopNotificationOverlayMessageTicker();
+        ResetNotificationOverlayPages();
         NotificationMaskText.Text = text;
         NotificationMaskLeftIcon.Text = leftGlyph;
         NotificationMaskRightIcon.Text = rightGlyph;
@@ -694,6 +699,7 @@ public partial class MainWindow : Window
     public void HideNotificationMask()
     {
         var generation = ++_notificationTransitionGeneration;
+        StopNotificationOverlayMessageTicker();
         NotificationMaskBg.IsOpened = false;
 
         var fade = new Animation
@@ -738,9 +744,13 @@ public partial class MainWindow : Window
         string subject,
         string teacher,
         string time,
-        string prefix = "下节课是：")
+        string prefix = "下节课是：",
+        string message = "",
+        bool verticalPageTurn = false)
     {
         var generation = ++_notificationTransitionGeneration;
+        StopNotificationOverlayMessageTicker();
+        ResetNotificationOverlayPages();
         NotificationOverlayLeft.Text = left;
         NotificationOverlaySubject.Text = subject;
         NotificationOverlayTeacher.Text = teacher;
@@ -748,13 +758,24 @@ public partial class MainWindow : Window
         NotificationOverlayTime.Text = time;
         NotificationOverlayPrefix.Text = prefix;
         NotificationOverlayPrefix.IsVisible = !string.IsNullOrWhiteSpace(prefix);
+        NotificationOverlayMessagePage.Text = message;
         NotificationOverlay.IsVisible = true;
         StartNotificationTrack();
 
+        if (!string.IsNullOrWhiteSpace(message))
+        {
+            _notificationOverlayMessageTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(10),
+            };
+            _notificationOverlayMessageTimer.Tick += OnNotificationOverlayMessageTick;
+            _notificationOverlayMessageTimer.Start();
+        }
+
         if (NotificationMask.IsVisible)
         {
-            PrepareNotificationPageTurn();
-            _ = PlayNotificationPageTurnAsync(generation);
+            PrepareNotificationPageTurn(verticalPageTurn);
+            _ = PlayNotificationPageTurnAsync(generation, verticalPageTurn);
             return;
         }
 
@@ -763,7 +784,145 @@ public partial class MainWindow : Window
         _ = PlayNotificationOverlayFadeInAsync();
     }
 
-    private void PrepareNotificationPageTurn()
+    public void UpdateNotificationOverlayCountdown(string text)
+    {
+        if (NotificationOverlay.IsVisible)
+            NotificationOverlayLeft.Text = text;
+    }
+
+    private void OnNotificationOverlayMessageTick(object? sender, EventArgs e)
+    {
+        _ = ToggleNotificationOverlayMessagePageAsync();
+    }
+
+    private async Task ToggleNotificationOverlayMessagePageAsync()
+    {
+        if (_notificationMessagePageSwitching ||
+            !NotificationOverlay.IsVisible ||
+            string.IsNullOrWhiteSpace(NotificationOverlayMessagePage.Text))
+        {
+            return;
+        }
+
+        var generation = _notificationTransitionGeneration;
+        _notificationMessagePageSwitching = true;
+
+        Control outgoing = _notificationMessagePageShown
+            ? NotificationOverlayMessagePage
+            : NotificationOverlayCoursePage;
+        Control incoming = _notificationMessagePageShown
+            ? NotificationOverlayCoursePage
+            : NotificationOverlayMessagePage;
+
+        outgoing.RenderTransform = new TranslateTransform();
+        incoming.RenderTransform = new TranslateTransform(0, -40);
+        incoming.Opacity = 0;
+        incoming.IsVisible = true;
+        outgoing.ZIndex = 2;
+        incoming.ZIndex = 1;
+
+        var easing = Easing.Parse("0.65, 0, 0.35, 1");
+        var fadeOut = new Animation
+        {
+            Duration = TimeSpan.FromMilliseconds(250),
+            FillMode = FillMode.Forward,
+            Easing = easing,
+            Children =
+            {
+                new KeyFrame
+                {
+                    Cue = new Cue(0),
+                    Setters =
+                    {
+                        new Setter(OpacityProperty, 1.0),
+                        new Setter(TranslateTransform.YProperty, 0.0),
+                    },
+                },
+                new KeyFrame
+                {
+                    Cue = new Cue(1),
+                    Setters =
+                    {
+                        new Setter(OpacityProperty, 0.0),
+                        new Setter(TranslateTransform.YProperty, 40.0),
+                    },
+                },
+            },
+        };
+        var fadeIn = new Animation
+        {
+            Duration = TimeSpan.FromMilliseconds(250),
+            FillMode = FillMode.Forward,
+            Easing = easing,
+            Children =
+            {
+                new KeyFrame
+                {
+                    Cue = new Cue(0),
+                    Setters =
+                    {
+                        new Setter(OpacityProperty, 0.0),
+                        new Setter(TranslateTransform.YProperty, -40.0),
+                    },
+                },
+                new KeyFrame
+                {
+                    Cue = new Cue(1),
+                    Setters =
+                    {
+                        new Setter(OpacityProperty, 1.0),
+                        new Setter(TranslateTransform.YProperty, 0.0),
+                    },
+                },
+            },
+        };
+
+        await Task.WhenAll(
+            fadeOut.RunAsync(outgoing),
+            fadeIn.RunAsync(incoming));
+
+        if (generation != _notificationTransitionGeneration || !NotificationOverlay.IsVisible)
+        {
+            _notificationMessagePageSwitching = false;
+            return;
+        }
+
+        outgoing.IsVisible = false;
+        outgoing.Opacity = 0;
+        outgoing.RenderTransform = new TranslateTransform();
+        incoming.Opacity = 1;
+        incoming.RenderTransform = new TranslateTransform();
+        outgoing.ZIndex = 0;
+        incoming.ZIndex = 0;
+        _notificationMessagePageShown = !_notificationMessagePageShown;
+        _notificationMessagePageSwitching = false;
+    }
+
+    private void ResetNotificationOverlayPages()
+    {
+        NotificationOverlayCoursePage.RenderTransform = new TranslateTransform();
+        NotificationOverlayCoursePage.Opacity = 1;
+        NotificationOverlayCoursePage.IsVisible = true;
+        NotificationOverlayCoursePage.ZIndex = 0;
+        NotificationOverlayMessagePage.RenderTransform = new TranslateTransform();
+        NotificationOverlayMessagePage.Opacity = 0;
+        NotificationOverlayMessagePage.IsVisible = false;
+        NotificationOverlayMessagePage.ZIndex = 0;
+        _notificationMessagePageShown = false;
+        _notificationMessagePageSwitching = false;
+    }
+
+    private void StopNotificationOverlayMessageTicker()
+    {
+        if (_notificationOverlayMessageTimer is not { } timer)
+            return;
+
+        timer.Stop();
+        timer.Tick -= OnNotificationOverlayMessageTick;
+        _notificationOverlayMessageTimer = null;
+    }
+
+    private void PrepareNotificationPageTurn(bool vertical)
     {
         _notificationMaskTurnScale = new ScaleTransform(1, 1);
         _notificationMaskTurnSkew = new SkewTransform(0, 0);
@@ -773,17 +932,27 @@ public partial class MainWindow : Window
             Children = { _notificationMaskTurnScale, _notificationMaskTurnSkew, _notificationMaskTurnShift },
         };
         NotificationMask.RenderTransformOrigin =
-            new RelativePoint(-0.10, 0.5, RelativeUnit.Relative);
+            vertical
+                ? new RelativePoint(0.5, -0.10, RelativeUnit.Relative)
+                : new RelativePoint(-0.10, 0.5, RelativeUnit.Relative);
 
-        _notificationOverlayTurnScale = new ScaleTransform(0.06, 1);
-        _notificationOverlayTurnSkew = new SkewTransform(5, 0);
-        _notificationOverlayTurnShift = new TranslateTransform(42, 0);
+        _notificationOverlayTurnScale = vertical
+            ? new ScaleTransform(1, 0.06)
+            : new ScaleTransform(0.06, 1);
+        _notificationOverlayTurnSkew = vertical
+            ? new SkewTransform(0, 5)
+            : new SkewTransform(5, 0);
+        _notificationOverlayTurnShift = vertical
+            ? new TranslateTransform(0, 42)
+            : new TranslateTransform(42, 0);
         NotificationOverlay.RenderTransform = new TransformGroup
         {
             Children = { _notificationOverlayTurnScale, _notificationOverlayTurnSkew, _notificationOverlayTurnShift },
         };
         NotificationOverlay.RenderTransformOrigin =
-            new RelativePoint(-0.10, 0.5, RelativeUnit.Relative);
+            vertical
+                ? new RelativePoint(0.5, -0.10, RelativeUnit.Relative)
+                : new RelativePoint(-0.10, 0.5, RelativeUnit.Relative);
 
         NotificationMask.Opacity = 1;
         NotificationOverlay.Opacity = 0;
@@ -791,10 +960,10 @@ public partial class MainWindow : Window
         NotificationOverlay.ZIndex = 3;
     }
 
-    private async Task PlayNotificationPageTurnAsync(int generation)
+    private async Task PlayNotificationPageTurnAsync(int generation, bool vertical)
     {
-        var outgoing = CreateNotificationPageTurnAnimation(true);
-        var incoming = CreateNotificationPageTurnAnimation(false);
+        var outgoing = CreateNotificationPageTurnAnimation(true, vertical);
+        var incoming = CreateNotificationPageTurnAnimation(false, vertical);
         await Task.WhenAll(
             outgoing.RunAsync(NotificationMask),
             incoming.RunAsync(NotificationOverlay));
@@ -812,8 +981,18 @@ public partial class MainWindow : Window
         ResetNotificationOverlayTurn();
     }
 
-    private static Animation CreateNotificationPageTurnAnimation(bool outgoing)
+    private static Animation CreateNotificationPageTurnAnimation(bool outgoing, bool vertical)
     {
+        var scaleProperty = vertical
+            ? ScaleTransform.ScaleYProperty
+            : ScaleTransform.ScaleXProperty;
+        var skewProperty = vertical
+            ? SkewTransform.AngleYProperty
+            : SkewTransform.AngleXProperty;
+        var shiftProperty = vertical
+            ? TranslateTransform.YProperty
+            : TranslateTransform.XProperty;
+
         if (outgoing)
         {
             return new Animation
@@ -829,9 +1008,9 @@ public partial class MainWindow : Window
                         Setters =
                         {
                             new Setter(OpacityProperty, 1.0),
-                            new Setter(ScaleTransform.ScaleXProperty, 1.0),
-                            new Setter(SkewTransform.AngleXProperty, 0.0),
-                            new Setter(TranslateTransform.XProperty, 0.0),
+                            new Setter(scaleProperty, 1.0),
+                            new Setter(skewProperty, 0.0),
+                            new Setter(shiftProperty, 0.0),
                         },
                     },
                     new KeyFrame
@@ -840,9 +1019,9 @@ public partial class MainWindow : Window
                         Setters =
                         {
                             new Setter(OpacityProperty, 0.0),
-                            new Setter(ScaleTransform.ScaleXProperty, 0.06),
-                            new Setter(SkewTransform.AngleXProperty, -5.0),
-                            new Setter(TranslateTransform.XProperty, -18.0),
+                            new Setter(scaleProperty, 0.06),
+                            new Setter(skewProperty, -5.0),
+                            new Setter(shiftProperty, -18.0),
                         },
                     },
                     new KeyFrame
@@ -851,9 +1030,9 @@ public partial class MainWindow : Window
                         Setters =
                         {
                             new Setter(OpacityProperty, 0.0),
-                            new Setter(ScaleTransform.ScaleXProperty, 0.06),
-                            new Setter(SkewTransform.AngleXProperty, -5.0),
-                            new Setter(TranslateTransform.XProperty, -18.0),
+                            new Setter(scaleProperty, 0.06),
+                            new Setter(skewProperty, -5.0),
+                            new Setter(shiftProperty, -18.0),
                         },
                     },
                 },
@@ -873,9 +1052,9 @@ public partial class MainWindow : Window
                     Setters =
                     {
                         new Setter(OpacityProperty, 0.0),
-                        new Setter(ScaleTransform.ScaleXProperty, 0.06),
-                        new Setter(SkewTransform.AngleXProperty, 5.0),
-                        new Setter(TranslateTransform.XProperty, 42.0),
+                        new Setter(scaleProperty, 0.06),
+                        new Setter(skewProperty, 5.0),
+                        new Setter(shiftProperty, 42.0),
                     },
                 },
                 new KeyFrame
@@ -884,9 +1063,9 @@ public partial class MainWindow : Window
                     Setters =
                     {
                         new Setter(OpacityProperty, 0.0),
-                        new Setter(ScaleTransform.ScaleXProperty, 0.06),
-                        new Setter(SkewTransform.AngleXProperty, 5.0),
-                        new Setter(TranslateTransform.XProperty, 42.0),
+                        new Setter(scaleProperty, 0.06),
+                        new Setter(skewProperty, 5.0),
+                        new Setter(shiftProperty, 42.0),
                     },
                 },
                 new KeyFrame
@@ -895,9 +1074,9 @@ public partial class MainWindow : Window
                     Setters =
                     {
                         new Setter(OpacityProperty, 1.0),
-                        new Setter(ScaleTransform.ScaleXProperty, 1.0),
-                        new Setter(SkewTransform.AngleXProperty, 0.0),
-                        new Setter(TranslateTransform.XProperty, 0.0),
+                        new Setter(scaleProperty, 1.0),
+                        new Setter(skewProperty, 0.0),
+                        new Setter(shiftProperty, 0.0),
                     },
                 },
             },

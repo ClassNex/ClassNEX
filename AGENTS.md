@@ -36,7 +36,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：修复通知遮罩与浮层切换时文字重叠；遮罩进入浮层加入 360ms 左轴翻页转场，旧页收拢期间不显示新页文字；用显示代次阻止旧计时器覆盖新提醒；上课/课前遮罩使用 CI 左 E0FF、右 E54F，下课使用左 E0FF、右 E250，上课遮罩停留 5 秒；测试提醒不再显示“下节课是”前缀
+上次完成：课前提醒按 CI 改为 3 秒遮罩后进入浮层，浮层在“实时倒计时 + 下节课信息”和“准备好上课”两页间每 10 秒上下翻页，持续时间到本节正式上课；遮罩转浮层在课前使用纵向翻页、其他提醒保留横向翻页；用显示代次阻止旧计时器覆盖新提醒；上课/课前遮罩使用左 E0FF、右 E54F，下课使用左 E0FF、右 E250，上课遮罩停留 5 秒；测试提醒不再显示“下节课是”前缀
 改了文件：src/ClassNex/Views/MainWindow.axaml(.cs)、src/ClassNex/Services/NotificationService.cs、HANDOFF.md、AGENTS.md
 进行中：无
 下一步：待用户指定

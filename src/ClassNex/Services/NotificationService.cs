@@ -16,6 +16,7 @@ public sealed class NotificationService
     private string? _prepareKey;
     private bool _started;
     private int _displayGeneration;
+    private DateTime? _prepareCountdownTarget;
 
     public NotificationService(TopmostEffectWindow effectWindow)
     {
@@ -39,12 +40,15 @@ public sealed class NotificationService
         _timer.Stop();
         _started = false;
         _prepareKey = null;
+        _prepareCountdownTarget = null;
     }
 
     private void OnTick()
     {
         if (!AppServices.Settings.AllowNotification)
             return;
+
+        UpdatePrepareCountdown();
 
         var now = DateTime.Now;
         var summary = AppServices.Time.GetTodaySummary(AppServices.Schedule.Profile, now);
@@ -117,10 +121,27 @@ public sealed class NotificationService
             : notification.ClassOnPreparingText;
         var teacher = notification.ShowTeacherName ? next.Teacher ?? "" : "";
         var generation = BeginDisplay();
+        var countdownTarget = DateTime.Now.Add(remaining);
+        _prepareCountdownTarget = countdownTarget;
         ShowMask(mainWindow, mask, "\uE0FF", "\uE54F");
-        Schedule(generation, TimeSpan.FromMilliseconds(1200), () =>
-            mainWindow.ShowNotificationOverlay(message, next.DisplayName, teacher, next.TimeRange));
-        Schedule(generation, TimeSpan.FromSeconds(8), mainWindow.HideNotificationMask);
+        var maskDuration = TimeSpan.FromSeconds(3);
+        var overlayDelay = remaining > maskDuration ? maskDuration : remaining;
+        var hideDelay = remaining > maskDuration ? remaining : maskDuration;
+        Schedule(generation, overlayDelay, () =>
+        {
+            var countdown = countdownTarget - DateTime.Now;
+            if (countdown < TimeSpan.Zero)
+                countdown = TimeSpan.Zero;
+            mainWindow.ShowNotificationOverlay(
+                FormatPrepareCountdown(countdown),
+                next.DisplayName,
+                teacher,
+                next.TimeRange,
+                "下节课是：",
+                message,
+                true);
+        });
+        Schedule(generation, hideDelay, mainWindow.HideNotificationMask);
     }
 
     private void ShowClassOn(DateTime now, (string Title, TimeSpan Start, TimeSpan End)? current)
@@ -179,8 +200,30 @@ public sealed class NotificationService
 
     private int BeginDisplay()
     {
+        _prepareCountdownTarget = null;
         _displayGeneration++;
         return _displayGeneration;
+    }
+
+    private void UpdatePrepareCountdown()
+    {
+        if (_prepareCountdownTarget is not { } target)
+            return;
+
+        var remaining = target - DateTime.Now;
+        if (remaining <= TimeSpan.Zero)
+        {
+            _prepareCountdownTarget = null;
+            return;
+        }
+
+        NotificationWindow?.UpdateNotificationOverlayCountdown(FormatPrepareCountdown(remaining));
+    }
+
+    private static string FormatPrepareCountdown(TimeSpan remaining)
+    {
+        var seconds = Math.Max(0, (int)Math.Ceiling(remaining.TotalSeconds));
+        return $"距上课还剩 {seconds} 秒";
     }
 
     private void Schedule(int generation, TimeSpan delay, Action action)
