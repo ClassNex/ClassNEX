@@ -302,8 +302,9 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 ### 其它
 - **Casdoor OIDC 提供商**：`ClassNEX/smart-teach` 已接入 `https://auth.smart-teach.cn`，类型为 OIDC，
   使用授权码流程和 PKCE，范围为 `openid profile email`；已绑定 `app-classnex`，允许登录、注册、解绑并按邮箱绑定。
-  ClassNEX 客户端统一使用 `AppSettings.DefaultAccountEndpoint = https://auth.smart-teach.cn`，
-  `SettingsService.Load()` 会把历史配置中的新旧服务器 IP 自动迁移到该域名。
+  `auth.smart-teach.cn` 当前仍指向旧 Casdoor 源站，会导致 `invalid_client`。因此 ClassNEX 客户端
+  临时使用 `AppSettings.DefaultAccountEndpoint = http://206.187.201.60:8000`，
+  `SettingsService.Load()` 会把历史域名和新旧服务器 IP 自动迁移到当前可用源站。
   `app-classnex` 的 Client ID 为 `fa7664d772fac4b5097ce15c`，`smart-teach` OIDC 提供商的
   Client ID 为 `913736707004a6f7c323`；Client Secret 只存在于 Casdoor 数据库，禁止写入仓库或交接文档。
   Casdoor 已从 `124.221.160.188` 迁移至 `206.187.201.60`，新机使用 Docker Compose 运行

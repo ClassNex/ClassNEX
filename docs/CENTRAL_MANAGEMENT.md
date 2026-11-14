@@ -13,7 +13,7 @@
 集控服务需要配置以下环境变量：
 
 ```powershell
-$env:CASDOOR_URL="https://auth.smart-teach.cn"
+$env:CASDOOR_URL="http://206.187.201.60:8000"
 $env:CASDOOR_CLIENT_ID="<Casdoor 应用 Client ID>"
 $env:CASDOOR_CLIENT_SECRET="<可选，公开客户端保持为空>"
 $env:CENTRAL_PUBLIC_URL="http://<服务器>:7010"

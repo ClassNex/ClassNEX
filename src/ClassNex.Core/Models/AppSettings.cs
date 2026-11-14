@@ -10,7 +10,7 @@ public enum LayoutOrientation
 
 public sealed class AppSettings
 {
-    public const string DefaultAccountEndpoint = "https://auth.smart-teach.cn";
+    public const string DefaultAccountEndpoint = "http://206.187.201.60:8000";
 
     public const string DefaultCentralEndpoint = "http://206.187.201.60:7010";
 

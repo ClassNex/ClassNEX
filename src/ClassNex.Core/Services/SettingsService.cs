@@ -92,7 +92,7 @@ public static class SettingsService
             return true;
         }
 
-        if (endpoint.Host is not ("124.221.140.188" or "124.221.160.188" or "206.187.201.60"))
+        if (endpoint.Host is not ("124.221.140.188" or "124.221.160.188" or "206.187.201.60" or "auth.smart-teach.cn"))
             return false;
 
         settings.AccountEndpoint = AppSettings.DefaultAccountEndpoint;
