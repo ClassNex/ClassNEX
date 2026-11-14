@@ -306,7 +306,7 @@ public sealed class ScheduleWidget : WidgetBase
         var left = LeftOf(end, now);
         var remaining = "-" + FormatClock(left);
 
-        var time = Text(remaining, Size(CiSecondary), CiPalette.SakuraAccentBrush());
+        var time = Text(remaining, Size(CiSecondary), White());
         time.VerticalAlignment = VerticalAlignment.Center;
         time.TextAlignment = TextAlignment.Right;
         time.Width = 70;

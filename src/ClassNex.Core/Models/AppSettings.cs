@@ -188,6 +188,8 @@ public sealed class NotificationSettings
 
     public int OutDoorClassPreparingDeltaTime { get; set; } = 600;
 
+    public int ClassOnBreakReminderMinutes { get; set; } = 3;
+
     public string ClassOnPreparingText { get; set; } = "准备上课，请回到座位并保持安静，做好上课准备。";
 
     public string ClassOnPreparingMaskText { get; set; } = "即将上课";

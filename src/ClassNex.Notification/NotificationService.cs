@@ -96,7 +96,7 @@ public sealed class NotificationService : INotificationService, IDisposable
 
         var threshold = next.IsOutDoor
             ? notification.OutDoorClassPreparingDeltaTime
-            : notification.InDoorClassPreparingDeltaTime;
+            : notification.ClassOnBreakReminderMinutes * 60;
         var remaining = next.Start - now.TimeOfDay;
         if (remaining <= TimeSpan.Zero || remaining > TimeSpan.FromSeconds(Math.Max(0, threshold)))
         {

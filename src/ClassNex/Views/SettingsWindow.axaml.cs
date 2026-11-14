@@ -1936,7 +1936,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         ClassOnEnabledCheck.IsChecked = n.IsClassOnNotificationEnabled;
         ClassOffEnabledCheck.IsChecked = n.IsClassOffNotificationEnabled;
         ShowTeacherCheck.IsChecked = n.ShowTeacherName;
-        IndoorPreparingBox.Value = Math.Clamp(n.InDoorClassPreparingDeltaTime, 0, 3600);
+        IndoorPreparingBox.Value = Math.Clamp(n.ClassOnBreakReminderMinutes, 1, 60);
         OutdoorPreparingBox.Value = Math.Clamp(n.OutDoorClassPreparingDeltaTime, 0, 3600);
         PreparingText.Text = n.ClassOnPreparingText;
         PreparingMaskText.Text = n.ClassOnPreparingMaskText;
@@ -1970,7 +1970,8 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         n.IsClassOnNotificationEnabled = ClassOnEnabledCheck.IsChecked == true;
         n.IsClassOffNotificationEnabled = ClassOffEnabledCheck.IsChecked == true;
         n.ShowTeacherName = ShowTeacherCheck.IsChecked == true;
-        n.InDoorClassPreparingDeltaTime = (int)Math.Clamp(IndoorPreparingBox.Value, 0, 3600);
+        n.ClassOnBreakReminderMinutes = (int)Math.Clamp(IndoorPreparingBox.Value, 1, 60);
+        n.InDoorClassPreparingDeltaTime = n.ClassOnBreakReminderMinutes * 60;
         n.OutDoorClassPreparingDeltaTime = (int)Math.Clamp(OutdoorPreparingBox.Value, 0, 3600);
         n.ClassOnPreparingText = PreparingText.Text ?? "";
         n.ClassOnPreparingMaskText = PreparingMaskText.Text ?? "";

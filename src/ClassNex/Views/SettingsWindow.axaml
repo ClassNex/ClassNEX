@@ -671,21 +671,21 @@
                                 <TextBlock Text="提醒规则" FontSize="15" VerticalAlignment="Center"/>
                             </StackPanel>
 
-                            <ui:SettingsExpander Header="在课前准备时发出提醒"
-                                                 Description="在上课前一段时间发出醒目提醒，提示做好上课准备。">
+                            <ui:SettingsExpander Header="在下课前发出准备提醒" IsExpanded="True"
+                                                 Description="下课时间还剩指定分钟时，提醒下一节课做好上课准备。">
                                 <ui:SettingsExpander.IconSource>
                                     <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE224;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
                                     <ToggleSwitch x:Name="PreparingEnabledCheck"/>
                                 </ui:SettingsExpander.Footer>
-                                <ui:SettingsExpanderItem Content="室内课程课前提醒时间"
-                                                         Description="在室内课程的上课前指定时间进行上课提醒。">
+                                <ui:SettingsExpanderItem Content="室内课程下课剩余时间"
+                                                         Description="默认在下课时间还剩 3 分钟时提醒下一节室内课程。">
                                     <ui:SettingsExpanderItem.Footer>
                                         <StackPanel Orientation="Horizontal" Spacing="8">
-                                            <ui:NumberBox x:Name="IndoorPreparingBox" Maximum="3600" Minimum="0"
+                                            <ui:NumberBox x:Name="IndoorPreparingBox" Maximum="60" Minimum="1"
                                                           Width="150" SpinButtonPlacementMode="Inline"/>
-                                            <TextBlock Text="秒" VerticalAlignment="Center"/>
+                                            <TextBlock Text="分钟" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </ui:SettingsExpanderItem.Footer>
                                 </ui:SettingsExpanderItem>
