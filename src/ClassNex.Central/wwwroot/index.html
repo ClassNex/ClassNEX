@@ -141,6 +141,8 @@
     .switch input:checked+.switch-track{background:var(--accent);border-color:var(--accent)}
     .switch input:checked+.switch-track:after{transform:translateX(18px);background:#fff}
     .widget-grid{display:grid;gap:8px;padding:10px 15px 15px}
+    .widget-section-head{padding:14px 15px 0;border-top:1px solid var(--divider)}
+    .widget-section-title{font-size:13px;font-weight:600;margin-bottom:3px}
     .widget-row{display:grid;grid-template-columns:minmax(110px,1fr) 44px minmax(130px,190px);gap:12px;align-items:center;padding:9px 10px;border:1px solid var(--stroke);border-radius:7px;background:var(--subtle)}
     .widget-name{font-size:12px}.widget-scale{font-size:11px;color:var(--muted);text-align:right}
     .timetable-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
@@ -534,7 +536,17 @@ const renderSettingControl=field=>{
 const renderWidgetSettings=()=>{
   const widgets=getPathValue(state.settings,"Widgets")||[];
   if(!widgets.length)return '<div class="widget-grid"><div class="empty-state">当前没有主界面组件。</div></div>';
-  return `<div class="widget-grid">${widgets.map((widget,index)=>`<div class="widget-row"><div class="widget-name">${escapeHtml(widgetNames[widget.Type]||widget.Type)}</div><label class="switch"><input type="checkbox" data-widget-index="${index}" data-widget-prop="IsEnabled" ${widget.IsEnabled!==false?"checked":""}><span class="switch-track"></span></label><div><input type="range" data-widget-index="${index}" data-widget-prop="FontScale" min="0.5" max="2" step="0.05" value="${Number(widget.FontScale||1)}"><div class="widget-scale">字号 ${Math.round(Number(widget.FontScale||1)*100)}%</div></div></div>`).join("")}</div>`;
+  const entries=widgets.map((widget,index)=>{
+    const type=String(getPathValue(widget,"Type")||"");
+    return {widget,index,type,enabled:getPathValue(widget,"IsEnabled")!==false,scale:Number(getPathValue(widget,"FontScale")||1)};
+  });
+  return `<div class="widget-section-head"><div class="widget-section-title">主界面组件</div><div class="settings-desc">控制每个组件是否显示在主界面，并单独调整组件字号。</div></div><div class="widget-grid">${entries.map(entry=>{
+    const peers=entries.filter(item=>item.type===entry.type);
+    const ordinal=peers.findIndex(item=>item.index===entry.index)+1;
+    const base=widgetNames[entry.type]||entry.type||"未知组件";
+    const label=peers.length>1?`${base} ${ordinal}`:base;
+    return `<div class="widget-row"><div><div class="widget-name">${escapeHtml(label)}</div><div class="widget-scale">${entry.enabled?"已显示":"已隐藏"}</div></div><label class="switch"><input type="checkbox" data-widget-index="${entry.index}" data-widget-prop="IsEnabled" ${entry.enabled?"checked":""}><span class="switch-track"></span></label><div><input type="range" data-widget-index="${entry.index}" data-widget-prop="FontScale" min="0.5" max="2" step="0.05" value="${entry.scale}"><div class="widget-scale">字号 ${Math.round(entry.scale*100)}%</div></div></div>`;
+  }).join("")}</div>`;
 };
 const renderSettingsForm=()=>{
   const root=$("settingsForm");
@@ -558,7 +570,7 @@ const handleSettingInput=event=>{
     const widget=(getPathValue(state.settings,"Widgets")||[])[Number(element.dataset.widgetIndex)];
     if(!widget)return;
     const property=element.dataset.widgetProp;
-    widget[property]=element.type==="checkbox"?element.checked:Number(element.value);
+    setPathValue(widget,property,element.type==="checkbox"?element.checked:Number(element.value));
     if(property==="FontScale"){
       const output=element.parentElement?.querySelector(".widget-scale");
       if(output)output.textContent=`字号 ${Math.round(Number(element.value)*100)}%`;
