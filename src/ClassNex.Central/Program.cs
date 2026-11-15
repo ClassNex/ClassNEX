@@ -13,6 +13,8 @@ var app = builder.Build();
 var dataDirectory = Path.Combine(AppContext.BaseDirectory, "data");
 var store = new CentralStore(dataDirectory);
 await store.InitializeAsync();
+var sessionStore = new CentralSessionStore(dataDirectory);
+await sessionStore.InitializeAsync();
 
 var casdoorUrl = Environment.GetEnvironmentVariable("CASDOOR_URL")
                  ?? "https://auth.smart-teach.cn";
@@ -30,7 +32,6 @@ var auth = new CentralAuthService(
     casdoorClientSecret,
     publicBaseUrl);
 
-var webSessions = new ConcurrentDictionary<string, WebSession>();
 var loginStates = new ConcurrentDictionary<string, PendingLogin>();
 
 app.UseDefaultFiles();
@@ -88,7 +89,8 @@ app.MapGet("/auth/callback", async (
         return Results.BadRequest("ClassNEX ID 账户资料不完整，请重新登录");
 
     var sessionId = CreateToken();
-    webSessions[sessionId] = new WebSession(
+    await sessionStore.SetAsync(
+        sessionId,
         user,
         DateTimeOffset.UtcNow.AddDays(7));
     response.Cookies.Append(SessionCookie, sessionId, new CookieOptions
@@ -102,10 +104,10 @@ app.MapGet("/auth/callback", async (
     return Results.Redirect("/");
 });
 
-app.MapGet("/auth/logout", (HttpRequest request, HttpResponse response) =>
+app.MapGet("/auth/logout", async (HttpRequest request, HttpResponse response) =>
 {
     if (request.Cookies.TryGetValue(SessionCookie, out var sessionId))
-        webSessions.TryRemove(sessionId, out _);
+        await sessionStore.RemoveAsync(sessionId);
     response.Cookies.Delete(SessionCookie);
     return Results.Redirect("/");
 });
@@ -388,11 +390,9 @@ app.Run();
 async Task<CentralUser?> GetCurrentUserAsync(HttpRequest request)
 {
     if (request.Cookies.TryGetValue(SessionCookie, out var sessionId) &&
-        webSessions.TryGetValue(sessionId, out var session))
+        await sessionStore.GetAsync(sessionId) is { } sessionUser)
     {
-        if (session.ExpiresAt > DateTimeOffset.UtcNow)
-            return session.User;
-        webSessions.TryRemove(sessionId, out _);
+        return sessionUser;
     }
 
     var header = request.Headers.Authorization.ToString();
@@ -419,8 +419,6 @@ static CentralClassDetail ToDetail(CentralClassRecord record) => new(
     record.Message,
     record.SettingsJson,
     record.TimetableYaml);
-
-public sealed record WebSession(CentralUser User, DateTimeOffset ExpiresAt);
 
 public sealed record PendingLogin(DateTimeOffset ExpiresAt, string CodeVerifier);
 
