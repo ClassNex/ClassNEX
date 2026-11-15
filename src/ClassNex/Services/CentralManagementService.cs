@@ -215,7 +215,7 @@ public sealed class CentralManagementService : IDisposable
     private static string AppVersion =>
         typeof(AppServices).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
-            .InformationalVersion ?? "26w45b";
+            .InformationalVersion ?? "26w46a";
 
     private void SetStatus(string status)
     {
