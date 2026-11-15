@@ -264,9 +264,9 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 ### 应用设置（FluentUI：`NavigationView` + `SettingsExpander` + `InfoBar`）
 - 通用：单周开始日期、托盘点击行为
 - 界面：主题、背景不透明度、**主界面缩放（默认 1.9）**、全局字号缩放、排列方向、鼠标穿透
-- 主界面组件：**WinUI Gallery ControlExample 风格的全宽组件库**，7 种组件
+- 主界面组件：**CI 风格 WrapPanel 紧凑组件库**，7 种组件
   （文本 / 分割线 / 课程表 / 日期 / 时钟 / 当前·下节课 / 倒计时），
-  每个组件由标题、示例显示区和独立操作区组成，双击整卡也可添加，
+  每张卡片宽 225、使用 32px 图标、名称与说明，点击整卡添加；不再使用全宽示例卡和右侧操作区，
   支持启用、字号、显示秒、自定义文本（占位符 `{date} {day} {time} {parity} {current} {next} {countdown}`）、排序、删除
 - 课表、关于
 - **账户登录**：恢复 Casdoor **浏览器授权码流程**，软件内不再显示用户名密码或邮箱验证码表单。

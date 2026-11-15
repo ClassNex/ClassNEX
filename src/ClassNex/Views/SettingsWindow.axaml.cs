@@ -1879,100 +1879,66 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             {
                 FontFamily = new Avalonia.Media.FontFamily("avares://ClassNex/Assets/Fonts/#lucide"),
                 Glyph = item.Glyph,
-                FontSize = 28,
-                Width = 40,
-                Height = 40,
+                FontSize = 26,
+                Width = 32,
+                Height = 32,
                 VerticalAlignment = VerticalAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Center,
             };
 
+            var title = new TextBlock
+            {
+                Text = item.DisplayName,
+                FontSize = 14,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+            };
             var description = new TextBlock
             {
                 Text = item.Description,
-                FontSize = 13,
-                Opacity = 0.68,
+                FontSize = 12,
+                Opacity = 0.72,
                 TextWrapping = TextWrapping.Wrap,
                 TextTrimming = TextTrimming.CharacterEllipsis,
             };
-            var sample = new StackPanel
+            var text = new StackPanel
             {
-                Orientation = Orientation.Horizontal,
-                Spacing = 14,
+                Spacing = 2,
                 VerticalAlignment = VerticalAlignment.Center,
-                Children = { icon, description },
+                Children = { title, description },
             };
-            var add = new Button
+            var addIcon = new AvaloniaFluentUI.Controls.FontIcon
             {
-                Content = "添加到主界面",
-                MinWidth = 132,
-                HorizontalAlignment = HorizontalAlignment.Stretch,
+                FontFamily = new Avalonia.Media.FontFamily("avares://ClassNex/Assets/Fonts/#lucide"),
+                Glyph = "\uE710",
+                FontSize = 16,
+                VerticalAlignment = VerticalAlignment.Center,
+                Opacity = 0.72,
             };
-            add.Click += (_, _) => AddWidget(item.Type);
+            var grid = new Grid
+            {
+                ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"),
+                ColumnSpacing = 10,
+                Children = { icon, text, addIcon },
+            };
+            Grid.SetColumn(text, 1);
+            Grid.SetColumn(addIcon, 2);
 
-            var display = new Border
+            var card = new Button
             {
-                MinHeight = 88,
-                Padding = new Thickness(16, 12),
+                Width = 225,
+                MinHeight = 58,
+                Margin = new Thickness(0, 0, 8, 8),
+                Padding = new Thickness(8, 6),
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
                 Background = CiPalette.ChipSurfaceBrush(),
-                Child = sample,
-            };
-            var options = new Border
-            {
-                Width = 176,
-                Padding = new Thickness(16),
-                Background = CiPalette.SurfaceBrush("CardBackgroundFillColorSecondaryBrush", 0.06),
-                BorderThickness = new Thickness(1, 0, 0, 0),
                 BorderBrush = CiPalette.ChipBorderBrush(),
-                Child = new StackPanel
-                {
-                    Spacing = 10,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Children =
-                    {
-                        new TextBlock
-                        {
-                            Text = "操作",
-                            FontSize = 12,
-                            Opacity = 0.62,
-                        },
-                        add,
-                    },
-                },
-            };
-            var exampleGrid = new Grid
-            {
-                ColumnDefinitions = new ColumnDefinitions("*,176"),
-                Children = { display, options },
-            };
-            Grid.SetColumn(options, 1);
-
-            var card = new Border
-            {
-                CornerRadius = new CornerRadius(8),
                 BorderThickness = new Thickness(1),
-                BorderBrush = CiPalette.ChipBorderBrush(),
-                Background = CiPalette.ChipSurfaceBrush(),
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                ClipToBounds = true,
-                Child = exampleGrid,
+                CornerRadius = new CornerRadius(8),
+                Content = grid,
             };
-            card.DoubleTapped += (_, _) => AddWidget(item.Type);
-
-            WidgetLibraryPanel.Children.Add(new StackPanel
-            {
-                Spacing = 6,
-                Margin = new Thickness(0, 12, 0, 0),
-                Children =
-                {
-                    new TextBlock
-                    {
-                        Text = item.DisplayName,
-                        FontSize = 14,
-                        Margin = new Thickness(0, 0, 0, 6),
-                    },
-                    card,
-                },
-            });
+            ToolTip.SetTip(card, "添加到主界面");
+            card.Click += (_, _) => AddWidget(item.Type);
+            WidgetLibraryPanel.Children.Add(card);
         }
     }
 
