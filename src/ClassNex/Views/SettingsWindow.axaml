@@ -879,16 +879,15 @@
                                 </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>
 
-                            <ui:SettingsExpander Header="选择班级"
-                                                 Description="班级由同一 ClassNEX ID 在集控中心创建。">
+                            <ui:SettingsExpander Header="设备身份"
+                                                 Description="登录后自动登记本机，由集控端选择设备并分配班级。">
                                 <ui:SettingsExpander.IconSource>
                                     <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE1F9;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <ComboBox x:Name="CentralClassCombo" Width="220"/>
-                                        <Button x:Name="CentralRefreshClassesButton" Content="刷新班级"/>
-                                    </StackPanel>
+                                    <TextBlock x:Name="CentralDeviceText" MaxWidth="280"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"/>
                                 </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>
 

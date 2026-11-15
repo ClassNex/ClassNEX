@@ -28,55 +28,36 @@ public sealed class CentralManagementClient : IDisposable
         await EnsureSuccessAsync(response, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<CentralClassSummary>> GetClassesAsync(
+    public async Task<CentralConfigEnvelope?> PullAsync(
         string serverUrl,
         string accessToken,
+        string clientId,
         CancellationToken cancellationToken = default)
     {
         using var response = await SendAsync(
             serverUrl,
-            "/api/v1/client/classes",
+            "/api/v1/client/assignment?clientId=" + Uri.EscapeDataString(clientId),
             HttpMethod.Get,
             accessToken,
             null,
             cancellationToken);
-        await EnsureSuccessAsync(response, cancellationToken);
-        return await response.Content.ReadFromJsonAsync<List<CentralClassSummary>>(
-                   JsonOptions,
-                   cancellationToken)
-               ?? [];
-    }
-
-    public async Task<CentralConfigEnvelope> PullAsync(
-        string serverUrl,
-        string accessToken,
-        string classId,
-        CancellationToken cancellationToken = default)
-    {
-        using var response = await SendAsync(
-            serverUrl,
-            $"/api/v1/client/classes/{Uri.EscapeDataString(classId)}/config",
-            HttpMethod.Get,
-            accessToken,
-            null,
-            cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NoContent)
+            return null;
         await EnsureSuccessAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<CentralConfigEnvelope>(
-                   JsonOptions,
-                   cancellationToken)
-               ?? throw new InvalidOperationException("集控服务没有返回配置");
+            JsonOptions,
+            cancellationToken);
     }
 
     public async Task ReportAsync(
         string serverUrl,
         string accessToken,
-        string classId,
         CentralReportRequest report,
         CancellationToken cancellationToken = default)
     {
         using var response = await SendAsync(
             serverUrl,
-            $"/api/v1/client/classes/{Uri.EscapeDataString(classId)}/report",
+            "/api/v1/client/report",
             HttpMethod.Post,
             accessToken,
             JsonSerializer.Serialize(report, JsonOptions),

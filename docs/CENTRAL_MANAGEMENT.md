@@ -2,8 +2,8 @@
 
 ## 范围
 
-集控中心使用 ClassNEX ID 登录。管理端和桌面客户端登录同一个 ClassNEX 账户后，会看到同一份班级列表。
-集控中心可以读取、编辑并发布完整设置与完整课程表，客户端每 30 秒检查一次修订号，也可以立即同步。
+集控中心使用 ClassNEX ID 登录。桌面客户端登录并连接后会登记为设备，管理端选择设备并指定班级。
+集控中心可以读取、编辑并发布完整设置与完整课程表，客户端每 30 秒检查一次设备分配和修订号，也可以立即同步。
 
 ## 认证
 
@@ -42,7 +42,8 @@ dotnet run --project src\ClassNex.Central\ClassNex.Central.csproj --urls http://
 
 打开 `http://<服务器>:7010/`，点击“登录 ClassNEX ID”。
 登录后可创建班级、选择班级，并编辑完整的 `Settings.json` 与 `timetable.yaml`。
-保存后修订号自动增加，选择该班级的客户端会在下一次轮询时应用。
+设备连接页会显示已登记客户端，选择设备后可连接班级或断开班级。
+保存配置后修订号自动增加，被分配该班级的设备会在下一次轮询时应用。
 
 ## 客户端接入
 
@@ -50,10 +51,10 @@ dotnet run --project src\ClassNex.Central\ClassNex.Central.csproj --urls http://
 
 1. 登录 ClassNEX ID
 2. 填写集控服务地址
-3. 点击“刷新班级”
-4. 选择同一账户在集控中心创建的班级
-5. 点击“连接集控”
+3. 点击“连接集控”
+4. 等待状态显示“已连接，等待集控端分配班级”
 
+客户端不会显示班级选择。管理端在“设备连接”页选择该设备并指定班级后，客户端会自动接收配置。
 客户端会保留本机的集控连接参数，远端设置不能覆盖这些参数。
 
 ## API
@@ -64,12 +65,14 @@ dotnet run --project src\ClassNex.Central\ClassNex.Central.csproj --urls http://
 | GET | `/auth/callback` | 无 | 建立集控管理端会话 |
 | GET | `/api/v1/auth/me` | 会话或 Bearer | 当前 ClassNEX ID |
 | POST | `/api/v1/client/device` | 会话或 Bearer | 注册或更新客户端 |
-| GET | `/api/v1/client/classes` | 会话或 Bearer | 当前账户的班级列表 |
-| GET | `/api/v1/client/classes/{id}/config` | 会话或 Bearer | 拉取班级设置与课程表 |
-| POST | `/api/v1/client/classes/{id}/report` | 会话或 Bearer | 上报客户端状态与数据 |
+| GET | `/api/v1/client/assignment` | Bearer | 拉取管理端为本设备分配的班级配置 |
+| POST | `/api/v1/client/report` | Bearer | 上报客户端状态与数据 |
+| GET | `/api/v1/classes` | 会话或 Bearer | 当前账户的班级列表 |
 | POST | `/api/v1/classes` | 会话或 Bearer | 创建班级 |
 | GET | `/api/v1/classes/{id}` | 会话或 Bearer | 读取班级完整数据 |
 | PUT | `/api/v1/classes/{id}` | 会话或 Bearer | 发布设置和课程表 |
 | DELETE | `/api/v1/classes/{id}` | 会话或 Bearer | 删除班级 |
+| GET | `/api/v1/devices` | 会话或 Bearer | 当前账户已登记设备 |
+| PUT | `/api/v1/devices/{id}` | 会话或 Bearer | 选择设备并指定或断开班级 |
 
-桌面客户端发送 `Authorization: Bearer <ClassNEX ID AccessToken>`。班级按 ClassNEX ID 的 `sub` 隔离，其他账户不能访问或抢占同一班级。
+桌面客户端发送 `Authorization: Bearer <ClassNEX ID AccessToken>`。设备绑定由管理端创建，客户端不能再自行声明或选择班级。班级和设备都按 ClassNEX ID 的 `sub` 隔离。

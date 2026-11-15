@@ -178,11 +178,9 @@ public partial class SettingsWindow : AppWindow
                 RefreshCentralAccountUi();
             }, DispatcherPriority.Background);
         AppServices.Management?.StatusChanged += OnCentralManagementStatusChanged;
-        AppServices.Management?.ClassesChanged += OnCentralClassesChanged;
         Closed += (_, _) =>
         {
             AppServices.Management?.StatusChanged -= OnCentralManagementStatusChanged;
-            AppServices.Management?.ClassesChanged -= OnCentralClassesChanged;
         };
 
         
@@ -816,30 +814,12 @@ public partial class SettingsWindow : AppWindow
         };
         CentralServerBox.TextChanged += (_, _) => SaveCentralManagementFields();
         CentralAccountLoginButton.Click += (_, _) => App.OpenLoginWindow();
-        CentralRefreshClassesButton.Click += async (_, _) => await RefreshCentralClassesAsync();
         CentralConnectButton.Click += async (_, _) => await ConnectCentralManagementAsync();
         CentralSyncButton.Click += async (_, _) => await SyncCentralManagementAsync();
         CentralDisconnectButton.Click += (_, _) =>
         {
             AppServices.Management?.Disconnect();
             LoadCentralManagementSettings();
-        };
-        CentralClassCombo.SelectionChanged += async (_, _) =>
-        {
-            if (_centralClassesLoading ||
-                CentralClassCombo.SelectedItem is not CentralClassOption option ||
-                AppServices.Management is null)
-                return;
-
-            try
-            {
-                await AppServices.Management.SelectClassAsync(option.ClassId);
-                LoadCentralManagementSettings();
-            }
-            catch (Exception ex)
-            {
-                CentralStatusText.Text = "切换班级失败：" + ex.Message;
-            }
         };
 
         WidgetEnabledCheck.PropertyChanged += (_, e) =>
@@ -2043,10 +2023,6 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
     private ToggleSwitch CentralManagementToggle =>
         (ToggleSwitch)CentralManagementToggleHost.Child!;
 
-    private bool _centralClassesLoading;
-
-    
-    
     private void LoadBehaviorSettings()
     {
         var s = AppServices.Settings;
@@ -2105,10 +2081,12 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         CentralAccountText.Text = AccountService.Current is null
             ? "未登录"
             : AccountService.Current.DisplayName;
+        CentralDeviceText.Text = string.IsNullOrWhiteSpace(value.ClientId)
+            ? Environment.MachineName + " · 尚未登记"
+            : Environment.MachineName + " · " + value.ClientId[..Math.Min(8, value.ClientId.Length)];
         CentralStatusText.Text = string.IsNullOrWhiteSpace(value.LastStatus)
             ? "未配置"
             : value.LastStatus;
-        RefreshCentralClassCombo(AppServices.Management?.AvailableClasses ?? []);
     }
 
     private void SaveCentralManagementFields()
@@ -2158,22 +2136,6 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         }
     }
 
-    private async Task RefreshCentralClassesAsync()
-    {
-        SaveCentralManagementFields();
-        try
-        {
-            if (AppServices.Management is null)
-                throw new InvalidOperationException("集控服务尚未初始化");
-            await AppServices.Management.RefreshClassesAsync();
-            LoadCentralManagementSettings();
-        }
-        catch (Exception ex)
-        {
-            CentralStatusText.Text = "班级加载失败：" + ex.Message;
-        }
-    }
-
     private void RefreshCentralAccountUi()
     {
         if (!IsVisible)
@@ -2183,34 +2145,8 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             ? "未登录"
             : AccountService.Current.DisplayName;
         if (AccountService.Current is not null &&
-            !string.IsNullOrWhiteSpace(AppServices.Settings.CentralManagement.ServerUrl))
-            _ = RefreshCentralClassesAsync();
-    }
-
-    private void OnCentralClassesChanged(IReadOnlyList<CentralClassSummary> classes) =>
-        Dispatcher.UIThread.Post(() =>
-        {
-            if (IsVisible)
-                RefreshCentralClassCombo(classes);
-        });
-
-    private void RefreshCentralClassCombo(IReadOnlyList<CentralClassSummary> classes)
-    {
-        _centralClassesLoading = true;
-        try
-        {
-            var selectedId = AppServices.Settings.CentralManagement.SelectedClassId;
-            var options = classes
-                .Select(item => new CentralClassOption(item.Name, item.ClassId))
-                .ToList();
-            CentralClassCombo.ItemsSource = options;
-            CentralClassCombo.SelectedItem = options.FirstOrDefault(item =>
-                string.Equals(item.ClassId, selectedId, StringComparison.Ordinal));
-        }
-        finally
-        {
-            _centralClassesLoading = false;
-        }
+            AppServices.Settings.CentralManagement.IsEnabled)
+            _ = ConnectCentralManagementAsync();
     }
 
     private void OnCentralManagementStatusChanged(string status)
@@ -2222,11 +2158,6 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
                 CentralStatusText.Text = status;
             }
         });
-    }
-
-    private sealed record CentralClassOption(string Name, string ClassId)
-    {
-        public override string ToString() => Name;
     }
 
     

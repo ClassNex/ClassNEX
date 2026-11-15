@@ -15,12 +15,9 @@ public sealed class CentralManagementService : IDisposable
     private readonly CentralManagementClient _client = new();
     private Timer? _timer;
     private int _busy;
+    private bool _registeredForSession;
 
     public event Action<string>? StatusChanged;
-
-    public event Action<IReadOnlyList<CentralClassSummary>>? ClassesChanged;
-
-    public IReadOnlyList<CentralClassSummary> AvailableClasses { get; private set; } = [];
 
     public void Start()
     {
@@ -34,54 +31,6 @@ public sealed class CentralManagementService : IDisposable
     public async Task ConnectAndSyncAsync(CancellationToken cancellationToken = default)
     {
         await RegisterDeviceAsync(cancellationToken);
-        await RefreshClassesAsync(cancellationToken);
-        if (!string.IsNullOrWhiteSpace(AppServices.Settings.CentralManagement.SelectedClassId))
-            await SyncNowAsync(cancellationToken);
-    }
-
-    public async Task RefreshClassesAsync(CancellationToken cancellationToken = default)
-    {
-        var management = AppServices.Settings.CentralManagement;
-        NormalizeServerUrl(management);
-        var accessToken = RequireAccessToken();
-        AvailableClasses = await _client.GetClassesAsync(
-            management.ServerUrl,
-            accessToken,
-            cancellationToken);
-
-        var selected = AvailableClasses.FirstOrDefault(item =>
-            string.Equals(item.ClassId, management.SelectedClassId, StringComparison.Ordinal));
-        if (selected is null)
-        {
-            management.SelectedClassId = "";
-            management.SelectedClassName = "";
-            management.AppliedRevision = 0;
-        }
-        else
-        {
-            management.SelectedClassName = selected.Name;
-        }
-
-        SaveManagement();
-        ClassesChanged?.Invoke(AvailableClasses);
-        SetStatus(AvailableClasses.Count == 0
-            ? "账户下还没有班级，请先在集控中心创建"
-            : $"已加载 {AvailableClasses.Count} 个班级");
-    }
-
-    public async Task SelectClassAsync(string classId, CancellationToken cancellationToken = default)
-    {
-        var management = AppServices.Settings.CentralManagement;
-        var selected = AvailableClasses.FirstOrDefault(item =>
-            string.Equals(item.ClassId, classId, StringComparison.Ordinal));
-        if (selected is null)
-            throw new InvalidOperationException("选择的班级不存在");
-
-        management.SelectedClassId = selected.ClassId;
-        management.SelectedClassName = selected.Name;
-        management.AppliedRevision = 0;
-        management.IsEnabled = true;
-        SaveManagement();
         await SyncNowAsync(cancellationToken);
     }
 
@@ -98,22 +47,34 @@ public sealed class CentralManagementService : IDisposable
                 SetStatus("集控未启用");
                 return;
             }
-            if (string.IsNullOrWhiteSpace(management.SelectedClassId))
-            {
-                SetStatus("请先选择班级");
-                return;
-            }
 
             NormalizeServerUrl(management);
             var accessToken = RequireAccessToken();
+            if (!_registeredForSession)
+                await RegisterDeviceAsync(cancellationToken);
             var config = await _client.PullAsync(
                 management.ServerUrl,
                 accessToken,
-                management.SelectedClassId,
+                management.ClientId,
                 cancellationToken);
 
-            if (config.Revision > management.AppliedRevision &&
-                !string.IsNullOrWhiteSpace(config.SettingsJson))
+            if (config is null)
+            {
+                management.SelectedClassId = "";
+                management.SelectedClassName = "";
+                management.AppliedRevision = 0;
+                management.LastSyncTime = DateTime.Now;
+                SetStatus("已连接，等待集控端分配班级");
+                await ReportAsync(accessToken, null, cancellationToken);
+                return;
+            }
+
+            var classChanged = !string.Equals(
+                management.SelectedClassId,
+                config.ClassId,
+                StringComparison.Ordinal);
+            if (!string.IsNullOrWhiteSpace(config.SettingsJson) &&
+                (classChanged || config.Revision > management.AppliedRevision))
             {
                 var remote = JsonSerializer.Deserialize<AppSettings>(
                                  config.SettingsJson,
@@ -125,6 +86,8 @@ public sealed class CentralManagementService : IDisposable
                 management.AppliedRevision = config.Revision;
             }
 
+            management.SelectedClassId = config.ClassId;
+            management.SelectedClassName = config.ClassName;
             management.LastSyncTime = DateTime.Now;
             SetStatus($"已同步 · {management.SelectedClassName} · 修订 {management.AppliedRevision}");
             await ReportAsync(accessToken, null, cancellationToken);
@@ -157,7 +120,7 @@ public sealed class CentralManagementService : IDisposable
         management.SelectedClassName = "";
         management.AppliedRevision = 0;
         management.LastSyncTime = null;
-        AvailableClasses = [];
+        _registeredForSession = false;
         SaveManagement();
         SetStatus("已断开集控");
     }
@@ -186,6 +149,7 @@ public sealed class CentralManagementService : IDisposable
                 Environment.MachineName,
                 AppVersion),
             cancellationToken);
+        _registeredForSession = true;
         SaveManagement();
     }
 
@@ -196,7 +160,7 @@ public sealed class CentralManagementService : IDisposable
     {
         var management = AppServices.Settings.CentralManagement;
         if (string.IsNullOrWhiteSpace(accessToken) ||
-            string.IsNullOrWhiteSpace(management.SelectedClassId))
+            string.IsNullOrWhiteSpace(management.ClientId))
             return;
 
         var timetable = File.Exists(AppServices.TimetablePath)
@@ -205,7 +169,6 @@ public sealed class CentralManagementService : IDisposable
         await _client.ReportAsync(
             management.ServerUrl,
             accessToken,
-            management.SelectedClassId,
             new CentralReportRequest(
                 management.ClientId,
                 AppVersion,
@@ -257,6 +220,7 @@ public sealed class CentralManagementService : IDisposable
     {
         _timer?.Dispose();
         _timer = null;
+        _registeredForSession = false;
         _client.Dispose();
     }
 }

@@ -152,12 +152,43 @@ app.MapPost("/api/v1/client/device", async (
     }
 });
 
-app.MapGet("/api/v1/client/classes", async (HttpRequest request) =>
+app.MapGet("/api/v1/classes", async (HttpRequest request) =>
 {
     var user = await GetCurrentUserAsync(request);
     return user is null
         ? Results.Unauthorized()
         : Results.Json(await store.ListClassesAsync(user.Subject));
+});
+
+app.MapGet("/api/v1/devices", async (HttpRequest request) =>
+{
+    var user = await GetCurrentUserAsync(request);
+    return user is null
+        ? Results.Unauthorized()
+        : Results.Json(await store.ListDevicesAsync(user.Subject));
+});
+
+app.MapPut("/api/v1/devices/{clientId}", async (
+    string clientId,
+    CentralAssignDeviceRequest assignment,
+    HttpRequest request) =>
+{
+    var user = await GetCurrentUserAsync(request);
+    if (user is null)
+        return Results.Unauthorized();
+
+    try
+    {
+        var device = await store.AssignDeviceClassAsync(
+            clientId,
+            user.Subject,
+            assignment.ClassId ?? "");
+        return device is null ? Results.NotFound() : Results.Json(device);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
 });
 
 app.MapPost("/api/v1/classes", async (
@@ -227,27 +258,30 @@ app.MapDelete("/api/v1/classes/{classId}", async (
         : Results.NotFound();
 });
 
-app.MapGet("/api/v1/client/classes/{classId}/config", async (
-    string classId,
+app.MapGet("/api/v1/client/assignment", async (
+    string clientId,
     HttpRequest request) =>
 {
     var user = await GetCurrentUserAsync(request);
     if (user is null)
         return Results.Unauthorized();
 
-    var record = await store.GetClassAsync(classId, user.Subject);
-    return record is null
-        ? Results.NotFound()
-        : Results.Json(new CentralConfigEnvelope(
-            record.Revision,
-            record.SettingsJson,
-            record.TimetableYaml,
-            record.Message,
-            record.UpdatedAt));
+    var assignment = await store.GetClientAssignmentAsync(clientId, user.Subject);
+    if (assignment is null)
+        return Results.NoContent();
+
+    var record = assignment.ClassRecord;
+    return Results.Json(new CentralConfigEnvelope(
+        record.ClassId,
+        record.Name,
+        record.Revision,
+        record.SettingsJson,
+        record.TimetableYaml,
+        record.Message,
+        record.UpdatedAt));
 });
 
-app.MapPost("/api/v1/client/classes/{classId}/report", async (
-    string classId,
+app.MapPost("/api/v1/client/report", async (
     CentralReportRequest report,
     HttpRequest request) =>
 {
@@ -257,7 +291,7 @@ app.MapPost("/api/v1/client/classes/{classId}/report", async (
 
     try
     {
-        return await store.ApplyReportAsync(classId, user.Subject, report.ClientId, report)
+        return await store.ReportDeviceAsync(user.Subject, report)
             ? Results.Ok()
             : Results.NotFound();
     }

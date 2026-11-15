@@ -7,6 +7,8 @@ public sealed record CentralDeviceRegistrationRequest(
     string AppVersion);
 
 public sealed record CentralConfigEnvelope(
+    string ClassId,
+    string ClassName,
     long Revision,
     string SettingsJson,
     string TimetableYaml,
@@ -30,3 +32,16 @@ public sealed record CentralClassSummary(
     string Message);
 
 public sealed record CentralCreateClassRequest(string Name);
+
+public sealed record CentralDeviceSummary(
+    string ClientId,
+    string DisplayName,
+    string MachineName,
+    string AppVersion,
+    string ClassId,
+    string ClassName,
+    DateTime? LastSeen,
+    bool IsOnline,
+    string LastError);
+
+public sealed record CentralAssignDeviceRequest(string ClassId);

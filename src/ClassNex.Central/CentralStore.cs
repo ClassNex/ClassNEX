@@ -63,6 +63,123 @@ public sealed class CentralStore
         }
     }
 
+    public async Task<IReadOnlyList<CentralDeviceSummary>> ListDevicesAsync(string ownerSubject)
+    {
+        await _gate.WaitAsync();
+        try
+        {
+            var now = DateTime.UtcNow;
+            return _state.Devices.Values
+                .Where(item => string.Equals(item.OwnerSubject, ownerSubject, StringComparison.Ordinal))
+                .OrderByDescending(item => item.LastSeen)
+                .ThenBy(item => item.DisplayName, StringComparer.CurrentCultureIgnoreCase)
+                .Select(item => ToDeviceSummary(item, now))
+                .ToList();
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task<CentralDeviceSummary?> AssignDeviceClassAsync(
+        string clientId,
+        string ownerSubject,
+        string classId)
+    {
+        await _gate.WaitAsync();
+        try
+        {
+            if (!_state.Devices.TryGetValue(clientId, out var device) ||
+                !string.Equals(device.OwnerSubject, ownerSubject, StringComparison.Ordinal))
+                return null;
+
+            if (!string.IsNullOrWhiteSpace(classId) &&
+                (!_state.Classes.TryGetValue(classId, out var record) ||
+                 !string.Equals(record.OwnerSubject, ownerSubject, StringComparison.Ordinal)))
+                throw new ArgumentException("选择的班级不存在");
+
+            device.SelectedClassId = classId;
+            await SaveAsync();
+            return ToDeviceSummary(device, DateTime.UtcNow);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task<CentralAssignedConfig?> GetClientAssignmentAsync(
+        string clientId,
+        string ownerSubject)
+    {
+        await _gate.WaitAsync();
+        try
+        {
+            if (!_state.Devices.TryGetValue(clientId, out var device) ||
+                !string.Equals(device.OwnerSubject, ownerSubject, StringComparison.Ordinal))
+                return null;
+
+            device.LastSeen = DateTime.UtcNow;
+            if (string.IsNullOrWhiteSpace(device.SelectedClassId) ||
+                !_state.Classes.TryGetValue(device.SelectedClassId, out var record) ||
+                !string.Equals(record.OwnerSubject, ownerSubject, StringComparison.Ordinal))
+            {
+                await SaveAsync();
+                return null;
+            }
+
+            await SaveAsync();
+            return new CentralAssignedConfig(record.Clone());
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task<bool> ReportDeviceAsync(
+        string ownerSubject,
+        CentralReportRequest report)
+    {
+        if (!string.IsNullOrWhiteSpace(report.SettingsJson))
+            using (JsonDocument.Parse(report.SettingsJson)) { }
+        if (!string.IsNullOrWhiteSpace(report.TimetableYaml))
+            _ = CsesCodec.Parse(report.TimetableYaml);
+
+        await _gate.WaitAsync();
+        try
+        {
+            if (!_state.Devices.TryGetValue(report.ClientId, out var device) ||
+                !string.Equals(device.OwnerSubject, ownerSubject, StringComparison.Ordinal))
+                return false;
+
+            device.LastSeen = DateTime.UtcNow;
+            device.AppVersion = report.AppVersion;
+            device.MachineName = report.MachineName;
+            device.LastError = report.Error ?? "";
+
+            if (!string.IsNullOrWhiteSpace(device.SelectedClassId) &&
+                _state.Classes.TryGetValue(device.SelectedClassId, out var record) &&
+                string.Equals(record.OwnerSubject, ownerSubject, StringComparison.Ordinal))
+            {
+                if (string.IsNullOrWhiteSpace(record.SettingsJson) &&
+                    !string.IsNullOrWhiteSpace(report.SettingsJson))
+                    record.SettingsJson = report.SettingsJson;
+                if (string.IsNullOrWhiteSpace(record.TimetableYaml) &&
+                    !string.IsNullOrWhiteSpace(report.TimetableYaml))
+                    record.TimetableYaml = report.TimetableYaml;
+            }
+
+            await SaveAsync();
+            return true;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     public async Task<IReadOnlyList<CentralClassSummary>> ListClassesAsync(string ownerSubject)
     {
         await _gate.WaitAsync();
@@ -189,53 +306,34 @@ public sealed class CentralStore
         }
     }
 
-    public async Task<bool> ApplyReportAsync(
-        string classId,
-        string ownerSubject,
-        string clientId,
-        CentralReportRequest report)
-    {
-        if (!string.IsNullOrWhiteSpace(report.SettingsJson))
-            using (JsonDocument.Parse(report.SettingsJson)) { }
-        if (!string.IsNullOrWhiteSpace(report.TimetableYaml))
-            _ = CsesCodec.Parse(report.TimetableYaml);
-
-        await _gate.WaitAsync();
-        try
-        {
-            if (!_state.Classes.TryGetValue(classId, out var record) ||
-                !string.Equals(record.OwnerSubject, ownerSubject, StringComparison.Ordinal))
-                return false;
-
-            if (_state.Devices.TryGetValue(clientId, out var device) &&
-                string.Equals(device.OwnerSubject, ownerSubject, StringComparison.Ordinal))
-            {
-                device.SelectedClassId = classId;
-                device.LastSeen = DateTime.UtcNow;
-                device.AppVersion = report.AppVersion;
-                device.MachineName = report.MachineName;
-                device.LastError = report.Error ?? "";
-            }
-
-            if (string.IsNullOrWhiteSpace(record.SettingsJson) &&
-                !string.IsNullOrWhiteSpace(report.SettingsJson))
-                record.SettingsJson = report.SettingsJson;
-            if (string.IsNullOrWhiteSpace(record.TimetableYaml) &&
-                !string.IsNullOrWhiteSpace(report.TimetableYaml))
-                record.TimetableYaml = report.TimetableYaml;
-            await SaveAsync();
-            return true;
-        }
-        finally
-        {
-            _gate.Release();
-        }
-    }
-
     private async Task SaveAsync()
     {
         await using var stream = File.Create(_statePath);
         await JsonSerializer.SerializeAsync(stream, _state, JsonOptions);
+    }
+
+    private CentralDeviceSummary ToDeviceSummary(
+        CentralDeviceRecord device,
+        DateTime now)
+    {
+        _state.Classes.TryGetValue(device.SelectedClassId, out var assignedClass);
+        var className = assignedClass is not null &&
+                        string.Equals(
+                            assignedClass.OwnerSubject,
+                            device.OwnerSubject,
+                            StringComparison.Ordinal)
+            ? assignedClass.Name
+            : "";
+        return new CentralDeviceSummary(
+            device.ClientId,
+            device.DisplayName,
+            device.MachineName,
+            device.AppVersion,
+            className.Length == 0 ? "" : device.SelectedClassId,
+            className,
+            device.LastSeen,
+            device.LastSeen is { } seen && now - seen <= TimeSpan.FromMinutes(2),
+            device.LastError);
     }
 
     private sealed class CentralState
@@ -297,3 +395,5 @@ public sealed class CentralDeviceRecord
 
     public string LastError { get; set; } = "";
 }
+
+public sealed record CentralAssignedConfig(CentralClassRecord ClassRecord);

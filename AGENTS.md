@@ -36,7 +36,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：主界面岛移除外部描边；组件库改为 WinUI Gallery ControlExample 的标题、显示区、操作区全宽布局，并修复设置页横向 ScrollViewer 无限测量导致的右侧越界；集控改为管理端与客户端统一 ClassNEX ID/Casdoor 授权码登录，同一账户共享班级并同步完整设置与课程表，彻底移除令牌方案；空集控地址和旧服务器地址会自动迁移到 `http://206.187.201.60:7010`；由于 `auth.smart-teach.cn` 仍指向旧源站并报 `invalid_client`，管理端和客户端暂时统一使用 `http://206.187.201.60:8000` 的新 Casdoor 源站；`stcn` 登录返回约 14 KB AccessToken，集控容器已加入 Casdoor Docker 网络并从内部读取用户资料，桌面端通过集控 `/api/v1/auth/profile` 读取账户；Casdoor `/casdoor-static` 改为反向代理当前容器资源，避免升级后图标失效
+上次完成：集控改为“管理端选设备、客户端不选班级”：客户端登录连接后只登记设备并轮询 `/api/v1/client/assignment`，管理端新增设备列表和班级分配 API，网页重做为 WinUI 库式左侧导航、中间工作区、右侧设备分配面板；主界面岛移除外部描边；组件库使用 ControlExample 全宽布局；集控统一 ClassNEX ID/STCN 登录；Casdoor 大令牌通过容器内网读取，动态资源由当前容器反向代理
 改了文件：src/ClassNex.Central/*、src/ClassNex.Core/Models/AppSettings.cs、src/ClassNex.Core/Models/CentralManagement*.cs、src/ClassNex.Core/Services/SettingsService.cs、src/ClassNex.Core/Services/CentralManagementClient.cs、src/ClassNex/Services/CentralManagementService.cs、src/ClassNex/Views/MainWindow.axaml(.cs)、src/ClassNex/Views/SettingsWindow.axaml(.cs)、docs/CENTRAL_MANAGEMENT.md、HANDOFF.md、AGENTS.md
 进行中：无
-下一步：待用户实际登录同一 ClassNEX ID，验证集控管理端创建班级后桌面端可选择并同步
+下一步：待用户指定

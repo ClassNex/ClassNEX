@@ -317,8 +317,9 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 - **集控管理**：`src/ClassNex.Central` 是独立 ASP.NET Core 集控服务，默认端口 `7010`，
   `docs/CENTRAL_MANAGEMENT.md` 记录运行和 API。管理端和客户端统一使用 ClassNEX ID 登录，
   管理端通过 Casdoor 授权码与 PKCE 建立 HttpOnly 会话，客户端复用当前账户的 AccessToken；
-  同一账户会看到同一班级列表。管理端可查看并修改完整 `Settings.json` 与 `timetable.yaml`，
-  客户端每 30 秒拉取修订号，应用远端设置前保留本机集控连接参数，随后刷新主界面和课程。
+  桌面客户端只登记设备，不显示班级选择；管理端在“设备连接”页选择设备并指定班级。
+  管理端可查看并修改完整 `Settings.json` 与 `timetable.yaml`，客户端每 30 秒拉取
+  `/api/v1/client/assignment`，应用远端设置前保留本机集控连接参数，随后刷新主界面和课程。
   已移除管理员令牌、注册令牌和客户端令牌方案。历史设置中的空集控地址和旧服务器地址
   会在加载时迁移到 `http://206.187.201.60:7010`，避免旧安装只显示示例地址。
 - **NEX Intelligence（内置 AI Agent，2026-10-11 新增）**
