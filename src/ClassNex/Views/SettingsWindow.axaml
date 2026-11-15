@@ -965,7 +965,7 @@
                                 </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>
 
-                            <ui:SettingsExpander Header="主界面缩放" IsExpanded="True"
+                            <ui:SettingsExpander Header="主界面缩放"
                                                  Description="整体放大悬浮主界面，默认 1.9 倍">
                                 <ui:SettingsExpander.IconSource>
                                     <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE1B6;"/>
@@ -981,15 +981,19 @@
                                         <Button Grid.Column="3" Content="+" Padding="0" Click="OnMainScaleIncrease"/>
                                     </Grid>
                                 </ui:SettingsExpander.Footer>
-                                <ui:SettingsExpanderItem Content="大屏快速预设"
-                                                         Description="教室后方观看时可直接放大文字和整体尺寸。">
-                                    <ui:SettingsExpanderItem.Footer>
-                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                            <Button Content="标准" Click="OnScalePresetStandard"/>
-                                            <Button Content="教室远距离" Click="OnScalePresetClassroom"/>
-                                        </StackPanel>
-                                    </ui:SettingsExpanderItem.Footer>
-                                </ui:SettingsExpanderItem>
+                            </ui:SettingsExpander>
+
+                            <ui:SettingsExpander Header="大屏快速预设"
+                                                 Description="教室后方观看时可直接放大文字和整体尺寸。">
+                                <ui:SettingsExpander.IconSource>
+                                    <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE1B6;"/>
+                                </ui:SettingsExpander.IconSource>
+                                <ui:SettingsExpander.Footer>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Button Content="标准" Click="OnScalePresetStandard"/>
+                                        <Button Content="教室远距离" Click="OnScalePresetClassroom"/>
+                                    </StackPanel>
+                                </ui:SettingsExpander.Footer>
                             </ui:SettingsExpander>
                         </StackPanel>
 

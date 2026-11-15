@@ -36,7 +36,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：客户端组件页按 CI 改为紧凑 WrapPanel 组件库（225px 卡片、32px 图标、名称/说明、点击添加）；集控网页登录会话持久化 7 天，应用设置与档案设置保持独立页面和全宽课表
+上次完成：客户端组件页按 CI 改为紧凑 WrapPanel 组件库；外观页三个滑轨统一为 356px 控制区并纵向对齐，“大屏快速预设”拆为独立设置行，避免展开箭头压缩滑轨；集控网页登录会话持久化 7 天
 改了文件：src/ClassNex.Central/*、src/ClassNex.Core/Models/AppSettings.cs、src/ClassNex.Core/Models/CentralManagement*.cs、src/ClassNex.Core/Services/SettingsService.cs、src/ClassNex.Core/Services/CentralManagementClient.cs、src/ClassNex/Services/CentralManagementService.cs、src/ClassNex/Views/MainWindow.axaml(.cs)、src/ClassNex/Views/SettingsWindow.axaml(.cs)、docs/CENTRAL_MANAGEMENT.md、HANDOFF.md、AGENTS.md
 进行中：无
 下一步：待用户指定
