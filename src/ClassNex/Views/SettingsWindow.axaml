@@ -892,7 +892,7 @@
                             </ui:SettingsExpander>
 
                             <ui:SettingsExpander Header="同步状态"
-                                                 Description="客户端每 30 秒检查一次新版本，也可手动立即同步。">
+                                                 Description="客户端在后台每 2 秒检查一次新版本，集控端保存后会自动应用。">
                                 <ui:SettingsExpander.IconSource>
                                     <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE154;"/>
                                 </ui:SettingsExpander.IconSource>
@@ -902,7 +902,6 @@
                                                    MaxWidth="250" TextTrimming="CharacterEllipsis"
                                                    VerticalAlignment="Center"/>
                                         <Button x:Name="CentralConnectButton" Content="连接集控"/>
-                                        <Button x:Name="CentralSyncButton" Content="立即同步"/>
                                         <Button x:Name="CentralDisconnectButton" Content="断开"/>
                                     </StackPanel>
                                 </ui:SettingsExpander.Footer>

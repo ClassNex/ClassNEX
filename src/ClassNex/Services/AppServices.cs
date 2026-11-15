@@ -137,6 +137,7 @@ public static class AppServices
 
         Settings = remote;
         SettingsService.Save(Settings);
+        App.ApplyTheme(Settings.ThemeMode);
         Schedule.Load(ResolveTimetablePath());
         TimeLayout.EnsureFromProfile(Schedule.Profile);
         SettingsChanged?.Invoke();

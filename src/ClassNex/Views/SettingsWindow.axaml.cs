@@ -815,7 +815,6 @@ public partial class SettingsWindow : AppWindow
         CentralServerBox.TextChanged += (_, _) => SaveCentralManagementFields();
         CentralAccountLoginButton.Click += (_, _) => App.OpenLoginWindow();
         CentralConnectButton.Click += async (_, _) => await ConnectCentralManagementAsync();
-        CentralSyncButton.Click += async (_, _) => await SyncCentralManagementAsync();
         CentralDisconnectButton.Click += (_, _) =>
         {
             AppServices.Management?.Disconnect();
@@ -2117,22 +2116,6 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         catch (Exception ex)
         {
             CentralStatusText.Text = "连接失败：" + ex.Message;
-        }
-    }
-
-    private async Task SyncCentralManagementAsync()
-    {
-        SaveCentralManagementFields();
-        try
-        {
-            if (AppServices.Management is null)
-                throw new InvalidOperationException("集控服务尚未初始化");
-            await AppServices.Management.SyncNowAsync();
-            LoadCentralManagementSettings();
-        }
-        catch (Exception ex)
-        {
-            CentralStatusText.Text = "同步失败：" + ex.Message;
         }
     }
 

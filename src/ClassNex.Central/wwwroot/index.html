@@ -367,15 +367,34 @@ const showLogin=()=>{$("loginScreen").classList.remove("hidden");$("appShell").c
 const showApp=()=>{$("loginScreen").classList.add("hidden");$("appShell").classList.remove("hidden")};
 const setPageStatus=(id,text,error=false)=>{const el=$(id);el.textContent=text;el.className="status-line"+(error?" error":"")};
 const resetPageScroll=()=>{const main=document.querySelector("main");if(main)main.scrollTop=0};
-const getPathValue=(object,path)=>path.split(".").reduce((value,key)=>value?.[key],object);
+const findPropertyKey=(object,key)=>{
+  if(!object||typeof object!=="object")return key;
+  return Object.keys(object).find(name=>name.toLowerCase()===key.toLowerCase())||key;
+};
+const getPathValue=(object,path)=>path.split(".").reduce((value,key)=>{
+  if(!value||typeof value!=="object")return undefined;
+  return value[findPropertyKey(value,key)];
+},object);
 const setPathValue=(object,path,value)=>{
   const keys=path.split(".");
   let target=object;
   for(let i=0;i<keys.length-1;i++){
-    if(!target[keys[i]]||typeof target[keys[i]]!=="object"||Array.isArray(target[keys[i]]))target[keys[i]]={};
-    target=target[keys[i]];
+    const key=findPropertyKey(target,keys[i]);
+    if(!target[key]||typeof target[key]!=="object"||Array.isArray(target[key]))target[key]={};
+    target=target[key];
   }
-  target[keys.at(-1)]=value;
+  target[findPropertyKey(target,keys.at(-1))]=value;
+};
+const normalizeCaseDuplicates=value=>{
+  if(Array.isArray(value))return value.map(normalizeCaseDuplicates);
+  if(!value||typeof value!=="object")return value;
+  const result={};
+  for(const [key,item] of Object.entries(value)){
+    const existing=findPropertyKey(result,key);
+    if(existing!==key&&Object.prototype.hasOwnProperty.call(result,existing))result[existing]=normalizeCaseDuplicates(item);
+    else result[existing]=normalizeCaseDuplicates(item);
+  }
+  return result;
 };
 const settingsGroups=[
   {
@@ -467,7 +486,7 @@ const renderSettingControl=field=>{
   return `<input type="${field.kind==="password"?"password":"text"}" ${common} value="${escapeHtml(value??"")}" spellcheck="false">`;
 };
 const renderWidgetSettings=()=>{
-  const widgets=state.settings?.Widgets||[];
+  const widgets=getPathValue(state.settings,"Widgets")||[];
   if(!widgets.length)return '<div class="widget-grid"><div class="empty-state">当前没有主界面组件。</div></div>';
   return `<div class="widget-grid">${widgets.map((widget,index)=>`<div class="widget-row"><div class="widget-name">${escapeHtml(widgetNames[widget.Type]||widget.Type)}</div><label class="switch"><input type="checkbox" data-widget-index="${index}" data-widget-prop="IsEnabled" ${widget.IsEnabled!==false?"checked":""}><span class="switch-track"></span></label><div><input type="range" data-widget-index="${index}" data-widget-prop="FontScale" min="0.5" max="2" step="0.05" value="${Number(widget.FontScale||1)}"><div class="widget-scale">字号 ${Math.round(Number(widget.FontScale||1)*100)}%</div></div></div>`).join("")}</div>`;
 };
@@ -490,7 +509,7 @@ const handleSettingInput=event=>{
     if(field.kind==="range"&&element.nextElementSibling instanceof HTMLOutputElement)element.nextElementSibling.textContent=field.format?field.format(Number(value)):String(value);
   }
   if(element.dataset.widgetIndex!==undefined){
-    const widget=state.settings?.Widgets?.[Number(element.dataset.widgetIndex)];
+    const widget=(getPathValue(state.settings,"Widgets")||[])[Number(element.dataset.widgetIndex)];
     if(!widget)return;
     const property=element.dataset.widgetProp;
     widget[property]=element.type==="checkbox"?element.checked:Number(element.value);
@@ -793,7 +812,7 @@ const loadClass=async id=>{
       api(`/api/v1/classes/${encodeURIComponent(id)}/timetable`)
     ]);
     state.selectedClassId=id;
-    state.settings=JSON.parse(item.settingsJson||"{}");
+    state.settings=normalizeCaseDuplicates(JSON.parse(item.settingsJson||"{}"));
     state.timetable=normalizeTimetable(timetable);
     state.timeSlots=[];
     state.selectedSubject="";

@@ -16,6 +16,7 @@ public sealed class CentralManagementService : IDisposable
     private Timer? _timer;
     private int _busy;
     private bool _registeredForSession;
+    private DateTime _lastReportAt = DateTime.MinValue;
 
     public event Action<string>? StatusChanged;
 
@@ -24,8 +25,8 @@ public sealed class CentralManagementService : IDisposable
         _timer ??= new Timer(
             _ => _ = TickAsync(),
             null,
-            TimeSpan.FromSeconds(3),
-            TimeSpan.FromSeconds(30));
+            TimeSpan.FromSeconds(1),
+            TimeSpan.FromSeconds(2));
     }
 
     public async Task ConnectAndSyncAsync(CancellationToken cancellationToken = default)
@@ -60,12 +61,14 @@ public sealed class CentralManagementService : IDisposable
 
             if (config is null)
             {
+                var classWasAssigned = !string.IsNullOrWhiteSpace(management.SelectedClassId);
                 management.SelectedClassId = "";
                 management.SelectedClassName = "";
                 management.AppliedRevision = 0;
                 management.LastSyncTime = DateTime.Now;
                 SetStatus("已连接，等待集控端分配班级");
-                await ReportAsync(accessToken, null, cancellationToken);
+                if (classWasAssigned || ShouldReport())
+                    await ReportAsync(accessToken, null, cancellationToken);
                 return;
             }
 
@@ -73,6 +76,7 @@ public sealed class CentralManagementService : IDisposable
                 management.SelectedClassId,
                 config.ClassId,
                 StringComparison.Ordinal);
+            var applied = false;
             if (!string.IsNullOrWhiteSpace(config.SettingsJson) &&
                 (classChanged || config.Revision > management.AppliedRevision))
             {
@@ -84,26 +88,31 @@ public sealed class CentralManagementService : IDisposable
                     AppServices.ApplyManagedSettings(remote, config.TimetableYaml));
                 management = AppServices.Settings.CentralManagement;
                 management.AppliedRevision = config.Revision;
+                applied = true;
             }
 
             management.SelectedClassId = config.ClassId;
             management.SelectedClassName = config.ClassName;
             management.LastSyncTime = DateTime.Now;
             SetStatus($"已同步 · {management.SelectedClassName} · 修订 {management.AppliedRevision}");
-            await ReportAsync(accessToken, null, cancellationToken);
+            if (applied || ShouldReport())
+                await ReportAsync(accessToken, null, cancellationToken);
         }
         catch (Exception ex)
         {
             SetStatus("同步失败：" + ex.Message);
-            try
+            if (ShouldReport())
             {
-                await ReportAsync(
-                    AccountService.Current?.AccessToken ?? "",
-                    ex.Message,
-                    cancellationToken);
-            }
-            catch
-            {
+                try
+                {
+                    await ReportAsync(
+                        AccountService.Current?.AccessToken ?? "",
+                        ex.Message,
+                        cancellationToken);
+                }
+                catch
+                {
+                }
             }
         }
         finally
@@ -121,6 +130,7 @@ public sealed class CentralManagementService : IDisposable
         management.AppliedRevision = 0;
         management.LastSyncTime = null;
         _registeredForSession = false;
+        _lastReportAt = DateTime.MinValue;
         SaveManagement();
         SetStatus("已断开集控");
     }
@@ -177,6 +187,7 @@ public sealed class CentralManagementService : IDisposable
                 timetable,
                 error),
             cancellationToken);
+        _lastReportAt = DateTime.UtcNow;
     }
 
     private static string RequireAccessToken()
@@ -208,10 +219,22 @@ public sealed class CentralManagementService : IDisposable
 
     private void SetStatus(string status)
     {
+        if (string.Equals(
+                AppServices.Settings.CentralManagement.LastStatus,
+                status,
+                StringComparison.Ordinal))
+        {
+            StatusChanged?.Invoke(status);
+            return;
+        }
+
         AppServices.Settings.CentralManagement.LastStatus = status;
         SaveManagement();
         StatusChanged?.Invoke(status);
     }
+
+    private bool ShouldReport() =>
+        DateTime.UtcNow - _lastReportAt >= TimeSpan.FromSeconds(30);
 
     private static void SaveManagement() =>
         SettingsService.Save(AppServices.Settings);
