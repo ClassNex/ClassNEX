@@ -104,6 +104,11 @@
     .class-choice.active{border-color:var(--accent);background:var(--accent-soft)}
     .class-choice-name{font-size:13px}.class-choice-meta{font-size:11px;color:var(--muted);margin-top:4px}
     .create-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-bottom:12px}
+    .class-picker{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 14px;margin:0 0 16px;border:1px solid var(--stroke);border-radius:8px;background:#292929}
+    .class-picker label{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
+    .class-picker select{min-width:220px;max-width:360px}
+    .class-picker input{width:180px}
+    .class-picker .muted{margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:360px}
     .editor-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
     .editor-label{display:grid;gap:6px;font-size:12px;color:var(--text)}
     textarea{width:100%;height:calc(100vh - 340px);min-height:340px;resize:vertical;font:12px/1.55 ui-monospace,Cascadia Code,Consolas,monospace;white-space:pre}
@@ -111,6 +116,7 @@
     .class-tab{border:0;border-radius:0;background:transparent;padding:9px 12px;color:var(--muted);border-bottom:2px solid transparent}
     .class-tab.active{color:var(--text);border-bottom-color:var(--accent);background:transparent}
     .settings-form{display:grid;gap:14px}
+    .settings-form.wide{grid-template-columns:repeat(auto-fit,minmax(420px,1fr));align-items:start}
     .settings-group{border:1px solid var(--stroke);border-radius:8px;background:var(--surface);overflow:hidden}
     .settings-group-head{padding:12px 15px;border-bottom:1px solid var(--divider);display:flex;align-items:center;gap:10px}
     .settings-group-icon{width:24px;text-align:center;color:var(--muted)}
@@ -142,6 +148,7 @@
     .segmented button{border:0;border-radius:0;background:var(--surface);padding:7px 12px;border-right:1px solid var(--stroke)}
     .segmented button:last-child{border-right:0}.segmented button.active{background:var(--accent);color:#fff}
     .timetable-layout{display:grid;grid-template-columns:190px minmax(0,1fr);gap:12px;align-items:start}
+    .archive-panel{min-width:0}
     .subject-panel{border:1px solid var(--stroke);border-radius:8px;background:var(--surface);padding:10px;position:sticky;top:14px}
     .subject-add{display:grid;grid-template-columns:minmax(0,1fr) 32px;gap:5px;margin-bottom:9px}
     .subject-add input{padding:6px 8px;font-size:12px}.subject-add button{padding:0}
@@ -166,6 +173,7 @@
     .empty-state{border:1px dashed var(--stroke);border-radius:8px;padding:34px 20px;text-align:center;color:var(--muted);font-size:13px}
     .status-line{border-top:1px solid var(--divider);padding:12px 16px;font-size:11px;color:var(--muted);min-height:42px;overflow-wrap:anywhere}
     .status-line.error{color:var(--red)}
+    .card-status{margin-top:12px;border:1px solid var(--stroke);border-radius:0 0 8px 8px;background:#292929}
     .account-card{padding:22px;display:grid;gap:14px;max-width:720px}
     .account-head{display:flex;gap:14px;align-items:center}.account-avatar{width:56px;height:56px;font-size:20px}
     .account-name{font-size:21px;font-weight:600}.account-email{font-size:12px;color:var(--muted);margin-top:3px}
@@ -179,7 +187,7 @@
     .toast{position:fixed;right:24px;bottom:24px;max-width:440px;padding:12px 15px;border-radius:8px;background:var(--surface);border:1px solid var(--stroke);box-shadow:0 18px 48px color-mix(in srgb,#000 18%,transparent);font-size:12px;opacity:0;transform:translateY(10px);pointer-events:none;transition:opacity .16s,transform .16s;z-index:10}
     .toast.show{opacity:1;transform:none}.toast.error{border-color:color-mix(in srgb,var(--red) 45%,var(--stroke));background:color-mix(in srgb,var(--red) 8%,var(--surface))}
     @media(max-width:1300px){.layout{grid-template-columns:300px minmax(0,1fr)}.workbench{grid-template-columns:minmax(0,1fr) 180px}}
-    @media(max-width:1100px){.workbench{grid-template-columns:minmax(0,1fr)}.options-pane{position:static}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.timetable-layout{grid-template-columns:160px minmax(0,1fr)}}
+    @media(max-width:1100px){.workbench{grid-template-columns:minmax(0,1fr)}.options-pane{position:static}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.timetable-layout{grid-template-columns:160px minmax(0,1fr)}.settings-form.wide{grid-template-columns:1fr}.class-picker .muted{margin-left:0;max-width:100%;white-space:normal}}
     @media(max-width:820px){.search{display:none}.layout{grid-template-columns:78px minmax(0,1fr)}.sidebar{padding:10px 6px}.brand-text,.nav-text,.sidebar-foot .profile>div:last-child,.sidebar-foot .button span{display:none}.nav-item{justify-content:center}.profile{grid-template-columns:1fr;justify-items:center}.page-inner{padding:20px}.editor-grid{grid-template-columns:1fr}textarea{height:42vh}.stats{grid-template-columns:1fr 1fr}}
   </style>
 </head>
@@ -218,7 +226,8 @@
       <button class="nav-item" data-page="overview"><span class="nav-glyph">&#xE80F;</span><span class="nav-text">主页</span></button>
       <div class="nav-list">
         <button class="nav-item" data-page="devices"><span class="nav-glyph">&#xE7F4;</span><span class="nav-text">设备连接</span></button>
-        <button class="nav-item" data-page="classes"><span class="nav-glyph">&#xE8A5;</span><span class="nav-text">班级与课程</span></button>
+        <button class="nav-item" data-page="app-settings"><span class="nav-glyph">&#xE713;</span><span class="nav-text">应用设置</span></button>
+        <button class="nav-item" data-page="archive-settings"><span class="nav-glyph">&#xE8A5;</span><span class="nav-text">档案设置</span></button>
         <button class="nav-item" data-page="account"><span class="nav-glyph">&#xE77B;</span><span class="nav-text">账户</span></button>
       </div>
       <div class="sidebar-foot">
@@ -258,7 +267,7 @@
               <div class="command-row"><button data-help="device">▣ 文档</button><button data-help="source">⌘ 源代码</button></div>
               <p class="page-description">客户端登录后会自动出现在这里。选择设备，由集控端指定要下发的班级。</p>
             </div>
-            <div class="page-actions"><button id="deviceRefresh" class="subtle">↻ 刷新设备</button><button class="primary" data-go="classes">管理班级</button></div>
+            <div class="page-actions"><button id="deviceRefresh" class="subtle">↻ 刷新设备</button><button class="primary" data-go="app-settings">管理班级</button></div>
           </div>
           <div class="example-label">设备分配</div>
           <div class="workbench">
@@ -286,69 +295,76 @@
         </div>
       </section>
 
-      <section id="page-classes" class="page" data-page-panel="classes">
+      <section id="page-app-settings" class="page" data-page-panel="app-settings">
         <div class="page-inner">
           <div class="page-header">
             <div class="page-heading-copy">
-              <h1 class="page-title">班级与课程</h1>
+              <h1 class="page-title">应用设置</h1>
               <div class="command-row"><button data-help="class">▣ 文档</button><button data-help="source">⌘ 源代码</button></div>
-              <p class="page-description">编辑完整客户端设置、课程表，并将配置分配到指定设备。</p>
+              <p class="page-description">按功能分组调整客户端设置。保存后，已连接设备会自动同步。</p>
             </div>
-            <div class="page-actions"><button id="saveClassButton" class="primary" disabled>发布设置与课程</button></div>
+            <div class="page-actions"><button id="saveSettingsButton" class="primary" disabled>保存应用设置</button></div>
           </div>
-          <div class="example-label">页面过渡</div>
-          <div class="workbench">
-            <section class="workspace-card">
-              <h2 id="classEditorTitle" class="section-title">选择班级</h2>
-              <div id="classMeta" class="muted small" style="margin:-5px 0 14px">从右侧选择一个班级开始编辑。</div>
-              <div class="class-tabs">
-                <button class="class-tab active" data-class-tab="settings">客户端设置</button>
-                <button class="class-tab" data-class-tab="timetable">课程表</button>
-              </div>
-              <div id="classSettingsPane">
-                <div id="settingsForm" class="settings-form"></div>
-              </div>
-              <div id="classTimetablePane" class="hidden">
-                <div class="timetable-toolbar">
-                  <div class="segmented" id="weekTabs">
-                    <button class="active" data-week="all">每周</button>
-                    <button data-week="odd">单周</button>
-                    <button data-week="even">双周</button>
-                  </div>
-                  <button id="addTimeSlotButton">＋ 添加节次</button>
-                  <span class="small muted">选择科目后点击格子填入；再次点击已选科目可取消选择，再点格子清空。</span>
-                </div>
-                <div class="timetable-layout">
-                  <aside class="subject-panel">
-                    <div class="options-label">科目池</div>
-                    <div class="subject-add"><input id="newSubjectName" placeholder="添加科目"><button id="addSubjectButton" title="添加科目">＋</button></div>
-                    <div id="subjectChips" class="subject-chips"></div>
-                    <div id="subjectDetails" class="subject-details hidden">
-                      <input id="subjectSimplifiedInput" placeholder="简称">
-                      <input id="subjectTeacherInput" placeholder="教师">
-                    </div>
-                  </aside>
-                  <div>
-                    <div class="timetable-scroll">
-                      <table id="timetableTable" class="timetable-table"></table>
-                    </div>
-                    <div class="timetable-hint">节次时间可直接修改。单周或双周编辑时会先复制每周课表作为基础，再保存该周次的差异。</div>
-                  </div>
-                </div>
-              </div>
-            </section>
-            <aside class="options-pane">
-              <div class="options-head"><div class="options-title">班级配置</div><div class="options-help">配置发布后，已连接设备会在下一次轮询时自动应用。</div></div>
-              <div class="options-body">
-                <div class="create-row"><input id="newClassName" placeholder="新班级名称"><button id="createClassButton" class="primary">创建</button></div>
-                <div id="classChoices" class="class-list"></div>
-                <div class="options-actions">
-                  <button id="deleteClassButton" class="danger" disabled>删除当前班级</button>
-                </div>
-              </div>
-              <div id="classStatus" class="status-line">选择班级后可编辑和发布</div>
-            </aside>
+          <div class="class-picker">
+            <label>班级配置<select id="settingsClassSelect"></select></label>
+            <input id="settingsNewClassName" placeholder="新班级名称">
+            <button id="createSettingsClass">创建班级</button>
+            <button id="deleteSettingsClass" class="danger" disabled>删除班级</button>
+            <span id="settingsClassMeta" class="muted small"></span>
           </div>
+          <div class="example-label">客户端功能分组</div>
+          <div id="settingsForm" class="settings-form wide"></div>
+          <div id="settingsStatus" class="status-line card-status">选择班级后可编辑设置</div>
+        </div>
+      </section>
+
+      <section id="page-archive-settings" class="page" data-page-panel="archive-settings">
+        <div class="page-inner">
+          <div class="page-header">
+            <div class="page-heading-copy">
+              <h1 class="page-title">档案设置</h1>
+              <div class="command-row"><button data-help="class">▣ 文档</button><button data-help="source">⌘ 源代码</button></div>
+              <p class="page-description">直接编辑课表、科目和节次。页面占满工作区，不再被侧栏压缩。</p>
+            </div>
+            <div class="page-actions"><button id="saveArchiveButton" class="primary" disabled>保存档案</button></div>
+          </div>
+          <div class="class-picker">
+            <label>班级配置<select id="archiveClassSelect"></select></label>
+            <input id="archiveNewClassName" placeholder="新班级名称">
+            <button id="createArchiveClass">创建班级</button>
+            <button id="deleteArchiveClass" class="danger" disabled>删除班级</button>
+            <span id="archiveClassMeta" class="muted small"></span>
+          </div>
+          <div class="example-label">课表与科目</div>
+          <div class="archive-panel">
+            <div class="timetable-toolbar">
+              <div class="segmented" id="weekTabs">
+                <button class="active" data-week="all">每周</button>
+                <button data-week="odd">单周</button>
+                <button data-week="even">双周</button>
+              </div>
+              <button id="addTimeSlotButton">＋ 添加节次</button>
+              <span class="small muted">选择科目后点击格子填入；再次点击已选科目可取消选择，再点格子清空。</span>
+            </div>
+            <div class="timetable-layout">
+              <aside class="subject-panel">
+                <div class="options-label">科目池</div>
+                <div class="subject-add"><input id="newSubjectName" placeholder="添加科目"><button id="addSubjectButton" title="添加科目">＋</button></div>
+                <div id="subjectChips" class="subject-chips"></div>
+                <div id="subjectDetails" class="subject-details hidden">
+                  <input id="subjectSimplifiedInput" placeholder="简称">
+                  <input id="subjectTeacherInput" placeholder="教师">
+                </div>
+              </aside>
+              <div>
+                <div class="timetable-scroll">
+                  <table id="timetableTable" class="timetable-table"></table>
+                </div>
+                <div class="timetable-hint">节次时间可直接修改。单周或双周编辑时会先复制每周课表作为基础，再保存该周次的差异。</div>
+              </div>
+            </div>
+          </div>
+          <div id="archiveStatus" class="status-line card-status">选择班级后可编辑档案</div>
         </div>
       </section>
 
@@ -370,7 +386,7 @@
 <div id="toast" class="toast"></div>
 
 <script>
-const state={user:null,classes:[],devices:[],selectedClassId:"",selectedDeviceId:"",page:"devices",query:"",classTab:"settings",settings:null,timetable:null,week:"all",selectedSubject:"",timeSlots:[]};
+const state={user:null,classes:[],devices:[],selectedClassId:"",selectedDeviceId:"",page:"devices",query:"",settings:null,timetable:null,week:"all",selectedSubject:"",timeSlots:[]};
 const $=id=>document.getElementById(id);
 const api=async(path,options={})=>{
   const response=await fetch(path,{...options,headers:{"Content-Type":"application/json",...(options.headers||{})}});
@@ -696,14 +712,6 @@ $("timetableTable").addEventListener("click",event=>{
   const cell=event.target.closest("[data-cell-day]");
   if(cell)setLessonCell(Number(cell.dataset.cellDay))(event);
 });
-document.querySelectorAll("[data-class-tab]").forEach(item=>item.onclick=()=>{
-  state.classTab=item.dataset.classTab;
-  document.querySelectorAll("[data-class-tab]").forEach(tab=>tab.classList.toggle("active",tab.dataset.classTab===state.classTab));
-  $("classSettingsPane").classList.toggle("hidden",state.classTab!=="settings");
-  $("classTimetablePane").classList.toggle("hidden",state.classTab!=="timetable");
-  $("saveClassButton").textContent=state.classTab==="settings"?"保存客户端设置":"保存课程表";
-  resetPageScroll();
-});
 $("weekTabs").onclick=event=>{
   const button=event.target.closest("[data-week]");
   if(!button)return;
@@ -720,7 +728,7 @@ const showPage=page=>{
   document.querySelectorAll(".page").forEach(item=>item.classList.toggle("active",item.dataset.pagePanel===page));
   if(page==="overview")renderOverview();
   if(page==="devices")renderDevices();
-  if(page==="classes"){
+  if(page==="app-settings"||page==="archive-settings"){
     renderClasses();
     if(!state.selectedClassId&&state.classes.length)
       void loadClass(state.classes[0].classId).then(resetPageScroll);
@@ -743,7 +751,7 @@ const loadAll=async()=>{
   if(state.selectedClassId&&!state.classes.some(item=>item.classId===state.selectedClassId))state.selectedClassId="";
   if(state.selectedDeviceId&&!state.devices.some(item=>item.clientId===state.selectedDeviceId))state.selectedDeviceId="";
   renderOverview();renderDevices();renderClasses();
-  if(state.page==="classes"&&!state.selectedClassId&&state.classes.length)
+  if((state.page==="app-settings"||state.page==="archive-settings")&&!state.selectedClassId&&state.classes.length)
     void loadClass(state.classes[0].classId).then(resetPageScroll);
 };
 
@@ -817,22 +825,22 @@ const assignDevice=async(classId)=>{
   }catch(error){setPageStatus("deviceStatus",error.message,true);showToast(error.message,true)}
 };
 
-const filteredClasses=()=>state.classes.filter(item=>{
-  const query=state.query.toLowerCase();
-  return !query||[item.name,item.message].some(value=>String(value||"").toLowerCase().includes(query));
-});
-
 const renderClasses=()=>{
-  const classes=filteredClasses();
-  const root=$("classChoices");
-  if(!classes.length){root.innerHTML=`<div class="empty-state">${state.classes.length?"没有匹配的班级":"还没有班级配置，先创建一个。"}</div>`}
-  else{
-    root.innerHTML=classes.map(item=>`<div class="class-choice${item.classId===state.selectedClassId?" active":""}" data-class-id="${escapeHtml(item.classId)}"><div class="class-choice-name">${escapeHtml(item.name)}</div><div class="class-choice-meta">修订 ${item.revision} · ${item.deviceCount} 台设备</div></div>`).join("");
-    root.querySelectorAll("[data-class-id]").forEach(item=>item.onclick=()=>loadClass(item.dataset.classId));
+  const options=state.classes.map(item=>`<option value="${escapeHtml(item.classId)}">${escapeHtml(item.name)} · 修订 ${item.revision}</option>`).join("");
+  for(const id of ["settingsClassSelect","archiveClassSelect"]){
+    const select=$(id);
+    select.innerHTML=options||'<option value="">暂无班级</option>';
+    if(state.selectedClassId&&state.classes.some(item=>item.classId===state.selectedClassId))
+      select.value=state.selectedClassId;
   }
-  $("deleteClassButton").disabled=!state.selectedClassId;
-  $("saveClassButton").disabled=!state.selectedClassId;
-  $("saveClassButton").textContent=state.classTab==="settings"?"保存客户端设置":"保存课程表";
+  const selected=state.classes.find(item=>item.classId===state.selectedClassId);
+  const meta=selected?`修订 ${selected.revision} · ${selected.deviceCount} 台设备 · 更新 ${timeText(selected.updatedAt)}`:"尚未选择班级";
+  $("settingsClassMeta").textContent=meta;
+  $("archiveClassMeta").textContent=meta;
+  $("deleteSettingsClass").disabled=!selected;
+  $("deleteArchiveClass").disabled=!selected;
+  $("saveSettingsButton").disabled=!selected;
+  $("saveArchiveButton").disabled=!selected;
 };
 
 const loadClass=async id=>{
@@ -846,13 +854,12 @@ const loadClass=async id=>{
     state.timetable=normalizeTimetable(timetable);
     state.timeSlots=[];
     state.selectedSubject="";
-    $("classEditorTitle").textContent=item.name;
-    $("classMeta").textContent=`修订 ${item.revision} · 更新 ${timeText(item.updatedAt)}`;
-    setPageStatus("classStatus","正在编辑 "+item.name);
+    setPageStatus("settingsStatus","正在编辑 "+item.name);
+    setPageStatus("archiveStatus","正在编辑 "+item.name);
     renderSettingsForm();
     renderTimetable();
     renderClasses();renderDeviceOptions();
-  }catch(error){setPageStatus("classStatus",error.message,true)}
+  }catch(error){setPageStatus("settingsStatus",error.message,true);setPageStatus("archiveStatus",error.message,true)}
 };
 
 document.querySelectorAll("[data-page]").forEach(item=>item.onclick=()=>showPage(item.dataset.page));
@@ -861,7 +868,7 @@ document.querySelectorAll("[data-help]").forEach(item=>item.onclick=()=>showToas
   item.dataset.help==="source"
     ? "集控配置由 ClassNEX ID 管理，网页只编辑结构化设置与课程数据。"
     : item.dataset.help==="class"
-      ? "选择右侧班级后可编辑客户端设置和课程表，保存后设备自动同步。"
+      ? "使用页面上方的班级选择器切换配置，保存后设备自动同步。"
       : "选择已登记设备，再指定班级即可下发配置。"
 ));
 $("navToggle").onclick=()=>$("appShell").classList.toggle("nav-collapsed");
@@ -870,36 +877,55 @@ $("refreshButton").onclick=async()=>{try{await loadAll();showToast("数据已刷
 $("deviceRefresh").onclick=async()=>{try{await loadAll();showToast("设备列表已刷新")}catch(error){showToast(error.message,true)}};
 $("assignDeviceButton").onclick=()=>assignDevice($("deviceClassSelect").value);
 $("unassignDeviceButton").onclick=()=>assignDevice("");
-$("createClassButton").onclick=async()=>{
-  const name=$("newClassName").value.trim();
+const createClassFor=async(inputId,statusId)=>{
+  const input=$(inputId);
+  const name=input.value.trim();
   if(!name)return showToast("请输入班级名称",true);
   try{
     const item=await api("/api/v1/classes",{method:"POST",body:JSON.stringify({name})});
-    $("newClassName").value="";await loadAll();await loadClass(item.classId);setPageStatus("classStatus","班级已创建");showToast("班级已创建");
-  }catch(error){setPageStatus("classStatus",error.message,true);showToast(error.message,true)}
+    input.value="";await loadAll();await loadClass(item.classId);setPageStatus(statusId,"班级已创建");showToast("班级已创建");
+  }catch(error){setPageStatus(statusId,error.message,true);showToast(error.message,true)}
 };
-$("saveClassButton").onclick=async()=>{
+
+const saveSettings=async()=>{
   if(!state.selectedClassId)return;
   try{
-    const item=state.classTab==="settings"
-      ? await api(`/api/v1/classes/${encodeURIComponent(state.selectedClassId)}/settings`,{method:"PUT",body:JSON.stringify({settingsJson:JSON.stringify(state.settings)})})
-      : await api(`/api/v1/classes/${encodeURIComponent(state.selectedClassId)}/timetable`,{method:"PUT",body:JSON.stringify(state.timetable)});
-    $("classMeta").textContent=`修订 ${item.revision} · 更新 ${timeText(item.updatedAt)}`;
+    const item=await api(`/api/v1/classes/${encodeURIComponent(state.selectedClassId)}/settings`,{method:"PUT",body:JSON.stringify({settingsJson:JSON.stringify(state.settings)})});
     await loadAll();
-    setPageStatus("classStatus",`已保存修订 ${item.revision}`);
-    showToast(`已保存修订 ${item.revision}`);
-  }catch(error){setPageStatus("classStatus",error.message,true);showToast(error.message,true)}
+    setPageStatus("settingsStatus",`已保存应用设置 · 修订 ${item.revision}`);
+    showToast(`已保存应用设置 · 修订 ${item.revision}`);
+  }catch(error){setPageStatus("settingsStatus",error.message,true);showToast(error.message,true)}
 };
-$("deleteClassButton").onclick=async()=>{
+
+const saveArchive=async()=>{
   if(!state.selectedClassId)return;
+  try{
+    const item=await api(`/api/v1/classes/${encodeURIComponent(state.selectedClassId)}/timetable`,{method:"PUT",body:JSON.stringify(state.timetable)});
+    await loadAll();
+    setPageStatus("archiveStatus",`已保存档案 · 修订 ${item.revision}`);
+    showToast(`已保存档案 · 修订 ${item.revision}`);
+  }catch(error){setPageStatus("archiveStatus",error.message,true);showToast(error.message,true)}
+};
+
+const deleteCurrentClass=async statusId=>{
+  if(!state.selectedClassId)return;
+  if(!confirm("删除当前班级配置？"))return;
   try{
     await api(`/api/v1/classes/${encodeURIComponent(state.selectedClassId)}`,{method:"DELETE"});
     state.selectedClassId="";state.settings=null;state.timetable=null;state.timeSlots=[];state.selectedSubject="";
-    renderSettingsForm();renderTimetable();
-    $("classEditorTitle").textContent="选择班级";$("classMeta").textContent="从右侧选择一个班级开始编辑。";
-    await loadAll();setPageStatus("classStatus","班级已删除");showToast("班级已删除");
-  }catch(error){setPageStatus("classStatus",error.message,true);showToast(error.message,true)}
+    renderSettingsForm();renderTimetable();await loadAll();
+    setPageStatus(statusId,"班级已删除");showToast("班级已删除");
+  }catch(error){setPageStatus(statusId,error.message,true);showToast(error.message,true)}
 };
+
+$("settingsClassSelect").onchange=event=>{if(event.target.value)void loadClass(event.target.value)};
+$("archiveClassSelect").onchange=event=>{if(event.target.value)void loadClass(event.target.value)};
+$("createSettingsClass").onclick=()=>createClassFor("settingsNewClassName","settingsStatus");
+$("createArchiveClass").onclick=()=>createClassFor("archiveNewClassName","archiveStatus");
+$("deleteSettingsClass").onclick=()=>deleteCurrentClass("settingsStatus");
+$("deleteArchiveClass").onclick=()=>deleteCurrentClass("archiveStatus");
+$("saveSettingsButton").onclick=saveSettings;
+$("saveArchiveButton").onclick=saveArchive;
 loadSession();
 </script>
 </body>
