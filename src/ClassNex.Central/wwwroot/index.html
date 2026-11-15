@@ -387,7 +387,7 @@
 <div id="toast" class="toast"></div>
 
 <script>
-const state={user:null,classes:[],devices:[],selectedClassId:"",selectedDeviceId:"",page:"devices",query:"",settings:null,timetable:null,week:"all",selectedSubject:"",timeSlots:[]};
+const state={user:null,classes:[],devices:[],selectedClassId:"",selectedDeviceId:"",page:"devices",query:"",settings:null,timetable:null,classRevision:0,editorDirty:false,classRefreshBusy:false,week:"all",selectedSubject:"",timeSlots:[]};
 const $=id=>document.getElementById(id);
 const api=async(path,options={})=>{
   const response=await fetch(path,{...options,headers:{"Content-Type":"application/json",...(options.headers||{})}});
@@ -563,6 +563,7 @@ const handleSettingInput=event=>{
     if(field.kind==="select"&&typeof field.options[0]?.value==="number")value=Number(value);
     if(field.kind==="date")value=value?value+"T00:00:00":null;
     setPathValue(state.settings,field.key,value);
+    state.editorDirty=true;
     if(field.kind==="range"&&element.nextElementSibling instanceof HTMLOutputElement)element.nextElementSibling.textContent=field.format?field.format(Number(value)):String(value);
   }
   if(element.dataset.widgetIndex!==undefined){
@@ -570,6 +571,7 @@ const handleSettingInput=event=>{
     if(!widget)return;
     const property=element.dataset.widgetProp;
     setPathValue(widget,property,element.type==="checkbox"?element.checked:Number(element.value));
+    state.editorDirty=true;
     if(property==="FontScale"){
       const output=element.parentElement?.querySelector(".widget-scale");
       if(output)output.textContent=`字号 ${Math.round(Number(element.value)*100)}%`;
@@ -654,6 +656,7 @@ const setLessonCell=day=>event=>{
   const schedule=ensureEditableSchedule(day);
   schedule.classes=schedule.classes.filter(course=>!(sameClock(course.startTime,slot.start)&&sameClock(course.endTime,slot.end)));
   if(state.selectedSubject)schedule.classes.push({subject:state.selectedSubject,startTime:slot.start,endTime:slot.end});
+  state.editorDirty=true;
   renderTimetable();
 };
 const addSubject=()=>{
@@ -661,6 +664,7 @@ const addSubject=()=>{
   if(!name)return showToast("请输入科目名称",true);
   if(state.timetable.subjects.some(item=>item.name===name))return showToast("科目已存在",true);
   state.timetable.subjects.push({name,simplifiedName:name.slice(0,1),teacher:"",room:""});
+  state.editorDirty=true;
   $("newSubjectName").value="";state.selectedSubject=name;renderTimetable();
 };
 const removeSubject=index=>{
@@ -669,6 +673,7 @@ const removeSubject=index=>{
   if(!confirm(`删除科目“${subject.name}”？课表中的相关课程也会被清除。`))return;
   state.timetable.subjects.splice(index,1);
   for(const schedule of state.timetable.schedules)schedule.classes=schedule.classes.filter(course=>course.subject!==subject.name);
+  state.editorDirty=true;
   if(state.selectedSubject===subject.name)state.selectedSubject="";
   renderTimetable();
 };
@@ -678,6 +683,7 @@ const addTimeSlot=()=>{
   const rest=Math.max(5,Number(settingValue(settingsFieldMap.get("DefaultBreakingTimePointMinutes"))||10));
   const start=last?clockToMinutes(last.end)+rest:clockToMinutes("08:00");
   state.timeSlots.push({start:minutesToClock(start),end:minutesToClock(start+lesson)});
+  state.editorDirty=true;
   renderTimetable();
 };
 const changeTimeSlot=(index,part,value)=>{
@@ -690,12 +696,14 @@ const changeTimeSlot=(index,part,value)=>{
       course.startTime=slot.start;course.endTime=slot.end;
     }
   }
+  state.editorDirty=true;
   renderTimetable();
 };
 const deleteTimeSlot=index=>{
   const slot=state.timeSlots[index];
   if(!slot)return;
   for(const schedule of state.timetable.schedules)schedule.classes=schedule.classes.filter(course=>!(sameClock(course.startTime,slot.start)&&sameClock(course.endTime,slot.end)));
+  state.editorDirty=true;
   state.timeSlots.splice(index,1);
   renderTimetable();
 };
@@ -708,8 +716,8 @@ $("subjectChips").onclick=event=>{
   state.selectedSubject=state.selectedSubject===subject.name?"":subject.name;
   renderTimetable();
 };
-$("subjectSimplifiedInput").oninput=event=>{const subject=state.timetable?.subjects.find(item=>item.name===state.selectedSubject);if(subject)subject.simplifiedName=event.target.value};
-$("subjectTeacherInput").oninput=event=>{const subject=state.timetable?.subjects.find(item=>item.name===state.selectedSubject);if(subject)subject.teacher=event.target.value};
+$("subjectSimplifiedInput").oninput=event=>{const subject=state.timetable?.subjects.find(item=>item.name===state.selectedSubject);if(subject){subject.simplifiedName=event.target.value;state.editorDirty=true}};
+$("subjectTeacherInput").oninput=event=>{const subject=state.timetable?.subjects.find(item=>item.name===state.selectedSubject);if(subject){subject.teacher=event.target.value;state.editorDirty=true}};
 $("addSubjectButton").onclick=addSubject;
 $("newSubjectName").onkeydown=event=>{if(event.key==="Enter")addSubject()};
 $("addTimeSlotButton").onclick=addTimeSlot;
@@ -774,6 +782,34 @@ const loadSession=async()=>{
     showPage("devices");
   }catch(error){showLogin()}
 };
+
+const refreshSelectedClassRevision=async()=>{
+  if(state.classRefreshBusy||state.editorDirty||!state.selectedClassId)return;
+  if(state.page!=="app-settings"&&state.page!=="archive-settings")return;
+  state.classRefreshBusy=true;
+  try{
+    const classes=await api("/api/v1/classes");
+    state.classes=classes||[];
+    renderClasses();
+    const selected=state.classes.find(item=>item.classId===state.selectedClassId);
+    if(!selected){
+      state.selectedClassId="";
+      state.settings=null;
+      state.timetable=null;
+      state.classRevision=0;
+      renderSettingsForm();
+      renderTimetable();
+      return;
+    }
+    if(Number(selected.revision)!==Number(state.classRevision))
+      await loadClass(selected.classId);
+  }catch{
+  }finally{
+    state.classRefreshBusy=false;
+  }
+};
+
+setInterval(refreshSelectedClassRevision,2000);
 
 const filteredDevices=()=>state.devices.filter(item=>{
   const query=state.query.toLowerCase();
@@ -863,6 +899,8 @@ const loadClass=async id=>{
     state.selectedClassId=id;
     state.settings=normalizeCaseDuplicates(JSON.parse(item.settingsJson||"{}"));
     state.timetable=normalizeTimetable(timetable);
+    state.classRevision=Number(item.revision)||0;
+    state.editorDirty=false;
     state.timeSlots=[];
     state.selectedSubject="";
     setPageStatus("settingsStatus","正在编辑 "+item.name);
@@ -902,6 +940,8 @@ const saveSettings=async()=>{
   if(!state.selectedClassId)return;
   try{
     const item=await api(`/api/v1/classes/${encodeURIComponent(state.selectedClassId)}/settings`,{method:"PUT",body:JSON.stringify({settingsJson:JSON.stringify(state.settings)})});
+    state.classRevision=Number(item.revision)||state.classRevision;
+    state.editorDirty=false;
     await loadAll();
     setPageStatus("settingsStatus",`已保存应用设置 · 修订 ${item.revision}`);
     showToast(`已保存应用设置 · 修订 ${item.revision}`);
@@ -912,6 +952,8 @@ const saveArchive=async()=>{
   if(!state.selectedClassId)return;
   try{
     const item=await api(`/api/v1/classes/${encodeURIComponent(state.selectedClassId)}/timetable`,{method:"PUT",body:JSON.stringify(state.timetable)});
+    state.classRevision=Number(item.revision)||state.classRevision;
+    state.editorDirty=false;
     await loadAll();
     setPageStatus("archiveStatus",`已保存档案 · 修订 ${item.revision}`);
     showToast(`已保存档案 · 修订 ${item.revision}`);

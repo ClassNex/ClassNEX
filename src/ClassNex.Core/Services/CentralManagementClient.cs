@@ -65,6 +65,26 @@ public sealed class CentralManagementClient : IDisposable
         await EnsureSuccessAsync(response, cancellationToken);
     }
 
+    public async Task<CentralClassRevision> PublishAsync(
+        string serverUrl,
+        string accessToken,
+        CentralClientPublishRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await SendAsync(
+            serverUrl,
+            "/api/v1/client/publish",
+            HttpMethod.Post,
+            accessToken,
+            JsonSerializer.Serialize(request, JsonOptions),
+            cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<CentralClassRevision>(
+                   JsonOptions,
+                   cancellationToken)
+               ?? throw new InvalidOperationException("集控服务没有返回发布结果");
+    }
+
     private async Task<HttpResponseMessage> SendAsync(
         string serverUrl,
         string path,

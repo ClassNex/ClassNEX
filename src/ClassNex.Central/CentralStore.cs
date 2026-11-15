@@ -180,6 +180,50 @@ public sealed class CentralStore
         }
     }
 
+    public async Task<CentralClassRevision?> PublishDeviceConfigAsync(
+        string ownerSubject,
+        CentralClientPublishRequest publish)
+    {
+        using (JsonDocument.Parse(publish.SettingsJson)) { }
+        if (!string.IsNullOrWhiteSpace(publish.TimetableYaml))
+            _ = CsesCodec.Parse(publish.TimetableYaml);
+
+        await _gate.WaitAsync();
+        try
+        {
+            if (!_state.Devices.TryGetValue(publish.ClientId, out var device) ||
+                !string.Equals(device.OwnerSubject, ownerSubject, StringComparison.Ordinal) ||
+                string.IsNullOrWhiteSpace(device.SelectedClassId) ||
+                !_state.Classes.TryGetValue(device.SelectedClassId, out var record) ||
+                !string.Equals(record.OwnerSubject, ownerSubject, StringComparison.Ordinal))
+                return null;
+
+            var changed =
+                !string.Equals(record.SettingsJson, publish.SettingsJson, StringComparison.Ordinal) ||
+                !string.Equals(record.TimetableYaml, publish.TimetableYaml, StringComparison.Ordinal);
+            if (changed)
+            {
+                record.SettingsJson = publish.SettingsJson;
+                record.TimetableYaml = publish.TimetableYaml;
+                record.Message = "由客户端自动同步";
+                record.Revision++;
+                record.UpdatedAt = DateTime.UtcNow;
+            }
+
+            device.LastSeen = DateTime.UtcNow;
+            await SaveAsync();
+            return new CentralClassRevision(
+                record.ClassId,
+                record.Name,
+                record.Revision,
+                record.UpdatedAt);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     public async Task<IReadOnlyList<CentralClassSummary>> ListClassesAsync(string ownerSubject)
     {
         await _gate.WaitAsync();

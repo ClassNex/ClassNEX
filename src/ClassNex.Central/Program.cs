@@ -380,6 +380,27 @@ app.MapPost("/api/v1/client/report", async (
     }
 });
 
+app.MapPost("/api/v1/client/publish", async (
+    CentralClientPublishRequest publish,
+    HttpRequest request) =>
+{
+    var user = await GetCurrentUserAsync(request);
+    if (user is null)
+        return Results.Unauthorized();
+
+    try
+    {
+        var revision = await store.PublishDeviceConfigAsync(user.Subject, publish);
+        return revision is null
+            ? Results.NotFound(new { message = "本设备尚未分配班级" })
+            : Results.Json(revision);
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
 Console.WriteLine("ClassNEX Central");
 Console.WriteLine($"Casdoor: {casdoorUrl}");
 Console.WriteLine($"Public URL: {publicBaseUrl}");

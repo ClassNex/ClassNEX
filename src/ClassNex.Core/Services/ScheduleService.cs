@@ -20,6 +20,8 @@ public interface IScheduleService
     
     event Action? ProfileChanged;
 
+    event Action? Saved;
+
     
     void Load(string path);
 
@@ -70,6 +72,8 @@ public sealed class ScheduleService : IScheduleService
 
     public event Action? ProfileChanged;
 
+    public event Action? Saved;
+
     public void Load(string path)
     {
         FilePath = path;
@@ -92,15 +96,19 @@ public sealed class ScheduleService : IScheduleService
         if (string.IsNullOrWhiteSpace(FilePath))
             return;
 
+        var saved = false;
         try
         {
             CsesCodec.Save(_profile, FilePath);
+            saved = true;
         }
         catch
         {
             
         }
 
+        if (saved)
+            Saved?.Invoke();
         Raise();
     }
 

@@ -14,14 +14,30 @@ public sealed class CentralManagementService : IDisposable
 
     private readonly CentralManagementClient _client = new();
     private Timer? _timer;
+    private Timer? _publishTimer;
     private int _busy;
+    private int _publishing;
+    private int _localPublishPending;
     private bool _registeredForSession;
+    private bool _localEventsSubscribed;
     private DateTime _lastReportAt = DateTime.MinValue;
 
     public event Action<string>? StatusChanged;
 
     public void Start()
     {
+        _publishTimer ??= new Timer(
+            _ => _ = PublishLocalAsync(),
+            null,
+            Timeout.InfiniteTimeSpan,
+            Timeout.InfiniteTimeSpan);
+        if (!_localEventsSubscribed)
+        {
+            AppServices.LocalSettingsChanged += OnLocalSettingsChanged;
+            AppServices.Schedule.Saved += OnLocalSettingsChanged;
+            _localEventsSubscribed = true;
+        }
+
         _timer ??= new Timer(
             _ => _ = TickAsync(),
             null,
@@ -51,6 +67,11 @@ public sealed class CentralManagementService : IDisposable
 
             NormalizeServerUrl(management);
             var accessToken = RequireAccessToken();
+            if (Volatile.Read(ref _localPublishPending) != 0)
+            {
+                SetStatus("本机更改等待自动上传");
+                return;
+            }
             if (!_registeredForSession)
                 await RegisterDeviceAsync(cancellationToken);
             var config = await _client.PullAsync(
@@ -142,6 +163,63 @@ public sealed class CentralManagementService : IDisposable
         await SyncNowAsync();
     }
 
+    private void OnLocalSettingsChanged()
+    {
+        if (!AppServices.Settings.CentralManagement.IsEnabled)
+            return;
+        Interlocked.Exchange(ref _localPublishPending, 1);
+        _publishTimer?.Change(TimeSpan.FromMilliseconds(600), Timeout.InfiniteTimeSpan);
+    }
+
+    private async Task PublishLocalAsync()
+    {
+        if (Interlocked.CompareExchange(ref _publishing, 1, 0) != 0)
+            return;
+
+        try
+        {
+            var management = AppServices.Settings.CentralManagement;
+            if (!management.IsEnabled)
+                return;
+            if (string.IsNullOrWhiteSpace(management.SelectedClassId))
+            {
+                Interlocked.Exchange(ref _localPublishPending, 0);
+                return;
+            }
+
+            NormalizeServerUrl(management);
+            var accessToken = RequireAccessToken();
+            var timetable = File.Exists(AppServices.TimetablePath)
+                ? await File.ReadAllTextAsync(AppServices.TimetablePath)
+                : "";
+            var revision = await _client.PublishAsync(
+                management.ServerUrl,
+                accessToken,
+                new CentralClientPublishRequest(
+                    management.ClientId,
+                    JsonSerializer.Serialize(AppServices.Settings, JsonOptions),
+                    timetable));
+
+            management = AppServices.Settings.CentralManagement;
+            management.SelectedClassId = revision.ClassId;
+            management.SelectedClassName = revision.ClassName;
+            management.AppliedRevision = revision.Revision;
+            management.LastSyncTime = DateTime.Now;
+            Interlocked.Exchange(ref _localPublishPending, 0);
+            SetStatus($"已同步本机更改 · {revision.ClassName} · 修订 {revision.Revision}");
+        }
+        catch (Exception ex)
+        {
+            SetStatus("本机更改上传失败：" + ex.Message);
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _publishing, 0);
+            if (Volatile.Read(ref _localPublishPending) != 0)
+                _publishTimer?.Change(TimeSpan.FromSeconds(5), Timeout.InfiniteTimeSpan);
+        }
+    }
+
     private async Task RegisterDeviceAsync(CancellationToken cancellationToken)
     {
         var management = AppServices.Settings.CentralManagement;
@@ -215,7 +293,7 @@ public sealed class CentralManagementService : IDisposable
     private static string AppVersion =>
         typeof(AppServices).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
-            .InformationalVersion ?? "26w46a";
+            .InformationalVersion ?? "26w46b";
 
     private void SetStatus(string status)
     {
@@ -241,8 +319,17 @@ public sealed class CentralManagementService : IDisposable
 
     public void Dispose()
     {
+        if (_localEventsSubscribed)
+        {
+            AppServices.LocalSettingsChanged -= OnLocalSettingsChanged;
+            AppServices.Schedule.Saved -= OnLocalSettingsChanged;
+            _localEventsSubscribed = false;
+        }
+
         _timer?.Dispose();
         _timer = null;
+        _publishTimer?.Dispose();
+        _publishTimer = null;
         _registeredForSession = false;
         _client.Dispose();
     }

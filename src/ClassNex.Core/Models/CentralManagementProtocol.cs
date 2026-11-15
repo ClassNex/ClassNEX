@@ -45,3 +45,14 @@ public sealed record CentralDeviceSummary(
     string LastError);
 
 public sealed record CentralAssignDeviceRequest(string ClassId);
+
+public sealed record CentralClientPublishRequest(
+    string ClientId,
+    string SettingsJson,
+    string TimetableYaml);
+
+public sealed record CentralClassRevision(
+    string ClassId,
+    string ClassName,
+    long Revision,
+    DateTime UpdatedAt);

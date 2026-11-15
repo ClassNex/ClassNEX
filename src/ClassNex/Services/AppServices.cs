@@ -38,6 +38,8 @@ public static class AppServices
     
     public static event Action? SettingsChanged;
 
+    public static event Action? LocalSettingsChanged;
+
     public static event Action? ManagedSettingsApplied;
 
     
@@ -113,15 +115,23 @@ public static class AppServices
     {
         SettingsService.Save(Settings);
         SettingsChanged?.Invoke();
+        LocalSettingsChanged?.Invoke();
     }
 
     public static void ApplyManagedSettings(AppSettings remote, string? timetableYaml)
     {
-        var management = Settings.CentralManagement;
+        var local = Settings;
+        var management = local.CentralManagement;
         remote.Widgets ??= AppSettings.CreateDefaultWidgets();
         remote.Notification ??= new NotificationSettings();
         remote.TimeLayout ??= new TimeLayout();
         remote.CentralManagement = management;
+        remote.AccountEndpoint = local.AccountEndpoint;
+        remote.AccountClientId = local.AccountClientId;
+        remote.UserName = local.UserName;
+        remote.Email = local.Email;
+        remote.IsOobeCompleted = local.IsOobeCompleted;
+        remote.IsDebugOptionsEnabled = local.IsDebugOptionsEnabled;
         remote.BackgroundOpacity = Math.Clamp(remote.BackgroundOpacity, 0.1, 1);
         remote.FontScale = Math.Clamp(remote.FontScale, 0.8, 2.4);
         remote.MainWindowScale = Math.Clamp(remote.MainWindowScale, 0.5, 4);

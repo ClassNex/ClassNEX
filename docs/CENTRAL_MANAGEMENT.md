@@ -3,8 +3,8 @@
 ## 范围
 
 集控中心使用 ClassNEX ID 登录。桌面客户端登录并连接后会登记为设备，管理端选择设备并指定班级。
-集控中心可以读取、编辑并发布完整设置与完整课程表，客户端在后台每 2 秒检查一次设备分配和修订号，
-保存后自动应用，不需要点击手动同步。
+集控中心可以读取、编辑并发布完整设置与完整课程表。客户端每 2 秒检查设备分配和修订号，
+管理端保存后自动下发；客户端本地保存设置或课程表后也会自动发布新修订，网页随后自动接收。
 
 ## 认证
 
@@ -74,6 +74,7 @@ dotnet run --project src\ClassNex.Central\ClassNex.Central.csproj --urls http://
 | POST | `/api/v1/client/device` | 会话或 Bearer | 注册或更新客户端 |
 | GET | `/api/v1/client/assignment` | Bearer | 拉取管理端为本设备分配的班级配置 |
 | POST | `/api/v1/client/report` | Bearer | 上报客户端状态与数据 |
+| POST | `/api/v1/client/publish` | Bearer | 客户端保存后发布新的设置和课程表修订 |
 | GET | `/api/v1/classes` | 会话或 Bearer | 当前账户的班级列表 |
 | POST | `/api/v1/classes` | 会话或 Bearer | 创建班级 |
 | GET | `/api/v1/classes/{id}` | 会话或 Bearer | 读取班级完整数据 |

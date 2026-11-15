@@ -36,7 +36,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：版本更新为 `26w46a`；客户端组件页改为紧凑 WrapPanel 组件库，外观页三个缩放滑轨对齐；集控网页登录会话持久化 7 天，并移除标题栏 N 图标
+上次完成：集控同步改为双向实时同步：本地设置/课表保存自动发布修订，网页自动接收；远端设置保留本地账户字段，避免设置调整后显示退出登录；版本更新为 `26w46b`
 改了文件：src/ClassNex/ClassNex.csproj、src/ClassNex/Services/AppServicesAiContext.cs、src/ClassNex/Services/CentralManagementService.cs、src/ClassNex/Views/SettingsWindow.axaml(.cs)、RELEASE_NOTES.md、HANDOFF.md、AGENTS.md
 进行中：无
-下一步：推送 `26w46a_Alpha` 标签，等待 GitHub Actions 构建发布
+下一步：推送 `26w46b_Alpha` 标签，等待 GitHub Actions 构建发布

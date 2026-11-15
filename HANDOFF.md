@@ -1,7 +1,7 @@
 # ClassNEX 续作指南（HANDOFF）
 
-> 最后更新：2026-11-15　｜　当前版本 **26w46a**　｜　发布标签 **26w46a_Alpha**
-> 已发布：`26w41a_Alpha` ~ `26w46a_Alpha`（GitHub Releases，均为预发布）
+> 最后更新：2026-11-15　｜　当前版本 **26w46b**　｜　发布标签 **26w46b_Alpha**
+> 已发布：`26w41a_Alpha` ~ `26w46b_Alpha`（GitHub Releases，均为预发布）
 > 这份文档的目的：**第二天打开新会话，照着它就能无缝继续写。**
 
 ---
@@ -326,6 +326,9 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   保存时由服务端转换成 CSES YAML。进入“班级与课程”会自动打开第一个班级；
   左侧页面、客户端设置/课程表标签和每周/单周/双周切换都会将内容滚动位置重置到顶部。客户端每 2 秒拉取
   `/api/v1/client/assignment`，应用远端设置前保留本机集控连接参数，随后刷新主界面和课程。
+  `AppServices.SaveSettings` 和课程表 `ScheduleService.Saved` 会触发客户端自动发布，
+  经 `/api/v1/client/publish` 更新班级修订；集控网页每 2 秒检查修订并在没有未保存编辑时刷新。
+  应用远端设置时额外保留账户端点、Client ID、用户名、邮箱、OOBE 和调试状态，避免本地设置被误判为退出登录。
   远端设置应用后会调用 `App.ApplyTheme`，深浅色与系统主题切换会立即重建主界面。
   集控网页读取设置时按不区分大小写匹配现有 JSON 键，避免 camelCase/PascalCase 生成重复主题字段。
   已移除管理员令牌、注册令牌和客户端令牌方案。历史设置中的空集控地址和旧服务器地址
@@ -566,7 +569,7 @@ python tools\gh_release.py "E:\ClassNex\build\ClassNEX-26w41f-Alpha-win-x64.zip"
 - `WW` = 该年的第几周（ISO 周号）
 - `a` = 当周发布的第几个快照（a、b、c…）
 
-当前：**`26w46a`** = 2026 年第 46 周的第 1 个快照（2026-11-15 通过 GitHub Actions 发布）。
+当前：**`26w46b`** = 2026 年第 46 周的第 2 个快照（2026-11-15 通过 GitHub Actions 发布）。
 
 落地方式：
 - `ClassNex.csproj` → `<InformationalVersion>26w41a</InformationalVersion>`
