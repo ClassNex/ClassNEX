@@ -211,9 +211,10 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 
 ### 设置窗口与托盘菜单
 - **设置窗口背景**：`SettingsWindow` 的 `Background` 与 `SettingsRoot.Background` 都设为
-  `CiPalette.SettingsSurfaceBrush()`：浅色 `#FFFCFD → #FFF4F9 → #FFEAF3 → #FFE0EC`，深色
-  `#1A1118 → #24151E → #2B1824 → #321B28`；监听 `Application.ActualThemeVariantChanged` 刷新，
-  窗口关闭时退订。
+  `CiPalette.SettingsSurfaceBrush()`，该方法直接使用 Fluent `LayerFillColorDefaultBrush`，
+  不再使用樱花渐变。设置窗口的顶栏、卡片、账户状态和预览使用 WinUI 卡片/描边/强调色资源，
+  导航和设置卡片不再挂 `MetroTilt` 倾斜动效。监听 `Application.ActualThemeVariantChanged`
+  刷新，窗口关闭时退订。
 - **设置窗口启动动画**：`Opened` 时对 `SettingsRoot` 组合层 opacity 0→1（430ms，
   `0.16,1,0.3,1`）+ scale `0.965→1.006→1`（620ms，回弹）+ offsetY 16→0（520ms）。
   `SettingsRoot.Opacity` 先设为 0，播放时恢复 1，避免闪出完整页面。

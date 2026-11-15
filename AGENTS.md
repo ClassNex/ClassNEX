@@ -36,7 +36,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：集控自动同步改为后台每 2 秒检查，管理端保存后无需手动同步；远端设置应用会调用 `App.ApplyTheme`，修复深浅色不下发；集控网页按不区分大小写复用现有设置 JSON 键，清除 camelCase/PascalCase 重复字段；可视化设置和课程网格继续使用开关、滑动条、下拉框、科目池与星期 × 节次编辑
+上次完成：客户端设置界面收敛为 WinUI：设置背景改用 Fluent Layer 资源，去掉樱花渐变、倾斜动效和自定义字体，滑动条改为响应式网格并预留滑块边界；集控网页支持系统明暗 WinUI 配色、Segoe Fluent 图标、标准卡片和自适应滑轨；管理端保存后客户端每 2 秒自动同步，主题切换会调用 `App.ApplyTheme`
 改了文件：src/ClassNex.Central/*、src/ClassNex.Core/Models/AppSettings.cs、src/ClassNex.Core/Models/CentralManagement*.cs、src/ClassNex.Core/Services/SettingsService.cs、src/ClassNex.Core/Services/CentralManagementClient.cs、src/ClassNex/Services/CentralManagementService.cs、src/ClassNex/Views/MainWindow.axaml(.cs)、src/ClassNex/Views/SettingsWindow.axaml(.cs)、docs/CENTRAL_MANAGEMENT.md、HANDOFF.md、AGENTS.md
 进行中：无
 下一步：待用户指定
