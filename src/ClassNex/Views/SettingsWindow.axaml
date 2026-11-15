@@ -50,6 +50,7 @@
                             <Image Source="/Assets/icon.ico" Width="16" Height="16"
                                    IsHitTestVisible="False" RenderOptions.BitmapInterpolationMode="HighQuality"/>
                             <TextBlock Text="应用设置" FontSize="13" FontWeight="Bold"
+                                       FontFamily="avares://ClassNex/Assets/Fonts/#Resource Han Rounded CN"
                                        VerticalAlignment="Center" IsHitTestVisible="False"/>
                         </StackPanel>
 
@@ -169,7 +170,7 @@
                         <StackPanel Orientation="Horizontal" Spacing="12">
                             
                             <Border x:Name="AccountAvatarRing" Width="52" Height="52" CornerRadius="26"
-                                    BorderThickness="3">
+                                    BorderThickness="3" ClipToBounds="True">
                                 <Border.Transitions>
                                     <Transitions>
                                         <DoubleTransition Property="Width" Duration="0:0:0.18">
@@ -377,7 +378,7 @@
                                     <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto"
                                           ColumnSpacing="14">
                                         <Border x:Name="HomeAccountAvatarRing" Width="58" Height="58"
-                                                CornerRadius="14" BorderThickness="3"/>
+                                                CornerRadius="29" BorderThickness="3" ClipToBounds="True"/>
                                         <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
                                             <TextBlock x:Name="HomeAccountNameText" FontSize="17"/>
                                             <TextBlock x:Name="HomeAccountEmailText" FontSize="13"
@@ -935,10 +936,10 @@
                                     <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE09D;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
-                                    <Grid MinWidth="300" MaxWidth="356" ColumnDefinitions="32,*,56,32" ColumnSpacing="8">
+                                    <Grid Width="356" ColumnDefinitions="32,180,64,32" ColumnSpacing="8">
                                         <Button Content="−" Padding="0" Click="OnOpacityDecrease"/>
                                         <Slider Grid.Column="1" x:Name="OpacitySlider" Minimum="0.1" Maximum="1"
-                                                Margin="4,0" TickFrequency="0.05" IsSnapToTickEnabled="True"/>
+                                                TickFrequency="0.05" IsSnapToTickEnabled="True"/>
                                         <TextBlock Grid.Column="2" x:Name="OpacityValueText"
                                                    TextAlignment="Right" VerticalAlignment="Center"
                                                    Opacity="0.7"/>
@@ -952,10 +953,10 @@
                                     <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE198;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
-                                    <Grid MinWidth="300" MaxWidth="356" ColumnDefinitions="32,*,56,32" ColumnSpacing="8">
+                                    <Grid Width="356" ColumnDefinitions="32,180,64,32" ColumnSpacing="8">
                                         <Button Content="−" Padding="0" Click="OnFontScaleDecrease"/>
                                         <Slider Grid.Column="1" x:Name="FontScaleSlider" Minimum="0.8" Maximum="2.4"
-                                                Margin="4,0" TickFrequency="0.05" IsSnapToTickEnabled="True"/>
+                                                TickFrequency="0.05" IsSnapToTickEnabled="True"/>
                                         <TextBlock Grid.Column="2" x:Name="FontScaleValueText"
                                                    TextAlignment="Right" VerticalAlignment="Center"
                                                    Opacity="0.7"/>
@@ -970,10 +971,10 @@
                                     <ui:FontIconSource FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE1B6;"/>
                                 </ui:SettingsExpander.IconSource>
                                 <ui:SettingsExpander.Footer>
-                                    <Grid MinWidth="300" MaxWidth="356" ColumnDefinitions="32,*,56,32" ColumnSpacing="8">
+                                    <Grid Width="356" ColumnDefinitions="32,180,64,32" ColumnSpacing="8">
                                         <Button Content="−" Padding="0" Click="OnMainScaleDecrease"/>
                                         <Slider Grid.Column="1" x:Name="MainWindowScaleSlider" Minimum="0.5" Maximum="4.0"
-                                                Margin="4,0" TickFrequency="0.05" IsSnapToTickEnabled="True"/>
+                                                TickFrequency="0.05" IsSnapToTickEnabled="True"/>
                                         <TextBlock Grid.Column="2" x:Name="MainWindowScaleValueText"
                                                    TextAlignment="Right" VerticalAlignment="Center"
                                                    Opacity="0.7"/>
@@ -1087,7 +1088,7 @@
                                                 <ui:SettingsExpander.Footer>
                                                     <StackPanel Orientation="Horizontal" Spacing="12">
                                                         <Slider x:Name="WidgetFontSlider" Minimum="0.6" Maximum="2.0"
-                                                                Width="200" Margin="4,0" TickFrequency="0.05" IsSnapToTickEnabled="True"/>
+                                                                Width="200" TickFrequency="0.05" IsSnapToTickEnabled="True"/>
                                                         <TextBlock x:Name="WidgetFontValueText" VerticalAlignment="Center" Opacity="0.7"/>
                                                     </StackPanel>
                                                 </ui:SettingsExpander.Footer>
@@ -1223,7 +1224,7 @@
                                 <Grid RowDefinitions="Auto,Auto" RowSpacing="20">
                                     <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="20">
                                         <Border x:Name="AccountPageAvatarRing" Width="88" Height="88"
-                                                CornerRadius="22" BorderThickness="4"/>
+                                                CornerRadius="44" BorderThickness="4" ClipToBounds="True"/>
 
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="6">
                                             <StackPanel Orientation="Horizontal" Spacing="10">

@@ -176,11 +176,28 @@ public static class CiPalette
 
     public static IBrush SettingsSurfaceBrush()
     {
-        if (TryResource("LayerFillColorDefaultBrush", out var brush))
-            return brush;
+        var brush = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+        };
 
-        return new SolidColorBrush(
-            IsDarkTheme() ? Color.Parse("#1F1F1F") : Color.Parse("#F3F3F3"));
+        if (IsDarkTheme())
+        {
+            brush.GradientStops.Add(new GradientStop(Color.Parse("#1A1118"), 0));
+            brush.GradientStops.Add(new GradientStop(Color.Parse("#24151E"), 0.42));
+            brush.GradientStops.Add(new GradientStop(Color.Parse("#2B1824"), 0.78));
+            brush.GradientStops.Add(new GradientStop(Color.Parse("#321B28"), 1));
+        }
+        else
+        {
+            brush.GradientStops.Add(new GradientStop(Color.Parse("#FFFCFD"), 0));
+            brush.GradientStops.Add(new GradientStop(Color.Parse("#FFF4F9"), 0.38));
+            brush.GradientStops.Add(new GradientStop(Color.Parse("#FFEAF3"), 0.76));
+            brush.GradientStops.Add(new GradientStop(Color.Parse("#FFE0EC"), 1));
+        }
+
+        return brush;
     }
 
     

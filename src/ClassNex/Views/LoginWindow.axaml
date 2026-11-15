@@ -141,7 +141,7 @@
                             Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}">
                         <StackPanel Orientation="Horizontal" Spacing="16">
                             <Border x:Name="DoneAvatar" Width="64" Height="64"
-                                    CornerRadius="16" BorderThickness="3"/>
+                                    CornerRadius="32" BorderThickness="3" ClipToBounds="True"/>
                             <StackPanel VerticalAlignment="Center" Spacing="4">
                                 <TextBlock x:Name="DoneNameText" FontSize="18"
                                            FontWeight="SemiBold"/>
@@ -168,7 +168,7 @@
                             Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}">
                         <StackPanel Orientation="Horizontal" Spacing="16">
                             <Border x:Name="CurrentAvatar" Width="64" Height="64"
-                                    CornerRadius="16" BorderThickness="3"/>
+                                    CornerRadius="32" BorderThickness="3" ClipToBounds="True"/>
                             <StackPanel VerticalAlignment="Center" Spacing="4">
                                 <TextBlock x:Name="CurrentNameText" FontSize="18"
                                            FontWeight="SemiBold"/>

@@ -136,8 +136,11 @@ public partial class SettingsWindow : AppWindow
     public SettingsWindow()
     {
         InitializeComponent();
-        ApplyWinUiChrome();
+        ApplySakuraChrome();
         SettingsRoot.Opacity = 0;
+
+        foreach (var item in NavView.MenuItems.OfType<Control>())
+            MetroTilt.Attach(item);
 
         Opened += (_, _) =>
         {
@@ -155,7 +158,7 @@ public partial class SettingsWindow : AppWindow
 
         if (Application.Current is { } app)
         {
-            _themeChangedHandler = (_, _) => Dispatcher.UIThread.Post(ApplyWinUiChrome);
+            _themeChangedHandler = (_, _) => Dispatcher.UIThread.Post(ApplySakuraChrome);
             app.ActualThemeVariantChanged += _themeChangedHandler;
             Closed += (_, _) => app.ActualThemeVariantChanged -= _themeChangedHandler;
         }
@@ -187,24 +190,18 @@ public partial class SettingsWindow : AppWindow
         AccountPanel.SizeChanged += (_, e) => ApplyAccountCompact(e.NewSize.Width < 150);
     }
 
-    private void ApplyWinUiChrome()
+    private void ApplySakuraChrome()
     {
         var brush = CiPalette.SettingsSurfaceBrush();
         Background = brush;
         SettingsRoot.Background = brush;
-        TopBarCapsule.Background =
-            CiPalette.SurfaceBrush("CardBackgroundFillColorDefaultBrush", 0.82);
-        TopBarCapsule.BorderBrush =
-            CiPalette.SurfaceBrush("CardStrokeColorDefaultBrush", 0.18);
-        HomeBrandTile.Background =
-            CiPalette.SurfaceBrush("AccentFillColorDefaultBrush", 0.16);
-        HomeBrandTile.BorderBrush =
-            CiPalette.SurfaceBrush("CardStrokeColorDefaultBrush", 0.24);
+        TopBarCapsule.Background = CiPalette.ChipSurfaceBrush();
+        TopBarCapsule.BorderBrush = CiPalette.ChipBorderBrush();
+        HomeBrandTile.Background = CiPalette.SakuraAccentTint(0.16);
+        HomeBrandTile.BorderBrush = CiPalette.SakuraAccentTint(0.30);
         HomeThemePreviewSystem.Background = CiPalette.SettingsSurfaceBrush();
-        HomeThemePreviewLight.Background =
-            CiPalette.SurfaceBrush("CardBackgroundFillColorDefaultBrush", 0.72);
-        HomeThemePreviewDark.Background =
-            CiPalette.SurfaceBrush("SolidBackgroundFillColorBaseBrush", 0.92);
+        HomeThemePreviewLight.Background = CiPalette.SakuraAccentTint(0.18);
+        HomeThemePreviewDark.Background = CiPalette.CardBrush;
     }
 
     private void PlayEntrance()
@@ -424,7 +421,7 @@ public partial class SettingsWindow : AppWindow
             AccountShift.X = 0;
             AccountAvatarRing.Width = 32;
             AccountAvatarRing.Height = 32;
-            AccountAvatarRing.CornerRadius = new CornerRadius(8);
+            AccountAvatarRing.CornerRadius = new CornerRadius(16);
             AccountAvatarRing.BorderThickness = new Thickness(2);
             AccountTextHost.Opacity = 0;
             AccountTextHost.IsHitTestVisible = false;
@@ -435,7 +432,7 @@ public partial class SettingsWindow : AppWindow
             AccountShift.X = 0;
             AccountAvatarRing.Width = 52;
             AccountAvatarRing.Height = 52;
-            AccountAvatarRing.CornerRadius = new CornerRadius(12);
+            AccountAvatarRing.CornerRadius = new CornerRadius(26);
             AccountAvatarRing.BorderThickness = new Thickness(3);
             AccountTextHost.Opacity = 1;
             AccountTextHost.IsHitTestVisible = true;
@@ -572,12 +569,12 @@ public partial class SettingsWindow : AppWindow
         AccountLoginButton.Content = loggedIn ? "切换账户" : "浏览器登录";
         AccountLogoutButton.IsVisible = loggedIn;
 
-        var accent = CiPalette.AccentBrush();
+        var accent = CiPalette.SakuraAccentBrush();
         AccountAvatarRing.BorderBrush = accent;
         HomeAccountAvatarRing.BorderBrush = accent;
         AccountPageAvatarRing.BorderBrush = accent;
-        AccountPageStatusBadge.Background = CiPalette.AccentTint(0.14);
-        AccountPageStatusBadge.BorderBrush = CiPalette.AccentTint(0.32);
+        AccountPageStatusBadge.Background = CiPalette.SakuraAccentTint(0.14);
+        AccountPageStatusBadge.BorderBrush = CiPalette.SakuraAccentTint(0.32);
         AccountPageStatusText.Foreground = accent;
 
         RefreshAvatarImages();
@@ -725,6 +722,7 @@ public partial class SettingsWindow : AppWindow
             PageSubtitleText.IsVisible = true;
             PageTitleText.Opacity = 1;
             MetroTransitions.Play(previousAccountPage, PageAccount, true, null, PageTitleText);
+            AttachTiltToPage(PageAccount);
             return;
         }
 
@@ -955,6 +953,8 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         PageSubtitleText.IsVisible = index != 0;
         PageTitleText.Opacity = 1;
         MetroTransitions.Play(previousPage, page, index >= previousIndex, null, PageTitleText);
+
+        AttachTiltToPage(page);
 
         if (index == 0)
             RefreshHomeGreeting();
@@ -1384,6 +1384,19 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             keepB.Opacity = 1;
             keepB.IsHitTestVisible = true;
         }
+    }
+
+    private static void AttachTiltToPage(Control page)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            foreach (var control in page.GetVisualDescendants().OfType<Control>())
+            {
+                var name = control.GetType().Name;
+                if (name is "SettingsCard" or "SettingsExpanderItem")
+                    MetroTilt.Attach(control);
+            }
+        }, DispatcherPriority.Background);
     }
 
     
@@ -1900,8 +1913,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             {
                 MinHeight = 88,
                 Padding = new Thickness(16, 12),
-                Background =
-                    CiPalette.SurfaceBrush("CardBackgroundFillColorDefaultBrush", 0.72),
+                Background = CiPalette.ChipSurfaceBrush(),
                 Child = sample,
             };
             var options = new Border
@@ -1910,8 +1922,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
                 Padding = new Thickness(16),
                 Background = CiPalette.SurfaceBrush("CardBackgroundFillColorSecondaryBrush", 0.06),
                 BorderThickness = new Thickness(1, 0, 0, 0),
-                BorderBrush =
-                    CiPalette.SurfaceBrush("CardStrokeColorDefaultBrush", 0.18),
+                BorderBrush = CiPalette.ChipBorderBrush(),
                 Child = new StackPanel
                 {
                     Spacing = 10,
@@ -1939,10 +1950,8 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             {
                 CornerRadius = new CornerRadius(8),
                 BorderThickness = new Thickness(1),
-                BorderBrush =
-                    CiPalette.SurfaceBrush("CardStrokeColorDefaultBrush", 0.18),
-                Background =
-                    CiPalette.SurfaceBrush("CardBackgroundFillColorDefaultBrush", 0.72),
+                BorderBrush = CiPalette.ChipBorderBrush(),
+                Background = CiPalette.ChipSurfaceBrush(),
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 ClipToBounds = true,
                 Child = exampleGrid,
