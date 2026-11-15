@@ -366,6 +366,7 @@ const showToast=(text,error=false)=>{
 const showLogin=()=>{$("loginScreen").classList.remove("hidden");$("appShell").classList.add("hidden")};
 const showApp=()=>{$("loginScreen").classList.add("hidden");$("appShell").classList.remove("hidden")};
 const setPageStatus=(id,text,error=false)=>{const el=$(id);el.textContent=text;el.className="status-line"+(error?" error":"")};
+const resetPageScroll=()=>{const main=document.querySelector("main");if(main)main.scrollTop=0};
 const getPathValue=(object,path)=>path.split(".").reduce((value,key)=>value?.[key],object);
 const setPathValue=(object,path,value)=>{
   const keys=path.split(".");
@@ -652,6 +653,7 @@ document.querySelectorAll("[data-class-tab]").forEach(item=>item.onclick=()=>{
   $("classSettingsPane").classList.toggle("hidden",state.classTab!=="settings");
   $("classTimetablePane").classList.toggle("hidden",state.classTab!=="timetable");
   $("saveClassButton").textContent=state.classTab==="settings"?"保存客户端设置":"保存课程表";
+  resetPageScroll();
 });
 $("weekTabs").onclick=event=>{
   const button=event.target.closest("[data-week]");
@@ -659,15 +661,21 @@ $("weekTabs").onclick=event=>{
   state.week=button.dataset.week;
   document.querySelectorAll("[data-week]").forEach(item=>item.classList.toggle("active",item.dataset.week===state.week));
   renderTimetable();
+  resetPageScroll();
 };
 
 const showPage=page=>{
   state.page=page;
+  resetPageScroll();
   document.querySelectorAll(".nav-item[data-page]").forEach(item=>item.classList.toggle("active",item.dataset.page===page));
   document.querySelectorAll(".page").forEach(item=>item.classList.toggle("active",item.dataset.pagePanel===page));
   if(page==="overview")renderOverview();
   if(page==="devices")renderDevices();
-  if(page==="classes")renderClasses();
+  if(page==="classes"){
+    renderClasses();
+    if(!state.selectedClassId&&state.classes.length)
+      void loadClass(state.classes[0].classId).then(resetPageScroll);
+  }
 };
 
 const applyUser=user=>{
@@ -686,6 +694,8 @@ const loadAll=async()=>{
   if(state.selectedClassId&&!state.classes.some(item=>item.classId===state.selectedClassId))state.selectedClassId="";
   if(state.selectedDeviceId&&!state.devices.some(item=>item.clientId===state.selectedDeviceId))state.selectedDeviceId="";
   renderOverview();renderDevices();renderClasses();
+  if(state.page==="classes"&&!state.selectedClassId&&state.classes.length)
+    void loadClass(state.classes[0].classId).then(resetPageScroll);
 };
 
 const loadSession=async()=>{
