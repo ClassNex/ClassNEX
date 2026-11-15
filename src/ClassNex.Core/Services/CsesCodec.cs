@@ -24,6 +24,9 @@ public static class CsesCodec
     public static ScheduleProfile Parse(string yaml) =>
         Deserializer.Deserialize<ScheduleProfile>(yaml) ?? new ScheduleProfile();
 
+    public static string Serialize(ScheduleProfile profile) =>
+        Serializer.Serialize(profile);
+
     public static void Save(ScheduleProfile profile, string path)
     {
         var dir = Path.GetDirectoryName(path);

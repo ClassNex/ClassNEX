@@ -36,7 +36,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：集控改为“管理端选设备、客户端不选班级”：客户端登录连接后只登记设备并轮询 `/api/v1/client/assignment`，管理端新增设备列表和班级分配 API，网页重做为 WinUI 库式左侧导航、中间工作区、右侧设备分配面板；主界面岛移除外部描边；组件库使用 ControlExample 全宽布局；集控统一 ClassNEX ID/STCN 登录；Casdoor 大令牌通过容器内网读取，动态资源由当前容器反向代理
+上次完成：集控课程与设置改为可视化编辑：客户端设置按 WinUI 风格分组，使用开关、下拉框、滑动条和文本输入；课程表采用参考 MornHeIsland 的科目池与星期 × 节次网格，支持每周/单周/双周、点格排课、直接改时间和增删节次，服务端完成结构化 JSON 与 CSES YAML 转换；管理端继续选择设备并分配班级，客户端不显示班级选择；集控统一 ClassNEX ID/STCN 登录
 改了文件：src/ClassNex.Central/*、src/ClassNex.Core/Models/AppSettings.cs、src/ClassNex.Core/Models/CentralManagement*.cs、src/ClassNex.Core/Services/SettingsService.cs、src/ClassNex.Core/Services/CentralManagementClient.cs、src/ClassNex/Services/CentralManagementService.cs、src/ClassNex/Views/MainWindow.axaml(.cs)、src/ClassNex/Views/SettingsWindow.axaml(.cs)、docs/CENTRAL_MANAGEMENT.md、HANDOFF.md、AGENTS.md
 进行中：无
 下一步：待用户指定

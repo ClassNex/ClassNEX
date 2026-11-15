@@ -41,7 +41,9 @@ dotnet run --project src\ClassNex.Central\ClassNex.Central.csproj --urls http://
 ## 管理端
 
 打开 `http://<服务器>:7010/`，点击“登录 ClassNEX ID”。
-登录后可创建班级、选择班级，并编辑完整的 `Settings.json` 与 `timetable.yaml`。
+登录后可创建班级、选择班级。客户端设置使用开关、下拉框、滑动条和文本框编辑，
+不必直接编写 JSON；课程表使用“科目池 + 星期 × 节次”网格编辑，支持每周、单周、双周、
+直接修改节次时间、增删节次和点击格子排课。
 设备连接页会显示已登记客户端，选择设备后可连接班级或断开班级。
 保存配置后修订号自动增加，被分配该班级的设备会在下一次轮询时应用。
 
@@ -71,6 +73,9 @@ dotnet run --project src\ClassNex.Central\ClassNex.Central.csproj --urls http://
 | POST | `/api/v1/classes` | 会话或 Bearer | 创建班级 |
 | GET | `/api/v1/classes/{id}` | 会话或 Bearer | 读取班级完整数据 |
 | PUT | `/api/v1/classes/{id}` | 会话或 Bearer | 发布设置和课程表 |
+| PUT | `/api/v1/classes/{id}/settings` | 会话或 Bearer | 保存可视化客户端设置 |
+| GET | `/api/v1/classes/{id}/timetable` | 会话或 Bearer | 读取结构化课程表 |
+| PUT | `/api/v1/classes/{id}/timetable` | 会话或 Bearer | 保存可视化课程表并转换为 CSES |
 | DELETE | `/api/v1/classes/{id}` | 会话或 Bearer | 删除班级 |
 | GET | `/api/v1/devices` | 会话或 Bearer | 当前账户已登记设备 |
 | PUT | `/api/v1/devices/{id}` | 会话或 Bearer | 选择设备并指定或断开班级 |

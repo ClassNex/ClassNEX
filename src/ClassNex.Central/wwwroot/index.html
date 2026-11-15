@@ -95,6 +95,58 @@
     .editor-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
     .editor-label{display:grid;gap:6px;font-size:12px;color:#d6d6d6}
     textarea{width:100%;height:calc(100vh - 340px);min-height:340px;resize:vertical;font:12px/1.55 ui-monospace,Cascadia Code,Consolas,monospace;white-space:pre}
+    .class-tabs{display:flex;gap:4px;border-bottom:1px solid var(--divider);margin:-4px 0 16px}
+    .class-tab{border:0;border-radius:0;background:transparent;padding:9px 12px;color:var(--muted);border-bottom:2px solid transparent}
+    .class-tab.active{color:var(--text);border-bottom-color:var(--accent);background:transparent}
+    .settings-form{display:grid;gap:14px}
+    .settings-group{border:1px solid var(--stroke);border-radius:8px;background:#292929;overflow:hidden}
+    .settings-group-head{padding:12px 15px;border-bottom:1px solid var(--divider);display:flex;align-items:center;gap:10px}
+    .settings-group-icon{width:24px;text-align:center;color:#d7d7d7}
+    .settings-group-title{font-size:14px;font-weight:600}
+    .settings-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,300px);gap:20px;align-items:center;padding:12px 15px;border-bottom:1px solid #383838}
+    .settings-row:last-child{border-bottom:0}
+    .settings-label{font-size:13px}.settings-desc{font-size:11px;color:var(--muted);line-height:1.5;margin-top:3px}
+    .settings-control{justify-self:end;width:100%;display:flex;justify-content:flex-end;align-items:center;gap:10px}
+    .settings-control input[type=text],.settings-control input[type=password],.settings-control input[type=date],.settings-control select,.settings-control textarea{width:100%;max-width:300px}
+    .settings-control textarea{height:84px;min-height:84px;font:12px/1.5 "Segoe UI","Microsoft YaHei UI",sans-serif}
+    .range-wrap{display:grid;grid-template-columns:minmax(120px,1fr) 62px;gap:10px;align-items:center;width:100%;max-width:300px}
+    input[type=range]{accent-color:var(--accent);width:100%}
+    output{font-size:12px;color:#d6d6d6;text-align:right}
+    .switch{position:relative;display:inline-flex;width:42px;height:24px;flex:0 0 auto}
+    .switch input{position:absolute;opacity:0;pointer-events:none}
+    .switch-track{width:42px;height:24px;border-radius:12px;background:#565656;border:1px solid #707070;transition:background .16s,border-color .16s}
+    .switch-track:after{content:"";position:absolute;width:16px;height:16px;left:4px;top:4px;border-radius:50%;background:#d7d7d7;transition:transform .16s,background .16s}
+    .switch input:checked+.switch-track{background:#0a84ff;border-color:#0a84ff}
+    .switch input:checked+.switch-track:after{transform:translateX(18px);background:#fff}
+    .widget-grid{display:grid;gap:8px;padding:10px 15px 15px}
+    .widget-row{display:grid;grid-template-columns:minmax(110px,1fr) 44px minmax(130px,190px);gap:12px;align-items:center;padding:9px 10px;border:1px solid #414141;border-radius:7px;background:#303030}
+    .widget-name{font-size:12px}.widget-scale{font-size:11px;color:var(--muted);text-align:right}
+    .timetable-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+    .segmented{display:inline-flex;border:1px solid var(--stroke);border-radius:6px;overflow:hidden}
+    .segmented button{border:0;border-radius:0;background:#292929;padding:7px 12px;border-right:1px solid var(--stroke)}
+    .segmented button:last-child{border-right:0}.segmented button.active{background:#0a84ff;color:#fff}
+    .timetable-layout{display:grid;grid-template-columns:190px minmax(0,1fr);gap:12px;align-items:start}
+    .subject-panel{border:1px solid var(--stroke);border-radius:8px;background:#292929;padding:10px;position:sticky;top:14px}
+    .subject-add{display:grid;grid-template-columns:minmax(0,1fr) 32px;gap:5px;margin-bottom:9px}
+    .subject-add input{padding:6px 8px;font-size:12px}.subject-add button{padding:0}
+    .subject-chips{display:grid;gap:5px;max-height:310px;overflow:auto}
+    .subject-chip{display:flex;align-items:center;justify-content:space-between;gap:6px;border:1px solid #484848;border-radius:6px;padding:7px 8px;background:#303030;font-size:12px;cursor:pointer}
+    .subject-chip.active{border-color:var(--accent);background:var(--accent-soft)}
+    .subject-chip button{width:22px;height:22px;padding:0;border:0;background:transparent;color:#bbb;font-size:13px}
+    .subject-details{display:grid;gap:6px;border-top:1px solid var(--divider);margin-top:10px;padding-top:10px}
+    .subject-details input{padding:6px 8px;font-size:12px}
+    .timetable-scroll{overflow:auto;border:1px solid var(--stroke);border-radius:8px;background:#292929;max-height:calc(100vh - 300px)}
+    .timetable-table{border-collapse:separate;border-spacing:0;width:100%;min-width:920px;table-layout:fixed}
+    .timetable-table th{position:sticky;top:0;z-index:2;background:#303030;border-bottom:1px solid var(--stroke);border-right:1px solid #3d3d3d;padding:9px 6px;font-size:11px;font-weight:500;color:#d6d6d6}
+    .timetable-table td{border-bottom:1px solid #3b3b3b;border-right:1px solid #3b3b3b;padding:5px;vertical-align:top;background:#282828}
+    .timetable-table th:first-child,.timetable-table td:first-child{width:150px;position:sticky;left:0;z-index:1;background:#303030}
+    .slot-editor{display:grid;gap:3px}.slot-name{font-size:11px;color:#ddd}.slot-time{display:grid;grid-template-columns:1fr 1fr;gap:3px}
+    .slot-time input{width:100%;padding:4px;font-size:10px;background:#272727}
+    .slot-actions{display:flex;gap:3px;margin-top:3px}.slot-actions button{padding:2px 5px;font-size:10px;min-width:0}
+    .lesson-cell{min-height:52px;border-radius:5px;border:1px solid #484848;background:#303030;display:flex;align-items:center;justify-content:center;text-align:center;font-size:12px;cursor:default;padding:5px;transition:background .12s,border-color .12s}
+    .lesson-cell:hover{background:#373737}.lesson-cell.filled{border-color:#3f88b4;background:#173a4c;color:#c7efff}
+    .lesson-cell.pickable{cursor:pointer}.lesson-cell.empty{color:#858585}
+    .timetable-hint{font-size:11px;color:var(--muted);line-height:1.6;margin-top:8px}
     .empty-state{border:1px dashed #505050;border-radius:8px;padding:34px 20px;text-align:center;color:var(--muted);font-size:13px}
     .status-line{border-top:1px solid var(--divider);padding:12px 16px;font-size:11px;color:var(--muted);min-height:42px;overflow-wrap:anywhere}
     .status-line.error{color:var(--red)}
@@ -110,7 +162,7 @@
     .login-card .button{min-width:180px}
     .toast{position:fixed;right:24px;bottom:24px;max-width:440px;padding:12px 15px;border-radius:8px;background:#333;border:1px solid #555;box-shadow:0 18px 48px #0008;font-size:12px;opacity:0;transform:translateY(10px);pointer-events:none;transition:opacity .16s,transform .16s;z-index:10}
     .toast.show{opacity:1;transform:none}.toast.error{border-color:#8a4848;background:#422929}
-    @media(max-width:1100px){.workbench{grid-template-columns:minmax(0,1fr)}.options-pane{position:static}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:1100px){.workbench{grid-template-columns:minmax(0,1fr)}.options-pane{position:static}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.timetable-layout{grid-template-columns:160px minmax(0,1fr)}}
     @media(max-width:820px){.titlebar{grid-template-columns:1fr auto}.search{display:none}.layout{grid-template-columns:78px minmax(0,1fr)}.sidebar{padding:10px 6px}.brand-text,.nav-text,.sidebar-foot .profile>div:last-child,.sidebar-foot .button span{display:none}.nav-item{justify-content:center}.profile{grid-template-columns:1fr;justify-items:center}.page-inner{padding:20px}.editor-grid{grid-template-columns:1fr}textarea{height:42vh}.stats{grid-template-columns:1fr 1fr}}
   </style>
 </head>
@@ -219,9 +271,40 @@
             <section class="workspace-card">
               <h2 id="classEditorTitle" class="section-title">选择班级</h2>
               <div id="classMeta" class="muted small" style="margin:-5px 0 14px">从右侧选择一个班级开始编辑。</div>
-              <div class="editor-grid">
-                <label class="editor-label">Settings.json<textarea id="settingsEditor" spellcheck="false" disabled></textarea></label>
-                <label class="editor-label">timetable.yaml<textarea id="timetableEditor" spellcheck="false" disabled></textarea></label>
+              <div class="class-tabs">
+                <button class="class-tab active" data-class-tab="settings">客户端设置</button>
+                <button class="class-tab" data-class-tab="timetable">课程表</button>
+              </div>
+              <div id="classSettingsPane">
+                <div id="settingsForm" class="settings-form"></div>
+              </div>
+              <div id="classTimetablePane" class="hidden">
+                <div class="timetable-toolbar">
+                  <div class="segmented" id="weekTabs">
+                    <button class="active" data-week="all">每周</button>
+                    <button data-week="odd">单周</button>
+                    <button data-week="even">双周</button>
+                  </div>
+                  <button id="addTimeSlotButton">＋ 添加节次</button>
+                  <span class="small muted">选择科目后点击格子填入；再次点击已选科目可取消选择，再点格子清空。</span>
+                </div>
+                <div class="timetable-layout">
+                  <aside class="subject-panel">
+                    <div class="options-label">科目池</div>
+                    <div class="subject-add"><input id="newSubjectName" placeholder="添加科目"><button id="addSubjectButton" title="添加科目">＋</button></div>
+                    <div id="subjectChips" class="subject-chips"></div>
+                    <div id="subjectDetails" class="subject-details hidden">
+                      <input id="subjectSimplifiedInput" placeholder="简称">
+                      <input id="subjectTeacherInput" placeholder="教师">
+                    </div>
+                  </aside>
+                  <div>
+                    <div class="timetable-scroll">
+                      <table id="timetableTable" class="timetable-table"></table>
+                    </div>
+                    <div class="timetable-hint">节次时间可直接修改。单周或双周编辑时会先复制每周课表作为基础，再保存该周次的差异。</div>
+                  </div>
+                </div>
               </div>
             </section>
             <aside class="options-pane">
@@ -257,7 +340,7 @@
 <div id="toast" class="toast"></div>
 
 <script>
-const state={user:null,classes:[],devices:[],selectedClassId:"",selectedDeviceId:"",page:"devices",query:""};
+const state={user:null,classes:[],devices:[],selectedClassId:"",selectedDeviceId:"",page:"devices",query:"",classTab:"settings",settings:null,timetable:null,week:"all",selectedSubject:"",timeSlots:[]};
 const $=id=>document.getElementById(id);
 const api=async(path,options={})=>{
   const response=await fetch(path,{...options,headers:{"Content-Type":"application/json",...(options.headers||{})}});
@@ -283,6 +366,300 @@ const showToast=(text,error=false)=>{
 const showLogin=()=>{$("loginScreen").classList.remove("hidden");$("appShell").classList.add("hidden")};
 const showApp=()=>{$("loginScreen").classList.add("hidden");$("appShell").classList.remove("hidden")};
 const setPageStatus=(id,text,error=false)=>{const el=$(id);el.textContent=text;el.className="status-line"+(error?" error":"")};
+const getPathValue=(object,path)=>path.split(".").reduce((value,key)=>value?.[key],object);
+const setPathValue=(object,path,value)=>{
+  const keys=path.split(".");
+  let target=object;
+  for(let i=0;i<keys.length-1;i++){
+    if(!target[keys[i]]||typeof target[keys[i]]!=="object"||Array.isArray(target[keys[i]]))target[keys[i]]={};
+    target=target[keys[i]];
+  }
+  target[keys.at(-1)]=value;
+};
+const settingsGroups=[
+  {
+    title:"外观与缩放",
+    icon:"◐",
+    fields:[
+      {key:"ThemeMode",label:"主题",description:"跟随系统，或强制使用浅色、深色主题。",kind:"select",fallback:"system",options:[{value:"system",label:"跟随系统"},{value:"light",label:"浅色"},{value:"dark",label:"深色"}]},
+      {key:"BackgroundOpacity",label:"背景不透明度",description:"主界面背景的整体不透明度。",kind:"range",min:.05,max:1,step:.01,fallback:.5,format:value=>Math.round(value*100)+"%" },
+      {key:"HoverOpacity",label:"悬停淡化透明度",description:"鼠标移入主界面后保留的最低透明度。",kind:"range",min:.01,max:.5,step:.01,fallback:.05,format:value=>Math.round(value*100)+"%" },
+      {key:"MainWindowScale",label:"主界面缩放",description:"调整悬浮课表整体大小。",kind:"range",min:1,max:3,step:.05,fallback:1.9,format:value=>Math.round(value*100)+"%" },
+      {key:"FontScale",label:"字号缩放",description:"单独调整主界面文字大小。",kind:"range",min:.5,max:2,step:.05,fallback:1,format:value=>Math.round(value*100)+"%" },
+      {key:"Orientation",label:"组件排列方向",description:"横向或纵向排列主界面组件。",kind:"select",fallback:0,options:[{value:0,label:"横向"},{value:1,label:"纵向"}]},
+      {key:"Topmost",label:"强制置顶",description:"让主界面始终显示在其他窗口上方。",kind:"toggle",fallback:true},
+      {key:"IsClickThrough",label:"鼠标穿透",description:"鼠标点击直接落到下层窗口；鼠标移入时仍会淡化。",kind:"toggle",fallback:true},
+      {key:"ShowStartupSplash",label:"显示启动画面",description:"应用启动时显示启动动画。",kind:"toggle",fallback:true}
+    ],
+    widgets:true
+  },
+  {
+    title:"启动与课表周期",
+    icon:"▤",
+    fields:[
+      {key:"RunAtStartup",label:"开机自启",description:"登录 Windows 后自动启动 ClassNEX。",kind:"toggle",fallback:false},
+      {key:"RegisterUrlProtocol",label:"注册 URL 协议",description:"允许网页通过 classnex:// 调用应用。",kind:"toggle",fallback:false},
+      {key:"IsMainWindowVisible",label:"显示主界面",description:"启动后显示悬浮课表。",kind:"toggle",fallback:true},
+      {key:"TeachingSafeMode",label:"教学安全模式",description:"应用出现未处理异常时优先保护课堂显示。",kind:"toggle",fallback:false},
+      {key:"CrashHandlingMode",label:"崩溃处理",description:"选择应用异常时的处理方式。",kind:"select",fallback:0,options:[{value:0,label:"显示崩溃报告"},{value:1,label:"忽略并继续"},{value:2,label:"重新启动应用"}]},
+      {key:"TrayClickBehavior",label:"托盘单击行为",description:"单击系统托盘图标时执行的操作。",kind:"select",fallback:0,options:[{value:0,label:"显示 / 隐藏主界面"},{value:1,label:"打开应用设置"},{value:2,label:"打开档案编辑器"}]},
+      {key:"WeekRotationOffset",label:"周次偏移",description:"调整单双周计算中当前周的偏移。",kind:"range",min:-20,max:20,step:1,fallback:0,format:value=>String(value)},
+      {key:"SingleWeekStartTime",label:"单周开始日期",description:"用于计算单双周和学期周次。",kind:"date",fallback:""},
+      {key:"SemesterStartDate",label:"学期开始日期",description:"设置当前学期的第一天。",kind:"date",fallback:""},
+      {key:"DefaultOnClassTimePointMinutes",label:"默认课程时长",description:"创建新课程时默认占用的分钟数。",kind:"range",min:5,max:120,step:5,fallback:40,format:value=>value+" 分钟"},
+      {key:"DefaultBreakingTimePointMinutes",label:"默认课间时长",description:"创建新课间时默认占用的分钟数。",kind:"range",min:0,max:60,step:5,fallback:10,format:value=>value+" 分钟"},
+      {key:"Language",label:"界面语言",description:"客户端设置界面的显示语言。",kind:"select",fallback:"zh-CN",options:[{value:"zh-CN",label:"简体中文"},{value:"en-US",label:"English"}]}
+    ]
+  },
+  {
+    title:"课堂提醒",
+    icon:"◉",
+    fields:[
+      {key:"AllowNotification",label:"允许通知",description:"启用所有课堂通知。",kind:"toggle",fallback:true},
+      {key:"AllowNotificationEffect",label:"通知特效",description:"启用遮罩、涟漪和浮层等视觉效果。",kind:"toggle",fallback:true},
+      {key:"AllowMinorNotification",label:"次要通知",description:"允许非关键状态提醒。",kind:"toggle",fallback:true},
+      {key:"Notification.IsClassOnNotificationEnabled",label:"上课提醒",description:"正式上课时显示提醒。",kind:"toggle",fallback:true},
+      {key:"Notification.IsClassOnPreparingNotificationEnabled",label:"课前准备提醒",description:"上课前显示准备提醒。",kind:"toggle",fallback:true},
+      {key:"Notification.IsClassOffNotificationEnabled",label:"下课提醒",description:"下课时显示休息信息。",kind:"toggle",fallback:true},
+      {key:"Notification.InDoorClassPreparingDeltaTime",label:"室内课前提前量",description:"距离上课多少秒开始提醒。",kind:"range",min:10,max:600,step:10,fallback:60,format:value=>value+" 秒"},
+      {key:"Notification.OutDoorClassPreparingDeltaTime",label:"室外课前提前量",description:"室外课程提前多少秒提醒。",kind:"range",min:30,max:1800,step:30,fallback:600,format:value=>value+" 秒"},
+      {key:"Notification.ClassOnBreakReminderMinutes",label:"下课前准备提醒",description:"课间剩余多少分钟时提醒下节课。",kind:"range",min:1,max:20,step:1,fallback:3,format:value=>value+" 分钟"},
+      {key:"Notification.ClassOnPreparingMaskText",label:"课前遮罩标题",description:"课前准备遮罩上的标题。",kind:"text",fallback:"即将上课"},
+      {key:"Notification.ClassOnPreparingText",label:"课前准备文案",description:"室内课程课前准备提示。",kind:"textarea",fallback:""},
+      {key:"Notification.OutdoorClassOnPreparingText",label:"室外准备文案",description:"室外课程的课前准备提示。",kind:"textarea",fallback:""},
+      {key:"Notification.ClassOnMaskText",label:"上课标题",description:"正式上课遮罩上的标题。",kind:"text",fallback:"上课"},
+      {key:"Notification.ClassOffMaskText",label:"下课标题",description:"下课遮罩上的标题。",kind:"text",fallback:"课间休息"},
+      {key:"Notification.ShowTeacherName",label:"显示教师名",description:"提醒中显示科任教师姓名。",kind:"toggle",fallback:false}
+    ]
+  },
+  {
+    title:"NEX Intelligence",
+    icon:"✦",
+    fields:[
+      {key:"IsNexIntelligenceEnabled",label:"启用 NEX",description:"启用内置智能助手。",kind:"toggle",fallback:true},
+      {key:"IsNexVoiceWakeEnabled",label:"语音唤醒",description:"允许通过唤醒词启动 NEX。",kind:"toggle",fallback:true},
+      {key:"IsNexEdgeBarEnabled",label:"屏幕边缘唤醒",description:"显示屏幕边缘的 NEX 唤醒条。",kind:"toggle",fallback:true},
+      {key:"NexEdgeBarSide",label:"唤醒条位置",description:"选择边缘唤醒条所在的一侧。",kind:"select",fallback:"right",options:[{value:"left",label:"左侧"},{value:"right",label:"右侧"}]},
+      {key:"NexPermission",label:"工具权限",description:"限制 NEX 可以执行的本地操作。",kind:"select",fallback:"readonly",options:[{value:"readonly",label:"仅查看"},{value:"workspace",label:"工作区内修改"},{value:"full",label:"完全权限"}]},
+      {key:"NexApiBaseUrl",label:"API 地址",description:"OpenAI 兼容接口的基础地址。",kind:"text",fallback:""},
+      {key:"NexApiKey",label:"API 密钥",description:"只保存在客户端设置中。",kind:"password",fallback:""},
+      {key:"NexModel",label:"模型",description:"默认使用的模型名称。",kind:"text",fallback:""},
+      {key:"NexSystemPrompt",label:"系统提示词",description:"给 NEX 的附加行为说明。",kind:"textarea",fallback:""}
+    ]
+  }
+];
+const widgetNames={text:"文本",separator:"分割线",schedule:"课程表",date:"日期",clock:"时钟",current:"当前·下节课",countdown:"倒计时"};
+const settingsFieldMap=new Map(settingsGroups.flatMap(group=>group.fields.map(field=>[field.key,field])));
+const settingValue=field=>{
+  const value=getPathValue(state.settings||{},field.key);
+  return value===undefined||value===null?field.fallback:value;
+};
+const selectOptions=field=>field.options.map(option=>({value:option.value===undefined?option:option.value,label:option.label===undefined?String(option):option.label}));
+const renderSettingControl=field=>{
+  const value=settingValue(field);
+  const common=`data-setting="${escapeHtml(field.key)}"`;
+  if(field.kind==="toggle")return `<label class="switch"><input type="checkbox" ${common} ${value===true?"checked":""}><span class="switch-track"></span></label>`;
+  if(field.kind==="range")return `<div class="range-wrap"><input type="range" ${common} min="${field.min}" max="${field.max}" step="${field.step}" value="${Number(value)}"><output>${escapeHtml(field.format?field.format(Number(value)):String(value))}</output></div>`;
+  if(field.kind==="select")return `<select ${common}>${selectOptions(field).map(option=>`<option value="${escapeHtml(option.value)}"${String(option.value)===String(value)?" selected":""}>${escapeHtml(option.label)}</option>`).join("")}</select>`;
+  if(field.kind==="textarea")return `<textarea ${common} spellcheck="false">${escapeHtml(value??"")}</textarea>`;
+  if(field.kind==="date")return `<input type="date" ${common} value="${escapeHtml(String(value||"").slice(0,10))}">`;
+  return `<input type="${field.kind==="password"?"password":"text"}" ${common} value="${escapeHtml(value??"")}" spellcheck="false">`;
+};
+const renderWidgetSettings=()=>{
+  const widgets=state.settings?.Widgets||[];
+  if(!widgets.length)return '<div class="widget-grid"><div class="empty-state">当前没有主界面组件。</div></div>';
+  return `<div class="widget-grid">${widgets.map((widget,index)=>`<div class="widget-row"><div class="widget-name">${escapeHtml(widgetNames[widget.Type]||widget.Type)}</div><label class="switch"><input type="checkbox" data-widget-index="${index}" data-widget-prop="IsEnabled" ${widget.IsEnabled!==false?"checked":""}><span class="switch-track"></span></label><div><input type="range" data-widget-index="${index}" data-widget-prop="FontScale" min="0.5" max="2" step="0.05" value="${Number(widget.FontScale||1)}"><div class="widget-scale">字号 ${Math.round(Number(widget.FontScale||1)*100)}%</div></div></div>`).join("")}</div>`;
+};
+const renderSettingsForm=()=>{
+  const root=$("settingsForm");
+  if(!state.settings){root.innerHTML='<div class="empty-state">选择班级后可编辑客户端设置。</div>';return}
+  root.innerHTML=settingsGroups.map(group=>`<section class="settings-group"><div class="settings-group-head"><span class="settings-group-icon">${group.icon}</span><span class="settings-group-title">${escapeHtml(group.title)}</span></div>${group.fields.map(field=>`<div class="settings-row"><div><div class="settings-label">${escapeHtml(field.label)}</div><div class="settings-desc">${escapeHtml(field.description)}</div></div><div class="settings-control">${renderSettingControl(field)}</div></div>`).join("")}${group.widgets?renderWidgetSettings():""}</section>`).join("");
+};
+const handleSettingInput=event=>{
+  const element=event.target;
+  if(!(element instanceof HTMLInputElement||element instanceof HTMLSelectElement||element instanceof HTMLTextAreaElement))return;
+  if(element.dataset.setting){
+    const field=settingsFieldMap.get(element.dataset.setting);
+    if(!field)return;
+    let value=element.type==="checkbox"?element.checked:element.value;
+    if(field.kind==="range")value=Number(value);
+    if(field.kind==="select"&&typeof field.options[0]?.value==="number")value=Number(value);
+    if(field.kind==="date")value=value?value+"T00:00:00":null;
+    setPathValue(state.settings,field.key,value);
+    if(field.kind==="range"&&element.nextElementSibling instanceof HTMLOutputElement)element.nextElementSibling.textContent=field.format?field.format(Number(value)):String(value);
+  }
+  if(element.dataset.widgetIndex!==undefined){
+    const widget=state.settings?.Widgets?.[Number(element.dataset.widgetIndex)];
+    if(!widget)return;
+    const property=element.dataset.widgetProp;
+    widget[property]=element.type==="checkbox"?element.checked:Number(element.value);
+    if(property==="FontScale"){
+      const output=element.parentElement?.querySelector(".widget-scale");
+      if(output)output.textContent=`字号 ${Math.round(Number(element.value)*100)}%`;
+    }
+  }
+};
+$("settingsForm").addEventListener("input",handleSettingInput);
+$("settingsForm").addEventListener("change",handleSettingInput);
+
+const normalizeTimetable=source=>{
+  const raw=source||{};
+  return {
+    version:raw.version??raw.Version??1,
+    subjects:(raw.subjects??raw.Subjects??[]).map(item=>({name:item.name??item.Name??"",simplifiedName:item.simplifiedName??item.SimplifiedName??"",teacher:item.teacher??item.Teacher??"",room:item.room??item.Room??""})),
+    schedules:(raw.schedules??raw.Schedules??[]).map(item=>({name:item.name??item.Name??"",enableDay:Number(item.enableDay??item.EnableDay??1),weeks:String(item.weeks??item.Weeks??"all"),classes:(item.classes??item.Classes??[]).map(course=>({subject:course.subject??course.Subject??"",startTime:course.startTime??course.StartTime??"08:00:00",endTime:course.endTime??course.EndTime??"08:45:00"}))}))
+  };
+};
+const minutesToClock=minutes=>{const value=Math.max(0,Math.min(1439,minutes));return String(Math.floor(value/60)).padStart(2,"0")+":"+String(value%60).padStart(2,"0")+":00"};
+const clockToMinutes=value=>{const parts=String(value||"00:00").slice(0,5).split(":");return (Number(parts[0])||0)*60+(Number(parts[1])||0)};
+const clockInput=value=>String(value||"00:00:00").slice(0,5);
+const sameClock=(left,right)=>clockInput(left)===clockInput(right);
+const ensureTimeSlots=()=>{
+  const found=new Map();
+  for(const schedule of state.timetable?.schedules||[])for(const course of schedule.classes||[])found.set(clockInput(course.startTime)+"|"+clockInput(course.endTime),{start:course.startTime,end:course.endTime});
+  if(!found.size){
+    const start=clockToMinutes("08:00");
+    const lesson=Number(settingValue(settingsFieldMap.get("DefaultOnClassTimePointMinutes"))||40);
+    const rest=Math.max(5,Number(settingValue(settingsFieldMap.get("DefaultBreakingTimePointMinutes"))||10));
+    for(let i=0;i<8;i++){
+      const startAt=start+i*(lesson+rest);
+      found.set(minutesToClock(startAt)+"|"+minutesToClock(startAt+lesson),{start:minutesToClock(startAt),end:minutesToClock(startAt+lesson)});
+    }
+  }
+  state.timeSlots=[...found.values()].sort((a,b)=>clockToMinutes(a.start)-clockToMinutes(b.start));
+};
+const scheduleFor=day=>state.timetable.schedules.find(item=>Number(item.enableDay)===day&&item.weeks===state.week);
+const ensureEditableSchedule=day=>{
+  let schedule=scheduleFor(day);
+  if(schedule)return schedule;
+  const all=state.timetable.schedules.find(item=>Number(item.enableDay)===day&&item.weeks==="all");
+  const baseClasses=(all?.classes||[]).map(course=>({...course}));
+  if(all&&state.week!=="all"){
+    const other=state.week==="odd"?"even":"odd";
+    if(!state.timetable.schedules.some(item=>Number(item.enableDay)===day&&item.weeks===other)){
+      state.timetable.schedules.push({name:["周一","周二","周三","周四","周五","周六","周日"][day-1],enableDay:day,weeks:other,classes:(all.classes||[]).map(course=>({...course}))});
+    }
+    state.timetable.schedules=state.timetable.schedules.filter(item=>!(Number(item.enableDay)===day&&item.weeks==="all"));
+  }
+  schedule={name:["周一","周二","周三","周四","周五","周六","周日"][day-1],enableDay:day,weeks:state.week,classes:baseClasses};
+  state.timetable.schedules.push(schedule);
+  return schedule;
+};
+const courseInSchedule=(schedule,slot)=>schedule?.classes?.find(course=>sameClock(course.startTime,slot.start)&&sameClock(course.endTime,slot.end));
+const effectiveCourse=(day,slot)=>{
+  const exactSchedule=scheduleFor(day);
+  const exact=courseInSchedule(exactSchedule,slot);
+  if(state.week!=="all"&&!exactSchedule)
+    return courseInSchedule(state.timetable.schedules.find(item=>Number(item.enableDay)===day&&item.weeks==="all"),slot);
+  return exact;
+};
+const renderSubjectPanel=()=>{
+  const chips=$("subjectChips");
+  chips.innerHTML=(state.timetable?.subjects||[]).map((subject,index)=>`<div class="subject-chip${subject.name===state.selectedSubject?" active":""}" data-subject-index="${index}"><span>${escapeHtml(subject.name)}</span><button data-remove-subject="${index}" title="删除科目">×</button></div>`).join("")||'<div class="small muted">还没有科目</div>';
+  const selected=(state.timetable?.subjects||[]).find(item=>item.name===state.selectedSubject);
+  $("subjectDetails").classList.toggle("hidden",!selected);
+  if(selected){
+    $("subjectSimplifiedInput").value=selected.simplifiedName||"";
+    $("subjectTeacherInput").value=selected.teacher||"";
+  }
+};
+const renderTimetable=()=>{
+  ensureTimeSlots();
+  renderSubjectPanel();
+  const days=["周一","周二","周三","周四","周五","周六","周日"];
+  const table=$("timetableTable");
+  table.innerHTML=`<thead><tr><th>节次与时间</th>${days.map(day=>`<th>${day}</th>`).join("")}</tr></thead><tbody>${state.timeSlots.map((slot,index)=>`<tr><td><div class="slot-editor"><div class="slot-name">第 ${index+1} 节</div><div class="slot-time"><input type="time" data-slot-index="${index}" data-slot-part="start" value="${clockInput(slot.start)}"><input type="time" data-slot-index="${index}" data-slot-part="end" value="${clockInput(slot.end)}"></div><div class="slot-actions"><button class="danger" data-delete-slot="${index}">删除</button></div></div></td>${days.map((_,dayIndex)=>{const day=dayIndex+1;const course=effectiveCourse(day,slot);return `<td><div class="lesson-cell ${course?"filled":"empty"} ${state.selectedSubject?"pickable":""}" data-cell-day="${day}" data-cell-slot="${index}">${course?escapeHtml(course.subject||course.subjectName||"已排课"):"点击排课"}</div></td>`}).join("")}</tr>`).join("")}</tbody>`;
+};
+const setLessonCell=day=>event=>{
+  const slotIndex=Number(event.currentTarget.dataset.cellSlot);
+  const slot=state.timeSlots[slotIndex];
+  if(!slot)return;
+  const schedule=ensureEditableSchedule(day);
+  schedule.classes=schedule.classes.filter(course=>!(sameClock(course.startTime,slot.start)&&sameClock(course.endTime,slot.end)));
+  if(state.selectedSubject)schedule.classes.push({subject:state.selectedSubject,startTime:slot.start,endTime:slot.end});
+  renderTimetable();
+};
+const addSubject=()=>{
+  const name=$("newSubjectName").value.trim();
+  if(!name)return showToast("请输入科目名称",true);
+  if(state.timetable.subjects.some(item=>item.name===name))return showToast("科目已存在",true);
+  state.timetable.subjects.push({name,simplifiedName:name.slice(0,1),teacher:"",room:""});
+  $("newSubjectName").value="";state.selectedSubject=name;renderTimetable();
+};
+const removeSubject=index=>{
+  const subject=state.timetable.subjects[index];
+  if(!subject)return;
+  if(!confirm(`删除科目“${subject.name}”？课表中的相关课程也会被清除。`))return;
+  state.timetable.subjects.splice(index,1);
+  for(const schedule of state.timetable.schedules)schedule.classes=schedule.classes.filter(course=>course.subject!==subject.name);
+  if(state.selectedSubject===subject.name)state.selectedSubject="";
+  renderTimetable();
+};
+const addTimeSlot=()=>{
+  const last=state.timeSlots.at(-1);
+  const lesson=Number(settingValue(settingsFieldMap.get("DefaultOnClassTimePointMinutes"))||40);
+  const rest=Math.max(5,Number(settingValue(settingsFieldMap.get("DefaultBreakingTimePointMinutes"))||10));
+  const start=last?clockToMinutes(last.end)+rest:clockToMinutes("08:00");
+  state.timeSlots.push({start:minutesToClock(start),end:minutesToClock(start+lesson)});
+  renderTimetable();
+};
+const changeTimeSlot=(index,part,value)=>{
+  const slot=state.timeSlots[index];
+  if(!slot||!value)return;
+  const oldStart=slot.start,oldEnd=slot.end;
+  slot[part]=value+(value.length===5?":00":"");
+  for(const schedule of state.timetable.schedules)for(const course of schedule.classes){
+    if(sameClock(course.startTime,oldStart)&&sameClock(course.endTime,oldEnd)){
+      course.startTime=slot.start;course.endTime=slot.end;
+    }
+  }
+  renderTimetable();
+};
+const deleteTimeSlot=index=>{
+  const slot=state.timeSlots[index];
+  if(!slot)return;
+  for(const schedule of state.timetable.schedules)schedule.classes=schedule.classes.filter(course=>!(sameClock(course.startTime,slot.start)&&sameClock(course.endTime,slot.end)));
+  state.timeSlots.splice(index,1);
+  renderTimetable();
+};
+$("subjectChips").onclick=event=>{
+  const remove=event.target.closest("[data-remove-subject]");
+  if(remove){event.stopPropagation();removeSubject(Number(remove.dataset.removeSubject));return}
+  const chip=event.target.closest("[data-subject-index]");
+  if(!chip)return;
+  const subject=state.timetable.subjects[Number(chip.dataset.subjectIndex)];
+  state.selectedSubject=state.selectedSubject===subject.name?"":subject.name;
+  renderTimetable();
+};
+$("subjectSimplifiedInput").oninput=event=>{const subject=state.timetable?.subjects.find(item=>item.name===state.selectedSubject);if(subject)subject.simplifiedName=event.target.value};
+$("subjectTeacherInput").oninput=event=>{const subject=state.timetable?.subjects.find(item=>item.name===state.selectedSubject);if(subject)subject.teacher=event.target.value};
+$("addSubjectButton").onclick=addSubject;
+$("newSubjectName").onkeydown=event=>{if(event.key==="Enter")addSubject()};
+$("addTimeSlotButton").onclick=addTimeSlot;
+$("timetableTable").addEventListener("change",event=>{
+  const input=event.target;
+  if(input.dataset.slotIndex!==undefined&&input.dataset.slotPart)changeTimeSlot(Number(input.dataset.slotIndex),input.dataset.slotPart,input.value);
+});
+$("timetableTable").addEventListener("click",event=>{
+  const remove=event.target.closest("[data-delete-slot]");
+  if(remove){deleteTimeSlot(Number(remove.dataset.deleteSlot));return}
+  const cell=event.target.closest("[data-cell-day]");
+  if(cell)setLessonCell(Number(cell.dataset.cellDay))(event);
+});
+document.querySelectorAll("[data-class-tab]").forEach(item=>item.onclick=()=>{
+  state.classTab=item.dataset.classTab;
+  document.querySelectorAll("[data-class-tab]").forEach(tab=>tab.classList.toggle("active",tab.dataset.classTab===state.classTab));
+  $("classSettingsPane").classList.toggle("hidden",state.classTab!=="settings");
+  $("classTimetablePane").classList.toggle("hidden",state.classTab!=="timetable");
+  $("saveClassButton").textContent=state.classTab==="settings"?"保存客户端设置":"保存课程表";
+});
+$("weekTabs").onclick=event=>{
+  const button=event.target.closest("[data-week]");
+  if(!button)return;
+  state.week=button.dataset.week;
+  document.querySelectorAll("[data-week]").forEach(item=>item.classList.toggle("active",item.dataset.week===state.week));
+  renderTimetable();
+};
 
 const showPage=page=>{
   state.page=page;
@@ -396,18 +773,25 @@ const renderClasses=()=>{
   }
   $("deleteClassButton").disabled=!state.selectedClassId;
   $("saveClassButton").disabled=!state.selectedClassId;
+  $("saveClassButton").textContent=state.classTab==="settings"?"保存客户端设置":"保存课程表";
 };
 
 const loadClass=async id=>{
   try{
-    const item=await api(`/api/v1/classes/${encodeURIComponent(id)}`);
+    const [item,timetable]=await Promise.all([
+      api(`/api/v1/classes/${encodeURIComponent(id)}`),
+      api(`/api/v1/classes/${encodeURIComponent(id)}/timetable`)
+    ]);
     state.selectedClassId=id;
+    state.settings=JSON.parse(item.settingsJson||"{}");
+    state.timetable=normalizeTimetable(timetable);
+    state.timeSlots=[];
+    state.selectedSubject="";
     $("classEditorTitle").textContent=item.name;
     $("classMeta").textContent=`修订 ${item.revision} · 更新 ${timeText(item.updatedAt)}`;
-    $("settingsEditor").value=prettyJson(item.settingsJson);
-    $("timetableEditor").value=item.timetableYaml||"";
-    $("settingsEditor").disabled=false;$("timetableEditor").disabled=false;
     setPageStatus("classStatus","正在编辑 "+item.name);
+    renderSettingsForm();
+    renderTimetable();
     renderClasses();renderDeviceOptions();
   }catch(error){setPageStatus("classStatus",error.message,true)}
 };
@@ -430,19 +814,21 @@ $("createClassButton").onclick=async()=>{
 $("saveClassButton").onclick=async()=>{
   if(!state.selectedClassId)return;
   try{
-    JSON.parse($("settingsEditor").value);
-    const item=await api(`/api/v1/classes/${encodeURIComponent(state.selectedClassId)}`,{method:"PUT",body:JSON.stringify({settingsJson:$("settingsEditor").value,timetableYaml:$("timetableEditor").value,message:"由集控中心发布"})});
+    const item=state.classTab==="settings"
+      ? await api(`/api/v1/classes/${encodeURIComponent(state.selectedClassId)}/settings`,{method:"PUT",body:JSON.stringify({settingsJson:JSON.stringify(state.settings)})})
+      : await api(`/api/v1/classes/${encodeURIComponent(state.selectedClassId)}/timetable`,{method:"PUT",body:JSON.stringify(state.timetable)});
+    $("classMeta").textContent=`修订 ${item.revision} · 更新 ${timeText(item.updatedAt)}`;
     await loadAll();
-    setPageStatus("classStatus",`已发布修订 ${item.revision}`);
-    showToast(`已发布修订 ${item.revision}`);
+    setPageStatus("classStatus",`已保存修订 ${item.revision}`);
+    showToast(`已保存修订 ${item.revision}`);
   }catch(error){setPageStatus("classStatus",error.message,true);showToast(error.message,true)}
 };
 $("deleteClassButton").onclick=async()=>{
   if(!state.selectedClassId)return;
   try{
     await api(`/api/v1/classes/${encodeURIComponent(state.selectedClassId)}`,{method:"DELETE"});
-    state.selectedClassId="";$("settingsEditor").value="";$("timetableEditor").value="";
-    $("settingsEditor").disabled=true;$("timetableEditor").disabled=true;
+    state.selectedClassId="";state.settings=null;state.timetable=null;state.timeSlots=[];state.selectedSubject="";
+    renderSettingsForm();renderTimetable();
     $("classEditorTitle").textContent="选择班级";$("classMeta").textContent="从右侧选择一个班级开始编辑。";
     await loadAll();setPageStatus("classStatus","班级已删除");showToast("班级已删除");
   }catch(error){setPageStatus("classStatus",error.message,true);showToast(error.message,true)}

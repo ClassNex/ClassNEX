@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using ClassNex.Central;
 using ClassNex.Models;
+using ClassNex.Services;
 
 const string SessionCookie = "classnex_central_session";
 
@@ -221,6 +222,53 @@ app.MapGet("/api/v1/classes/{classId}", async (
     return record is null ? Results.NotFound() : Results.Json(ToDetail(record));
 });
 
+app.MapGet("/api/v1/classes/{classId}/timetable", async (
+    string classId,
+    HttpRequest request) =>
+{
+    var user = await GetCurrentUserAsync(request);
+    if (user is null)
+        return Results.Unauthorized();
+
+    var record = await store.GetClassAsync(classId, user.Subject);
+    if (record is null)
+        return Results.NotFound();
+
+    var profile = string.IsNullOrWhiteSpace(record.TimetableYaml)
+        ? new ScheduleProfile()
+        : CsesCodec.Parse(record.TimetableYaml);
+    return Results.Json(profile);
+});
+
+app.MapPut("/api/v1/classes/{classId}/timetable", async (
+    string classId,
+    ScheduleProfile profile,
+    HttpRequest request) =>
+{
+    var user = await GetCurrentUserAsync(request);
+    if (user is null)
+        return Results.Unauthorized();
+
+    try
+    {
+        var record = await store.GetClassAsync(classId, user.Subject);
+        if (record is null)
+            return Results.NotFound();
+
+        var updated = await store.UpdateClassAsync(
+            classId,
+            user.Subject,
+            record.SettingsJson,
+            CsesCodec.Serialize(profile),
+            "由集控中心更新课程表");
+        return updated is null ? Results.NotFound() : Results.Json(ToDetail(updated));
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
 app.MapPut("/api/v1/classes/{classId}", async (
     string classId,
     CentralClassUpdateRequest update,
@@ -239,6 +287,35 @@ app.MapPut("/api/v1/classes/{classId}", async (
             update.TimetableYaml ?? "",
             update.Message ?? "");
         return record is null ? Results.NotFound() : Results.Json(ToDetail(record));
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
+});
+
+app.MapPut("/api/v1/classes/{classId}/settings", async (
+    string classId,
+    CentralSettingsUpdateRequest update,
+    HttpRequest request) =>
+{
+    var user = await GetCurrentUserAsync(request);
+    if (user is null)
+        return Results.Unauthorized();
+
+    try
+    {
+        var record = await store.GetClassAsync(classId, user.Subject);
+        if (record is null)
+            return Results.NotFound();
+
+        var updated = await store.UpdateClassAsync(
+            classId,
+            user.Subject,
+            update.SettingsJson,
+            record.TimetableYaml,
+            "由集控中心更新客户端设置");
+        return updated is null ? Results.NotFound() : Results.Json(ToDetail(updated));
     }
     catch (Exception ex)
     {
@@ -360,3 +437,5 @@ public sealed record CentralClassUpdateRequest(
     string SettingsJson,
     string TimetableYaml,
     string Message);
+
+public sealed record CentralSettingsUpdateRequest(string SettingsJson);
