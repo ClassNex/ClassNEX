@@ -36,7 +36,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：修复 `classnex.tech` 根路径被集控页面占用导致 STCN/Casdoor OAuth 授权链截断；根路径恢复给 Casdoor，集控回调与退出跳转按 `/Control/` 动态生成，线上已完成配置与二进制部署验证
-改了文件：src/ClassNex.Central/Program.cs、docs/CENTRAL_MANAGEMENT.md、HANDOFF.md、AGENTS.md
-进行中：无
-下一步：待用户指定
+上次完成：修复 Casdoor 将 `/Control/auth/callback` 误判为站内登录的问题，集控登录不再停在 Casdoor 根页；客户端集控地址迁移到标准 HTTPS 域名；旧腾讯云服务器已配置国内反向代理并通过证书与 `/Control/` 验证
+改了文件：src/ClassNex.Central/CentralAuthService.cs、src/ClassNex.Core/Models/AppSettings.cs、src/ClassNex.Core/Services/SettingsService.cs、deploy/casdoor/AuthCallbackHandler.patch、deploy/classnex-relay/nginx.conf、docs/CENTRAL_MANAGEMENT.md、HANDOFF.md、AGENTS.md
+进行中：`classnex.tech` 与 `www.classnex.tech` 的 A 记录仍指向 `206.187.201.60`，需由域名后台切换到国内入口 `124.221.160.188`
+下一步：切换两条 A 记录后完成真实网络复测

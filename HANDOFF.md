@@ -342,6 +342,17 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   集控网页读取设置时按不区分大小写匹配现有 JSON 键，避免 camelCase/PascalCase 生成重复主题字段。
   已移除管理员令牌、注册令牌和客户端令牌方案。历史设置中的空集控地址和旧服务器地址
   会在加载时迁移到 `http://206.187.201.60:7010`，避免旧安装只显示示例地址。
+  ⚠️ 客户端集控地址现已统一为 `https://classnex.tech/Control`，旧版使用的 `7010`
+  直接 IP 地址会在加载时迁移。公开客户端必须走标准 443 域名入口，不能再依赖美国源站 IP
+  和非标准端口，否则校园网、移动网等环境会直接不可达。
+  Casdoor 的 `AuthCallbackHandler.js` 还存在同域子路径判断问题：`method=signin` 时，
+  位于同域 `/Control/auth/callback` 的合法 `response_type=code` 会被误判为普通站内登录并
+  跳回候选站点根路径 `/`。线上通过 `/opt/casdoor/static/AuthCallbackHandler.js` 覆盖静态文件，
+  Nginx 在 `/AuthCallbackHandler.js` 返回该补丁文件并设置 `Cache-Control: no-store`；
+  补丁内容保存在 `deploy/casdoor/AuthCallbackHandler.patch`，Casdoor 升级后必须重新确认。
+  国内网络入口使用旧腾讯云服务器 `124.221.160.188` 作为反向代理，最终内容仍由
+  `206.187.201.60` 提供，`deploy/classnex-relay/nginx.conf` 保存代理配置。
+  `classnex.tech` 与 `www.classnex.tech` 的 A 记录应指向国内入口时，境外源站地址不应直接公开给客户端。
 - **NEX Intelligence（内置 AI Agent，2026-10-11 新增）**
   - 设置里新增「NEX Intelligence」页（导航项在「组件」之后）+ 独立对话窗（沉浸标题栏 + 云母）
   - 代码在 `Services\NexIntelligence\`：`NexAiClient`（OpenAI 兼容 /v1/chat/completions，流式 SSE；增量为 `delta.content` 与 `delta.reasoning_content`，工具调用分片在 `delta.tool_calls` 里按 index 拼装）、`NexAgent`（一轮 = 发消息 → 流式收正文/思考 → 执行工具 → 回填 → 继续，最多 8 轮）、`NexAgentTools`（六个工具：读应用状态/读课表/列目录/读文件/写文件/执行命令）、`NexModelCatalog`（拉模型列表/测连接）

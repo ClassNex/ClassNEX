@@ -44,7 +44,6 @@ public sealed class CentralAuthService
         "&response_type=code" +
         "&scope=openid%20profile%20email" +
         $"&state={Uri.EscapeDataString(state)}" +
-        "&prompt=login" +
         $"&code_challenge={Uri.EscapeDataString(codeChallenge)}" +
         "&code_challenge_method=S256" +
         $"&redirect_uri={Uri.EscapeDataString(redirectUri)}";

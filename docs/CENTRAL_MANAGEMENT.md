@@ -48,11 +48,19 @@ dotnet run --project src\ClassNex.Central\ClassNex.Central.csproj --urls http://
 不要要求学校网络或移动网络放行 `7010`、`8000` 等非标准端口。点击“登录 ClassNEX ID”后，
 回调地址会根据当前访问域名、反向代理协议和 `/Control` 前缀动态生成。
 登录完成和退出登录后的跳转也使用同一个公开前缀。
+客户端默认集控地址为 `https://classnex.tech/Control`。旧版保存的 `7010` 直接 IP
+地址会在启动时迁移到该地址，避免部分校园网或移动网络阻断美国源站 IP 与非标准端口。
 
 Nginx 的域名根路径 `/` 必须继续代理 Casdoor，不能返回 `302 /Control/`。
 STCN 等第三方提供商会在登录后回到站点根路径 `/callback`，再回到 `/` 继续生成 Casdoor 授权码；
 如果根路径被集控网页占用，Casdoor 的 OAuth 流程会被截断，浏览器虽然显示登录成功，
 集控端仍会收到 `401 Unauthorized`。集控网页只挂载在 `/Control/`。
+Casdoor 的 OAuth 回调脚本必须优先返回已经声明的 `response_type`。Casdoor 默认逻辑会把
+同域下的 `/Control/auth/callback` 误判为普通站内登录并跳回 `/`；补丁见
+`deploy/casdoor/AuthCallbackHandler.patch`。
+
+国内网络需要经 `deploy/classnex-relay/nginx.conf` 中的腾讯云反向代理访问，
+入口证书与 `classnex.tech` 一致，代理再通过 TLS 连接美国业务源站。
 登录后可创建班级、选择班级。“应用设置”和“档案设置”是两个独立页面，班级选择器位于各页顶部，
 不再用右侧窄栏挤压编辑区。客户端设置使用自适应分组卡片、开关、下拉框、滑动条和文本框编辑，
 不必直接编写 JSON；档案设置使用全宽“科目池 + 星期 × 节次”网格，支持每周、单周、双周、
