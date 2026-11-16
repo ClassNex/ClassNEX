@@ -320,6 +320,9 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   `docs/CENTRAL_MANAGEMENT.md` 记录运行和 API。管理端和客户端统一使用 ClassNEX ID 登录，
   管理端通过 Casdoor 授权码与 PKCE 建立 HttpOnly 会话，客户端复用当前账户的 AccessToken；
   管理端会话写入持久化 `central-sessions.json`，默认保留 7 天，服务重启后仍保持登录。
+  正式托管路径为 `https://classnex.tech/Control/`。Nginx 将 `/Control/` 去前缀代理到
+  `classnex-central:8080`，并通过 `X-Forwarded-Prefix` 让 OAuth 回调动态生成
+  `https://classnex.tech/Control/auth/callback`；网页 API 和登录入口使用子路径 Base。
   桌面客户端只登记设备，不显示班级选择；管理端在“设备连接”页选择设备并指定班级。
   管理端客户端设置改为 WinUI 风格开关、下拉框、滑动条和文本输入，不再要求手写 JSON；
   课程表采用科目池与星期 × 节次网格，可点击格子排课、切换每周/单周/双周、直接修改或增删节次，

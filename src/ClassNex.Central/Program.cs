@@ -52,8 +52,12 @@ app.MapGet("/auth/login", (HttpRequest request) =>
         .Replace('/', '_');
     loginStates[state] = new PendingLogin(
         DateTimeOffset.UtcNow.AddMinutes(10),
-        verifier);
-    return Results.Redirect(auth.BuildLoginUrl(state, challenge));
+        verifier,
+        BuildPublicBaseUrl(request) + "/auth/callback");
+    return Results.Redirect(auth.BuildLoginUrl(
+        state,
+        challenge,
+        loginStates[state].RedirectUri));
 });
 
 app.MapGet("/auth/callback", async (
@@ -78,7 +82,10 @@ app.MapGet("/auth/callback", async (
     CentralUser? user;
     try
     {
-        user = await auth.ExchangeCodeAsync(code, pending.CodeVerifier);
+        user = await auth.ExchangeCodeAsync(
+            code,
+            pending.CodeVerifier,
+            pending.RedirectUri);
     }
     catch (Exception ex)
     {
@@ -429,6 +436,20 @@ static bool IsHttps(HttpContext context) =>
         "https",
         StringComparison.OrdinalIgnoreCase);
 
+static string BuildPublicBaseUrl(HttpRequest request)
+{
+    var scheme = request.Headers["X-Forwarded-Proto"].FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(scheme))
+        scheme = request.Scheme;
+    var host = request.Headers["X-Forwarded-Host"].FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(host))
+        host = request.Host.Value;
+    var prefix = request.Headers["X-Forwarded-Prefix"].FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(prefix))
+        prefix = request.PathBase.Value;
+    return $"{scheme}://{host}{prefix?.TrimEnd('/')}".TrimEnd('/');
+}
+
 static string CreateToken() =>
     Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
 
@@ -441,7 +462,10 @@ static CentralClassDetail ToDetail(CentralClassRecord record) => new(
     record.SettingsJson,
     record.TimetableYaml);
 
-public sealed record PendingLogin(DateTimeOffset ExpiresAt, string CodeVerifier);
+public sealed record PendingLogin(
+    DateTimeOffset ExpiresAt,
+    string CodeVerifier,
+    string RedirectUri);
 
 public sealed record CentralClassDetail(
     string ClassId,

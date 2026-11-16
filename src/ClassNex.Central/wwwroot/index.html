@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>ClassNEX 集控中心</title>
+  <base id="appBase" href="/">
+  <script>document.getElementById("appBase").href=location.pathname.startsWith("/Control")?"/Control/":"/";</script>
   <style>
     :root{
       color-scheme:dark;
@@ -199,7 +201,7 @@
     <div class="brand-mark login-logo">N</div>
     <h1>ClassNEX 集控中心</h1>
     <p>使用 ClassNEX ID 登录，管理班级配置，并直接选择已连接的客户端设备。</p>
-    <a class="button primary" href="/auth/login">登录 ClassNEX ID</a>
+    <a class="button primary" href="auth/login">登录 ClassNEX ID</a>
     <p class="small" style="margin-top:18px">支持使用 STCN 账户登录</p>
   </section>
 </div>
@@ -218,7 +220,7 @@
     </label>
     <div class="title-actions">
       <button id="refreshButton" class="icon-button subtle win-icon" title="刷新数据">&#xE72C;</button>
-      <a class="button icon-button subtle win-icon" href="/auth/logout" title="退出登录">&#xE7E8;</a>
+      <a class="button icon-button subtle win-icon" href="auth/logout" title="退出登录">&#xE7E8;</a>
     </div>
   </header>
 
@@ -236,7 +238,7 @@
           <div id="sideAvatar" class="avatar">C</div>
           <div><div id="sideName" class="profile-name">ClassNEX 用户</div><div id="sideEmail" class="profile-email"></div></div>
         </div>
-        <a class="button subtle" href="/auth/logout" style="width:100%"><span class="win-icon">&#xE7E8;</span> <span>退出登录</span></a>
+        <a class="button subtle" href="auth/logout" style="width:100%"><span class="win-icon">&#xE7E8;</span> <span>退出登录</span></a>
       </div>
     </aside>
 
@@ -377,7 +379,7 @@
             <div class="kv"><div class="muted">用户名</div><div id="accountUsername"></div></div>
             <div class="kv"><div class="muted">账户标识</div><div id="accountSubject" class="muted"></div></div>
             <div class="kv"><div class="muted">登录服务</div><div class="muted">ClassNEX ID · STCN</div></div>
-            <div><a class="button" href="/auth/logout">退出登录</a></div>
+            <div><a class="button" href="auth/logout">退出登录</a></div>
           </section>
         </div>
       </section>
@@ -389,8 +391,10 @@
 <script>
 const state={user:null,classes:[],devices:[],selectedClassId:"",selectedDeviceId:"",page:"devices",query:"",settings:null,timetable:null,classRevision:0,editorDirty:false,classRefreshBusy:false,week:"all",selectedSubject:"",timeSlots:[]};
 const $=id=>document.getElementById(id);
+const appBase=(document.getElementById("appBase")?.getAttribute("href")||"/").replace(/\/$/,"");
+const appPath=path=>path.startsWith("/")?appBase+path:path;
 const api=async(path,options={})=>{
-  const response=await fetch(path,{...options,headers:{"Content-Type":"application/json",...(options.headers||{})}});
+  const response=await fetch(appPath(path),{...options,headers:{"Content-Type":"application/json",...(options.headers||{})}});
   if(response.status===401){showLogin();throw new Error("请登录 ClassNEX ID")}
   if(response.status===204)return null;
   const text=await response.text();

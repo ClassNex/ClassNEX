@@ -19,13 +19,14 @@ $env:CASDOOR_URL="http://206.187.201.60:8000"
 $env:CASDOOR_INTERNAL_URL="http://casdoor:8000"
 $env:CASDOOR_CLIENT_ID="<Casdoor 应用 Client ID>"
 $env:CASDOOR_CLIENT_SECRET="<可选，公开客户端保持为空>"
-$env:CENTRAL_PUBLIC_URL="http://<服务器>:7010"
+$env:CENTRAL_PUBLIC_URL="https://classnex.tech/Control"
 ```
 
 Casdoor 应用的 Redirect URI 必须包含：
 
 ```text
 http://<服务器>:7010/auth/callback
+https://classnex.tech/Control/auth/callback
 ```
 
 应用必须允许 `authorization_code` 授权类型。启用 PKCE 时由集控服务生成 State 与 S256 Code Challenge。
@@ -42,13 +43,14 @@ dotnet run --project src\ClassNex.Central\ClassNex.Central.csproj --urls http://
 
 ## 管理端
 
-打开 `http://<服务器>:7010/`，点击“登录 ClassNEX ID”。
+正式地址为 `https://classnex.tech/Control/`。源站已经配置 `/Control/` 子路径反向代理，
+同时保留 `http://206.187.201.60:7010/` 作为直接调试入口。点击“登录 ClassNEX ID”后，
+回调地址会根据当前访问域名和路径动态生成。
 登录后可创建班级、选择班级。“应用设置”和“档案设置”是两个独立页面，班级选择器位于各页顶部，
 不再用右侧窄栏挤压编辑区。客户端设置使用自适应分组卡片、开关、下拉框、滑动条和文本框编辑，
 不必直接编写 JSON；档案设置使用全宽“科目池 + 星期 × 节次”网格，支持每周、单周、双周、
 直接修改节次时间、增删节次和点击格子排课，七天课表无需手动加宽窗口。
-网页整体按 WinUIonWeb 页面过渡示例还原：416px 左侧导航、窗口居中搜索、Fluent 图标、
-主工作区与右侧约 180px 选项栏，并支持系统明暗主题和自适应滑轨。
+网页整体按 WinUIonWeb 页面过渡示例还原：324px 左侧导航、窗口居中搜索、Fluent 图标和主工作区。
 设备连接页会显示已登记客户端，选择设备后可连接班级或断开班级。
 保存配置后修订号自动增加，被分配该班级的设备会在下一次轮询时应用。
 

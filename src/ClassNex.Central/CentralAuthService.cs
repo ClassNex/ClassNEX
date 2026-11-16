@@ -35,7 +35,10 @@ public sealed class CentralAuthService
 
     public string PublicBaseUrl { get; }
 
-    public string BuildLoginUrl(string state, string codeChallenge) =>
+    public string BuildLoginUrl(
+        string state,
+        string codeChallenge,
+        string redirectUri) =>
         $"{CasdoorUrl}/login/oauth/authorize" +
         $"?client_id={Uri.EscapeDataString(ClientId)}" +
         "&response_type=code" +
@@ -44,9 +47,12 @@ public sealed class CentralAuthService
         "&prompt=login" +
         $"&code_challenge={Uri.EscapeDataString(codeChallenge)}" +
         "&code_challenge_method=S256" +
-        $"&redirect_uri={Uri.EscapeDataString(PublicBaseUrl + "/auth/callback")}";
+        $"&redirect_uri={Uri.EscapeDataString(redirectUri)}";
 
-    public async Task<CentralUser?> ExchangeCodeAsync(string code, string codeVerifier)
+    public async Task<CentralUser?> ExchangeCodeAsync(
+        string code,
+        string codeVerifier,
+        string redirectUri)
     {
         var values = new Dictionary<string, string>
         {
@@ -54,7 +60,7 @@ public sealed class CentralAuthService
             ["client_id"] = ClientId,
             ["code"] = code,
             ["code_verifier"] = codeVerifier,
-            ["redirect_uri"] = PublicBaseUrl + "/auth/callback",
+            ["redirect_uri"] = redirectUri,
         };
         if (!string.IsNullOrWhiteSpace(ClientSecret))
             values["client_secret"] = ClientSecret;
