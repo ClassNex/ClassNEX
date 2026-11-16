@@ -305,7 +305,7 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 - **Casdoor OIDC 提供商**：`ClassNEX/smart-teach` 已接入 `https://auth.smart-teach.cn`，类型为 OIDC，
   使用授权码流程和 PKCE，范围为 `openid profile email`；已绑定 `app-classnex`，允许登录、注册、解绑并按邮箱绑定。
   `auth.smart-teach.cn` 当前仍指向旧 Casdoor 源站，会导致 `invalid_client`。因此 ClassNEX 客户端
-  临时使用 `AppSettings.DefaultAccountEndpoint = http://206.187.201.60:8000`，
+  临时使用 `AppSettings.DefaultAccountEndpoint = http://206.187.201.60`，
   `SettingsService.Load()` 会把历史域名和新旧服务器 IP 自动迁移到当前可用源站。
   `stcn` 登录生成的 AccessToken 约 14 KB，公共 Nginx 会拒绝这么大的请求头。集控容器已加入
   `casdoor_casdoor-net` 并通过 `CASDOOR_INTERNAL_URL=http://casdoor:8000` 读取用户资料；
