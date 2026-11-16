@@ -36,7 +36,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：集控服务增加 `https://classnex.tech/Control/` 子路径托管支持，Nginx 反代、动态 OAuth 回调和 Casdoor Redirect URI 已配置；公共 OAuth 与客户端默认账户入口改为标准端口 `http://206.187.201.60`，修复非标准 `:8000` 被部分网络重置
+上次完成：集控 `/Control` 子路径、动态 OAuth 回调和 Casdoor 白名单已配置；账户登录迁移到标准端口 `http://206.187.201.60`，修复非标准 `:8000` 被部分网络重置；版本更新为 `26w46c`
 改了文件：src/ClassNex/ClassNex.csproj、src/ClassNex/Services/AppServicesAiContext.cs、src/ClassNex/Services/CentralManagementService.cs、src/ClassNex/Views/SettingsWindow.axaml(.cs)、RELEASE_NOTES.md、HANDOFF.md、AGENTS.md
 进行中：无
-下一步：待 classnex.tech 的 DNS 权威服务器恢复并添加 A 记录后，签发 HTTPS 证书
+下一步：推送 `26w46c_Alpha` 发布登录修复；待 classnex.tech DNS 恢复后签发 HTTPS
