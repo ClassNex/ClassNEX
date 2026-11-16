@@ -1,7 +1,7 @@
 # ClassNEX 续作指南（HANDOFF）
 
-> 最后更新：2026-11-16　｜　当前版本 **26w46c**　｜　发布标签 **26w46c_Alpha**
-> 已发布：`26w41a_Alpha` ~ `26w46c_Alpha`（GitHub Releases，均为预发布）
+> 最后更新：2026-11-16　｜　当前版本 **26w46d**　｜　发布标签 **26w46d_Alpha**
+> 已发布：`26w41a_Alpha` ~ `26w46d_Alpha`（GitHub Releases，均为预发布）
 > 这份文档的目的：**第二天打开新会话，照着它就能无缝继续写。**
 
 ---
@@ -305,7 +305,7 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 - **Casdoor OIDC 提供商**：`ClassNEX/smart-teach` 已接入 `https://auth.smart-teach.cn`，类型为 OIDC，
   使用授权码流程和 PKCE，范围为 `openid profile email`；已绑定 `app-classnex`，允许登录、注册、解绑并按邮箱绑定。
   `auth.smart-teach.cn` 当前仍指向旧 Casdoor 源站，会导致 `invalid_client`。因此 ClassNEX 客户端
-  临时使用 `AppSettings.DefaultAccountEndpoint = http://206.187.201.60`，
+  使用 `AppSettings.DefaultAccountEndpoint = https://classnex.tech`，
   `SettingsService.Load()` 会把历史域名和新旧服务器 IP 自动迁移到当前可用源站。
   `stcn` 登录生成的 AccessToken 约 14 KB，公共 Nginx 会拒绝这么大的请求头。集控容器已加入
   `casdoor_casdoor-net` 并通过 `CASDOOR_INTERNAL_URL=http://casdoor:8000` 读取用户资料；
@@ -572,7 +572,7 @@ python tools\gh_release.py "E:\ClassNex\build\ClassNEX-26w41f-Alpha-win-x64.zip"
 - `WW` = 该年的第几周（ISO 周号）
 - `a` = 当周发布的第几个快照（a、b、c…）
 
-当前：**`26w46c`** = 2026 年第 46 周的第 3 个快照（2026-11-16 通过 GitHub Actions 发布）。
+当前：**`26w46d`** = 2026 年第 46 周的第 4 个快照（2026-11-16 通过 GitHub Actions 发布）。
 
 落地方式：
 - `ClassNex.csproj` → `<InformationalVersion>26w41a</InformationalVersion>`

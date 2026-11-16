@@ -23,5 +23,5 @@ public sealed class AppServicesAiContext : IAiApplicationContext
     public string Version => typeof(AppServicesAiContext).Assembly
         .GetName()
         .Version?
-        .ToString() ?? "26w46c";
+        .ToString() ?? "26w46d";
 }
