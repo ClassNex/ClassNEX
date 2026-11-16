@@ -108,7 +108,7 @@ app.MapGet("/auth/callback", async (
         Expires = DateTimeOffset.UtcNow.AddDays(7),
         Path = "/",
     });
-    return Results.Redirect("/");
+    return Results.Redirect(BuildPublicBaseUrl(response.HttpContext.Request) + "/");
 });
 
 app.MapGet("/auth/logout", async (HttpRequest request, HttpResponse response) =>
@@ -116,7 +116,7 @@ app.MapGet("/auth/logout", async (HttpRequest request, HttpResponse response) =>
     if (request.Cookies.TryGetValue(SessionCookie, out var sessionId))
         await sessionStore.RemoveAsync(sessionId);
     response.Cookies.Delete(SessionCookie);
-    return Results.Redirect("/");
+    return Results.Redirect(BuildPublicBaseUrl(request) + "/");
 });
 
 app.MapGet("/api/v1/auth/me", async (HttpRequest request) =>

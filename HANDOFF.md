@@ -323,6 +323,12 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   正式托管路径为 `https://classnex.tech/Control/`。Nginx 将 `/Control/` 去前缀代理到
   `classnex-central:8080`，并通过 `X-Forwarded-Prefix` 让 OAuth 回调动态生成
   `https://classnex.tech/Control/auth/callback`；网页 API 和登录入口使用子路径 Base。
+  ⚠️ 域名根路径 `/` 必须继续交给 Casdoor，**禁止把 `/` 返回 `302 /Control/`**。`stcn`
+  等第三方提供商登录后会先回到 Casdoor 的 `/callback`，再访问 `/` 完成 OAuth 授权码生成；
+  根路径被集控占用时，浏览器会显示登录成功，但 Casdoor 授权链被截断，集控仍是 `401`。
+  集控回调与退出登录都按 `X-Forwarded-Host`、`X-Forwarded-Proto` 和 `X-Forwarded-Prefix`
+  返回 `/Control/`，不能写死 `/`。公开入口只使用 80/443 标准端口；`classnex.tech` 与
+  `www.classnex.tech` 当前都只有 A 记录并指向 `206.187.201.60`，不要把访问依赖放在 7010/8000。
   桌面客户端只登记设备，不显示班级选择；管理端在“设备连接”页选择设备并指定班级。
   管理端客户端设置改为 WinUI 风格开关、下拉框、滑动条和文本输入，不再要求手写 JSON；
   课程表采用科目池与星期 × 节次网格，可点击格子排课、切换每周/单周/双周、直接修改或增删节次，
