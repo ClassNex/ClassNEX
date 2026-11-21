@@ -1,7 +1,0 @@
-ClassNex 内置字体：MiSans（小米）
-
-- 版权方：北京小米移动软件有限公司（Xiaomi）。
-- MiSans 字体允许任何个人和企业免费使用，包括商业用途（免费商用授权）。
-- 禁止未经许可单独出售字体文件本身。
-- 字体文件来源：小米官方发布的 MiSans 字体包（MiSans/ttf/），
-  本项目仅内置 MiSans-Regular.ttf 与 MiSans-Bold.ttf 两个字重。

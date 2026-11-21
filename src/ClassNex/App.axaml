@@ -8,15 +8,17 @@
     
     <Application.Resources>
         <ResourceDictionary>
-            <FontFamily x:Key="AppFontFamily">avares://ClassNex/Assets/Fonts/#MiSans</FontFamily>
+            <FontFamily x:Key="AppFontFamily">avares://ClassNex/Assets/Fonts/#HarmonyOS Sans SC, Microsoft YaHei UI, Noto Sans CJK SC, sans-serif</FontFamily>
+            <StaticResource x:Key="ContentControlThemeFontFamily" ResourceKey="AppFontFamily" />
         </ResourceDictionary>
     </Application.Resources>
 
     <Application.Styles>
-        <sty:FluentAvaloniaTheme PreferSystemTheme="True" />
+        <sty:FluentAvaloniaTheme PreferSystemTheme="True" UseSystemFontOnWindows="False"
+                                 TextVerticalAlignmentOverrideBehavior="AlwaysEnabled" />
 
         
-        <Style Selector="Window">
+        <Style Selector=":is(Window)">
             <Setter Property="TextElement.FontFamily" Value="{DynamicResource AppFontFamily}" />
         </Style>
 

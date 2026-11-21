@@ -134,14 +134,34 @@ public partial class App : Application
 #if DEBUG
             
             
-            if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_NOTIFY") == "1")
+            switch (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_NOTIFY"))
             {
-                DispatcherTimer.RunOnce(() => _notificationService?.DebugTriggerClassPreparing(),
-                    TimeSpan.FromSeconds(3));
-                DispatcherTimer.RunOnce(() => _notificationService?.DebugTriggerClassOn(),
-                    TimeSpan.FromSeconds(8));
-                DispatcherTimer.RunOnce(() => _notificationService?.DebugTriggerClassOff(),
-                    TimeSpan.FromSeconds(13));
+                case "prepare":
+                    DispatcherTimer.RunOnce(
+                        () => _notificationService?.DebugTriggerClassPreparing(),
+                        TimeSpan.FromSeconds(3));
+                    break;
+                case "on":
+                    DispatcherTimer.RunOnce(
+                        () => _notificationService?.DebugTriggerClassOn(),
+                        TimeSpan.FromSeconds(3));
+                    break;
+                case "off":
+                    DispatcherTimer.RunOnce(
+                        () => _notificationService?.DebugTriggerClassOff(),
+                        TimeSpan.FromSeconds(3));
+                    break;
+                case "1":
+                    DispatcherTimer.RunOnce(
+                        () => _notificationService?.DebugTriggerClassPreparing(),
+                        TimeSpan.FromSeconds(3));
+                    DispatcherTimer.RunOnce(
+                        () => _notificationService?.DebugTriggerClassOn(),
+                        TimeSpan.FromSeconds(8));
+                    DispatcherTimer.RunOnce(
+                        () => _notificationService?.DebugTriggerClassOff(),
+                        TimeSpan.FromSeconds(13));
+                    break;
             }
 #endif
 
@@ -412,30 +432,23 @@ public partial class App : Application
             
             try
             {
-                var fam = new FontFamily("avares://ClassNex/Assets/Fonts/#MiSans");
+                var fam = Current!.TryFindResource("AppFontFamily", out var fontResource) && fontResource is FontFamily appFont
+                    ? appFont
+                    : throw new InvalidOperationException("找不到应用字体资源。");
                 var fontLines = new List<string>();
                 foreach (var (label, weight) in new[]
                          {
+                             ("Light", FontWeight.Light),
                              ("Normal", FontWeight.Normal),
                              ("Medium", FontWeight.Medium),
                              ("Bold", FontWeight.Bold),
                          })
                 {
                     var ok = FontManager.Current.TryGetGlyphTypeface(new Typeface(fam, FontStyle.Normal, weight), out var gt);
-                    fontLines.Add($"MiSans {label,-6} = {(ok ? $"{gt!.FamilyName} / weight {gt.Weight}" : "未命中（回退系统字体）")}");
+                    fontLines.Add($"{label,-6} = {(ok ? $"{gt!.FamilyName} / weight {gt.Weight}" : "未命中")}");
                 }
 
-                
-                foreach (var name in new[] { "MiSans-Regular.ttf", "MiSans-Bold.ttf" })
-                {
-                    var fileFamily = new FontFamily($"avares://ClassNex/Assets/Fonts/{name}#MiSans");
-                    if (FontManager.Current.TryGetGlyphTypeface(new Typeface(fileFamily), out var fgt))
-                        fontLines.Add($"{name,-20} = {fgt.FamilyName} / weight {fgt.Weight}");
-                    else
-                        fontLines.Add($"{name,-20} = 加载失败");
-                }
-
-                File.AppendAllText(path, "\n[MiSans 字体探针]\n" + string.Join("\n", fontLines) + "\n");
+                File.AppendAllText(path, "\n[HarmonyOS Sans SC 字体探针]\n" + string.Join("\n", fontLines) + "\n");
             }
             catch (Exception ex)
             {

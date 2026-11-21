@@ -29,6 +29,7 @@ $env:CLASSNEX_VERIFY="1"; Start-Process "E:\ClassNex\src\ClassNex\bin\Debug\net1
   - `CLASSNEX_VERIFY_LAYOUT=1` 每秒把窗口/岛/课表当前项的实测尺寸写 `_verify_layout.log`
   - `CLASSNEX_VERIFY_PILL=1` 强制显示最后 60 秒的倒计时胶囊（核对排版用）
   - `CLASSNEX_VERIFY_EDITMODE=1` 启动后直接进入编辑模式（核对组件工具条排版）
+  - `CLASSNEX_VERIFY_NOTIFY=prepare|on|off|1` 触发课前、上课、下课或顺序提醒演示
 
 ---
 
@@ -63,7 +64,7 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 | `Opacity` | 0.5 | `AppSettings.BackgroundOpacity` |
 | `RadiusX/Y` | 8 | `CiPalette.CardCornerRadius` |
 | `BackgroundColor` | `#000000FF` | `CiPalette.CardBackground` |
-| `MainWindowFont` | `#HarmonyOS Sans SC` | 已换为小米 MiSans（Regular+Bold 真字重）|
+| `MainWindowFont` | `#HarmonyOS Sans SC` | 全局 HarmonyOS Sans SC（Light/Regular/Medium/Bold）|
 | `MainWindowSecondaryFontSize` | 14 | `WidgetBase.CiSecondary` |
 | `MainWindowBodyFontSize` | 16 | `WidgetBase.CiBody` |
 | `MainWindowEmphasizedFontSize` | 18 | `WidgetBase.CiEmphasized` |
@@ -119,6 +120,8 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   通知不再显示“启用语音”选项；麦克风识别和 NEX 唤醒属于语音识别，不受影响。
   提醒使用代次编号取消旧计时器，避免上一段通知的 `HideNotificationMask` 覆盖下一段通知；
   主界面也用独立的转场代次拦截已过期的隐藏回调。
+  提醒岛宽度限制为 416 逻辑像素，不再扩成整屏；提醒结束后按当前课表内容重新测量岛宽，
+  避免下课、上课提醒结束后出现背景短于或长于文字。
   **遮罩与浮层必须互斥**：不能只关闭遮罩背景后延迟 500ms 再撤掉文字，否则两套内容会叠在一起。
   课前遮罩停留 3 秒后以 360ms 上下翻页进入浮层，其他提醒使用左轴翻页；旧页完全收拢后卸载遮罩。
   课前浮层与 CI 一致，第 1 页显示实时“距上课还剩 N 秒”和下节课信息，第 2 页显示准备上课文案，
@@ -160,7 +163,7 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   否则剩余时间每秒变宽变窄，窗口跟着一抖一抖（实测：修前时间文本宽 41.6↔40.0、岛宽 648.0↔646.4、
   窗口宽 1231.2↔1228.8；修后三者全部恒定）。
 - **数字用等宽特性 `tnum`**（`TextElement.SetFontFeatures(block, TabularFigures)`，见 `WidgetBase`）：
-  MiSans 的数字是比例宽度（"1" 比 "4" 窄），剩余时间每秒变化会让文本宽度变来变去 ——
+  比例数字字体会让剩余时间每秒变化时改变文本宽度，因此统一启用等宽数字特性 ——
   这就是窗口抖动的根因。
 - **悬停淡化按「岛」判定**（不是窗口）：窗口现在是整屏宽，用窗口矩形会把整条屏顶都算成悬停。
   用 `IslandBackground.PointToScreen` 取岛的屏幕矩形（对应 CI 的 `GetMouseStatusByPos` 判组件行自身）。
@@ -168,11 +171,9 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   用户 CI 配置里也是 `"MainWindowFontWeight2": 500`；CI 挂在 ZoomBorder 的 `TextElement.FontWeight` 上下发）。
   本项目：`LayoutTransformControl TextElement.FontWeight="Medium"` + `WidgetBase.Text()` 默认字重 Medium
   （当前课名仍是 Bold，与 CI 一致）。这就是「我们的字比 CI 细」的原因。
-- ⚠️ **MiSans 字体已做过二进制修补**（脚本 `tools\fix_misans_weights.ps1`，重新下载字体后必须重跑）：
-  官方 ttf 的 `usWeightClass` 非标准（Regular 330 / Medium 380 / Demibold 450 / Bold 630），
-  且 Medium/Demibold 的**族名是独立的**（"MiSans Medium"/"MiSans Demibold"）→ Avalonia 永远匹配不到
-  500/600。脚本把 name 表重建成 `MiSans` + `Medium`/`Demibold`、字重改成标准 500/600、并重算校验和。
-  验证：`_verify.log` 的字体探针应显示 `MiSans Medium = MiSans / weight Medium`。
+- **HarmonyOS Sans SC**：Light、Regular、Medium、Bold 四个字重原样嵌入，不修改字体文件；
+  全局 `AppFontFamily`、设置窗口和 OOBE 都使用该字体，Lucide 图标仍单独指定图标字体。
+  验证：`_verify.log` 应显示四个字重均命中 HarmonyOS Sans SC。
 - **主题切换要重建组件**：组件文字画刷是「创建时按当前主题取色」，不重建就会保持旧主题颜色
   （表现为「切深浅色字体不变黑白」）。`MainWindow` 里挂了 `ActualThemeVariantChanged` →
   `ApplySettings + RebuildWidgets + RefreshWidgets`
@@ -217,6 +218,8 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 - **设置窗口启动动画**：`Opened` 时对 `SettingsRoot` 组合层 opacity 0→1（430ms，
   `0.16,1,0.3,1`）+ scale `0.965→1.006→1`（620ms，回弹）+ offsetY 16→0（520ms）。
   `SettingsRoot.Opacity` 先设为 0，播放时恢复 1，避免闪出完整页面。
+- **设置首次打开**：所有页面默认隐藏，`SwitchPage` 只显示当前目标页；不再调用
+  `PrewarmPagesAtIdle` 预热全部页面，避免主页重叠两次后才恢复。
 - **托盘菜单**：`TrayMenuWindow` 改为常驻单例并在启动空闲时 `Prewarm()`，保留原生窗口句柄和布局缓存；
   打开前 `PrepareForOpen()` 清理旧帧，显示后按自下而上的 280ms/16ms 级联执行 Composition 动画。
   失焦、点菜单项、再次点托盘图标都走 `CloseAnimated()` 后 `Hide()`，不再关闭并重建窗口；托盘点击不再有 300ms debounce。
@@ -234,15 +237,15 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   左栏为账户卡和今日课程卡，右栏为推荐设置列表和个性化主题预览。账户头像/名称/邮箱、
   今日课程数量、已完成数量、下一节课程与时间均来自实时状态；推荐设置可直接跳到外观、
   窗口和提醒页。主页不再运行樱花飘落装饰，避免卡片层上出现漂浮元素。
-  主页问候不再显示设备名、顶部品牌图块和页面副标题，使用 36 号
-  `Noto Serif SC / Source Han Serif SC / SimSun`。
+  主页隐藏重复的页面标题，以问候横幅作为首屏入口；问候使用 31 号 SemiBold，
+  字体为 HarmonyOS Sans SC，横幅颜色由 `CiPalette` 提供。
   外观页三条滑块都提供加减按钮；全局字号上限 2.4，主界面缩放范围 0.5–4.0，
-  并提供“标准”和“教室远距离”两种快速预设。
+  只保留“标准”快速预设，教室环境通过滑块手动调整。
   **所有布尔设置统一使用 Avalonia `ToggleSwitch`**，全局 On/Off 文本为「开 / 关」；
   设置页、组件参数、档案编辑器和 OOBE 均不得回退到方形 `CheckBox`。
   外观页不透明度、全局字号、主界面缩放三条滑块使用相同的 `180 + 12 + 64` 网格列，
   实测三条滑块 `X=1358`、宽度 `225px`，起止位置完全对齐。
-  标题“应用设置”使用资源圆体 Bold，字体子集在
+  标题“应用设置”使用全局 HarmonyOS Sans SC。
   `Assets/Fonts/ResourceHanRounded-Bold-Subset.ttf`（只含“应用设置”四字，许可证见同目录 txt）。
 - **欢迎设置窗口入场**：`OobeWindow` 保留 Fluent `AppWindow`，把首屏拆成四组：
   左侧欢迎文案（左上）、右侧插图（右上）、底部页点（左下）、底部按钮（右下）。
@@ -265,7 +268,7 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 - 通用：单周开始日期、托盘点击行为
 - 界面：主题、背景不透明度、**主界面缩放（默认 1.9）**、全局字号缩放、排列方向、鼠标穿透
 - 外观页的背景不透明度、全局字号缩放、主界面缩放使用完全相同的 `32,180,64,32` 控制区列宽；
-  “大屏快速预设”已拆成独立设置行，避免展开箭头使第三条滑轨向左偏移。
+  “大屏快速预设”已拆成独立设置行，避免展开箭头使第三条滑轨向左偏移；只保留“标准”预设。
 - 主界面组件：**CI 风格 WrapPanel 紧凑组件库**，7 种组件
   （文本 / 分割线 / 课程表 / 日期 / 时钟 / 当前·下节课 / 倒计时），
   每张卡片宽 225、使用 32px 图标、名称与说明，点击整卡添加；不再使用全宽示例卡和右侧操作区，
@@ -375,9 +378,9 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   - 自检：`CLASSNEX_VERIFY_NEX=<文本>` 打开对话框并自动发一条消息；出图看 `_shot_nex.png`
 - **Metro 转场统一层**：`Styles/MetroTransitions.cs` 使用 Avalonia Composition 硬件动画，不再用 UI 线程计时器；
   旧页以 `Opacity=0` 保留布局，新页整页只做一次 220ms 淡入和 10px 纵向归位，不再逐项错峰。
-  设置页切页只修改旧页和新页两个控件，不再遍历十个页面重复写属性；`PrewarmPagesAtIdle()` 在窗口打开后
-  一次把所有非当前页设为可见并统一执行一次布局，避免每个页面依次触发 Measure/Arrange。
-  设置页页面宿主仍必须是单格 `Grid#PageHost`，页面本身继续保持可见布局，不能靠反复折叠重排。
+  设置页切页只修改旧页和新页两个控件，不再遍历十个页面重复写属性；设置窗口不调用
+  `PrewarmPagesAtIdle()`，首次打开只布局当前页。`PrewarmPagesAtIdle()` 仅保留给档案编辑器。
+  设置页页面宿主仍是单格 `Grid#PageHost`，其余页面默认隐藏。
   `Styles/MetroTilt.cs` 给设置/档案导航项、长条 SettingsExpander/Card、托盘菜单项和 OOBE 按钮
   做按压倾斜：原点永久锁定 50%,50%，不修改任何布局属性；使用
   `TransformOperationsTransition`（按下 70ms / 回弹 180ms，cubic-bezier(0.1,0.9,0.2,1)），
@@ -392,10 +395,8 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   `IsOobeCompleted`、不会重启，关闭预览也不会退出主程序。
 - 系统托盘（左键弹菜单：显示/隐藏主界面、编辑档案、加载课表、换课、编辑主界面、应用设置、重启、退出）
 - CSES YAML 课表导入/导出；**新激活不再内置示例课表**（示例课表只在老安装升级时播种，打包时还要删掉 `Assets\timetable.yaml`）
-- 内置 **MiSans**（小米字体，免费商用，授权见 `Assets\Fonts\LICENSE.txt`；Regular/Bold 两字重）
-  ⚠️ MiSans 官方 ttf 的 OS/2 `usWeightClass` 是**非标准值**（Regular=330 / Bold=630），
-  Avalonia 按 50 步进匹配字重会全部回退成 Bold。本项目已把这两个文件修补为 400/700 并重算
-  checksum —— **以后若替换字体文件，必须重新修补**，否则界面会全部变粗。
+- 内置 **HarmonyOS Sans SC** 的 Light、Regular、Medium、Bold 四种字重，授权文件为
+  `Assets\Fonts\HarmonyOS-Sans-LICENSE.txt`，随构建和发布复制。
 
 ---
 
@@ -481,11 +482,10 @@ pwsh 控制台看中文会乱码（**只是显示问题，值本身是对的**�
 主题 `FluentAvalonia.Styling.FluentAvaloniaTheme` → `AvaloniaFluentUI.Styling.FluentAvaloniaTheme`。
 **它只提供 `net10.0`**（1.0.3 依赖 Avalonia 11.3.12），所以必须装 .NET 10 SDK。
 
-- ⚠️ **图标必须显式指定字体，且只能用 `Segoe MDL2 Assets`**：
-  Win11 的 `Segoe Fluent Icons`（`SegoeIcons.ttf`）**删掉了一批旧字形码**
-  （`E51E`/`E06F`/`E9E4`/`EBAC`/`E304` 等会显示成**空方块**）；
-  `segmdl2.ttf`（Segoe MDL2 Assets）码位齐全。另外 FontIcon/FontIconSource **不设字体就会继承全局 MiSans** → 全乱码。
-  正确写法：`FontFamily="Segoe MDL2 Assets"`。
+- ⚠️ **图标必须显式指定 Lucide 字体**：FontIcon/FontIconSource 不设字体时会继承全局
+  HarmonyOS Sans SC，图标码位会显示成空方块。
+  当前项目使用 Lucide 图标，普通文字继承 HarmonyOS Sans SC，图标控件必须继续单独指定 Lucide 字体。
+  正确写法：`FontFamily="avares://ClassNex/Assets/Fonts/#lucide"`。
   **验证字形是否存在的方法**：PowerShell `PrivateFontCollection` + `Graphics.DrawString` 把候选码画成 PNG，再 `read_image` 自己看（见 `_tmp_glyphs*.png` 的做法）。
 - ⚠️ **`TryFindResource(key)` 不带主题变体时返回的是「浅色变体」的值**
   （`CardBackgroundFillColorDefaultBrush = #b3ffffff` = 白），深色界面里会画出**白卡片（发白）**。
@@ -520,6 +520,7 @@ pwsh 控制台看中文会乱码（**只是显示问题，值本身是对的**�
 | `find_ci_default_color.py` | 扫描 CI 程序集提取内嵌色值 |
 | `analyze_ci_palette.py` | 对 CI 截图做色彩直方图统计 |
 | `make_icon.py` | 生成 `Assets\icon.ico` |
+| `capture_window.ps1` | 通过 Win32 `PrintWindow` 捕获指定窗口，不依赖 Computer Use |
 
 ---
 
@@ -615,7 +616,7 @@ src/ClassNex/
   Widgets/                WidgetBase + 7 个组件 + WidgetFactory
   Controls/               TimetableGridBuilder（周课表网格）
   Views/                  MainWindow（浮窗）/ SettingsWindow / ProfileEditorWindow
-  Assets/                 icon.ico / timetable.yaml / Fonts/（MiSans 字体+授权）
+  Assets/                 icon.ico / timetable.yaml / Fonts/（HarmonyOS Sans SC 与 Lucide）
 ```
 
 依赖方向固定为 `Main -> {Notification, AI, Plugins} -> Core`。`Core` 不允许引用任何模块或

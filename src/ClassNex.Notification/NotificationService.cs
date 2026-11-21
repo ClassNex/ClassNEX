@@ -5,6 +5,8 @@ namespace ClassNex.Services;
 
 public sealed class NotificationService : INotificationService, IDisposable
 {
+    public static TimeSpan OverlayPageInterval { get; } = TimeSpan.FromSeconds(10);
+
     private readonly INotificationSurface _surface;
     private readonly Func<AppSettings> _settings;
     private readonly ITimeService _time;
@@ -138,7 +140,7 @@ public sealed class NotificationService : INotificationService, IDisposable
                 countdown = TimeSpan.Zero;
             _surface.ShowOverlay(
                 FormatPrepareCountdown(countdown),
-                next.DisplayName,
+                next.Subject,
                 teacher,
                 next.TimeRange,
                 "下节课是：",
@@ -193,7 +195,7 @@ public sealed class NotificationService : INotificationService, IDisposable
         Schedule(generation, TimeSpan.FromMilliseconds(1200), () =>
             _surface.ShowOverlay(
                 overlay,
-                next.DisplayName,
+                next.Subject,
                 teacher,
                 next.TimeRange,
                 "下节课是：",

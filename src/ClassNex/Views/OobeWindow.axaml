@@ -59,7 +59,6 @@
                             VerticalAlignment="Center" HorizontalAlignment="Left" MaxWidth="560" Opacity="0">
                     <TextBlock x:Name="GreetingText"
                                Text="你好"
-                               FontFamily="Noto Serif SC, Source Han Serif SC, SimSun"
                                FontSize="46"/>
 
                     <TextBlock x:Name="WelcomeBody" Classes="OobeBody"

@@ -49,6 +49,7 @@ public partial class MainWindow : Window
 
     private bool _startupPlayed;
     private bool _startupScheduled;
+    private const double NotificationPreferredWidth = 416;
 
     private static readonly Easing IslandWidthEasing = Easing.Parse("0.65, 0, 0.35, 1.0");
 
@@ -105,10 +106,15 @@ public partial class MainWindow : Window
                 System.IO.File.AppendAllText(
                     System.IO.Path.Combine(AppContext.BaseDirectory, "_verify_layout.log"),
                     $"  [SizeChanged] content {args.PreviousSize.Width:0.0} -> {args.NewSize.Width:0.0}\n");
-            SetIslandWidth(args.NewSize.Width + IslandContentMargin * 2);
+            if (!NotificationMask.IsVisible && !NotificationOverlay.IsVisible)
+                SetIslandWidth(args.NewSize.Width + IslandContentMargin * 2);
         };
 #else
-        CardContent.SizeChanged += (_, args) => SetIslandWidth(args.NewSize.Width + IslandContentMargin * 2);
+        CardContent.SizeChanged += (_, args) =>
+        {
+            if (!NotificationMask.IsVisible && !NotificationOverlay.IsVisible)
+                SetIslandWidth(args.NewSize.Width + IslandContentMargin * 2);
+        };
 #endif
 
         
@@ -525,7 +531,6 @@ public partial class MainWindow : Window
     }
 
     
-    private double? _preNotificationIslandWidth;
     private int _notificationTransitionGeneration;
     private ScaleTransform _notificationMaskTurnScale = new();
     private SkewTransform _notificationMaskTurnSkew = new();
@@ -543,12 +548,9 @@ public partial class MainWindow : Window
     
     private void ExpandIslandForNotification()
     {
-        _preNotificationIslandWidth ??= IslandBackground.Width;
-
         var scale = Math.Max(0.1, AppServices.Settings.MainWindowScale);
-        var full = Bounds.Width / scale;   
-        if (full > IslandBackground.Width)
-            IslandBackground.Width = full;
+        var available = Math.Max(1, Bounds.Width / scale - IslandContentMargin * 2);
+        IslandBackground.Width = Math.Min(NotificationPreferredWidth, available);
 
         
         if (ElementComposition.GetElementVisual(IslandBackground) is { } visual)
@@ -587,11 +589,14 @@ public partial class MainWindow : Window
     private void RestoreIslandAfterNotification()
     {
         NotificationTrack.IsVisible = false;
-        if (_preNotificationIslandWidth is { } previous)
-        {
-            IslandBackground.Width = previous;
-            _preNotificationIslandWidth = null;
-        }
+        if (ElementComposition.GetElementVisual(NotificationTrackFill) is { } visual)
+            visual.StopAnimation(nameof(visual.Scale));
+
+        var contentWidth = CardContent.Bounds.Width;
+        if (contentWidth <= 0.5)
+            contentWidth = CardContent.DesiredSize.Width;
+        if (contentWidth > 0.5)
+            SetIslandWidth(contentWidth + IslandContentMargin * 2);
     }
 
     
@@ -777,7 +782,7 @@ public partial class MainWindow : Window
         {
             _notificationOverlayMessageTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromSeconds(10),
+                Interval = NotificationService.OverlayPageInterval,
             };
             _notificationOverlayMessageTimer.Tick += OnNotificationOverlayMessageTick;
             _notificationOverlayMessageTimer.Start();

@@ -147,13 +147,6 @@ public partial class SettingsWindow : AppWindow
             PlayEntrance();
             HomePetals.IsVisible = false;
             StopSakuraBlossoms();
-            MetroTransitions.PrewarmPagesAtIdle(
-                new Control[]
-                {
-                    PageHome, PageGeneral, PageInterface, PageWindow, PageWidgets,
-                    PageNex, PageNotification, PageAbout, PageDebug, PageAccount,
-                },
-                _currentPageView ?? PageHome);
         };
 
         if (Application.Current is { } app)
@@ -199,6 +192,8 @@ public partial class SettingsWindow : AppWindow
         TopBarCapsule.BorderBrush = CiPalette.ChipBorderBrush();
         HomeBrandTile.Background = CiPalette.SakuraAccentTint(0.16);
         HomeBrandTile.BorderBrush = CiPalette.SakuraAccentTint(0.30);
+        HomeHeroCard.Background = CiPalette.SakuraAccentTint(0.085);
+        HomeHeroCard.BorderBrush = CiPalette.SakuraAccentTint(0.24);
         HomeThemePreviewSystem.Background = CiPalette.SettingsSurfaceBrush();
         HomeThemePreviewLight.Background = CiPalette.SakuraAccentTint(0.18);
         HomeThemePreviewDark.Background = CiPalette.CardBrush;
@@ -717,6 +712,7 @@ public partial class SettingsWindow : AppWindow
             _currentPageView = PageAccount;
             HomePetals.IsVisible = false;
             StopSakuraBlossoms();
+            PageHeaderHost.IsVisible = true;
             PageTitleText.Text = "账户";
             PageSubtitleText.Text = PageSubtitles[9];
             PageSubtitleText.IsVisible = true;
@@ -950,6 +946,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         var title = PageNames[Math.Clamp(index, 0, PageNames.Length - 1)];
         PageTitleText.Text = title;
         PageSubtitleText.Text = PageSubtitles[Math.Clamp(index, 0, PageSubtitles.Length - 1)];
+        PageHeaderHost.IsVisible = index != 0;
         PageSubtitleText.IsVisible = index != 0;
         PageTitleText.Opacity = 1;
         MetroTransitions.Play(previousPage, page, index >= previousIndex, null, PageTitleText);
@@ -1826,9 +1823,6 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
     private void OnScalePresetStandard(object? sender, RoutedEventArgs e) =>
         ApplyScalePreset(1.0, 1.9);
-
-    private void OnScalePresetClassroom(object? sender, RoutedEventArgs e) =>
-        ApplyScalePreset(1.35, 2.6);
 
     private void ApplyScalePreset(double fontScale, double mainScale)
     {

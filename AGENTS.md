@@ -36,7 +36,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：修复 Casdoor 将 `/Control/auth/callback` 误判为站内登录的问题，集控登录不再停在 Casdoor 根页；客户端集控地址迁移到标准 HTTPS 域名；旧腾讯云服务器已配置国内反向代理并通过证书与 `/Control/` 验证
-改了文件：src/ClassNex.Central/CentralAuthService.cs、src/ClassNex.Core/Models/AppSettings.cs、src/ClassNex.Core/Services/SettingsService.cs、deploy/casdoor/AuthCallbackHandler.patch、deploy/classnex-relay/nginx.conf、docs/CENTRAL_MANAGEMENT.md、HANDOFF.md、AGENTS.md
-进行中：`classnex.tech` 与 `www.classnex.tech` 的 A 记录仍指向 `206.187.201.60`，需由域名后台切换到国内入口 `124.221.160.188`
-下一步：切换两条 A 记录后完成真实网络复测
+上次完成：修复设置首次打开时的主页重叠；将客户端字体资源统一替换为 HarmonyOS Sans SC；压缩提醒卡片宽度并在提醒结束后按当前课表重新测量；重制设置主页；移除“教室远距离”缩放预设。
+改了文件：`src/ClassNex/App.axaml*`、`src/ClassNex/ClassNex.csproj`、`src/ClassNex/Assets/Fonts/`、`src/ClassNex/Views/{MainWindow,SettingsWindow,OobeWindow}*`、`src/ClassNex.Notification/NotificationService.cs`、`tools/capture_window.ps1`、`HANDOFF.md`、`AGENTS.md`。
+进行中：五项桌面修复已完成，Debug 全量构建 0 警告 0 错误；未触发发布标签或打包。
+下一步：用真实教室课表和现场屏幕做最终视觉复测；恢复集控任务时继续按既定 DNS 与网络复测流程处理。

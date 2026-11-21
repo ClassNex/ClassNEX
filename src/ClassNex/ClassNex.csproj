@@ -27,6 +27,8 @@
     <AvaloniaResource Include="Assets\avatar.png" />
     
     <AvaloniaResource Include="Assets\Fonts\*.ttf" />
+    <None Update="Assets\Fonts\HarmonyOS-Sans-LICENSE.txt"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     
     <AvaloniaResource Include="Assets\Banners\*.png" />
     
