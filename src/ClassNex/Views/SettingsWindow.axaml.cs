@@ -709,6 +709,7 @@ public partial class SettingsWindow : AppWindow
             var previousAccountPage = _currentPageView;
             KeepOnlyPages(previousAccountPage, PageAccount);
             PageAccount.IsVisible = true;
+            PageScroll.Offset = new Vector(0, 0);
             _currentPageView = PageAccount;
             HomePetals.IsVisible = false;
             StopSakuraBlossoms();
@@ -939,6 +940,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
         KeepOnlyPages(previousPage, page);
         page.IsVisible = true;
+        PageScroll.Offset = new Vector(0, 0);
 
         HomePetals.IsVisible = false;
         StopSakuraBlossoms();
@@ -1229,20 +1231,27 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
     
     private void RefreshHomeGreeting()
     {
-        var name = string.IsNullOrWhiteSpace(AppServices.Settings.UserName)
-            ? "同学"
-            : AppServices.Settings.UserName.Trim();
-
         var now = DateTime.Now;
-        var greeting = now.Hour switch
+        var account = AccountService.Current;
+        if (account is not { IsLoggedIn: true })
         {
-            >= 5 and < 11 => "早上好",
-            >= 11 and < 17 => "中午好",
-            _ => "晚上好",
-        };
+            HomeGreetingText.Text = "Hello，请先登录";
+        }
+        else
+        {
+            var name = string.IsNullOrWhiteSpace(account.DisplayName)
+                ? "同学"
+                : account.DisplayName.Trim();
+            var greeting = now.Hour switch
+            {
+                >= 5 and < 11 => "早上好",
+                >= 11 and < 17 => "中午好",
+                _ => "晚上好",
+            };
 
-        
-        HomeGreetingText.Text = $"{greeting}，{name}";
+            HomeGreetingText.Text = $"{greeting}，{name}";
+        }
+
         HomeSubText.Text = $"{now:yyyy年M月d日 dddd}";
 
         var summary = AppServices.Time.GetTodaySummary(AppServices.Schedule.Profile, now);
