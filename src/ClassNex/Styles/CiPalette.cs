@@ -20,7 +20,7 @@ namespace ClassNex.Styles;
 
 
 
-public static class CiPalette
+public static partial class CiPalette
 {
     
 

@@ -2,27 +2,19 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Reflection;
 using Avalonia;
-using Avalonia.Animation;
-using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
-using Avalonia.Platform;
-using Avalonia.Rendering.Composition;
-using Avalonia.Rendering.Composition.Animations;
-using Avalonia.Styling;
 using Avalonia.Threading;
-using Avalonia.VisualTree;
 using ClassNex.Models;
 using ClassNex.Services;
 using ClassNex.Styles;
 using ClassNex.ViewModels;
 using AvaloniaFluentUI.Controls;
 using AvaloniaFluentUI.Windowing;
-using AvaloniaPath = Avalonia.Controls.Shapes.Path;
 
 namespace ClassNex.Views;
 
@@ -36,512 +28,70 @@ public partial class SettingsWindow : AppWindow
     private readonly ObservableCollection<SearchEntry> _searchEntries = new();
 
     
-    private readonly List<int> _pageHistory = new();
-    private int _lastPageIndex = -1;
-    private Control? _currentPageView;
-
     private bool _loading;
     private WidgetItem? _currentWidget;
     private int _lastWidgetTabIndex;
 
-    private bool _entrancePlayed;
-    private EventHandler? _themeChangedHandler;
-
-    private readonly List<SakuraBlossom> _blossoms = new();
-    private readonly Random _petalRandom = new();
-    private bool _blossomsRunning;
-
-    private static readonly Color[] PetalColors =
-    {
-        Color.FromArgb(0xDD, 0xF2, 0x93, 0xB2),
-        Color.FromArgb(0xDD, 0xFF, 0xA8, 0xC4),
-        Color.FromArgb(0xD0, 0xE8, 0x86, 0xAB),
-        Color.FromArgb(0xDD, 0xFF, 0xC9, 0xDA),
-        Color.FromArgb(0xDD, 0xF7, 0x9F, 0xBE),
-    };
-
-    private sealed class SakuraBlossom
-    {
-        public required AvaloniaPath View { get; init; }
-        public CompositionVisual? Visual;
-        public double Size;
-        public double StartX;
-        public double StartY;
-        public double EndX;
-        public double EndY;
-        public double Phase;
-        public double Sway;
-        public double Duration;
-        public double SpinDuration;
-        public double RotationOffset;
-        public double Opacity;
-    }
-
-    
-    private sealed class SearchEntry
-    {
-        public string Title { get; init; } = "";
-
-        public string PageName { get; init; } = "";
-
-        public int PageIndex { get; init; }
-    }
-
-    
-    private static readonly string[] PageNames = { "主页", "基本", "外观", "窗口", "组件", "NEX Intelligence", "提醒", "关于 ClassNEX", "调试", "账户" };
-
-    private static readonly string[] PageSubtitles =
-    {
-        "查看今天的状态与常用入口",
-        "设置启动行为、课表周期和托盘交互",
-        "调整主题、透明度与界面缩放",
-        "控制悬浮窗口的布局与交互方式",
-        "选择主界面组件并调整显示顺序",
-        "配置 AI 助手、权限与语音唤醒",
-        "设置课前、上课和下课提醒",
-        "查看版本、许可与项目信息",
-        "开发与调试工具",
-        "查看账户状态与同步方式",
-    };
-
-    
-    private static readonly (string Title, int PageIndex)[] SearchIndex =
-    {
-        ("开机自启", 1),
-        ("注册 Url 协议", 1),
-        ("学期开始时间", 1),
-        ("点击托盘图标行为", 1),
-        ("教学安全模式", 1),
-        ("主题（浅色 / 深色 / 跟随系统）", 2),
-        ("主界面背景不透明度", 2),
-        ("全局字号缩放", 2),
-        ("主界面缩放", 2),
-        ("组件排列方向", 3),
-        ("鼠标穿透", 3),
-        ("组件库（添加组件）", 4),
-        ("恢复默认布局", 4),
-        ("组件列表（上移 / 下移 / 删除）", 4),
-        ("组件设置：启用该组件", 4),
-        ("组件设置：字号缩放", 4),
-        ("时钟组件显示秒", 4),
-        ("自定义文本占位符", 4),
-        ("NEX Intelligence 接口", 5),
-        ("语音唤醒", 5),
-        ("提醒", 6),
-        ("课前提醒", 6),
-        ("版本信息", 7),
-        ("账户与浏览器授权", 9),
-    };
-
     public SettingsWindow()
     {
         InitializeComponent();
-        ApplySakuraChrome();
-        SettingsRoot.Opacity = 0;
-
-        foreach (var item in NavView.MenuItems.OfType<Control>())
-            MetroTilt.Attach(item);
-
-        Opened += (_, _) =>
-        {
-            PlayEntrance();
-            HomePetals.IsVisible = false;
-            StopSakuraBlossoms();
-        };
-
-        if (Application.Current is { } app)
-        {
-            _themeChangedHandler = (_, _) => Dispatcher.UIThread.Post(ApplySakuraChrome);
-            app.ActualThemeVariantChanged += _themeChangedHandler;
-            Closed += (_, _) => app.ActualThemeVariantChanged -= _themeChangedHandler;
-        }
-
-        Closed += (_, _) => StopSakuraBlossoms();
-
         WidgetList.ItemsSource = _widgets;
-
         InitShell();
         WireEvents();
         LoadFromSettings();
-
-        AccountService.Changed += () =>
-            Dispatcher.UIThread.Post(() =>
-            {
-                RefreshAccountName();
-                RefreshCentralAccountUi();
-            }, DispatcherPriority.Background);
+        AccountService.Changed += OnAccountChanged;
         AppServices.Management?.StatusChanged += OnCentralManagementStatusChanged;
+        ActualThemeVariantChanged += OnSettingsThemeChanged;
         Closed += (_, _) =>
         {
+            AccountService.Changed -= OnAccountChanged;
+            AppServices.NexVoice?.StatusChanged -= OnNexVoiceStatusChanged;
             AppServices.Management?.StatusChanged -= OnCentralManagementStatusChanged;
+            ActualThemeVariantChanged -= OnSettingsThemeChanged;
+            _homeGreetingTimer?.Stop();
+            _nexGlowPreviewTimer?.Stop();
         };
-
-        
-        
-        
-        
-        AccountPanel.SizeChanged += (_, e) => ApplyAccountCompact(e.NewSize.Width < 150);
     }
 
-    private void ApplySakuraChrome()
+    private void OnAccountChanged() => Dispatcher.UIThread.Post(() =>
     {
-        var brush = CiPalette.SettingsSurfaceBrush();
-        Background = brush;
-        SettingsRoot.Background = brush;
-        TopBarCapsule.Background = CiPalette.ChipSurfaceBrush();
-        TopBarCapsule.BorderBrush = CiPalette.ChipBorderBrush();
-        HomeBrandTile.Background = CiPalette.SakuraAccentTint(0.16);
-        HomeBrandTile.BorderBrush = CiPalette.SakuraAccentTint(0.30);
-        HomeHeroCard.Background = CiPalette.SakuraAccentTint(0.085);
-        HomeHeroCard.BorderBrush = CiPalette.SakuraAccentTint(0.24);
-        HomeThemePreviewSystem.Background = CiPalette.SettingsSurfaceBrush();
-        HomeThemePreviewLight.Background = CiPalette.SakuraAccentTint(0.18);
-        HomeThemePreviewDark.Background = CiPalette.CardBrush;
-    }
+        RefreshAccountName();
+        RefreshSettingsDashboardState();
+        RefreshCentralAccountUi();
+    });
 
-    private void PlayEntrance()
+    private void OnSettingsThemeChanged(object? sender, EventArgs e)
     {
-        if (_entrancePlayed)
-            return;
-
-        _entrancePlayed = true;
-        SettingsRoot.Opacity = 1;
-
-        var visual = ElementComposition.GetElementVisual(SettingsRoot);
-        if (visual is null)
-            return;
-
-        var bounds = SettingsRoot.Bounds;
-        visual.CenterPoint = new Vector3D(
-            (float)(bounds.Width / 2),
-            (float)(bounds.Height / 2),
-            0);
-        visual.Opacity = 0f;
-        visual.Scale = new Vector3D(0.965f, 0.965f, 1f);
-        visual.Offset = new Vector3D(0f, 16f, 0f);
-
-        var compositor = visual.Compositor;
-
-        var fade = compositor.CreateScalarKeyFrameAnimation();
-        fade.InsertKeyFrame(0f, 0f);
-        fade.InsertKeyFrame(1f, 1f, Easing.Parse("0.16, 1, 0.3, 1"));
-        fade.Duration = TimeSpan.FromMilliseconds(430);
-        visual.StartAnimation(nameof(visual.Opacity), fade);
-
-        var scale = compositor.CreateVector3KeyFrameAnimation();
-        scale.InsertKeyFrame(0f, new System.Numerics.Vector3(0.965f, 0.965f, 1f));
-        scale.InsertKeyFrame(0.62f, new System.Numerics.Vector3(1.006f, 1.006f, 1f), Easing.Parse("0.22, 1, 0.36, 1"));
-        scale.InsertKeyFrame(1f, new System.Numerics.Vector3(1f, 1f, 1f));
-        scale.Duration = TimeSpan.FromMilliseconds(620);
-        visual.StartAnimation(nameof(visual.Scale), scale);
-
-        var slide = compositor.CreateVector3KeyFrameAnimation();
-        slide.InsertKeyFrame(0f, new System.Numerics.Vector3(0f, 16f, 0f));
-        slide.InsertKeyFrame(1f, new System.Numerics.Vector3(0f, 0f, 0f), Easing.Parse("0.16, 1, 0.3, 1"));
-        slide.Duration = TimeSpan.FromMilliseconds(520);
-        visual.StartAnimation(nameof(visual.Offset), slide);
+        RefreshAccountStatusBrushes();
+        RefreshAvatarImages();
     }
 
-    private void StartSakuraBlossoms()
-    {
-        if (!HomePetals.IsVisible || _blossomsRunning)
-            return;
-
-        var width = HomePetals.Bounds.Width;
-        var height = HomePetals.Bounds.Height;
-        if (width <= 0 || height <= 0)
-            return;
-
-        if (_blossoms.Count == 0)
-        {
-            CreateSakuraBlossoms(width, height);
-            Dispatcher.UIThread.Post(StartSakuraBlossoms, DispatcherPriority.Loaded);
-            return;
-        }
-
-        _blossomsRunning = true;
-        var allStarted = true;
-        foreach (var blossom in _blossoms)
-        {
-            if (!StartBlossomAnimation(blossom))
-                allStarted = false;
-        }
-
-        if (!allStarted)
-        {
-            _blossomsRunning = false;
-            Dispatcher.UIThread.Post(StartSakuraBlossoms, DispatcherPriority.Loaded);
-        }
-    }
-
-    private void StopSakuraBlossoms()
-    {
-        _blossomsRunning = false;
-
-        foreach (var blossom in _blossoms)
-        {
-            var visual = blossom.Visual;
-            if (visual is null)
-                continue;
-
-            visual.StopAnimation(nameof(visual.Offset));
-            visual.StopAnimation(nameof(visual.RotationAngle));
-            visual.Opacity = 0;
-        }
-
-        HomePetals.Children.Clear();
-        _blossoms.Clear();
-    }
-
-    private void CreateSakuraBlossoms(double width, double height)
-    {
-        for (var i = 0; i < 8; i++)
-        {
-            var size = 26 + _petalRandom.NextDouble() * 22;
-            var group = new GeometryGroup();
-
-            for (var petalIndex = 0; petalIndex < 5; petalIndex++)
-            {
-                var petal = Geometry.Parse(
-                    "M 24,24 C 18,19 11,8 17,-1 C 21,-7 27,-7 31,-1 C 37,8 30,19 24,24 Z");
-                petal.Transform = new RotateTransform(petalIndex * 72, 24, 24);
-                group.Children.Add(petal);
-            }
-
-            var opacity = 0.34 + _petalRandom.NextDouble() * 0.30;
-            var startX = -40 + (i + 0.5) * (width + 80) / 8
-                         + (_petalRandom.NextDouble() - 0.5) * 36;
-            var startY = -20 - _petalRandom.NextDouble() * 220;
-            var drift = 20 + _petalRandom.NextDouble() * 170;
-            var rotation = _petalRandom.NextDouble() * Math.PI * 2;
-
-            var view = new AvaloniaPath
-            {
-                Data = group,
-                Width = size,
-                Height = size,
-                Stretch = Stretch.Uniform,
-                Fill = new SolidColorBrush(PetalColors[i % PetalColors.Length]),
-                Opacity = opacity,
-            };
-
-            var blossom = new SakuraBlossom
-            {
-                View = view,
-                Size = size,
-                StartX = startX,
-                StartY = startY,
-                EndX = startX + drift,
-                EndY = height + 100 + _petalRandom.NextDouble() * 80,
-                Phase = _petalRandom.NextDouble() * Math.PI * 2,
-                Sway = 20 + _petalRandom.NextDouble() * 36,
-                Duration = 5.5 + _petalRandom.NextDouble() * 9 + i * 0.1,
-                SpinDuration = 8 + _petalRandom.NextDouble() * 7,
-                RotationOffset = rotation,
-                Opacity = opacity,
-            };
-
-            Canvas.SetLeft(view, 0);
-            Canvas.SetTop(view, 0);
-            HomePetals.Children.Add(view);
-            _blossoms.Add(blossom);
-        }
-    }
-
-    private static bool StartBlossomAnimation(SakuraBlossom blossom)
-    {
-        var visual = blossom.Visual ??= ElementComposition.GetElementVisual(blossom.View);
-        if (visual is null)
-            return false;
-
-        visual.CenterPoint = new Vector3D((float)(blossom.Size / 2), (float)(blossom.Size / 2), 0);
-        visual.Offset = new Vector3D((float)blossom.StartX, (float)blossom.StartY, 0);
-        visual.Opacity = (float)blossom.Opacity;
-
-        var compositor = visual.Compositor;
-
-        var move = compositor.CreateVector3KeyFrameAnimation();
-        for (var step = 0; step <= 6; step++)
-        {
-            var progress = step / 6.0;
-            var sway = Math.Sin(blossom.Phase + progress * Math.PI * 2.6)
-                       * blossom.Sway * (0.45 + progress * 0.55);
-            var x = blossom.StartX + (blossom.EndX - blossom.StartX) * progress + sway;
-            var y = blossom.StartY + (blossom.EndY - blossom.StartY) * progress;
-            move.InsertKeyFrame(
-                (float)progress,
-                new System.Numerics.Vector3((float)x, (float)y, 0),
-                new LinearEasing());
-        }
-
-        move.Duration = TimeSpan.FromSeconds(blossom.Duration);
-        move.IterationBehavior = AnimationIterationBehavior.Forever;
-        visual.StartAnimation(nameof(visual.Offset), move);
-
-        var spin = compositor.CreateScalarKeyFrameAnimation();
-        spin.InsertKeyFrame(0f, (float)blossom.RotationOffset, new LinearEasing());
-        spin.InsertKeyFrame(1f, (float)(blossom.RotationOffset + Math.PI * 2), new LinearEasing());
-        spin.Duration = TimeSpan.FromSeconds(blossom.SpinDuration);
-        spin.IterationBehavior = AnimationIterationBehavior.Forever;
-        visual.StartAnimation(nameof(visual.RotationAngle), spin);
-
-        return true;
-    }
-
-    
-
-    private bool _accountCompact;
-
-    
-    
-    
-    
-    
-    
-    private void ApplyAccountCompact(bool compact)
-    {
-        if (_accountCompact == compact)
-            return;
-
-        _accountCompact = compact;
-
-        if (compact)
-        {
-            
-            
-            
-            
-            
-            AccountPanel.Margin = new Thickness(7, 6, 2, 10);
-            AccountShift.X = 0;
-            AccountAvatarRing.Width = 32;
-            AccountAvatarRing.Height = 32;
-            AccountAvatarRing.CornerRadius = new CornerRadius(16);
-            AccountAvatarRing.BorderThickness = new Thickness(2);
-            AccountTextHost.Opacity = 0;
-            AccountTextHost.IsHitTestVisible = false;
-        }
-        else
-        {
-            AccountPanel.Margin = new Thickness(14, 6, 6, 10);
-            AccountShift.X = 0;
-            AccountAvatarRing.Width = 52;
-            AccountAvatarRing.Height = 52;
-            AccountAvatarRing.CornerRadius = new CornerRadius(26);
-            AccountAvatarRing.BorderThickness = new Thickness(3);
-            AccountTextHost.Opacity = 1;
-            AccountTextHost.IsHitTestVisible = true;
-        }
-    }
-
-    
-    private TranslateTransform AccountShift => (TranslateTransform)AccountPanel.RenderTransform!;
-
-    
-    
-    
-    
-    
-    
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
-
-        
-        
-        
-        
-        try
-        {
-            if (TitleBar is { } bar)
-                bar.TitleBarHitTestType = TitleBarHitTestType.Complex;
-
-            AppWindow.SetAllowInteractionInTitleBar(this, true);
-        }
-        catch
-        {
-            
-        }
-
-        try
-        {
-            if (!OperatingSystem.IsWindows())
-                return;
-
-            if (Environment.OSVersion.Version < new Version(10, 0, 22000))
-                return;
-
-            TransparencyLevelHint = new[]
-            {
-                WindowTransparencyLevel.Mica,
-                WindowTransparencyLevel.None,
-            };
-            Background = Brushes.Transparent;
-        }
-        catch
-        {
-            
-        }
+#if DEBUG
+        StartSettingsVerification();
+#endif
+        if (TitleBar is { } bar)
+            bar.TitleBarHitTestType = TitleBarHitTestType.Complex;
+        if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
+            TransparencyLevelHint = [WindowTransparencyLevel.Mica, WindowTransparencyLevel.None];
     }
 
-    
     private void InitShell()
     {
-        var version = typeof(SettingsWindow).Assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-        if (string.IsNullOrWhiteSpace(version))
-            version = typeof(SettingsWindow).Assembly.GetName().Version?.ToString() ?? "26w41a";
-
-        VersionText.Text = version;
-        AboutVersionText.Text = $"版本 {version}";
-
+        var assembly = typeof(SettingsWindow).Assembly;
+        var version = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+            ?? assembly.GetName().Version?.ToString();
+        VersionText.Text = AboutVersionText.Text = $"版本 {version}";
+        InitSettingsNavigation();
         RefreshAccountName();
-
-        SearchResults.ItemsSource = _searchEntries;
-
-#if DEBUG
-        
-        if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_SEARCH") == "1")
-        {
-            Dispatcher.UIThread.Post(() =>
-            {
-                try
-                {
-                    var log = System.IO.Path.Combine(AppContext.BaseDirectory, "_verify.log");
-                    SearchBox.Text = "组件";
-                    System.IO.File.AppendAllText(log,
-                        $"SEARCH 设置文本后 Text=「{SearchBox.Text}」命中 {_searchEntries.Count} 条\n");
-
-                    if (_searchEntries.Count == 0)
-                    {
-                        UpdateSearchResults();
-                        System.IO.File.AppendAllText(log,
-                            $"SEARCH 手动重算后命中 {_searchEntries.Count} 条\n");
-                    }
-
-                    if (_searchEntries.Count > 0)
-                    {
-                        SearchResults.SelectedItem = _searchEntries[0];
-                        System.IO.File.AppendAllText(log,
-                            "SEARCH 已选中第一条结果（应触发导航且不闪退）\n");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.IO.File.AppendAllText(
-                        System.IO.Path.Combine(AppContext.BaseDirectory, "_verify.log"),
-                        $"SEARCH 异常：{ex}\n");
-                }
-            }, DispatcherPriority.Background);
-        }
-#endif
     }
 
-    
     private void RefreshAccountName()
     {
         var profile = AccountService.Current;
-        var loggedIn = profile is not null;
+        var loggedIn = profile is { IsLoggedIn: true };
         var displayName = loggedIn ? profile!.DisplayName.Trim() : "尚未登录";
         var displayEmail = loggedIn ? profile!.Email.Trim() : "登录后自动同步账户资料";
         if (string.IsNullOrWhiteSpace(displayName))
@@ -549,12 +99,6 @@ public partial class SettingsWindow : AppWindow
         if (string.IsNullOrWhiteSpace(displayEmail))
             displayEmail = loggedIn ? "未提供邮箱" : "登录后自动同步账户资料";
 
-        AccountNameText.Text = displayName;
-        AccountEmailText.Text = displayEmail;
-        HomeAccountNameText.Text = displayName;
-        HomeAccountEmailText.Text = displayEmail;
-        HomeAccountStatusText.Text = loggedIn ? "已连接，资料已同步" : "未登录";
-        HomeLoginButton.Content = loggedIn ? "切换账户" : "登录账户";
         AccountPageNameText.Text = displayName;
         AccountPageEmailText.Text = displayEmail;
         AccountPageStatusText.Text = loggedIn ? "已连接" : "未登录";
@@ -564,15 +108,15 @@ public partial class SettingsWindow : AppWindow
         AccountLoginButton.Content = loggedIn ? "切换账户" : "浏览器登录";
         AccountLogoutButton.IsVisible = loggedIn;
 
-        var accent = CiPalette.SakuraAccentBrush();
-        AccountAvatarRing.BorderBrush = accent;
-        HomeAccountAvatarRing.BorderBrush = accent;
-        AccountPageAvatarRing.BorderBrush = accent;
-        AccountPageStatusBadge.Background = CiPalette.SakuraAccentTint(0.14);
-        AccountPageStatusBadge.BorderBrush = CiPalette.SakuraAccentTint(0.32);
-        AccountPageStatusText.Foreground = accent;
-
+        RefreshAccountStatusBrushes();
         RefreshAvatarImages();
+    }
+
+    private void RefreshAccountStatusBrushes()
+    {
+        AccountPageStatusBadge.Background = CiPalette.AccentTint(0.14);
+        AccountPageStatusBadge.BorderBrush = CiPalette.AccentTint(0.32);
+        AccountPageStatusText.Foreground = CiPalette.AccentBrush();
     }
 
     private void OnAccountLogin(object? sender, RoutedEventArgs e)
@@ -587,75 +131,6 @@ public partial class SettingsWindow : AppWindow
     }
 
     
-    private static Color Mix(Color c, Color target, double t)
-    {
-        t = Math.Clamp(t, 0, 1);
-        return Color.FromRgb(
-            (byte)Math.Clamp(c.R + (target.R - c.R) * t, 0, 255),
-            (byte)Math.Clamp(c.G + (target.G - c.G) * t, 0, 255),
-            (byte)Math.Clamp(c.B + (target.B - c.B) * t, 0, 255));
-    }
-
-    
-    private static Color RotateHue(Color c, double degrees, double satScale)
-    {
-        var r = c.R / 255.0;
-        var g = c.G / 255.0;
-        var b = c.B / 255.0;
-        var max = Math.Max(r, Math.Max(g, b));
-        var min = Math.Min(r, Math.Min(g, b));
-        var l = (max + min) / 2;
-        double h = 0, s = 0;
-
-        if (Math.Abs(max - min) > 1e-6)
-        {
-            var d = max - min;
-            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-            if (Math.Abs(max - r) < 1e-6)
-                h = (g - b) / d + (g < b ? 6 : 0);
-            else if (Math.Abs(max - g) < 1e-6)
-                h = (b - r) / d + 2;
-            else
-                h = (r - g) / d + 4;
-            h /= 6;
-        }
-
-        h = (h + degrees / 360.0) % 1.0;
-        if (h < 0)
-            h += 1.0;
-        s = Math.Clamp(s * satScale, 0, 1);
-
-        double R = l, G = l, B = l;   
-        if (s > 1e-6)
-        {
-            var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-            var p = 2 * l - q;
-            R = HueToRgb(p, q, h + 1.0 / 3);
-            G = HueToRgb(p, q, h);
-            B = HueToRgb(p, q, h - 1.0 / 3);
-        }
-
-        return Color.FromRgb(
-            (byte)Math.Clamp(R * 255, 0, 255),
-            (byte)Math.Clamp(G * 255, 0, 255),
-            (byte)Math.Clamp(B * 255, 0, 255));
-    }
-
-    private static double HueToRgb(double p, double q, double t)
-    {
-        if (t < 0)
-            t += 1;
-        if (t > 1)
-            t -= 1;
-        if (t < 1.0 / 6)
-            return p + (q - p) * 6 * t;
-        if (t < 1.0 / 2)
-            return q;
-        if (t < 2.0 / 3)
-            return p + (q - p) * (2.0 / 3 - t) * 6;
-        return p;
-    }
-
     private void OnAccountClick(object? sender, RoutedEventArgs e)
     {
         NavigateTo("account");
@@ -666,85 +141,12 @@ public partial class SettingsWindow : AppWindow
         var name = AccountService.Current?.DisplayName ?? "";
         var imagePath = AccountService.AvatarImagePath;
 
-        AccountAvatar.Apply(AccountAvatarRing, name, imagePath);
-        AccountAvatar.Apply(HomeAccountAvatarRing, name, imagePath);
         AccountAvatar.Apply(AccountPageAvatarRing, name, imagePath);
     }
 
     
-    private void OnNavigateBack(object? sender, RoutedEventArgs e)
-    {
-        if (_pageHistory.Count == 0)
-            return;
-
-        var index = _pageHistory[^1];
-        _pageHistory.RemoveAt(_pageHistory.Count - 1);
-        if (index >= 0 && index < NavView.MenuItems.Count)
-        {
-            _lastPageIndex = index;
-            NavView.SelectedItem = NavView.MenuItems[index];
-        }
-    }
-
-    
-    public void NavigateTo(string page)
-    {
-        var index = page switch
-        {
-            "home" => 0,
-            "general" or "basic" => 1,
-            "appearance" or "interface" => 2,
-            "window" => 3,
-            "widgets" => 4,
-            "nex" => 5,
-            "notification" => 6,
-            "about" => 7,
-            "debug" => 8,
-            _ => 0,
-        };
-
-        
-        if (page == "account")
-        {
-            var previousAccountPage = _currentPageView;
-            KeepOnlyPages(previousAccountPage, PageAccount);
-            PageAccount.IsVisible = true;
-            PageScroll.Offset = new Vector(0, 0);
-            _currentPageView = PageAccount;
-            HomePetals.IsVisible = false;
-            StopSakuraBlossoms();
-            PageHeaderHost.IsVisible = true;
-            PageTitleText.Text = "账户";
-            PageSubtitleText.Text = PageSubtitles[9];
-            PageSubtitleText.IsVisible = true;
-            PageTitleText.Opacity = 1;
-            MetroTransitions.Play(previousAccountPage, PageAccount, true, null, PageTitleText);
-            AttachTiltToPage(PageAccount);
-            return;
-        }
-
-        
-        
-        var targetName = PageNames[Math.Clamp(index, 0, PageNames.Length - 1)];
-        foreach (var item in NavView.MenuItems)
-        {
-            if (item is NavigationViewItem navItem &&
-                string.Equals(navItem.Content as string, targetName, StringComparison.Ordinal))
-            {
-                NavView.SelectedItem = navItem;
-                return;
-            }
-        }
-    }
-
     private void WireEvents()
     {
-        
-        SearchBox.TextChanged += (_, _) => UpdateSearchResults();
-        SearchResults.SelectionChanged += (_, _) => NavigateFromSearch();
-
-        NavView.SelectionChanged += (_, _) => SwitchPage();
-
         
         SingleWeekStartPicker.PropertyChanged += (_, e) =>
         {
@@ -858,12 +260,12 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 #endif
 
         
-        RefreshHomeGreeting();
+        RefreshSettingsDashboardState();
         _homeGreetingTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
         _homeGreetingTimer.Tick += (_, _) =>
         {
             if (PageHome.IsVisible)
-                RefreshHomeGreeting();
+                RefreshSettingsDashboardState();
         };
         _homeGreetingTimer.Start();
     }
@@ -914,59 +316,8 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
         _loading = false;
 
-        NavView.SelectedItem = NavView.MenuItems[0];
-        SwitchPage();
+        NavigateTo("home");
     }
-
-    private void SwitchPage()
-    {
-        
-        
-        var name = (NavView.SelectedItem as NavigationViewItem)?.Content as string ?? "";
-        var index = Array.IndexOf(PageNames, name);
-        if (index < 0)
-            index = 0;
-
-        var previousPage = _currentPageView;
-        var previousIndex = _lastPageIndex;
-
-        
-        if (_lastPageIndex >= 0 && _lastPageIndex != index)
-            _pageHistory.Add(_lastPageIndex);
-        _lastPageIndex = index;
-
-        var page = PageFor(index);
-        _currentPageView = page;
-
-        KeepOnlyPages(previousPage, page);
-        page.IsVisible = true;
-        PageScroll.Offset = new Vector(0, 0);
-
-        HomePetals.IsVisible = false;
-        StopSakuraBlossoms();
-
-        var title = PageNames[Math.Clamp(index, 0, PageNames.Length - 1)];
-        PageTitleText.Text = title;
-        PageSubtitleText.Text = PageSubtitles[Math.Clamp(index, 0, PageSubtitles.Length - 1)];
-        PageHeaderHost.IsVisible = index != 0;
-        PageSubtitleText.IsVisible = index != 0;
-        PageTitleText.Opacity = 1;
-        MetroTransitions.Play(previousPage, page, index >= previousIndex, null, PageTitleText);
-
-        AttachTiltToPage(page);
-
-        if (index == 0)
-            RefreshHomeGreeting();
-
-        if (index == 5)
-            RefreshNexPage();
-
-        
-        if (index == 8)
-            RefreshNexApiFields();
-    }
-
-    
 
     private bool _nexEventsWired;
     private bool _nexLoading;
@@ -989,6 +340,8 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         };
         _nexGlowPreviewTimer.Start();
     }
+
+    private void OnNexVoiceStatusChanged(string status) => Dispatcher.UIThread.Post(() => NexVoiceStatusText.Text = status);
 
     private void RefreshNexPage()
     {
@@ -1066,8 +419,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
                 NexVoiceStatusText.Text = result;
             };
 
-            AppServices.NexVoice?.StatusChanged += status =>
-                Dispatcher.UIThread.Post(() => NexVoiceStatusText.Text = status);
+            AppServices.NexVoice?.StatusChanged += OnNexVoiceStatusChanged;
 
             NexSystemPromptBox.TextChanged += (_, _) => SaveNexSettings();
             NexPermissionCombo.SelectionChanged += (_, _) => SaveNexSettings();
@@ -1229,125 +581,6 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
     
     
-    private void RefreshHomeGreeting()
-    {
-        var now = DateTime.Now;
-        var account = AccountService.Current;
-        if (account is not { IsLoggedIn: true })
-        {
-            HomeGreetingText.Text = "Hello，请先登录";
-        }
-        else
-        {
-            var name = string.IsNullOrWhiteSpace(account.DisplayName)
-                ? "同学"
-                : account.DisplayName.Trim();
-            var greeting = now.Hour switch
-            {
-                >= 5 and < 11 => "早上好",
-                >= 11 and < 17 => "中午好",
-                _ => "晚上好",
-            };
-
-            HomeGreetingText.Text = $"{greeting}，{name}";
-        }
-
-        HomeSubText.Text = $"{now:yyyy年M月d日 dddd}";
-
-        var summary = AppServices.Time.GetTodaySummary(AppServices.Schedule.Profile, now);
-        var slots = summary.Slots;
-        var completed = slots.Count(slot => slot.End <= now.TimeOfDay);
-
-        HomeScheduleStatusText.Text = summary.Current is { } current
-            ? $"正在上 {current.DisplayName}"
-            : summary.Next is { } next
-                ? $"下一节 {next.StartText}"
-                : summary.IsEmpty
-                    ? "今天没有课程"
-                    : "今日课程已结束";
-        HomeTodaySummaryText.Text = summary.IsEmpty
-            ? "今天没有安排课程"
-            : $"今日 {slots.Count} 节课 · 已完成 {completed} 节";
-
-        var focus = summary.Current ?? summary.Next ?? slots.LastOrDefault();
-        if (focus is null)
-        {
-            HomeCourseTimeText.Text = "--:--";
-            HomeCourseNameText.Text = "今天没有课程";
-            HomeCourseDetailText.Text = "可以在档案编辑器中添加课程";
-            HomeCourseStatusText.Text = "暂无安排";
-            return;
-        }
-
-        HomeCourseTimeText.Text = focus.TimeRange;
-        HomeCourseNameText.Text = focus.DisplayName;
-        HomeCourseDetailText.Text = string.IsNullOrWhiteSpace(focus.Detail)
-            ? "课程信息"
-            : focus.Detail;
-        HomeCourseStatusText.Text = summary.Current is not null
-            ? "正在进行"
-            : summary.Next is not null
-                ? "即将开始"
-                : "今日已完成";
-    }
-
-    
-
-    private void UpdateSearchResults()
-    {
-        var query = SearchBox.Text?.Trim() ?? "";
-        _searchEntries.Clear();
-
-        if (query.Length > 0)
-        {
-            foreach (var (title, pageIndex) in SearchIndex)
-            {
-                if (title.Contains(query, StringComparison.OrdinalIgnoreCase)
-                    || PageNames[pageIndex].Contains(query, StringComparison.OrdinalIgnoreCase))
-                {
-                    _searchEntries.Add(new SearchEntry
-                    {
-                        Title = title,
-                        PageName = PageNames[pageIndex],
-                        PageIndex = pageIndex,
-                    });
-                }
-            }
-        }
-
-        SearchResultsPanel.IsVisible = _searchEntries.Count > 0;
-    }
-
-    private void NavigateFromSearch()
-    {
-        if (SearchResults.SelectedItem is not SearchEntry entry)
-            return;
-
-        var pageIndex = entry.PageIndex;
-
-        
-        
-        
-        Dispatcher.UIThread.Post(() =>
-        {
-            try
-            {
-                if (pageIndex >= 0 && pageIndex < NavView.MenuItems.Count)
-                    NavView.SelectedItem = NavView.MenuItems[pageIndex];
-            }
-            catch
-            {
-                
-            }
-
-            SearchResultsPanel.IsVisible = false;
-            _searchEntries.Clear();
-            SearchBox.Text = "";
-        }, DispatcherPriority.Background);
-    }
-
-    
-
     private void OnOpenDataFolder(object? sender, RoutedEventArgs e)
         => OpenInExplorer(SettingsService.DataDirectory);
 
@@ -1361,50 +594,6 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
     
     
     
-    
-    private Control PageFor(int index) => index switch
-    {
-        0 => PageHome,
-        1 => PageGeneral,
-        2 => PageInterface,
-        3 => PageWindow,
-        4 => PageWidgets,
-        5 => PageNex,
-        6 => PageNotification,
-        7 => PageAbout,
-        8 => PageDebug,
-        _ => (Control)PageHome,
-    };
-
-    private void KeepOnlyPages(Control? keepA, Control? keepB)
-    {
-        if (keepA is not null && !ReferenceEquals(keepA, keepB))
-        {
-            keepA.Opacity = 0;
-            keepA.IsHitTestVisible = false;
-        }
-
-        if (keepB is not null)
-        {
-            keepB.IsVisible = true;
-            keepB.Opacity = 1;
-            keepB.IsHitTestVisible = true;
-        }
-    }
-
-    private static void AttachTiltToPage(Control page)
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            foreach (var control in page.GetVisualDescendants().OfType<Control>())
-            {
-                var name = control.GetType().Name;
-                if (name is "SettingsCard" or "SettingsExpanderItem")
-                    MetroTilt.Attach(control);
-            }
-        }, DispatcherPriority.Background);
-    }
-
     
     private void SaveShot(string fileName)
     {
@@ -1643,8 +832,6 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
     }
 #endif
 
-    private void RefreshDebugVisibility() => DebugNavItem.IsVisible = AppServices.Settings.IsDebugOptionsEnabled;
-
     private void OnDebugClose()
     {
         AppServices.Settings.IsDebugOptionsEnabled = false;
@@ -1688,16 +875,6 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
     private const string RepoUrl = "https://github.com/ClassNex/ClassNEX";
 
     private void OnOpenHomePage(object? sender, RoutedEventArgs e) => OpenUrl(RepoUrl);
-
-    private void OnHomeOpenAppearance(object? sender, RoutedEventArgs e) => NavigateTo("appearance");
-
-    private void OnHomeOpenWindow(object? sender, RoutedEventArgs e) => NavigateTo("window");
-
-    private void OnHomeOpenNotification(object? sender, RoutedEventArgs e) => NavigateTo("notification");
-
-    private void OnHomeOpenWidgets(object? sender, RoutedEventArgs e) => NavigateTo("widgets");
-
-    private void OnHomeEditProfile(object? sender, RoutedEventArgs e) => App.OpenProfileEditor(0);
 
     private void OnPreviewOobe(object? sender, RoutedEventArgs e) => App.ShowOobePreview();
 
@@ -1752,14 +929,6 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
     }
 
     
-
-    private void ThemeChanged(string propertyName, bool? isChecked)
-    {
-        if (_loading || !isChecked.HasValue || propertyName != "IsChecked")
-            return;
-
-        ApplyTheme();
-    }
 
     private void ApplyGeneral()
     {
@@ -1845,43 +1014,16 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
     
 
     
-    private static bool IsDarkTheme()
-    {
-        var variant = Application.Current?.ActualThemeVariant;
-        if (variant == ThemeVariant.Dark)
-            return true;
-        if (variant == ThemeVariant.Light)
-            return false;
-
-        try
-        {
-            return Application.Current?.PlatformSettings?.GetColorValues().ThemeVariant
-                   == PlatformThemeVariant.Dark;
-        }
-        catch
-        {
-            return true;
-        }
-    }
-
-    
-    private sealed record WidgetTypeItem(string DisplayName, string Description, string Glyph, string Type);
-
     private void RefreshWidgetLibrary()
     {
         WidgetLibraryPanel.Children.Clear();
-        foreach (var type in AppServices.Widgets.AvailableTypes)
+        foreach (var item in AppServices.Widgets.AvailableTypes)
         {
-            var item = new WidgetTypeItem(
-                type.DisplayName,
-                type.Description,
-                type.Glyph,
-                type.Type);
-
             var icon = new AvaloniaFluentUI.Controls.FontIcon
             {
-                FontFamily = new Avalonia.Media.FontFamily("avares://ClassNex/Assets/Fonts/#lucide"),
-                Glyph = item.Glyph,
+                FontFamily = SettingsIcons.SymbolFont,
+                Glyph = SettingsIcons.WidgetGlyph(item.Type),
+                Classes = { "settings-glyph" },
                 FontSize = 26,
                 Width = 32,
                 Height = 32,
@@ -1911,7 +1053,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             };
             var addIcon = new AvaloniaFluentUI.Controls.FontIcon
             {
-                FontFamily = new Avalonia.Media.FontFamily("avares://ClassNex/Assets/Fonts/#lucide"),
+                FontFamily = SettingsIcons.SymbolFont,
                 Glyph = "\uE710",
                 FontSize = 16,
                 VerticalAlignment = VerticalAlignment.Center,
@@ -1933,8 +1075,8 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
                 Margin = new Thickness(0, 0, 8, 8),
                 Padding = new Thickness(8, 6),
                 HorizontalContentAlignment = HorizontalAlignment.Stretch,
-                Background = CiPalette.ChipSurfaceBrush(),
-                BorderBrush = CiPalette.ChipBorderBrush(),
+                Classes = { "widget-tile" },
+                Tag = item.Type,
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(8),
                 Content = grid,

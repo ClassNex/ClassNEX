@@ -1,0 +1,87 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="using:AvaloniaFluentUI.Controls">
+    <Styles.Resources>
+        <x:Double x:Key="SettingsExpanderMinHeight">76</x:Double>
+        <x:Double x:Key="SettingsExpanderItemIconSize">18</x:Double>
+        <x:Double x:Key="SettingsExpanderItemAdaptiveWidthTrigger">580</x:Double>
+        <Thickness x:Key="SettingsExpanderItemContentMargin">36,0,0,0</Thickness>
+        <Thickness x:Key="SettingsExpanderItemBottomFooterMargin">0,12,0,0</Thickness>
+    </Styles.Resources>
+
+    <Style Selector="StackPanel.settings-section">
+        <Setter Property="Container.Name" Value="settingsSection"/>
+        <Setter Property="Container.Sizing" Value="Width"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="VerticalAlignment" Value="Top"/>
+        <Setter Property="Spacing" Value="4"/>
+    </Style>
+    <Style Selector="TextBlock.settings-group-title">
+        <Setter Property="AutomationProperties.HeadingLevel" Value="2"/>
+        <Setter Property="FontSize" Value="20"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="Margin" Value="0,0,0,10"/>
+    </Style>
+    <Style Selector="TextBlock.settings-group-title.subsequent">
+        <Setter Property="Margin" Value="0,24,0,10"/>
+    </Style>
+    <Style Selector="TextBlock.settings-caption">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
+    </Style>
+    <Style Selector="ui|SettingsExpander">
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="CornerRadius" Value="8"/>
+    </Style>
+    <Style Selector="ui|SettingsExpander /template/ Expander#Expander">
+        <Setter Property="CornerRadius" Value="8"/>
+    </Style>
+    <Style Selector="ui|SettingsExpander /template/ Expander#Expander /template/ ToggleButton#ToggleButton">
+        <Setter Property="CornerRadius" Value="8"/>
+    </Style>
+    <Style Selector="ui|SettingsExpander /template/ Expander#Expander /template/ ToggleButton#ToggleButton:checked /template/ Border#Root">
+        <Setter Property="CornerRadius" Value="8,8,0,0"/>
+    </Style>
+    <Style Selector="ui|SettingsExpanderItem /template/ StackPanel#HeaderRegion">
+        <Setter Property="Spacing" Value="2"/>
+    </Style>
+    <Style Selector="ui|SettingsExpanderItem /template/ ContentPresenter#ContentPresenter">
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+    <Style Selector="ui|SettingsExpanderItem /template/ TextBlock#DescriptionText">
+        <Setter Property="FontSize" Value="12"/>
+    </Style>
+    <Style Selector="TextBox.settings-wide-field">
+        <Setter Property="Width" Value="320"/>
+    </Style>
+    <Style Selector="Grid.settings-slider">
+        <Setter Property="Width" Value="320"/>
+        <Setter Property="ColumnSpacing" Value="8"/>
+    </Style>
+    <Style Selector="Grid.settings-slider > Button">
+        <Setter Property="Width" Value="32"/>
+        <Setter Property="Height" Value="32"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Grid.settings-slider > Slider">
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="WrapPanel.settings-actions">
+        <Setter Property="ItemSpacing" Value="8"/>
+        <Setter Property="LineSpacing" Value="6"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <ContainerQuery Name="settingsSection" Query="max-width:430">
+        <Style Selector="Grid.settings-slider">
+            <Setter Property="Width" Value="248"/>
+        </Style>
+        <Style Selector="TextBox.settings-wide-field">
+            <Setter Property="Width" Value="232"/>
+        </Style>
+    </ContainerQuery>
+</Styles>

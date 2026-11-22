@@ -2,7 +2,8 @@ param(
     [string]$ProcessName = "ClassNex",
     [string]$Title = "ClassNEX 主界面",
     [Parameter(Mandatory = $true)]
-    [string]$OutputPath
+    [string]$OutputPath,
+    [switch]$AllowScreenCopy
 )
 
 Add-Type -AssemblyName System.Drawing
@@ -42,6 +43,12 @@ public static class ClassNexWindowCapture
     [DllImport("user32.dll")]
     public static extern bool PrintWindow(IntPtr hWnd, IntPtr hdc, uint flags);
 
+    [DllImport("user32.dll")]
+    public static extern bool ShowWindow(IntPtr hWnd, int command);
+
+    [DllImport("user32.dll")]
+    public static extern bool SetForegroundWindow(IntPtr hWnd);
+
     public static IntPtr Find(uint processId, string title)
     {
         IntPtr result = IntPtr.Zero;
@@ -74,6 +81,12 @@ if ($handle -eq [IntPtr]::Zero) {
     throw "Window '$Title' was not found."
 }
 
+if ($AllowScreenCopy) {
+    [ClassNexWindowCapture]::ShowWindow($handle, 9) | Out-Null
+    [ClassNexWindowCapture]::SetForegroundWindow($handle) | Out-Null
+    Start-Sleep -Milliseconds 250
+}
+
 $rect = New-Object ClassNexWindowCapture+RECT
 if (-not [ClassNexWindowCapture]::GetWindowRect($handle, [ref]$rect)) {
     throw "GetWindowRect failed."
@@ -86,11 +99,24 @@ $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
 $hdc = $graphics.GetHdc()
 try {
     if (-not [ClassNexWindowCapture]::PrintWindow($handle, $hdc, 2)) {
-        throw "PrintWindow failed."
+        if (-not $AllowScreenCopy) {
+            throw "PrintWindow failed. Use -AllowScreenCopy to capture the visible screen."
+        }
+        $graphics.ReleaseHdc($hdc)
+        $hdc = [IntPtr]::Zero
+        $graphics.CopyFromScreen(
+            $rect.Left,
+            $rect.Top,
+            0,
+            0,
+            (New-Object System.Drawing.Size($width, $height)),
+            [System.Drawing.CopyPixelOperation]::SourceCopy)
     }
 }
 finally {
-    $graphics.ReleaseHdc($hdc)
+    if ($hdc -ne [IntPtr]::Zero) {
+        $graphics.ReleaseHdc($hdc)
+    }
     $graphics.Dispose()
 }
 

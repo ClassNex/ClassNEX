@@ -1,6 +1,6 @@
 # ClassNEX 续作指南（HANDOFF）
 
-> 最后更新：2026-11-16　｜　当前版本 **26w46d**　｜　发布标签 **26w46d_Alpha**
+> 最后更新：2026-11-22　｜　最近发布版本 **26w46d**　｜　发布标签 **26w46d_Alpha**。本轮客户端设置改版未创建发布标签。
 > 已发布：`26w41a_Alpha` ~ `26w46d_Alpha`（GitHub Releases，均为预发布）
 > 这份文档的目的：**第二天打开新会话，照着它就能无缝继续写。**
 
@@ -10,21 +10,23 @@
 
 ```powershell
 cd E:\ClassNex
-dotnet build src\ClassNex\ClassNex.csproj -c Debug          # 编译
-$env:CLASSNEX_VERIFY="1"; Start-Process "E:\ClassNex\src\ClassNex\bin\Debug\net10.0\ClassNex.exe"   # 运行+自检
+dotnet build src\ClassNex\ClassNex.csproj -c Debug -t:Rebuild
+$env:CLASSNEX_VERIFY = "1"
+.\src\ClassNex\bin\Debug\net10.0-windows10.0.19041.0\ClassNex.exe
 ```
 
 - 仓库：https://github.com/ClassNex/ClassNEX （GPL-3.0，分支 `main`）
 - 技术栈：**.NET 10 + Avalonia 11.3.12 + AvaloniaFluentUI 1.0.3 + YamlDotNet 16.3.0**
   （2026-10-05 已从 FluentAvaloniaUI 迁到用户指定的 AvaloniaFluentUI，见 5.6）
-- 数据目录：`<exe 同目录>\data\`（`settings.json` + `timetable.yaml`）
-- **UI 语言全部中文**，注释也全用中文
+- 数据目录：应用载荷的 `..\data\`，包含 `Settings.json`、`timetable.yaml` 等。要试改设置，请用隔离目录，不要复制真实的账户、密钥或集控配置。
+- 正文使用中文；按照 `AGENTS.md`，仓库代码不添加注释。
 - 调试开关（都在 Debug 构建生效）：
   - `CLASSNEX_VERIFY=1` 写 `_verify.log` + 跑数据自检 —— **只启动浮窗，不会弹设置/档案编辑器**
   - `CLASSNEX_VERIFY_WINDOWS=1` 额外打开「应用设置 + 档案编辑器」（一般情况下不需要，别加）
-  - `CLASSNEX_VERIFY_PAGE=about|widgets|appearance|window|basic|account` 打开设置窗口并停在指定页
+  - `CLASSNEX_VERIFY_PAGE=home|settings|basic|appearance|window|widgets|nex|notification|account|about` 打开设置窗口并停在指定页；`home` 是主页，`settings` 是设置总览
     （设了它就等于开了 `CLASSNEX_VERIFY_WINDOWS`）
   - `CLASSNEX_VERIFY_SEARCH=1` 模拟「输入关键字 → 点搜索结果」（同样会开设置窗口）
+  - `CLASSNEX_VERIFY_SETTINGS=1` 在已打开的设置窗口运行布局、导航和交互自检；与 `CLASSNEX_VERIFY=1`、`CLASSNEX_VERIFY_PAGE=home` 搭配。写入测试数据必须另设开关，见 5.3。
   - `CLASSNEX_VERIFY_SHOT=1` 等 3 秒把**已存在的**窗口各自渲染成 `_shot_*.png`（不受遮挡影响）
   - `CLASSNEX_VERIFY_LAYOUT=1` 每秒把窗口/岛/课表当前项的实测尺寸写 `_verify_layout.log`
   - `CLASSNEX_VERIFY_PILL=1` 强制显示最后 60 秒的倒计时胶囊（核对排版用）
@@ -172,7 +174,7 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   本项目：`LayoutTransformControl TextElement.FontWeight="Medium"` + `WidgetBase.Text()` 默认字重 Medium
   （当前课名仍是 Bold，与 CI 一致）。这就是「我们的字比 CI 细」的原因。
 - **HarmonyOS Sans SC**：Light、Regular、Medium、Bold 四个字重原样嵌入，不修改字体文件；
-  全局 `AppFontFamily`、设置窗口和 OOBE 都使用该字体，Lucide 图标仍单独指定图标字体。
+  全局 `AppFontFamily`、设置窗口和 OOBE 的正文都使用该字体。图标必须单独指定与字形相配的图标字体，客户端设置窗口与其他窗口的约定见 5.6。
   验证：`_verify.log` 应显示四个字重均命中 HarmonyOS Sans SC。
 - **主题切换要重建组件**：组件文字画刷是「创建时按当前主题取色」，不重建就会保持旧主题颜色
   （表现为「切深浅色字体不变黑白」）。`MainWindow` 里挂了 `ActualThemeVariantChanged` →
@@ -196,7 +198,7 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   之后显示用 250ms `0.25,1,0.5,1` 淡入；岛宽变化 300ms `0.65,0,0.35,1.0`
   （CI BackgroundWidth；Avalonia 的 Width 过渡在 LayoutTransformControl 内会卡布局，改用 composition Scale 补间）；
   组件位移动画 = 移植的 `Controls/WrapPanelResizingAnimationAssist.cs`；进度线随每秒刷新；悬停淡化 0.05/100ms
-- **页面切换动画**（设置窗口/档案编辑器）：`Styles/MetroTransitions.cs` 对一个页面面板的 Composition
+- **档案编辑器页面切换动画**：`Styles/MetroTransitions.cs` 对一个页面面板的 Composition
   视觉层执行 220ms 淡入和 10px 纵向归位，cubic-bezier(0.1,0.9,0.2,1)；旧页停止动画后保持布局并隐藏，
   新页只创建一个整页视觉动画，不再给页面内每个卡片分别创建动画。动画目标必须是单个页面面板
   （不能是 PageScroll 滚动容器），否则整个内容加滚动条一起位移会产生上下抖动。
@@ -211,43 +213,17 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 - 浅色粉白樱花渐变 / 深色深玫瑰渐变玻璃底 + 不透明度设置 + 圆角 14 + 顶部高光 + 玫瑰色柔和投影
 
 ### 设置窗口与托盘菜单
-- **设置窗口背景**：`SettingsWindow` 的 `Background` 与 `SettingsRoot.Background` 都设为
-  `CiPalette.SettingsSurfaceBrush()`：浅色 `#FFFCFD → #FFF4F9 → #FFEAF3 → #FFE0EC`，深色
-  `#1A1118 → #24151E → #2B1824 → #321B28`；监听 `Application.ActualThemeVariantChanged` 刷新，
-  窗口关闭时退订。客户端的樱花主题和原设置布局保持不变，WinUI 改版只应用于集控网页。
-- **设置窗口启动动画**：`Opened` 时对 `SettingsRoot` 组合层 opacity 0→1（430ms，
-  `0.16,1,0.3,1`）+ scale `0.965→1.006→1`（620ms，回弹）+ offsetY 16→0（520ms）。
-  `SettingsRoot.Opacity` 先设为 0，播放时恢复 1，避免闪出完整页面。
-- **设置首次打开**：所有页面默认隐藏，`SwitchPage` 只显示当前目标页；不再调用
-  `PrewarmPagesAtIdle` 预热全部页面，避免主页重叠两次后才恢复。
+
+- **范围和参考**：这里只改 ClassNEX 客户端设置窗口。CI 的 `E:\ci-source\ClassIsland\Views\SettingsWindowNew.axaml` 用于核对原有设置交互；外壳和布局按用户指定的 `D:\TubaWinUi3` 移植。首页参考 `DashboardPage`（不是工具分类的 `HomePage`），总览参考 `SettingsPage`。解出的 XAML 和原图只留在已忽略的 `build\captures` 作对照，不随源码或安装包分发。
+- **窗口与导航**：`SettingsWindow.axaml` 使用 AvaloniaFluentUI `AppWindow` 和支持时的 Mica。标题栏高 48，返回/折叠导航、应用图标与标题、最大宽 320 的左对齐搜索框在同一行；系统窗口按钮保留独立区域。侧栏展开宽 200、收起宽 48，宽度低于 600 时默认收起。配色集中在 `CiPalette.Settings*.cs`，只对设置窗口生效，不更改桌面课表、提醒、OOBE 或集控。
+- **主页 `home`**：顶部是 280 高的问候横幅和 ClassNEX 原生绘制的课表插画。未登录显示“Hello，请先登录”，已登录显示分时问候和账户名；账户卡读取头像、名称及邮箱，课表卡展示科目全名、时间和当日完成数。横向大卡片为 232 × 172，可以翻页或点“编辑大卡片”选择入口。下方是可搜索、收藏的自适应设置入口；选择和收藏保存在本机 `data\SettingsHome.json`，不替代应用设置。实现见 `SettingsWindow.Home.cs`。
+- **设置总览 `settings`**：从侧栏底部“设置”进入；依次显示应用标识、版本、链接和各个已启用分类。宽 172 的“跳转到分类”在同一纵向滚动区定位；单独打开“基本”“外观”“窗口”“组件”“NEX Intelligence”“提醒”“账户”“关于”时使用同一组真实控件，从顶部显示。调试分类仍须解锁。统一行高下限 76、圆角 8、行距 4、标题/说明字号 14/12；窄窗会把尾部操作移到文字下方，三条外观滑轨使用一致的可伸缩网格。样式见 `SettingsWindow.SectionStyles.axaml`。
+- **切页与搜索**：`SettingsWindow.Navigation.cs` 按导航项的稳定 `Tag` 注册目标、返回历史和分类锚点，不按可见中文文本或顺序猜页面。顶栏搜索 (`Ctrl+F`) 来自真实设置标题/子项及少量同义入口，回车激活并可展开父组、选中组件或滚到目标控件；`Alt+左` 返回。启动只显示主页，首次不预热、不播放叠页动画；后续切页只做 167ms 不透明度过渡，切换分类重置滚动位置。
+- **图标**：侧栏与主页共用本地 Microsoft Fluent UI System Icons Color 资源；设置行和标题栏使用 Windows 的 Segoe Fluent Icons，以 Segoe MDL2 Assets 回退。原版 Tuba 横幅及未确认授权的私有图标未纳入仓库，不宣称素材逐像素相同。授权和维护约定见 5.6。
 - **托盘菜单**：`TrayMenuWindow` 改为常驻单例并在启动空闲时 `Prewarm()`，保留原生窗口句柄和布局缓存；
   打开前 `PrepareForOpen()` 清理旧帧，显示后按自下而上的 280ms/16ms 级联执行 Composition 动画。
   失焦、点菜单项、再次点托盘图标都走 `CloseAnimated()` 后 `Hide()`，不再关闭并重建窗口；托盘点击不再有 300ms debounce。
   菜单项的逐条 stagger 已移除，避免组合层偏移/关闭时出现半截列表。
-- **设置窗口顶栏**：顶部 48px 区域改成 `152,*,152` 三列，中间放最大 700 宽的胶囊
-  `TopBarCapsule`（高 42、圆角 21、ChipSurface + 樱花描边），左侧返回/图标/标题，
-  中间 290 宽搜索框，右侧版本号/更多；左右 152 给系统窗口按钮留位。
-  设置搜索的 `SearchIndex` 现在与实际页面顺序对齐，搜索结果会跳到正确的设置页；
-  「主界面缩放」数值标签加宽，避免显示被截断，界面文案不再出现内部代号。
-- **设置内容区**：页面标题改成「大标题 + 说明副标题」，内容宿主 `PageHost` 最大宽度提高到 1120，
-  水平方向拉伸并左右居中；`SettingsExpander` 统一设为 Stretch，所有设置卡片铺满内容区。
-  主要页面增加功能分组标题（通用行为、显示与缩放、布局与交互、助手设置、提醒规则、组件布局），
-  层级和卡片宽度参照 CI 的 `SettingsContainerWidth` 与 Win11 设置页。实测外观页四张卡片同宽 `1125px`。
-  **主页**改为 Windows 设置式两栏仪表盘：顶部为本机、今日课表和账户状态；
-  左栏为账户卡和今日课程卡，右栏为推荐设置列表和个性化主题预览。账户头像/名称/邮箱、
-  今日课程数量、已完成数量、下一节课程与时间均来自实时状态；推荐设置可直接跳到外观、
-  窗口和提醒页。主页不再运行樱花飘落装饰，避免卡片层上出现漂浮元素。
-  主页隐藏重复的页面标题，以问候横幅作为首屏入口；未登录时固定显示“Hello，请先登录”，
-  登录后才按时间显示问候和账户显示名。问候使用 31 号 SemiBold，字体为 HarmonyOS Sans SC，
-  横幅颜色由 `CiPalette` 提供。
-  外观页三条滑块都提供加减按钮；全局字号上限 2.4，主界面缩放范围 0.5–4.0，
-  只保留“标准”快速预设，教室环境通过滑块手动调整。
-  **所有布尔设置统一使用 Avalonia `ToggleSwitch`**，全局 On/Off 文本为「开 / 关」；
-  设置页、组件参数、档案编辑器和 OOBE 均不得回退到方形 `CheckBox`。
-  外观页不透明度、全局字号、主界面缩放三条滑块使用相同的 `180 + 12 + 64` 网格列，
-  实测三条滑块 `X=1358`、宽度 `225px`，起止位置完全对齐。
-  标题“应用设置”使用全局 HarmonyOS Sans SC。
-  `Assets/Fonts/ResourceHanRounded-Bold-Subset.ttf`（只含“应用设置”四字，许可证见同目录 txt）。
 - **欢迎设置窗口入场**：`OobeWindow` 保留 Fluent `AppWindow`，把首屏拆成四组：
   左侧欢迎文案（左上）、右侧插图（右上）、底部页点（左下）、底部按钮（右下）。
   `OnOpened` 延迟 450ms（等窗口真正显示）后用 16ms `DispatcherTimer` 跑 780ms：
@@ -255,21 +231,12 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   从窗口四角带旋转/缩放飞入，透明度同步淡入；组间延迟 0/70/150/220ms。
   动画结束立即停掉计时器，`Closing` 也会停。不要用全屏透明 Window 承载这个效果：
   实测会先黑屏/白卡再重排，且元素容易在窗口显示前就播完。
-- **主页樱花飘落**：内容 Grid 右侧放 460 宽 `HomePetals` Canvas（`IsHitTestVisible=False`，
-  只在主页显示）；8 朵整花，每朵是一个 `Path` + `GeometryGroup`（5 个旋转 72° 的花瓣）。
-  起点沿顶部均匀分布并带抖动，每朵有独立的水平风偏、正弦横摆、旋转和 5.5~14.5s 下落时长，
-  路径是弯的，速度明显有快有慢，不共用同一条对角线。用组合层 `Offset`（7 个关键帧）和
-  `RotationAngle` 无限循环动画驱动，`AnimationIterationBehavior.Forever`；不排队、不分段启动，
-  避免出现“飘一下停一下”。⚠️ 关键帧必须显式传 `LinearEasing`；不要在 `HomePetals.SizeChanged`
-  里启动/重建动画 —— 布局过程中启动会让 `Offset` 被后续布局盖掉，表现为花朵全堆在左上角。
-  只在 `Opened` 和切回主页时启动；离开主页/关闭窗口时 `StopAnimation` 暂停，窗口尺寸变化不重建；
-  总共只有 8 个 Path 视觉、每朵 2 条组合动画，UI 线程零逐帧更新。
 
 ### 应用设置（FluentUI：`NavigationView` + `SettingsExpander` + `InfoBar`）
+
 - 通用：单周开始日期、托盘点击行为
 - 界面：主题、背景不透明度、**主界面缩放（默认 1.9）**、全局字号缩放、排列方向、鼠标穿透
-- 外观页的背景不透明度、全局字号缩放、主界面缩放使用完全相同的 `32,180,64,32` 控制区列宽；
-  “大屏快速预设”已拆成独立设置行，避免展开箭头使第三条滑轨向左偏移；只保留“标准”预设。
+- 外观页的背景不透明度、全局字号缩放、主界面缩放使用相同的 `32,*,56,32` 控制区，滑轨按可用宽度伸缩；仅保留“标准缩放”快捷入口。设置与组件参数的布尔项仍统一为显示「开 / 关」的 Avalonia `ToggleSwitch`。
 - 主界面组件：**CI 风格 WrapPanel 紧凑组件库**，7 种组件
   （文本 / 分割线 / 课程表 / 日期 / 时钟 / 当前·下节课 / 倒计时），
   每张卡片宽 225、使用 32px 图标、名称与说明，点击整卡添加；不再使用全宽示例卡和右侧操作区，
@@ -286,12 +253,11 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   切换账户与退出登录。账户页由账户总览卡和浏览器安全授权说明两张卡组成。
 
 ### 档案编辑器
-- **顶部栏**：结构与应用设置一致，左侧返回历史按钮、应用图标和标题，中间显示当前 CSES 文件路径，
+- **顶部栏**：保留档案编辑器原布局，左侧返回历史按钮、应用图标和标题，中间显示当前 CSES 文件路径，
   右侧显示版本号和“更多选项”；保存/打开课表/重新加载/导出 CSES 位于页面标题下方，不要再放回标题栏。
 - **整体布局**：使用 `NavigationView`（`PaneDisplayMode=Left`，`OpenPaneLength=220`，透明内容背景），左侧固定为
   「档案信息 / 课表 / 时间表 / 科目 / 调课」，右侧统一显示 28px 页面标题和独立页面面板；不要再退回顶部 TabControl。
-  旧调用 `SelectTab(0-3)` 已映射到课表/时间表/科目/调课，`档案信息` 仍可从左侧进入；设置窗口、OOBE、档案编辑器页切换都走
-  `Styles/PageTransitions.cs`，动画目标必须只包含当前页面面板。
+  旧调用 `SelectTab(0-3)` 已映射到课表/时间表/科目/调课，`档案信息` 仍可从左侧进入；档案编辑器继续使用 `MetroTransitions`，其布局与转场未随设置窗口改版。
 - **档案信息页**：显示档案名称、CSES 路径、开学日期、周次规则，以及课程/科目/时间点数量；切回该页时重新汇总。
 - **课表页**：可视化周课表，**点空格 → 点科目直接排课**（含「选完科目自动移动到下一个课程」）、
   增删改课程、每周/单周/双周 + 单双周视图切换
@@ -377,12 +343,10 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
     正弦/余弦。悬停、闪烁和边框画刷均静态复用，颜色通过 `BrushTransition` 平滑过渡。
   - ⚠️ **接口密钥绝不写进源码/仓库**（仓库是公开的）：只在设置页填写，落盘到本机 `data\Settings.json`；新机器要重新填一次
   - 自检：`CLASSNEX_VERIFY_NEX=<文本>` 打开对话框并自动发一条消息；出图看 `_shot_nex.png`
-- **Metro 转场统一层**：`Styles/MetroTransitions.cs` 使用 Avalonia Composition 硬件动画，不再用 UI 线程计时器；
+- **档案编辑器 Metro 转场**：`Styles/MetroTransitions.cs` 使用 Avalonia Composition 硬件动画，不再用 UI 线程计时器；
   旧页以 `Opacity=0` 保留布局，新页整页只做一次 220ms 淡入和 10px 纵向归位，不再逐项错峰。
-  设置页切页只修改旧页和新页两个控件，不再遍历十个页面重复写属性；设置窗口不调用
-  `PrewarmPagesAtIdle()`，首次打开只布局当前页。`PrewarmPagesAtIdle()` 仅保留给档案编辑器。
-  设置页页面宿主仍是单格 `Grid#PageHost`，其余页面默认隐藏。
-  `Styles/MetroTilt.cs` 给设置/档案导航项、长条 SettingsExpander/Card、托盘菜单项和 OOBE 按钮
+  `PrewarmPagesAtIdle()` 仅保留给档案编辑器。客户端设置窗口的内容宿主是纵向 `StackPanel#PageHost`，使用独立的导航与过渡，详见“设置窗口与托盘菜单”。
+  `Styles/MetroTilt.cs` 给档案导航项、对应的长条卡片、托盘菜单项和 OOBE 按钮
   做按压倾斜：原点永久锁定 50%,50%，不修改任何布局属性；使用
   `TransformOperationsTransition`（按下 70ms / 回弹 180ms，cubic-bezier(0.1,0.9,0.2,1)），
   倾斜按长条阻尼公式 `skewY=dx*150/max(W,100)`、`skewX=-dy*0.6`、位移 1.5/0.8px、scale 0.985，
@@ -406,7 +370,6 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 | 优先级 | 功能 | 说明 |
 | --- | --- | --- |
 | P0 | **🖼 首次启动向导的插图换掉** | 现在用的是希沃白板那张照片（用户 2026-10-11 明确：**下个版本替换掉**）。位置在「欢迎」页右侧（`OobeWindow.axaml` 里 `Border + ImageBrush`，`Margin="445,121,0,23"`），换成官方设备渲染图或插画 |
-| P1 | **🖼 主页横幅换掉** | 现在挂的是「我们需要新的横幅」占位图（从外部参考项目扒的），用户要求**过几天再专门做**（2026-10-11 挂起）。要照微软 WinUI Gallery 的 `HomePageHeader` 那套（渐变蒙版把底部化进背景）重做视觉 |
 | P0 | **设置/组件页继续对齐 CI** | 现在结构已照 CI（SettingsExpander 行 + 横向组件条 + 组件库/组件设置标签），还差 CI 的「高级设置 / 行设置」两个标签、拖拽排序 |
 | P0 | **调课 / 临时调课** | CI 的 `IsSwapMode: true`；只覆盖某一天，不动基础课表 |
 | P0 | **明日课表** | CI `TomorrowScheduleShowType`；能顺带把主界面宽度拉到 CI 的水平 |
@@ -443,24 +406,19 @@ git push origin main
 [System.IO.File]::WriteAllText($p, $content, (New-Object System.Text.UTF8Encoding($false)))
 ```
 
-### 5.3 ⚠️ 本机 DSH 的点击/截图工具不可靠
-会发生「幽灵点击」：乱点控件、把窗口最小化、甚至**改掉设置里的值**
-（曾把 `FontScale` 从 1.0 改成 0.9，导致好几次测量结论失真）。
-**验证方式优先用「环境变量驱动的自检」**：
-```powershell
-$env:CLASSNEX_VERIFY = "1"
-Start-Process "E:\ClassNex\src\ClassNex\bin\Debug\net8.0\ClassNex.exe"
-Remove-Item Env:\CLASSNEX_VERIFY
-Get-Content "E:\ClassNex\src\ClassNex\bin\Debug\net8.0\_verify.log"
-```
-`App.axaml.cs` 里 DEBUG 分支会写 `_verify.log` 并顺带打开全部窗口。
-pwsh 控制台看中文会乱码（**只是显示问题，值本身是对的**）。
+### 5.3 隔离验证客户端设置
+
+- 建议将本次全量 Debug 构建的应用载荷复制到新建的 `build\verify-settings-<本次标识>\app\`，用与 `app` 同级的 `data\` 放匿名测试课表和设置；设置 `IsOobeCompleted=true`，不附带用户账户、集控凭证或 API 密钥。自检不会更改已安装客户端的配置。常规 Debug 产物路径见第 0 节。
+- 建议全量重建后执行 `./tools/verify_settings.ps1`。脚本每次新建 `build/verify-settings-<随机标识>`，只复制运行依赖和仓库示例课表，不复制现有用户的 `data`。默认测试结束会关闭该测试进程，`-KeepOpen` 可保留窗口。测试目录和 `build/captures` 都不入库。
+- 从新 PowerShell 会话启动隔离目录里的 `ClassNex.exe`，同时设置 `CLASSNEX_VERIFY=1`、`CLASSNEX_VERIFY_PAGE=home`、`CLASSNEX_VERIFY_SETTINGS=1`。只有窗口创建后 `SettingsWindow.Verify.cs` 才运行；仅设 `CLASSNEX_VERIFY_SETTINGS` 不会自动打开窗口。
+- `_settings_verify.log`、`_settings_home_light.png`、`_settings_home_dark.png`、`_settings_home_narrow.png`、`_settings_overview_dark.png` 和 `_settings_appearance_narrow.png` 均输出到该 `app\`，不是 `data\`。逐项查看 `PASS/FAIL`、对照宽窄窗和深浅色截图，不要把截图存在理解为检查已通过。
+- 要验证真实开关、滑块写盘和收藏持久化，需给这个实例设置 `CLASSNEX_VERIFY_EDIT_FIXTURE=1`，并在隔离 `data\` 放置 `.test-fixture` 标记。存在 `account.json` 或启用集控时拒绝运行写入自检。不要对日常数据目录运行测试，不需要登录生产账户或操作鼠标。
 
 ### 5.4 FluentAvalonia 2.4.0 的 API 与直觉不同
 - `NavigationViewItem` **没有 `Icon`** 属性，要用 `IconSource`（`ui:FontIconSource`），
   否则报 `AVLN2000`
 - `ui:ToggleSwitch` 的 `x:Name` **不会生成字段**（XAML 能编译但拿不到引用）
-  → 布尔项改用 CheckBox，或用 `PropertyChanged` 判 `e.Property.Name == "IsChecked"`
+  → 这是迁移前旧库的限制；现项目用 Avalonia 原生 `ToggleSwitch` 和 `IsCheckedChanged`，不回退到 `CheckBox`。
 - 存在的控件：`NavigationView` / `SettingsExpander` / `TabView` / `NumberBox` / `InfoBar` /
   `ContentDialog` / `FAComboBox` / `SymbolIcon`(+`Symbol` 枚举) / `FontIcon` / `ItemsRepeater`
 - 图标用 `FontIcon` + 字形码更稳（`\uE713` 设置、`\uE787` 日历、`\uE710` 添加、`\uE74D` 删除…）
@@ -483,16 +441,11 @@ pwsh 控制台看中文会乱码（**只是显示问题，值本身是对的**�
 主题 `FluentAvalonia.Styling.FluentAvaloniaTheme` → `AvaloniaFluentUI.Styling.FluentAvaloniaTheme`。
 **它只提供 `net10.0`**（1.0.3 依赖 Avalonia 11.3.12），所以必须装 .NET 10 SDK。
 
-- ⚠️ **图标必须显式指定 Lucide 字体**：FontIcon/FontIconSource 不设字体时会继承全局
-  HarmonyOS Sans SC，图标码位会显示成空方块。
-  当前项目使用 Lucide 图标，普通文字继承 HarmonyOS Sans SC，图标控件必须继续单独指定 Lucide 字体。
-  正确写法：`FontFamily="avares://ClassNex/Assets/Fonts/#lucide"`。
-  **验证字形是否存在的方法**：PowerShell `PrivateFontCollection` + `Graphics.DrawString` 把候选码画成 PNG，再 `read_image` 自己看（见 `_tmp_glyphs*.png` 的做法）。
+- **图标与字体按窗口选择**：正文用 HarmonyOS Sans SC，`FontIcon` / `FontIconSource` 不能继承正文去绘制图标。客户端设置专用 `SettingsIcons.Navigation(key)` 缓存本地 192 × 192 透明 PNG；上游是 Microsoft Fluent UI System Icons Color（MIT），来源提交、每项对应的 SVG 和授权分别记录在 `Assets/SettingsIcons/README.md`、`Fluent-LICENSE.txt`。设置行、页内操作和标题栏用 Windows 自带 `Segoe Fluent Icons, Segoe MDL2 Assets` 的匹配字形，不嵌入系统字体。其他原有使用 Lucide 的窗口继续同时保留 Lucide 专属字形码和 `avares://ClassNex/Assets/Fonts/#lucide`；不要全局替换字体名。
 - ⚠️ **`TryFindResource(key)` 不带主题变体时返回的是「浅色变体」的值**
   （`CardBackgroundFillColorDefaultBrush = #b3ffffff` = 白），深色界面里会画出**白卡片（发白）**。
   要么 `TryFindResource(key, ActualThemeVariant, out v)`，要么直接按 `ActualThemeVariant` 给色。
-- ⚠️ **`NavigationView.SelectedItem` 是内部包装对象**：`MenuItems.IndexOf(SelectedItem)` 恒为 -1。
-  按 `((NavigationViewItem)SelectedItem).Content as string` 匹配页面名。
+- ⚠️ **设置页导航由稳定键驱动**：读取选中 `NavigationViewItem` 的 `Tag`，从 `_destinations` 定位目标；不要依赖显示名、列表索引或仅 `MenuItems`（“设置”在 `FooterMenuItems`）。
 - ⚠️ **在 `SelectionChanged` 事件内部清空 ItemsSource 会闪退**：把导航/清理用
   `Dispatcher.UIThread.Post(..., DispatcherPriority.Background)` 推迟到事件处理之后。
 - ⚠️ **每秒刷新时 `Clear()+重建` 会让进度条闪烁**：结构不变时只更新 `ProgressBar.Value`，不要重建控件树。
@@ -521,7 +474,7 @@ pwsh 控制台看中文会乱码（**只是显示问题，值本身是对的**�
 | `find_ci_default_color.py` | 扫描 CI 程序集提取内嵌色值 |
 | `analyze_ci_palette.py` | 对 CI 截图做色彩直方图统计 |
 | `make_icon.py` | 生成 `Assets\icon.ico` |
-| `capture_window.ps1` | 通过 Win32 `PrintWindow` 捕获指定窗口，不依赖 Computer Use |
+| `capture_window.ps1` | 默认只通过 Win32 `PrintWindow` 捕获指定窗口；显式传 `-AllowScreenCopy` 才允许激活并截取屏幕区域。设置窗口优先用 5.3 的自渲染截图，不依赖 Computer Use。 |
 
 ---
 
@@ -529,9 +482,9 @@ pwsh 控制台看中文会乱码（**只是显示问题，值本身是对的**�
 
 ### 日常调试
 ```powershell
-dotnet build src\ClassNex\ClassNex.csproj -c Debug
+dotnet build src\ClassNex\ClassNex.csproj -c Debug -t:Rebuild
 ```
-目标：**0 错误 0 警告**（一直是这个标准）。产物在 `bin\Debug\net10.0\`。
+目标：**0 错误 0 警告**。客户端产物在 `src\ClassNex\bin\Debug\net10.0-windows10.0.19041.0\`。
 
 ### 出测试包（CI 同款目录结构：版本数据文件夹 + 启动器 + PackageType + files.json）
 ```powershell
@@ -612,12 +565,13 @@ src/ClassNex.Plugins/       插件发现、清单、可回收 AssemblyLoadContex
 src/ClassNex.AI/            NEX HTTP 客户端、Agent、工具和模型目录
 src/ClassNex/
   App.axaml(.cs)          应用入口、组合根、窗口与托盘
-  Styles/CiPalette.cs     颜色集中定义（全部来自 CI 或系统主题）
+  Styles/CiPalette*.cs    悬浮课表与设置窗口各自的颜色定义
+  Styles/SettingsIcons.cs 设置窗口专用彩图缓存及 Windows 字形映射
   Services/               AppServices(组合根) / 语音协调 / UI Surface / 账户与平台服务
   Widgets/                WidgetBase + 7 个组件 + WidgetFactory
   Controls/               TimetableGridBuilder（周课表网格）
   Views/                  MainWindow（浮窗）/ SettingsWindow / ProfileEditorWindow
-  Assets/                 icon.ico / timetable.yaml / Fonts/（HarmonyOS Sans SC 与 Lucide）
+  Assets/                 icon.ico / timetable.yaml / Fonts/（正文及 Lucide）/ SettingsIcons/（Fluent 彩色图标及授权）
 ```
 
 依赖方向固定为 `Main -> {Notification, AI, Plugins} -> Core`。`Core` 不允许引用任何模块或
@@ -643,6 +597,6 @@ Avalonia UI；通知模块不允许引用 `MainWindow`；AI 模块不允许直�
 > 读一下 `E:\ClassNex\HANDOFF.md`，然后我们继续做 ClassNEX。
 > 记住：ClassIsland 简称 CI，什么都要先参照 CI 的文件/源码（在 `E:\ci-source`，已 clone）；
 > 界面只用 **AvaloniaFluentUI** 控件（不是 FluentAvaloniaUI，见 5.6 的坑）；
-> 图标字体只用 `Segoe MDL2 Assets`；改文件不用 PowerShell 的 `Set-Content`（会写坏编码）；
+> 设置窗口使用 Fluent 彩色图标和 Windows 匹配的系统字形，其他窗口保留原图标（见 5.6）；改文件不用 PowerShell 的 `Set-Content`（会写坏编码）；
 > 打包上传要等我说，发布说明只写这一版。
 > 今天想做：<你要做的功能>

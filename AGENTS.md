@@ -36,7 +36,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：修复设置首次打开时的主页重叠；将客户端字体资源统一替换为 HarmonyOS Sans SC；压缩提醒卡片宽度并在提醒结束后按当前课表重新测量；重制设置主页；未登录时主页显示“Hello，请先登录”；移除“教室远距离”缩放预设。
-改了文件：`src/ClassNex/App.axaml*`、`src/ClassNex/ClassNex.csproj`、`src/ClassNex/Assets/Fonts/`、`src/ClassNex/Views/{MainWindow,SettingsWindow,OobeWindow}*`、`src/ClassNex.Notification/NotificationService.cs`、`tools/capture_window.ps1`、`HANDOFF.md`、`AGENTS.md`。
-进行中：五项桌面修复已完成，Debug 全量构建 0 警告 0 错误；未触发发布标签或打包。
-下一步：用真实教室课表和现场屏幕做最终视觉复测；恢复集控任务时继续按既定 DNS 与网络复测流程处理。
+上次完成：按 TubaWinUi3 的实物布局重做客户端设置窗口。48 高标题栏、200 宽侧栏、独立主页和设置总览已接入原有业务；键盘搜索可跳到实际设置和组件标签。设置内使用本地微软 Fluent 彩色图标与系统符号；未登录问候仍为“Hello，请先登录”。桌面浮窗、通知、OOBE 和集控未改。
+改了文件：`src/ClassNex/Views/SettingsWindow*`、`src/ClassNex/Styles/{CiPalette*,SettingsIcons.cs}`、`src/ClassNex/Assets/SettingsIcons/`、`src/ClassNex/{ClassNex.csproj,Services/WidgetSettingsBuilder.cs,ViewModels/WidgetItem.cs}`、`tools/{capture_window,verify_settings}.ps1`、`HANDOFF.md`、`AGENTS.md`。
+进行中：全量 Debug 构建 0 警告、0 错误。通过 `tools/verify_settings.ps1` 在全新的匿名副本中验证；不要复用曾经登录的测试副本，也不要提交 `build` 里的参考素材或截图。
+下一步：在已验证的设置壳上单独优化首页大卡片和设置入口的视觉风格；不打包或打发布标签。

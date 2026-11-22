@@ -1,5 +1,6 @@
 using ClassNex.Models;
 using ClassNex.Services;
+using ClassNex.Styles;
 
 namespace ClassNex.ViewModels;
 
@@ -14,7 +15,7 @@ public sealed class WidgetItem : ViewModelBase
 
     public string Name => WidgetRegistry.DisplayNameOf(Config.Type);
 
-    public string Glyph => WidgetRegistry.GlyphOf(Config.Type);
+    public string Glyph => SettingsIcons.WidgetGlyph(Config.Type);
 
     public string DisplayText => $"{Name}";
 

@@ -31,6 +31,10 @@
           CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     
     <AvaloniaResource Include="Assets\Banners\*.png" />
+
+    <AvaloniaResource Include="Assets\SettingsIcons\*.png" />
+    <None Update="Assets\SettingsIcons\Fluent-LICENSE.txt"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     
     <AvaloniaResource Include="Assets\Oobe\*.png" />
     
