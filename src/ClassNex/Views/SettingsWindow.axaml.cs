@@ -1457,7 +1457,6 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             var card = new Button
             {
                 Width = 225,
-                MinHeight = 58,
                 Margin = new Thickness(0, 0, 8, 8),
                 Padding = new Thickness(8, 6),
                 HorizontalContentAlignment = HorizontalAlignment.Stretch,

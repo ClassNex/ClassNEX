@@ -74,6 +74,13 @@ public partial class App
                         settings.NavigateTo(page);
                         await Shot(settings, surface, mode, dpi);
                         Check(settings.CurrentPageKey == page, $"Navigation reached {page}: {mode} at {dpi} dpi");
+                        if (page == "widgets")
+                        {
+                            var tiles = settings.FindControl<WrapPanel>("WidgetLibraryPanel")!.Children.OfType<Button>().Take(2).ToArray();
+                            Check(tiles.Length == 2 && Math.Abs(tiles[0].Bounds.Y - tiles[1].Bounds.Y) <= 1 &&
+                                Math.Abs(tiles[0].Bounds.Height - tiles[1].Bounds.Height) <= 1,
+                                $"Adjacent widget cards align despite wrapped labels at {dpi} dpi in {mode}");
+                        }
                     }
                     editor.SelectTab(0);
                     await Shot(editor, "schedule", mode, dpi);

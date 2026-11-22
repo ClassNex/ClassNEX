@@ -19,6 +19,8 @@
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
     </Style>
     <Style Selector="Button.widgetChoice">
+        <Setter Property="VerticalAlignment" Value="Stretch"/>
+        <Setter Property="MinHeight" Value="70"/>
         <Setter Property="Background" Value="{DynamicResource ClassNexSurfaceBrush}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource ClassNexOutlineBrush}"/>
     </Style>
