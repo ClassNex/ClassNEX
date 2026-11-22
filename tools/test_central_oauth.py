@@ -13,6 +13,8 @@ import tempfile
 import threading
 import time
 import urllib.parse as url
+import struct
+import zlib
 
 
 class Provider(http.server.BaseHTTPRequestHandler):
@@ -20,9 +22,11 @@ class Provider(http.server.BaseHTTPRequestHandler):
         pass
 
     def reply(self, status, data):
-        content = json.dumps(data).encode()
+        self.binary(status, 'application/json', json.dumps(data).encode())
+
+    def binary(self, status, mime, content):
         self.send_response(status)
-        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Type', mime)
         self.send_header('Content-Length', str(len(content)))
         self.end_headers()
         self.wfile.write(content)
@@ -41,26 +45,52 @@ class Provider(http.server.BaseHTTPRequestHandler):
         digest = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b'=').decode()
         code = fields.get('code', [''])[0]
         expected = self.server.codes.pop(code, None)
-        if self.path != '/api/login/oauth/access_token' or not expected or (digest, fields.get('redirect_uri', [''])[0]) != expected:
+        if self.path != '/api/login/oauth/access_token' or not expected or (digest, fields.get('redirect_uri', [''])[0]) != expected[:2] or expected[2] == 'fail':
             return self.reply(400, {'error': 'invalid_grant'})
-        self.reply(200, {'access_token': 'fixture-session', 'token_type': 'Bearer'})
+        self.reply(200, {'access_token': 'fixture-' + expected[2], 'token_type': 'Bearer'})
 
     def do_GET(self):
         parsed = url.urlsplit(self.path)
+        if parsed.path.startswith('/fixture/'):
+            action = parsed.path[len('/fixture/'):]
+            if action in ('session', 'second', 'broken', 'fail'):
+                self.server.identity = action
+            elif action == 'hold':
+                self.server.avatar_started.clear(); self.server.avatar_release.clear()
+            elif action == 'release':
+                self.server.avatar_release.set()
+            elif action == 'avatar-status':
+                return self.reply(200, self.server.avatar_started.is_set())
+            elif action == 'avatar-a':
+                self.server.avatar_started.set(); self.server.avatar_release.wait(18)
+                def chunk(t, v):
+                    return struct.pack('>I', len(v)) + t + v + struct.pack('>I', zlib.crc32(t+v))
+                png = b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR', struct.pack('>IIBBBBB', 2, 2, 8, 2, 0, 0, 0))+chunk(b'IDAT', zlib.compress((b'\x00'+b'\x88\x22\x33'*2)*2))+chunk(b'IEND', b'')
+                return self.binary(200, 'image/png', png)
+            elif action == 'bad-image':
+                return self.binary(200, 'image/png', b'not an image')
+            else:
+                return self.reply(404,{})
+            return self.reply(200, True)
         if parsed.path == '/login/oauth/authorize':
             query = url.parse_qs(parsed.query)
             callback = query['redirect_uri'][0]
             if url.urlsplit(callback).hostname not in ('127.0.0.1', 'localhost') or query['code_challenge_method'] != ['S256']:
                 return self.reply(400, {})
             code = os.urandom(12).hex()
-            self.server.codes[code] = (query['code_challenge'][0], callback)
+            self.server.codes[code] = (query['code_challenge'][0], callback, self.server.identity)
             self.send_response(302)
             self.send_header('Location', callback + '?' + url.urlencode({'state': query['state'][0], 'code': code}))
             self.end_headers()
             return
-        if parsed.path != '/api/userinfo' or self.headers.get('Authorization') != 'Bearer fixture-session':
-            return self.reply(401, {})
-        self.reply(200, {'sub': 'classnex-fixture', 'name': '课堂测试', 'email': 'fixture@example.invalid', 'preferred_username': 'fixture', 'picture': ''})
+        profiles = {
+            'Bearer fixture-session': {'sub': 'classnex-fixture', 'name': '课堂测试', 'email': 'fixture@example.invalid', 'preferred_username': 'fixture', 'picture': '/fixture/avatar-a'},
+            'Bearer fixture-second': {'sub': 'classnex-second', 'name': '课表测试乙', 'preferred_username': 'second'},
+            'Bearer fixture-broken': {'sub': 'classnex-broken', 'name': '头像测试', 'preferred_username': 'broken', 'picture': '/fixture/bad-image'},
+        }
+        profile = profiles.get(self.headers.get('Authorization'))
+        if parsed.path != '/api/userinfo' or profile is None: return self.reply(401, {})
+        self.reply(200, profile)
 
 
 def request(port, method, path, body=None, headers=None):
@@ -79,6 +109,9 @@ def run(central, desktop):
         root = pathlib.Path(temp)
         provider = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Provider)
         provider.codes = {}
+        provider.identity = 'session'
+        provider.avatar_started, provider.avatar_release = threading.Event(), threading.Event()
+        provider.avatar_release.set()
         provider_port = provider.server_port
         threading.Thread(target=provider.serve_forever, daemon=True).start()
         with socket.socket() as s:
@@ -140,7 +173,7 @@ def run(central, desktop):
             assert api('auth/me')['subject']=='classnex-fixture' and any(c['classId']==cls for c in api('classes'))
             status, h, _ = request(port,'GET','/auth/logout',headers=cookie)
             assert status==302 and h['Location']==host+'/Control/' and request(port,'GET','/api/v1/auth/me',headers=cookie)[0]==401
-            print('PASS: PKCE, /Control callback, profile, assignment, two-way settings/timetable, persisted session, logout' + (', desktop loopback login, automatic bidirectional desktop sync, AI streaming' if desktop else ''))
+            print('PASS: PKCE, /Control callback, profile, assignment, two-way settings/timetable, persisted session, logout' + (', desktop login, account switching/cancel/failure, avatar ownership/race/fallback, missing email, legacy identity, automatic bidirectional desktop sync, AI streaming' if desktop else ''))
         finally:
             if central_process and central_process.poll() is None:
                 central_process.terminate(); central_process.wait(timeout=10)

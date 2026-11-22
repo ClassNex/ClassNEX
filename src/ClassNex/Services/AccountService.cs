@@ -7,12 +7,11 @@ using ClassNex.Models;
 
 namespace ClassNex.Services;
 
-public static class AccountService
+public static partial class AccountService
 {
     private const string RedirectUri = "http://localhost:17171/callback";
 
     private static readonly object CodeLock = new();
-    private static readonly object AvatarGate = new();
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(20) };
     private static string _verifier = "";
     private static HttpListener? _listener;
@@ -26,9 +25,6 @@ public static class AccountService
     private static string FilePath =>
         Path.Combine(SettingsService.DataDirectory, "account.json");
 
-    private static string AvatarPath =>
-        Path.Combine(SettingsService.DataDirectory, "account_avatar.png");
-
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -37,27 +33,17 @@ public static class AccountService
 
     public static void Load()
     {
+        AccountProfile? profile = null;
         try
         {
-            if (!File.Exists(FilePath)) { Current = null; return; }
-
-            var json = File.ReadAllText(FilePath);
-            if (!string.IsNullOrWhiteSpace(json))
-            {
-                Current = JsonSerializer.Deserialize<AccountProfile>(json, JsonOptions);
-                if (Current is not null && !File.Exists(AvatarPath) && !string.IsNullOrWhiteSpace(Current.AvatarUrl))
-                    _ = RefreshAvatarAsync();
-            }
+            if (File.Exists(FilePath)) profile = JsonSerializer.Deserialize<AccountProfile>(File.ReadAllText(FilePath), JsonOptions);
         }
-        catch
-        {
-            Current = null;
-        }
-        finally { Changed?.Invoke(); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException) { }
+        ChangeProfile(profile is { IsLoggedIn: true } ? profile : null);
+        RemoveCachedFile(Path.Combine(SettingsService.DataDirectory, "account_avatar.png"));
+        if (_ownedAvatarPath is not null && AvatarImagePath is null) _ = RefreshAvatarAsync();
+        Changed?.Invoke();
     }
-
-    public static string? AvatarImagePath =>
-        Current is { IsLoggedIn: true } && File.Exists(AvatarPath) ? AvatarPath : null;
 
     public static bool FlowActive => _listener is { IsListening: true };
 
@@ -95,10 +81,12 @@ public static class AccountService
 
     public static void CancelLogin()
     {
-        _state = _verifier = "";
-        StopListener();
         lock (CodeLock)
+        {
+            _state = _verifier = "";
+            StopListener();
             _receivedCode = null;
+        }
     }
 
     public static async Task<(bool Ok, string Message)> CompleteLoginAsync(string code)
@@ -138,15 +126,17 @@ public static class AccountService
             if (profile is null)
                 return (false, "无法获取账户资料");
 
-            if (expectedState != _state) return (false, "登录已取消");
-            _state = _verifier = "";
-            StopListener();
-            lock (AvatarGate)
+            var previous = Current;
+            lock (CodeLock)
             {
-                File.Delete(AvatarPath);
-                Current = profile;
+                if (expectedState != _state) return (false, "登录已取消");
+                SaveProfile(profile);
+                ChangeProfile(profile);
+                _state = _verifier = "";
+                StopListener();
             }
-            Save();
+            ClearLegacyIdentity(previous);
+            Changed?.Invoke();
             _ = RefreshAvatarAsync();
             return (true, "");
         }
@@ -156,24 +146,24 @@ public static class AccountService
         }
     }
 
-    public static async Task<string?> RefreshAvatarAsync()
-    {
-        return Current is { } profile ? await DownloadAvatarAsync(profile) : null;
-    }
-
     public static void Logout()
     {
         CancelLogin();
-        lock (AvatarGate)
-        {
-            Current = null;
-            File.Delete(AvatarPath);
-        }
-
-        if (File.Exists(FilePath))
-            File.Delete(FilePath);
-
+        var previous = Current;
+        if (File.Exists(FilePath)) File.Delete(FilePath);
+        ChangeProfile(null);
+        ClearLegacyIdentity(previous);
         Changed?.Invoke();
+    }
+
+    private static void ClearLegacyIdentity(AccountProfile? previous)
+    {
+        if (previous is null) return;
+        var settings = AppServices.Settings;
+        var changed = false;
+        if (settings.UserName.Length > 0 && settings.UserName == previous.DisplayName) { settings.UserName = ""; changed = true; }
+        if (settings.Email.Length > 0 && settings.Email == previous.Email) { settings.Email = ""; changed = true; }
+        if (changed) AppServices.SaveSettings();
     }
 
     private static void StartListener()
@@ -294,7 +284,7 @@ public static class AccountService
             Id = Get(root, "sub"),
             Name = string.IsNullOrWhiteSpace(username) ? displayName : username,
             DisplayName = displayName,
-            Email = Get(root, "email"),
+            Email = Get(root, "email").Trim(),
             AvatarUrl = Get(root, "picture"),
             AccessToken = accessToken,
         };
@@ -305,51 +295,15 @@ public static class AccountService
         return profile;
     }
 
-    private static async Task<string?> DownloadAvatarAsync(AccountProfile profile)
+    private static void SaveProfile(AccountProfile profile)
     {
-        var avatarUrl = profile.AvatarUrl;
-        if (string.IsNullOrWhiteSpace(avatarUrl))
-            return null;
-
+        SettingsService.EnsureDataDirectory();
+        var temporary = FilePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
-            var url = avatarUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-                ? avatarUrl
-                : AppServices.Settings.AccountEndpoint.TrimEnd('/') + "/" + avatarUrl.TrimStart('/');
-
-            var bytes = await Http.GetByteArrayAsync(url);
-            var temporary = Path.Combine(SettingsService.DataDirectory, $".avatar-{Guid.NewGuid():N}.tmp");
-            try
-            {
-                await File.WriteAllBytesAsync(temporary, bytes);
-                lock (AvatarGate)
-                {
-                    if (!ReferenceEquals(Current, profile)) return null;
-                    File.Move(temporary, AvatarPath, true);
-                }
-            }
-            finally { File.Delete(temporary); }
-            Changed?.Invoke();
-            return AvatarPath;
+            File.WriteAllText(temporary, JsonSerializer.Serialize(profile, JsonOptions));
+            File.Move(temporary, FilePath, true);
         }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static void Save()
-    {
-        try
-        {
-            if (Current is null)
-                return;
-
-            File.WriteAllText(FilePath, JsonSerializer.Serialize(Current, JsonOptions));
-            Changed?.Invoke();
-        }
-        catch
-        {
-        }
+        finally { RemoveCachedFile(temporary); }
     }
 }

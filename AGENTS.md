@@ -38,5 +38,5 @@ ClassNEX，ClassIsland 风格的桌面课表应用。Windows 客户端使用 .NE
 持有者：无
 工作分支：`main`。按功能合并主线 `2949eff` 与 `refactor/26w46d-flclash-ui-core` 的 `aaba73d`，共同祖先 `26w46d_Alpha`（`60d7b57`）。不重置分支，不删除原分支或推送发布标签。
 本次内容：原生设置的 11 个入口、账户侧栏、Mica 与右侧 Frame；恢复 Alpha 浮窗、日期与时间独立迁移、可拖动与重启定位；OOBE 首屏、导航与退出；保留独立 Core、提醒、插件、NEX 和自动集控。落点见 `src/ClassNex.WinUI`、`src/ClassNex/Views` 及 `src/ClassNex.Core/Models/AppSettings.cs`。
-验证：主线记录见 `docs/mainline-desktop-acceptance.md`；`docs/26.0-acceptance.md` 只记录此前重构分支。验收使用匿名数据目录、真实窗口与回环身份服务；不是生产部署。
+验证：主线记录见 `docs/mainline-desktop-acceptance.md`；`docs/26.0-acceptance.md` 只记录此前重构分支。账户切换、头像归属、同安装根旧启动命令迁移均有独立回归；不以真实账户、系统注册项或生产服务器跑夹具。
 后续：教室里的真实身份提供商、物理多屏与麦克风仍需现场验证；正式发布另行决定。

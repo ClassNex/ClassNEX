@@ -36,6 +36,7 @@ internal sealed partial class NativeDesktop : IDisposable
 
     internal void Connect()
     {
+        if (AppServices.Settings.IsOobeCompleted) StartupRegistry.RepairPortableRegistrations(_applied.Startup, _applied.Protocol);
         AppServices.SettingsChanged += SettingsChanged;
         AppServices.ManagedSettingsApplied += RemoteChanged;
         AppServices.Schedule.ProfileChanged += ScheduleChanged;

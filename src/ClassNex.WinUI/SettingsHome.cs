@@ -176,7 +176,7 @@ public sealed partial class NativeSettingsWindow
         return key switch
         {
             "account" => (string.IsNullOrWhiteSpace(_bridge.Status(AccountName)) ? "未登录" : "已登录 ClassNEX ID", "管理登录与授权"),
-            "notification" => (s.AllowNotification ? "课堂提醒已开启" : "课堂提醒已关闭", s.Notification.IsClassOnPreparingNotificationEnabled ? $"室内课提前 {s.Notification.ClassOnBreakReminderMinutes} 分钟提醒" : "课前准备提醒已关闭"),
+            "notification" => (s.AllowNotification ? "课堂提醒已开启" : "课堂提醒已关闭", !s.AllowNotification ? "查看已保存的提醒设置" : s.Notification.IsClassOnPreparingNotificationEnabled ? $"室内课提前 {s.Notification.ClassOnBreakReminderMinutes} 分钟提醒" : "课前准备提醒已关闭"),
             "appearance" => (s.ThemeMode switch { "dark" => "深色主题", "light" => "浅色主题", _ => "跟随系统主题" }, $"课表缩放 {s.MainWindowScale:0.##}× · 背景 {s.BackgroundOpacity:P0}"),
             "window" => (s.Orientation == LayoutOrientation.Vertical ? "纵向排列" : "横向排列", s.IsClickThrough ? "已启用鼠标穿透" : "已关闭鼠标穿透"),
             "widgets" => ($"已启用 {s.Widgets.Count(w => w.IsEnabled)} 个组件", $"布局中共有 {s.Widgets.Count} 个组件"),

@@ -2,8 +2,13 @@
 using Avalonia.Controls.ApplicationLifetimes;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Avalonia.Controls;
+using Avalonia.Interactivity;
 using ClassNex.Models;
 using ClassNex.Services;
+using Native = Microsoft.UI.Xaml.Controls;
+using Dependencies = Microsoft.UI.Xaml.Media.VisualTreeHelper;
+using Automation = Microsoft.UI.Xaml.Automation.AutomationProperties;
 
 namespace ClassNex;
 
@@ -46,7 +51,7 @@ public partial class App
             var account = AccountService.Current;
             OpenSettings("account");
             var settingsWindow = _desktop!.Settings!;
-            await VerifyRailAsync(account.DisplayName, account.Email);
+            await VerifyIdentityAsync(account.DisplayName, account.Email, true);
             AppServices.Settings.NexApiKey = "local-test-value";
             var remote = new AppSettings { ThemeMode = "dark" };
             AppServices.ApplyManagedSettings(remote, null);
@@ -60,27 +65,111 @@ public partial class App
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(8));
             await agent.RunAsync("测试课堂查询", timeout.Token);
             if (!agent.History.Any(m => m.Content == "本地课表联测通过")) throw new InvalidOperationException("NEX did not receive the local streaming response");
-            AccountService.Logout();
-            if (AccountService.Current != null || AccountService.FlowActive) throw new InvalidOperationException("Desktop sign-out incomplete");
-            await VerifyRailAsync("未登录", null);
+            await CheckSwitchesAsync();
             status = 0;
 
-            async Task VerifyRailAsync(string name, string? email)
+            async Task CheckSwitchesAsync()
             {
-                for (var i = 0; i < 60; i++)
+                string? location = null;
+                var login = new Views.LoginWindow(value => { location = value; return true; });
+                _loginWindow = login;
+                var path = Path.Combine(SettingsService.DataDirectory, "account.json");
+                var cached = AccountService.AvatarImagePath ?? throw new InvalidOperationException("The first avatar was not cached");
+                var pixels = await File.ReadAllBytesAsync(cached);
+                login.Show();
+                try
                 {
-                    await Task.Delay(50);
-                    var elements = Walk(settingsWindow.Content).OfType<Microsoft.UI.Xaml.Controls.TextBlock>().ToList();
-                    string? Value(string key) => elements.FirstOrDefault(x => Microsoft.UI.Xaml.Automation.AutomationProperties.GetAutomationId(x) == key)?.Text;
-                    if (Value("SidebarAccountName") == name && (email != null ? Value("SidebarAccountEmail") == email : Value("SidebarAccountEmail") != "fixture@example.invalid")) return;
+                    Require(!AccountService.FlowActive && location is null, "Opening the existing identity must not start an authorization");
+                    AppServices.Settings.UserName = account.DisplayName;
+                    AppServices.Settings.Email = account.Email;
+                    AppServices.SaveSettings();
+                    await StartSwitch();
+                    Cancel();
+                    Require(ReferenceEquals(account, AccountService.Current) && !AccountService.FlowActive && AppServices.Settings.Email == account.Email && File.Exists(cached), "Cancel must keep the first identity and avatar");
+
+                    await Command("fail");
+                    await StartSwitch();
+                    using (var failure = await browser.GetAsync(location)) failure.EnsureSuccessStatusCode();
+                    await Until(() => login.FindControl<TextBlock>("FlowStatusText")!.Text?.Contains("失败", StringComparison.Ordinal) == true, "Token rejection did not reach the actual login window");
+                    Require(ReferenceEquals(account, AccountService.Current) && File.Exists(cached), "Refused reauthorization must not replace the active identity");
+                    Cancel();
+
+                    await Command("hold");
+                    var late = AccountService.RefreshAvatarAsync();
+                    for (int i = 0; i < 80 && !await browser.GetFromJsonAsync<bool>(issuer + "/fixture/avatar-status"); i++) await Task.Delay(50);
+                    Require(await browser.GetFromJsonAsync<bool>(issuer + "/fixture/avatar-status"), "First avatar request did not reach the delay gate");
+                    await CompleteSwitch("second");
+                    await VerifyIdentityAsync("课表测试乙", "", false);
+                    await Command("release");
+                    Require(await late.WaitAsync(TimeSpan.FromSeconds(5)) is null && !File.Exists(cached) && AccountService.AvatarImagePath is null,
+                        "Old delayed avatar repopulated the new identity");
+                    Require(SettingsService.Load().UserName.Length == 0 && SettingsService.Load().Email.Length == 0, "Identity mirrors remained after replacement");
+                    Require(JsonSerializer.Deserialize<AccountProfile>(await File.ReadAllTextAsync(path))?.Name == "second", "New identity not persisted");
+                    var legacy = Path.Combine(SettingsService.DataDirectory, "account_avatar.png");
+                    await File.WriteAllBytesAsync(legacy, pixels);
+                    AccountService.Load();
+                    await VerifyIdentityAsync("课表测试乙", "", false);
+                    Require(!File.Exists(legacy) && AccountService.AvatarImagePath is null, "Unowned legacy avatar was reused at cold load");
+                    AppServices.Settings.UserName = "单独保存的本机名称";
+                    AppServices.Settings.Email = "local-only@example.invalid";
+                    AppServices.SaveSettings();
+                    await CompleteSwitch("broken");
+                    Require(await AccountService.RefreshAvatarAsync() is null, "Undecodable picture was accepted into the cache");
+                    await VerifyIdentityAsync("头像测试", "", false);
+                    AccountService.Logout();
+                    await VerifyIdentityAsync("未登录", "登录 ClassNEX ID", false);
+                    var saved = SettingsService.Load();
+                    Require(AccountService.Current is null && !AccountService.FlowActive && !File.Exists(path) && AccountService.AvatarImagePath is null &&
+                        saved.UserName == "单独保存的本机名称" && saved.Email == "local-only@example.invalid", "Logout did not isolate the independently stored local preferences");
                 }
-                throw new InvalidOperationException("ClassNEX ID state did not reach the navigation rail");
+                finally { await Command("release"); login.Close(); _loginWindow = null; }
+
+                async Task StartSwitch()
+                {
+                    location = null;
+                    var button = Need<Native.Button>("SwitchAccount");
+                    new Microsoft.UI.Xaml.Automation.Peers.ButtonAutomationPeer(button).Invoke();
+                    await Until(() => AccountService.FlowActive && location != null && login.FindControl<StackPanel>("StateFlow")!.IsVisible, "Switch account did not start the browser flow");
+                }
+                async Task CompleteSwitch(string fixture)
+                {
+                    await Command(fixture); await StartSwitch();
+                    using var callback = await browser.GetAsync(location);
+                    callback.EnsureSuccessStatusCode();
+                    await Until(() => AccountService.Current?.Name == fixture && login.FindControl<StackPanel>("StateDone")!.IsVisible, "Account replacement failed: " + fixture);
+                }
+                void Cancel() => login.FindControl<Button>("CancelFlowButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                async Task Command(string value) { using var result = await browser.GetAsync(issuer + "/fixture/" + value); result.EnsureSuccessStatusCode(); }
+            }
+
+            T Need<T>(string id) where T : Microsoft.UI.Xaml.FrameworkElement => Walk(settingsWindow.Content).OfType<T>().First(x => Automation.GetAutomationId(x) == id);
+            async Task VerifyIdentityAsync(string name, string email, bool photo)
+            {
+                await Until(() =>
+                {
+                    var mail = Need<Native.TextBlock>("SidebarAccountEmail");
+                    var picture = Need<Native.PersonPicture>("SidebarAccountPhoto");
+                    return Need<Native.TextBlock>("SidebarAccountName").Text == name && mail.Text == email &&
+                        (mail.Visibility == Microsoft.UI.Xaml.Visibility.Visible) == (email.Length > 0) && (picture.ProfilePicture is not null) == photo &&
+                        (photo || picture.DisplayName == (name == "未登录" ? "" : name)) &&
+                        Need<Native.TextBlock>("AccountEmail").Visibility == (name != "未登录" && email.Length > 0 ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed);
+                }, "Identity, missing email or avatar did not reach the native controls: " + name);
             }
             static IEnumerable<Microsoft.UI.Xaml.DependencyObject> Walk(Microsoft.UI.Xaml.DependencyObject root)
             {
                 yield return root;
-                for (var i = 0; i < Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(root); i++)
-                    foreach (var child in Walk(Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(root, i))) yield return child;
+                for (var i = 0; i < Dependencies.GetChildrenCount(root); i++)
+                    foreach (var child in Walk(Dependencies.GetChild(root, i))) yield return child;
+            }
+            static void Require(bool value, string reason) { if (!value) throw new InvalidOperationException(reason); }
+            static async Task Until(Func<bool> ready, string reason)
+            {
+                for (int i = 0; i < 120; i++)
+                {
+                    await Task.Delay(50);
+                    if (ready()) return;
+                }
+                throw new InvalidOperationException(reason);
             }
         }
         catch (Exception ex) { await File.WriteAllTextAsync(Path.Combine(SettingsService.DataDirectory, "account-review-error.txt"), ex.ToString()); }

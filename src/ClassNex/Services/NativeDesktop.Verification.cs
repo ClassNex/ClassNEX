@@ -276,7 +276,6 @@ internal sealed partial class NativeDesktop
             await Check("refresh-preserves-disclosure", () => Tree(Page).OfType<Expander>().First().IsExpanded && !AppServices.Settings.Notification.IsClassOnPreparingNotificationEnabled);
             await Act("reenter-notifications", () => { Settings.NavigateTo("home"); Settings.NavigateTo("notification"); });
             await Check("reentry-collapses-details", () => Tree(Page).OfType<Expander>().Count() >= 3 && Tree(Page).OfType<Expander>().All(x => !x.IsExpanded), 3000);
-            await Snapshot("native-reminders-collapsed.png", () => Settings.Content, true);
             await Act("schedule-enabled-reminder", () =>
             {
                 var s = AppServices.Settings;
@@ -293,6 +292,7 @@ internal sealed partial class NativeDesktop
                 AppServices.ApplyManagedSettings(s, CsesCodec.Serialize(profile));
             });
             await Check("scheduled-reminder-while-collapsed", () => track.IsVisible && Tree(Page).OfType<Expander>().All(x => !x.IsExpanded), 6000);
+            await Snapshot("native-reminders-collapsed.png", () => Settings.Content, true);
             await Check("full-next-subject-on-classroom", () => Element<Avalonia.Controls.TextBlock>("NotificationOverlaySubject") is { Text: CourseName, IsEffectivelyVisible: true }, 6000);
             await Check("notification-restores-course-and-bounds", () => !track.IsVisible && Element<Avalonia.Controls.Border>("CardContent") is { IsEffectivelyVisible: true } card && Math.Abs(island.Bounds.Width - Math.Ceiling(card.Bounds.Width + card.Margin.Left * 2)) <= 2, 16000);
             await Act("restore-all-day-fixture", () => AppServices.ApplyManagedSettings(AppServices.Settings, TestTimetable()));
