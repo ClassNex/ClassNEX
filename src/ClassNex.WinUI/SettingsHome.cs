@@ -19,15 +19,14 @@ public sealed partial class NativeSettingsWindow
         new("appearance", "外观", "调整主题、字号和桌面课表大小。", "课表与桌面"),
         new("window", "窗口", "设置排列方向、窗口置顶与鼠标穿透。", "课表与桌面"),
         new("widgets", "主界面组件", "添加、启用或调整桌面组件的顺序。", "课表与桌面"),
-        new("account", "ClassNEX 账户", "查看账户资料和浏览器授权状态。", "账户与应用"),
-        new("basic", "基本设置", "管理启动、托盘、学期和集控。", "账户与应用"),
-        new("nex", "NEX Intelligence", "打开对话、配置助手权限和唤醒方式。", "账户与应用"),
+        new("account", "账户", "管理 ClassNEX ID 登录。", "账户与应用"),
+        new("basic", "通用", "管理启动、托盘和课堂偏好。", "账户与应用"),
+        new("nex", "NEX Intelligence与NEX AI", "打开对话、配置助手权限和唤醒方式。", "账户与应用"),
         new("about", "关于 ClassNEX", "查看版本、开源许可和欢迎向导。", "账户与应用")
     ];
-    private readonly List<string> _features = ["account", "profile", "appearance", "notification", "widgets"];
+    private readonly List<string> _features = ["profile", "widgets", "notification", "basic"];
     private readonly HashSet<string> _favorites = [];
     private bool _preferencesRead, _favoritesOnly;
-    private int _firstFeature;
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _homeClock;
 
     private void SetHomeClock(bool enabled)
@@ -47,33 +46,17 @@ public sealed partial class NativeSettingsWindow
 
     private void OpenLink(string key)
     {
-        if (key == "profile") _bridge.Command(Profile);
-        else NavigateTo(key);
+        NavigateTo(key);
     }
 
     private void HomePage()
     {
         LoadHomePreferences();
-        var greeting = Target("HomeGreeting", "主页问候", Text("", "TitleTextBlockStyle"));
-        _body.Children.Add(greeting);
-        _bindings.Add(_ =>
-        {
-            var name = _bridge.Status(AccountName);
-            var value = string.IsNullOrWhiteSpace(name) ? "Hello，请先登录" : $"{DateTime.Now.Hour switch { >= 5 and < 11 => "早上好", >= 11 and < 17 => "中午好", _ => "晚上好" }}，{name}";
-            if (greeting.Text != value) greeting.Text = value;
-        });
-        var features = new Grid { ColumnSpacing = 10, MinHeight = 136 };
-        var previous = new Button { Content = new FontIcon { Glyph = "\uE76B", FontSize = 14 } };
-        var next = new Button { Content = new FontIcon { Glyph = "\uE76C", FontSize = 14 } };
-        Identify(previous, "HomeFeaturePrevious", "上一组卡片");
-        Identify(next, "HomeFeatureNext", "下一组卡片");
-        var edit = new Button { Content = "编辑大卡片" };
-        Identify(edit, "HomeFeaturesEdit", "编辑大卡片");
-        var tools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
-        tools.Children.Add(previous); tools.Children.Add(next); tools.Children.Add(edit);
-        Row("概览", "", tools);
+        var edit = new Button { Content = "自定义", Style = ButtonStyle("SubtleButtonStyle") };
+        Identify(edit, "HomeFeaturesEdit", "自定义主页卡片");
+        Row("课堂与应用", "", edit);
+        var features = new ContentControl { IsTabStop = false, HorizontalContentAlignment = HorizontalAlignment.Stretch };
         _body.Children.Add(features);
-        var capacity = 1;
         var displayed = new List<(string Key, TextBlock Summary, TextBlock Detail)>();
         void UpdateValues(AppSettings s)
         {
@@ -87,40 +70,36 @@ public sealed partial class NativeSettingsWindow
         void Arrange()
         {
             displayed.Clear();
-            features.Children.Clear();
-            features.ColumnDefinitions.Clear();
-            _firstFeature = Math.Clamp(_firstFeature, 0, Math.Max(0, _features.Count - capacity));
-            var keys = _features.Skip(_firstFeature).Take(capacity).ToArray();
-            for (var i = 0; i < keys.Length; ++i)
+            var tiles = new List<FrameworkElement>();
+            foreach (var key in _features)
             {
-                var key = keys[i];
                 var link = Links.Single(l => l.Key == key);
-                features.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
-                var stack = new StackPanel { Spacing = 6, VerticalAlignment = VerticalAlignment.Top };
-                stack.Children.Add(Text(link.Title, "CaptionTextBlockStyle"));
+                var dest = Destinations.Single(d => d.Key == ResolveKey(key));
+                var stack = new StackPanel { Spacing = 8 };
+                var header = new Grid { ColumnSpacing = 8 };
+                header.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+                header.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
+                header.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+                header.Children.Add(new FontIcon { Glyph = dest.Glyph, FontSize = 17 });
+                var label = Text(link.Title); Grid.SetColumn(label, 1); header.Children.Add(label);
+                var arrow = new FontIcon { Glyph = "\uE76C", FontSize = 12 }; Grid.SetColumn(arrow, 2); header.Children.Add(arrow);
+                stack.Children.Add(header);
                 var summary = Text("", "SubtitleTextBlockStyle");
                 var detail = Text("", "CaptionTextBlockStyle");
                 stack.Children.Add(summary);
                 stack.Children.Add(detail);
                 displayed.Add((key, summary, detail));
-                var tile = new Button { Content = stack, HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch,
-                    HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Top, Padding = new Thickness(14) };
+                var tile = new Button { Content = stack, HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Top,
+                    HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(16, 13, 16, 14), CornerRadius = new CornerRadius(8) };
                 Identify(tile, "Feature_" + key, link.Title);
                 tile.Click += (_, _) => OpenLink(key);
-                Grid.SetColumn(tile, i);
-                features.Children.Add(tile);
+                tiles.Add(tile);
             }
-            previous.IsEnabled = _firstFeature > 0;
-            next.IsEnabled = _firstFeature < _features.Count - capacity;
+            var grid = new Grid(); Identify(grid, "HomeCards", "主页卡片");
+            SetCards(grid, tiles);
+            features.Content = grid;
             UpdateValues(_bridge.ReadSettings());
         }
-        previous.Click += (_, _) => { _firstFeature--; Arrange(); };
-        next.Click += (_, _) => { _firstFeature++; Arrange(); };
-        features.SizeChanged += (_, args) =>
-        {
-            var count = Math.Clamp((int)((args.NewSize.Width + 10) / 206), 1, 3);
-            if (count != capacity) { capacity = count; Arrange(); }
-        };
         edit.Click += (_, _) => ConfigureFeatures(edit, Arrange);
         Arrange();
         _bindings.Add(UpdateValues);
@@ -128,10 +107,10 @@ public sealed partial class NativeSettingsWindow
         var filter = new ComboBox { ItemsSource = new[] { "全部", "仅收藏" }, SelectedIndex = _favoritesOnly ? 1 : 0, MinWidth = 120 };
         Identify(filter, "HomeFilter", "筛选设置入口");
         Row("快捷入口", "", filter);
-        var host = new StackPanel { Spacing = 12 };
+        var host = new Grid();
         _body.Children.Add(host);
         var rows = new List<(HomeLink Link, Grid Row, ToggleButton Star)>();
-        var groupBoxes = new Dictionary<string, StackPanel>();
+        var groupBoxes = new Dictionary<string, FrameworkElement>();
         var empty = Text("还没有收藏的入口。");
         void ApplyFilter()
         {
@@ -148,9 +127,8 @@ public sealed partial class NativeSettingsWindow
         foreach (var group in Links.GroupBy(x => x.Group))
         {
             var groupBox = new StackPanel { Spacing = 6 };
-            groupBoxes.Add(group.Key, groupBox);
-            groupBox.Children.Add(Text(group.Key, "SubtitleTextBlockStyle"));
-            host.Children.Add(groupBox);
+            groupBoxes.Add(group.Key, Card(groupBox));
+            groupBox.Children.Add(Text(group.Key));
             foreach (var link in group)
             {
                 var row = new Grid { ColumnSpacing = 8 };
@@ -159,7 +137,7 @@ public sealed partial class NativeSettingsWindow
                 var stack = new StackPanel { Spacing = 1 };
                 stack.Children.Add(Text(link.Title));
                 stack.Children.Add(Text(link.Description, "CaptionTextBlockStyle"));
-                var button = new Button { Content = stack, Padding = new Thickness(12, 7, 12, 7), HorizontalAlignment = HorizontalAlignment.Stretch,
+                var button = new Button { Content = stack, Style = ButtonStyle("SubtleButtonStyle"), Padding = new Thickness(6, 7, 6, 7), HorizontalAlignment = HorizontalAlignment.Stretch,
                     HorizontalContentAlignment = HorizontalAlignment.Stretch };
                 Identify(button, "Home_" + link.Key, link.Title);
                 button.Click += (_, _) => OpenLink(link.Key);
@@ -178,7 +156,8 @@ public sealed partial class NativeSettingsWindow
                 groupBox.Children.Add(row);
             }
         }
-        host.Children.Add(empty);
+        SetCards(host, groupBoxes.Values.ToArray(), 275);
+        _body.Children.Add(empty);
         filter.SelectionChanged += (_, _) => { _favoritesOnly = filter.SelectedIndex == 1; ApplyFilter(); };
         ApplyFilter();
     }
@@ -188,7 +167,7 @@ public sealed partial class NativeSettingsWindow
         if (key == "profile")
         {
             var snapshot = _bridge.ReadOverlay();
-            if (!snapshot.HasTimetable) return ("尚未配置课表", "打开档案编辑器");
+            if (!snapshot.HasTimetable) return ("尚未配置课表", "查看课表与档案");
             var today = snapshot.Today;
             var course = today.Current ?? today.Next ?? today.Slots.LastOrDefault();
             return course is null ? ("今天没有课程", Or(_bridge.Status(NativeSettingsKeys.Schedule), today.DateText))
@@ -196,7 +175,7 @@ public sealed partial class NativeSettingsWindow
         }
         return key switch
         {
-            "account" => (Or(_bridge.Status(AccountName), "尚未登录"), Or(_bridge.Status(AccountEmail), "使用 ClassNEX ID 登录")),
+            "account" => (string.IsNullOrWhiteSpace(_bridge.Status(AccountName)) ? "未登录" : "已登录 ClassNEX ID", "管理登录与授权"),
             "notification" => (s.AllowNotification ? "课堂提醒已开启" : "课堂提醒已关闭", s.Notification.IsClassOnPreparingNotificationEnabled ? $"室内课提前 {s.Notification.ClassOnBreakReminderMinutes} 分钟提醒" : "课前准备提醒已关闭"),
             "appearance" => (s.ThemeMode switch { "dark" => "深色主题", "light" => "浅色主题", _ => "跟随系统主题" }, $"课表缩放 {s.MainWindowScale:0.##}× · 背景 {s.BackgroundOpacity:P0}"),
             "window" => (s.Orientation == LayoutOrientation.Vertical ? "纵向排列" : "横向排列", s.IsClickThrough ? "已启用鼠标穿透" : "已关闭鼠标穿透"),
@@ -257,9 +236,4 @@ public sealed partial class NativeSettingsWindow
         catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
     }
 
-    private void OverviewPage()
-    {
-        foreach (var d in Destinations.Where(d => d.Key is not ("settings" or "home") && (d.Key != "debug" || _bridge.ReadSettings().IsDebugOptionsEnabled)))
-            ActionRow("GoTo_" + d.Key, d.Title, "打开", () => NavigateTo(d.Key), d.Description);
-    }
 }

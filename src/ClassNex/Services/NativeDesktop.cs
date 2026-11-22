@@ -11,7 +11,8 @@ internal sealed partial class NativeDesktop : IDisposable
     private NativeSettingsWindow? _settings;
     private Applied _applied = Applied.Read();
     private bool _disposed, _refreshQueued, _refreshSettings;
-    internal NativeOverlayWindow Overlay { get; }
+    private readonly Views.MainWindow _overlay;
+    internal NativeSettingsWindow? Settings => _settings;
 
     private sealed record Applied(string Theme, bool Startup, bool Protocol, bool Voice, bool Edge, string Side)
     {
@@ -22,14 +23,15 @@ internal sealed partial class NativeDesktop : IDisposable
         }
     }
 
-    internal NativeDesktop()
+    internal NativeDesktop(Views.MainWindow overlay)
     {
         _bridge = new()
         {
             ReadSettings = () => AppServices.Settings, SaveSettings = AppServices.SaveSettings, ReadOverlay = ReadOverlay,
-            Command = RunCommand, Status = ReadStatus, ExecuteAsync = ExecuteAsync
+            Command = RunCommand, Status = ReadStatus, ExecuteAsync = ExecuteAsync,
+            ReadPlugins = () => AppServices.Plugins as Core.Abstractions.IPluginManager
         };
-        Overlay = new(_bridge);
+        _overlay = overlay;
     }
 
     internal void Connect()
@@ -41,6 +43,7 @@ internal sealed partial class NativeDesktop : IDisposable
         AppServices.TimeLayout.Changed += ScheduleChanged;
         AppServices.Widgets.Changed += RemoteChanged;
         AccountService.Changed += RemoteChanged;
+        if (AppServices.Plugins is { } plugins) plugins.Changed += RemoteChanged;
         if (AppServices.Management is { } management) management.StatusChanged += StatusChanged;
         if (AppServices.NexVoice is { } voice) voice.StatusChanged += StatusChanged;
     }
@@ -63,8 +66,10 @@ internal sealed partial class NativeDesktop : IDisposable
         var picker = new FileOpenPicker();
         picker.FileTypeFilter.Add(".yaml");
         picker.FileTypeFilter.Add(".yml");
-        var owner = (Microsoft.UI.Xaml.Window?)_settings ?? Overlay;
-        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(owner));
+        if (_settings is null && !_overlay.IsVisible) OpenSettings("schedule");
+        var owner = _settings is { } settings ? WinRT.Interop.WindowNative.GetWindowHandle(settings) : _overlay.TryGetPlatformHandle()?.Handle ?? 0;
+        if (owner == 0) return;
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, owner);
         if (await picker.PickSingleFileAsync() is { } file) AppServices.LoadTimetable(file.Path);
     }
 

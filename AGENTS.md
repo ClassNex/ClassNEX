@@ -14,17 +14,17 @@ ClassNEX，ClassIsland 风格的桌面课表应用。Windows 客户端使用 .NE
 
 ## 铁律
 
-1. 设计一律先参照 CI 源码，目录 E:\ci-source，禁止自行发明
-2. 设置窗口和桌面课表浮窗只用原生 Microsoft.UI.Xaml（WinUI 3）控件与系统主题；不得用其他框架模拟。既有辅助窗口继续使用 AvaloniaFluentUI。
+1. 课堂产品逻辑先参照 E:\ci-source。设置用 Windows 桌面的布局习惯，只参考界面结构，不复制其他项目的素材或实现。
+2. 设置复用主线原生 WinUI 3（Frame、Mica）；桌面课表保留透明 Avalonia 浮窗。档案、OOBE、登录与托盘沿用 AvaloniaFluentUI。两套窗口共享一个应用生命周期。
 3. 构建必须 0 警告 0 错误，命令 dotnet build src\ClassNex\ClassNex.csproj -c Debug -t:Rebuild
 4. 增量构建会谎报 0 错误但 XAML 编译失败，报错 No precompiled XAML 时用 -t:Rebuild 看真实错误
 5. 改文本文件只用编辑工具，PowerShell 写文件必须 UTF8Encoding false，禁止 Set-Content
-6. git push 前确认代理 127.0.0.1:7890 通，推送后核对 HEAD 等于 origin/main
+6. git push 前确认代理 127.0.0.1:7890 通；推送后核对 HEAD 与本次获准推送的远端分支。不得用重构分支覆盖 main。
 7. 打包发布只推 26w* 标签，GitHub Actions 会自动构建并发布，作者身份已绑定 LingOfficial；发布包结构照 CI：app-<版本>-<序号> 载荷目录 + ClassNex.exe 启动器 + PackageType（内容 folder）+ files.json（SHA512 清单），data 由首次启动在根目录生成
-8. 仓库代码不带注释，发布说明与 md 文件不带注释
-9. 字体加粗前先征得用户同意。原生窗口优先使用系统主题资源；遗留界面沿用 CiPalette。
-10. 设置和浮窗全量构建后优先运行 `tools/verify_settings.ps1`，使用匿名隔离目录；`CLASSNEX_VERIFY` 用于原有数据自检。
-11. 所有布尔设置一律使用对应界面框架的 ToggleSwitch，默认显示「开 / 关」，不用方形 CheckBox。
+8. 不添加无意义的代码注释；可单独打包的 Core 公共契约提供 XML 文档。
+9. 字体加粗前先征得用户同意。颜色复用 App.axaml 的主题资源、Fluent 系统画刷或浮窗的 CiPalette，避免每页写死颜色。
+10. Windows 窗口验收优先使用 `tools/review_desktop.ps1` 的独立匿名目录；原有 `CLASSNEX_VERIFY` 数据自检仍可用。
+11. 布尔设置使用其宿主的 `ToggleSwitch`（开 / 关），不使用方形 `CheckBox`。
 
 ## 交接协议
 
@@ -36,7 +36,7 @@ ClassNEX，ClassIsland 风格的桌面课表应用。Windows 客户端使用 .NE
 ## 当前状态
 
 持有者：无
-上次完成：课表核心、通知服务、插件和 AI 分模块；客户端设置与桌面浮窗改为原生 WinUI 3。两个窗口复用同一份设置、账户和课程，旧的 Avalonia 设置/浮窗及专用动画已退役。档案、托盘、登录、OOBE 和独立集控站点未改用 WinUI。
-改了文件：`src/ClassNex.Core/{Abstractions,Services}`、`src/ClassNex.{Notification.Service,Plugin,WinUI}`、`src/ClassNex/{Program.cs,App.axaml.cs,Services,ClassNex.csproj}`、解决方案、发布检查、`tools/verify_settings.ps1`、架构和交接文档。
-验证：Debug 全量重建 0 警告 0 错误；Debug 和自包含 win-x64 载荷各通过 32 项真实窗口验收。按 26w46d Core 编译的测试插件实测加载、卸载成功。本次没有打发布标签。
-下一步：部署到教室前用现场的投屏、缩放、课表和网络联测；集控仅验证本地模拟下发。复测流程见 `HANDOFF.md` 5.3，不使用真实账户进行自动验收。
+工作分支：`main`。按功能合并主线 `2949eff` 与 `refactor/26w46d-flclash-ui-core` 的 `aaba73d`，共同祖先 `26w46d_Alpha`（`60d7b57`）。不重置分支，不删除原分支或推送发布标签。
+本次内容：原生设置的 11 个入口、账户侧栏、Mica 与右侧 Frame；恢复 Alpha 浮窗、日期与时间独立迁移、可拖动与重启定位；OOBE 首屏、导航与退出；保留独立 Core、提醒、插件、NEX 和自动集控。落点见 `src/ClassNex.WinUI`、`src/ClassNex/Views` 及 `src/ClassNex.Core/Models/AppSettings.cs`。
+验证：主线记录见 `docs/mainline-desktop-acceptance.md`；`docs/26.0-acceptance.md` 只记录此前重构分支。验收使用匿名数据目录、真实窗口与回环身份服务；不是生产部署。
+后续：教室里的真实身份提供商、物理多屏与麦克风仍需现场验证；正式发布另行决定。

@@ -50,11 +50,6 @@ public partial class ProfileEditorWindow : AppWindow
     public ProfileEditorWindow()
     {
         InitializeComponent();
-        Opened += (_, _) => MetroTransitions.PrewarmPagesAtIdle(
-            new Control[] { PageProfile, PageSchedule, PageTime, PageSubject, PageSwap },
-            _currentPageView ?? PageProfile);
-        foreach (var item in NavView.MenuItems.OfType<Control>())
-            MetroTilt.Attach(item);
         ProfileVersionText.Text = typeof(ProfileEditorWindow).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
             ?? typeof(ProfileEditorWindow).Assembly.GetName().Version?.ToString()
@@ -67,6 +62,8 @@ public partial class ProfileEditorWindow : AppWindow
         _weekStart = DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek);
         WeekGrid.ItemsSource = _weekRows;
 
+        AppServices.ManagedSettingsApplied += ReloadManagedProfile;
+        Closed += (_, _) => AppServices.ManagedSettingsApplied -= ReloadManagedProfile;
         BuildCommandBar();
         WireEvents();
         LoadAll();
@@ -123,7 +120,7 @@ public partial class ProfileEditorWindow : AppWindow
     
     public void SelectTab(int index)
     {
-        var navIndex = Math.Clamp(index, 0, 3) + 1;
+        var navIndex = Math.Clamp(index, -1, 3) + 1;
         if (navIndex >= NavView.MenuItems.Count)
             return;
 
@@ -160,7 +157,6 @@ public partial class ProfileEditorWindow : AppWindow
 
     private void WireEvents()
     {
-        BackButton.Click += (_, _) => NavigateBack();
         NavView.SelectionChanged += (_, _) => SwitchPage();
 
         
@@ -239,6 +235,12 @@ public partial class ProfileEditorWindow : AppWindow
 
     
 
+    private void ReloadManagedProfile()
+    {
+        if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess()) { if (IsVisible) LoadAll(); }
+        else Avalonia.Threading.Dispatcher.UIThread.Post(() => { if (IsVisible) LoadAll(); });
+    }
+
     private void LoadAll()
     {
         _loading = true;
@@ -271,7 +273,7 @@ public partial class ProfileEditorWindow : AppWindow
             return;
 
         var previousPage = _currentPageView;
-        var previousIndex = _pageIndex;
+
 
         if (!_navigatingBack && _pageIndex >= 0)
             _pageHistory.Add(_pageIndex);
@@ -292,37 +294,11 @@ public partial class ProfileEditorWindow : AppWindow
         };
 
         _currentPageView = page;
-        KeepOnlyPages(previousPage, page);
+        if (previousPage is not null) previousPage.IsVisible = false;
         page.IsVisible = true;
+        if (page is ScrollViewer scroll) scroll.Offset = Vector.Zero;
         PageTitleText.Text = title;
-        PageTitleText.Opacity = 1;
-        MetroTransitions.Play(previousPage, page, index > previousIndex, null, PageTitleText);
-
-        AttachTiltToPage(page);
-    }
-
-    private void KeepOnlyPages(Control? keepA, Control? keepB)
-    {
-        foreach (var page in new Control[] { PageProfile, PageSchedule, PageTime, PageSubject, PageSwap })
-        {
-            var keep = ReferenceEquals(page, keepB);
-            page.IsVisible = true;
-            page.Opacity = keep ? 1 : 0;
-            page.IsHitTestVisible = keep;
-        }
-    }
-
-    private static void AttachTiltToPage(Control page)
-    {
-        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-        {
-            foreach (var control in page.GetVisualDescendants().OfType<Control>())
-            {
-                var name = control.GetType().Name;
-                if (name is "SettingsCard" or "SettingsExpanderItem")
-                    MetroTilt.Attach(control);
-            }
-        }, Avalonia.Threading.DispatcherPriority.Background);
+        if (previousPage is not null) WinUIPageTransitions.FadeIn(page);
     }
 
     private void NavigateBack()
@@ -400,7 +376,7 @@ public partial class ProfileEditorWindow : AppWindow
     private void RefreshNavigation()
     {
         var monday = _weekStart.AddDays(1);
-        NavDateText.Text = monday.ToString("yyyy/M/d");
+        NavDateText.Text = $"{_weekStart:M/d} – {_weekStart.AddDays(6):M/d}";
         NavWeekText.Text = $"第{System.Globalization.ISOWeek.GetWeekOfYear(monday)}周";
     }
 

@@ -6,9 +6,20 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>ClassNex</RootNamespace>
     <AssemblyName>ClassNex.Core</AssemblyName>
+    <PackageId>ClassNex.Core</PackageId>
+    <Authors>ClassNEX contributors</Authors>
+    <Version>0.26.0-alpha.1</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <Description>ClassNEX classroom schedules, portable settings and stable desktop plugin contracts.</Description>
+    <PackageTags>ClassNex;CSES;timetable;desktop;plugins</PackageTags>
+    <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/ClassNex/ClassNEX</RepositoryUrl>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>
+    <None Update="README.md" Pack="true" PackagePath="/" />
     <PackageReference Include="YamlDotNet" Version="16.3.0" />
   </ItemGroup>
 

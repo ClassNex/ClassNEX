@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ClassNex.Plugin\ClassNex.Plugin.csproj" />
+    <ProjectReference Include="..\Fixtures\ClassNex.SamplePlugin\ClassNex.SamplePlugin.csproj" ReferenceOutputAssembly="false" />
+    <PackageReference Include="MSTest" Version="4.0.2" />
+  </ItemGroup>
+  <Target Name="CopyPluginFixture" AfterTargets="Build">
+    <MSBuild Projects="..\Fixtures\ClassNex.SamplePlugin\ClassNex.SamplePlugin.csproj" Targets="GetTargetPath" Properties="Configuration=$(Configuration)">
+      <Output TaskParameter="TargetOutputs" ItemName="FixtureAssembly" />
+    </MSBuild>
+    <Copy SourceFiles="@(FixtureAssembly)" DestinationFolder="$(TargetDir)fixture" />
+  </Target>
+</Project>

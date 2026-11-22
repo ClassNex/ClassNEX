@@ -14,6 +14,14 @@ internal static class Program
     [STAThread]
     public static void Main(string[] args)
     {
+#if DEBUG
+        if (args.FirstOrDefault() is "--review-account" or "--review-ui" or "--review-alpha-plugin" &&
+            !File.Exists(Path.Combine(AppContext.BaseDirectory, "..", ".classnex-review")))
+        {
+            Environment.ExitCode = 2;
+            return;
+        }
+#endif
         if (OperatingSystem.IsWindows())
             _ = SetCurrentProcessExplicitAppUserModelID(AppUserModelId);
 

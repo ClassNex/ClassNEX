@@ -519,7 +519,7 @@ const settingsGroups=[
     ]
   }
 ];
-const widgetNames={text:"文本",separator:"分割线",schedule:"课程表",date:"日期",clock:"时钟",current:"当前·下节课",countdown:"倒计时"};
+const widgetNames={text:"文本",divider:"分割线",separator:"分割线",schedule:"课程表",date:"日期",clock:"时间",nextclass:"当前·下节课",current:"当前·下节课",countdown:"倒计时"};
 const settingsFieldMap=new Map(settingsGroups.flatMap(group=>group.fields.map(field=>[field.key,field])));
 const settingValue=field=>{
   const value=getPathValue(state.settings||{},field.key);

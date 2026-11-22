@@ -10,22 +10,22 @@ const string SessionCookie = "classnex_central_session";
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
-var dataDirectory = Path.Combine(AppContext.BaseDirectory, "data");
+var dataDirectory = Environment.GetEnvironmentVariable("CENTRAL_DATA_DIRECTORY") ?? Path.Combine(AppContext.BaseDirectory, "data");
 var store = new CentralStore(dataDirectory);
 await store.InitializeAsync();
 var sessionStore = new CentralSessionStore(dataDirectory);
 await sessionStore.InitializeAsync();
 
 var casdoorUrl = Environment.GetEnvironmentVariable("CASDOOR_URL")
-                 ?? "https://auth.smart-teach.cn";
+                 ?? AppSettings.DefaultAccountEndpoint;
 var casdoorInternalUrl = Environment.GetEnvironmentVariable("CASDOOR_INTERNAL_URL")
                          ?? casdoorUrl;
 var casdoorClientId = Environment.GetEnvironmentVariable("CASDOOR_CLIENT_ID")
                       ?? "fa7664d772fac4b5097ce15c";
 var casdoorClientSecret = Environment.GetEnvironmentVariable("CASDOOR_CLIENT_SECRET") ?? "";
 var publicBaseUrl = Environment.GetEnvironmentVariable("CENTRAL_PUBLIC_URL")
-                    ?? "http://206.187.201.60:7010";
-var auth = new CentralAuthService(
+                    ?? AppSettings.DefaultCentralEndpoint;
+using var auth = new CentralAuthService(
     casdoorUrl,
     casdoorInternalUrl,
     casdoorClientId,
@@ -37,7 +37,7 @@ var loginStates = new ConcurrentDictionary<string, PendingLogin>();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-app.MapGet("/auth/login", (HttpRequest request) =>
+app.MapGet("/auth/login", () =>
 {
     foreach (var expired in loginStates.Where(item =>
                  item.Value.ExpiresAt <= DateTimeOffset.UtcNow))
@@ -53,7 +53,7 @@ app.MapGet("/auth/login", (HttpRequest request) =>
     loginStates[state] = new PendingLogin(
         DateTimeOffset.UtcNow.AddMinutes(10),
         verifier,
-        BuildPublicBaseUrl(request) + "/auth/callback");
+        auth.PublicBaseUrl + "/auth/callback");
     return Results.Redirect(auth.BuildLoginUrl(
         state,
         challenge,
@@ -108,7 +108,7 @@ app.MapGet("/auth/callback", async (
         Expires = DateTimeOffset.UtcNow.AddDays(7),
         Path = "/",
     });
-    return Results.Redirect(BuildPublicBaseUrl(response.HttpContext.Request) + "/");
+    return Results.Redirect(auth.PublicBaseUrl + "/");
 });
 
 app.MapGet("/auth/logout", async (HttpRequest request, HttpResponse response) =>
@@ -116,7 +116,7 @@ app.MapGet("/auth/logout", async (HttpRequest request, HttpResponse response) =>
     if (request.Cookies.TryGetValue(SessionCookie, out var sessionId))
         await sessionStore.RemoveAsync(sessionId);
     response.Cookies.Delete(SessionCookie);
-    return Results.Redirect(BuildPublicBaseUrl(request) + "/");
+    return Results.Redirect(auth.PublicBaseUrl + "/");
 });
 
 app.MapGet("/api/v1/auth/me", async (HttpRequest request) =>
@@ -140,6 +140,7 @@ app.MapGet("/api/v1/auth/profile", async (HttpRequest request) =>
             name = user.Name,
             email = user.Email,
             preferred_username = user.PreferredUsername,
+            picture = user.Picture,
         });
 });
 
@@ -435,20 +436,6 @@ static bool IsHttps(HttpContext context) =>
         context.Request.Headers["X-Forwarded-Proto"].ToString(),
         "https",
         StringComparison.OrdinalIgnoreCase);
-
-static string BuildPublicBaseUrl(HttpRequest request)
-{
-    var scheme = request.Headers["X-Forwarded-Proto"].FirstOrDefault();
-    if (string.IsNullOrWhiteSpace(scheme))
-        scheme = request.Scheme;
-    var host = request.Headers["X-Forwarded-Host"].FirstOrDefault();
-    if (string.IsNullOrWhiteSpace(host))
-        host = request.Host.Value;
-    var prefix = request.Headers["X-Forwarded-Prefix"].FirstOrDefault();
-    if (string.IsNullOrWhiteSpace(prefix))
-        prefix = request.PathBase.Value;
-    return $"{scheme}://{host}{prefix?.TrimEnd('/')}".TrimEnd('/');
-}
 
 static string CreateToken() =>
     Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();

@@ -17,6 +17,9 @@ public sealed partial class NativeSettingsWindow
         var settings = _bridge.ReadSettings();
         _widgetShape = WidgetShape(settings);
         _widgetIndex = Math.Clamp(_widgetIndex, 0, Math.Max(0, settings.Widgets.Count - 1));
+        CommandRow("EditDesktop", "桌面布局", "编辑组件", NativeSettingsKeys.EditOverlay);
+        ActionRow("WidgetsAppearance", "外观与主题", "调整外观", () => NavigateTo("appearance"));
+        ActionRow("WidgetsWindow", "窗口行为", "设置窗口", () => NavigateTo("window"));
         Section("桌面课表布局");
         if (settings.Widgets.Count != 0)
         {
@@ -110,7 +113,7 @@ public sealed partial class NativeSettingsWindow
 
     private async void ConfirmWidgetReset()
     {
-        var dialog = new ContentDialog { XamlRoot = _shell.XamlRoot, Title = "恢复默认组件布局？", Content = "此操作会用默认的日期、课程表组件替换当前布局。", PrimaryButtonText = "恢复", CloseButtonText = "取消", DefaultButton = ContentDialogButton.Close };
+        var dialog = new ContentDialog { XamlRoot = _shell.XamlRoot, Title = "恢复默认组件布局？", Content = "将用默认组件替换当前布局。你的课表与档案不会改变。", PrimaryButtonText = "恢复", CloseButtonText = "取消", DefaultButton = ContentDialogButton.Close };
         if (await dialog.ShowAsync() != ContentDialogResult.Primary || _closed) return;
         FlushSlider();
         _widgetIndex = 0;

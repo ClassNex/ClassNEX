@@ -1,37 +1,22 @@
-# ClassNEX 架构
+# ClassNEX 桌面架构
 
-## 项目分层
+Windows 主线使用 .NET 10。WinUI 3 接管 STA 消息循环和设置窗口；Avalonia/AvaloniaFluentUI 负责透明课表浮窗、托盘、档案、登录与 OOBE。两个界面在同一进程共享课表和设置，没有第二个桌面浮窗。
 
-| 项目 | 职责 | 依赖 |
-| --- | --- | --- |
-| `ClassNex.Core` | 模型、课程/设置/时间/组件服务、插件 SDK、AI/通知契约 | YamlDotNet，无 UI 或其他项目依赖 |
-| `ClassNex.Notification.Service` | 课前、上课、下课提醒调度与提醒流程 | `ClassNex.Core` |
-| `ClassNex.AI` | NEX HTTP 客户端、Agent、工具调用、模型目录与 AI 服务实现 | `ClassNex.Core` |
-| `ClassNex.Plugin` | 插件清单发现、可卸载加载上下文、生命周期管理 | `ClassNex.Core` |
-| `ClassNex.WinUI` | 原生 WinUI 3 桌面呈现层 | `ClassNex.Core`、Windows App SDK |
-| `ClassNex` | 客户端入口、桌面窗口、语音识别集成、静态资源与组合根 | Core、WinUI、Notification.Service、Plugin、AI |
-| `ClassNex.Central` | 独立部署的集控服务与管理界面 | `ClassNex.Core` |
-| `ClassNex.Launcher` | 独立启动器 | 无 |
+| 项目 | 职责和依赖 |
+| --- | --- |
+| `ClassNex.Core` | 无 UI 依赖。CSES 模型与编解码、单双周、按日课表缓存、便携设置存储、组件配置、插件和提醒公共契约。唯一第三方运行依赖为 YamlDotNet。 |
+| `ClassNex.Notification.Service` | 依赖 Core。处理课堂事件，按时间、有效期、去重键和优先级投递到显示渠道；不知道窗口类型。 |
+| `ClassNex.Plugin` | 依赖 Core。发现本地清单、检查 API 与依赖、装配可信插件、分离配置、停止与卸载。旧插件的契约类型仍位于 Core 原有命名空间。 |
+| `ClassNex.AI` | 依赖 Core。使用注入的课堂上下文访问课程与设置，通过可取消的流式请求提供对话。 |
+| `ClassNex.WinUI` | Windows App SDK 1.8 设置窗口、导航与页面；`DesktopBridge` 从桌面组合根获取状态和真实命令。 |
+| `ClassNex` | 桌面入口、窗口与视图模型、托盘、账户和平台适配。显式传递实际服务实例给通知、助手与插件宿主。 |
+| `ClassNex.Central` | ASP.NET Core 集控站点；只引用 Core，通过 HTTP 协议与客户端通信。 |
+| `ClassNex.Launcher` | 选择并启动版本载荷的独立启动器，不加载 UI 或插件。 |
 
-## 依赖方向
+`DesktopRuntime` 持有通知、集控和插件的生命周期。`MainWindowNotificationSurface` 是通知渠道的桌面实现；界面不接管调度。`AppServices` 仍是 Alpha 辅助窗口使用的兼容入口，不是新业务模块的容器。插件的 `IServiceProvider` 用于保持已发布契约；宿主按清单给新插件提供能力，这不能限制进程或操作系统权限。
 
-```text
-ClassNex ───┬─ ClassNex.Notification.Service ──┐
-            ├─ ClassNex.Plugin ───────────────┤
-            ├─ ClassNex.AI ───────────────────┤
-            ├─ ClassNex.WinUI ────────────────┤
-            └─────────────────────────────────┼─ ClassNex.Core
-ClassNex.Central ─────────────────────────────┘
-```
+课表加载或编辑后由档案变更使缓存失效。秒钟、倒计时仍读取当前时间，不靠降低时钟精度节省刷新。设置文件与课表采用同目录临时文件再替换；单节课结束时间不算该课程的上课时间。提醒将课程/课间转换为有限期的请求，窗口隐藏与通知服务解绑。
 
-服务实现彼此不引用，也不引用主程序。通知通过 `INotificationSurface` 呈现；语音协调器通过 `INexPresentation` 更改浮窗的 NEX 内容。AI 通过 `IAiApplicationContext` 读取应用状态；旧插件仍通过 `PluginContext` 访问 Core、通知和 AI 接口。`DayScheduleCache` 为课表浮窗和通知共用当天的课程列表，日期、单双周或档案变更时重算。
+`CentralSettingsPayload` 定义能离开设备的设置。应用下发配置时保留账号、路径、NEX 密钥和权限；改变外观不会退出登录。集控从配置的 `CENTRAL_PUBLIC_URL` 构造 OAuth 回调和返回地址，不从浏览器传入的 Host 推断。测试时可用 `CENTRAL_DATA_DIRECTORY` 指向空目录，不读取生产数据库。
 
-桌面包的版本载荷目录 `app-<版本>-<序号>/` 随主程序携带 `ClassNex.Core.dll`、
-`ClassNex.Notification.Service.dll`、`ClassNex.Plugin.dll`、`ClassNex.AI.dll` 和 `ClassNex.WinUI.dll`。
-GitHub Actions 在生成 SHA512 清单前检查这些模块均已发布。集控独立发布，不打入桌面包。
-
-## 组合根
-
-`AppServices` 创建核心服务与 AI 服务。`App` 组装通知、插件、语音和客户端窗口，`NativeDesktop` 用 `DesktopBridge` 将 WinUI 设置和浮窗连接到现有服务。同一个设置实例既接受本机修改也接受集控下发；两种操作都不改写本机的登录身份。设置写入使用同目录临时文件原子替换。
-
-桌面进程由 WinUI 的 STA 消息循环驱动。设置和浮窗使用 `Microsoft.UI.Xaml`；档案编辑器、OOBE、登录和托盘等辅助窗口继续使用同一线程上的 Avalonia。自包含 Windows 发布须携带与载荷匹配的 `ClassNex.pri`，否则原生控件无法读取主题资源。
+设计参考：CI 的 Core 服务契约、课堂事件/组件和设置导航，以及 FlClash 桌面端侧栏、信息层次与紧凑分组。源项目只作参考，不分发其界面、品牌素材或字体。

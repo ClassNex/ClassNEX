@@ -1,52 +1,22 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="ClassNex.Views.NexEdgeBarWindow"
-        Title="NEX 唤醒条"
-        Width="14" Height="120"
-        Topmost="True"
-        Background="Transparent"
-        TransparencyLevelHint="Transparent"
-        SystemDecorations="None"
-        ShowInTaskbar="False"
-        ShowActivated="False"
-        CanResize="False">
-    
-    <Border x:Name="Bar"
-            CornerRadius="7"
-            Background="#5CFFFFFF"
-            BorderThickness="1.5"
-            BorderBrush="#8CC8C8C8"
-            Cursor="Hand">
-        <Border.Clip>
-            <RectangleGeometry Rect="0,0,14,120"/>
-        </Border.Clip>
-
-        
-        <Border x:Name="Sweep"
-                Width="8" Height="36"
-                CornerRadius="4"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Top"
-                Opacity="0">
-            <Border.Background>
-                <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                    <GradientStop Offset="0.0" Color="#00FFFFFF"/>
-                    <GradientStop Offset="0.45" Color="#B4FFFFFF"/>
-                    <GradientStop Offset="0.75" Color="#F0FFFFFF"/>
-                    <GradientStop Offset="1.0" Color="#00FFFFFF"/>
-                </LinearGradientBrush>
-            </Border.Background>
-            <Border.Effect>
-                <BlurEffect Radius="3"/>
-            </Border.Effect>
-        </Border>
-
-        <Border.Transitions>
-            <Transitions>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.15"/>
-                <BrushTransition Property="Background" Duration="0:0:0.16"/>
-                <BrushTransition Property="BorderBrush" Duration="0:0:0.16"/>
-            </Transitions>
-        </Border.Transitions>
-    </Border>
+        Title="NEX 唤醒条" Width="14" Height="120" Topmost="True"
+        Background="Transparent" TransparencyLevelHint="Transparent"
+        SystemDecorations="None" ShowInTaskbar="False" ShowActivated="False" CanResize="False">
+    <Window.Styles>
+        <Style Selector="Button#WakeButton">
+            <Setter Property="Opacity" Value="0.72"/>
+            <Setter Property="Transitions"><Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.12"/></Transitions></Setter>
+        </Style>
+        <Style Selector="Button#WakeButton:pointerover"><Setter Property="Opacity" Value="1"/></Style>
+        <Style Selector="Button#WakeButton:pressed"><Setter Property="Opacity" Value="0.86"/></Style>
+    </Window.Styles>
+    <Button x:Name="WakeButton" AutomationProperties.Name="唤醒 NEX Intelligence" Click="OnWake"
+            HorizontalAlignment="Stretch" VerticalAlignment="Stretch" MinWidth="0" MinHeight="0"
+            HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Cursor="Hand"
+            Padding="0" CornerRadius="7" Background="{DynamicResource ClassNexSurfaceBrush}"
+            BorderBrush="{DynamicResource ClassNexOutlineBrush}" BorderThickness="1">
+        <Border Width="4" Height="36" CornerRadius="2" Background="{DynamicResource AccentFillColorDefaultBrush}"/>
+    </Button>
 </Window>

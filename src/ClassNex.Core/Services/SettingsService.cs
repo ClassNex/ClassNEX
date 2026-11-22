@@ -1,42 +1,30 @@
-using System.Text.Encodings.Web;
-using System.Text.Json;
 using ClassNex.Models;
 
 namespace ClassNex.Services;
 
-
-
-
-
-
-
-
-
-
+/// <summary>保留 Alpha 默认数据目录和容错行为的便携安装入口；需自行处理错误时使用 SettingsStore。</summary>
 public static class SettingsService
 {
-    private static readonly object FileGate = new();
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-    };
+    /// <summary>默认便携配置的共享存储；兼容入口和显式调用使用同一把文件锁。</summary>
+    public static SettingsStore Store { get; } = new(SettingsPath);
 
-    
+    /// <summary>独立于版本载荷的 data 根目录。</summary>
     public static string DataDirectory =>
         Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "data"));
 
-    
+    /// <summary>便携数据下存放本机运行日志的位置。</summary>
     public static string LogsDirectory => Path.Combine(DataDirectory, "Logs");
 
+    /// <summary>便携安装实际读取和保存的 Settings.json 路径。</summary>
     public static string SettingsPath => Path.Combine(DataDirectory, "Settings.json");
 
-    
+    /// <summary>未指定外部课表时本机的默认 CSES 存储位置。</summary>
     public static string TimetableStoragePath => Path.Combine(DataDirectory, "timetable.yaml");
 
-    
+    /// <summary>应用崩溃日志的本机路径。</summary>
     public static string CrashLogPath => Path.Combine(LogsDirectory, "crash.log");
 
+    /// <summary>创建 data 和日志目录，并在新目录尚不存在时尝试迁移旧安装数据。</summary>
     public static void EnsureDataDirectory()
     {
         
@@ -59,24 +47,12 @@ public static class SettingsService
         Directory.CreateDirectory(LogsDirectory);
     }
 
+    /// <summary>读取默认设置文件；沿用旧版容错约定，读取失败时返回默认设置。</summary>
     public static AppSettings Load()
     {
         try
         {
-            if (File.Exists(SettingsPath))
-            {
-                string json;
-                lock (FileGate) json = File.ReadAllText(SettingsPath);
-                if (!string.IsNullOrWhiteSpace(json))
-                {
-                    var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
-                    var changed = MigrateAccountEndpoint(settings);
-                    changed |= MigrateCentralEndpoint(settings);
-                    if (changed)
-                        Save(settings);
-                    return settings;
-                }
-            }
+            return Store.Load();
         }
         catch
         {
@@ -86,7 +62,7 @@ public static class SettingsService
         return new AppSettings();
     }
 
-    private static bool MigrateAccountEndpoint(AppSettings settings)
+    internal static bool MigrateAccountEndpoint(AppSettings settings)
     {
         if (!Uri.TryCreate(settings.AccountEndpoint, UriKind.Absolute, out var endpoint))
         {
@@ -101,9 +77,9 @@ public static class SettingsService
         return true;
     }
 
-    private static bool MigrateCentralEndpoint(AppSettings settings)
+    internal static bool MigrateCentralEndpoint(AppSettings settings)
     {
-        var value = settings.CentralManagement.ServerUrl.Trim();
+        var value = settings.CentralManagement.ServerUrl?.Trim();
         if (!Uri.TryCreate(value, UriKind.Absolute, out var endpoint))
         {
             settings.CentralManagement.ServerUrl = AppSettings.DefaultCentralEndpoint;
@@ -117,17 +93,13 @@ public static class SettingsService
         return true;
     }
 
+    /// <summary>按兼容模式写入默认设置文件；需要获知 I/O 错误时改用 SettingsStore。</summary>
     public static void Save(AppSettings settings)
     {
         try
         {
             EnsureDataDirectory();
-            lock (FileGate)
-            {
-                var temporary = SettingsPath + "." + Environment.ProcessId + ".tmp";
-                File.WriteAllText(temporary, JsonSerializer.Serialize(settings, JsonOptions));
-                File.Move(temporary, SettingsPath, true);
-            }
+            Store.Save(settings);
         }
         catch
         {

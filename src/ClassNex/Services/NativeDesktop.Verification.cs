@@ -67,6 +67,7 @@ internal sealed partial class NativeDesktop
                     AccountService.Current is null && !File.Exists(AccountFile) && !File.Exists(Path.Combine(SettingsService.DataDirectory, "account_avatar.png")));
                 await VerifyNavigation();
                 await VerifySettings();
+                await VerifyHomeFeatureCards();
                 await VerifyOverlay();
                 await VerifyDayCache();
                 await VerifyEditorBridge();
@@ -92,7 +93,8 @@ internal sealed partial class NativeDesktop
             try
             {
                 await Act("open-native-settings", () => { CompositionTarget.Rendering += SampleHome; host.OpenSettings(); });
-                await Check("native-home-rendered", () => peakHomes > 0 && Find<TextBlock>(Page, "HomeGreeting") is { Text: "Hello，请先登录" } greeting && Shown(greeting), 8000);
+                await Check("native-home-rendered", () => peakHomes > 0 && Find<TextBlock>(Navigation, "SidebarAccountName") is { Text: "未登录" } && Settings.CurrentPageKey == "home", 8000);
+                await Check("exact-eleven-navigation-entries", () => Navigation.MenuItems.OfType<NavigationViewItem>().Select(x => x.Content as string).SequenceEqual(new[] { "主页", "通用", "组件与主界面", "通知服务", "账户", "插件市场", "集控与自动化", "NEX Intelligence与NEX AI", "隐私与安全性", "更新", "关于" }));
                 await Act("reopen-home", () => host.OpenSettings());
                 await Task.Delay(400).ConfigureAwait(false);
                 await Check("one-home-on-first-open", () => renderError is null && peakHomes == 1 && !Frame.CanGoBack && Settings.CurrentPageKey == "home");
@@ -117,14 +119,49 @@ internal sealed partial class NativeDesktop
                 var depth = await Ui(() => Frame.BackStackDepth);
                 await Act("repeat-navigation", () => { foreach (var key in destinations) { Settings.NavigateTo(key); Settings.NavigateTo(key); } });
                 await Check("rapid-navigation-no-duplicate", () => navigations == 1 + destinations.Length && Frame.BackStackDepth == depth + destinations.Length &&
-                    Settings.CurrentPageKey == "appearance" && Navigation.SelectedItem is NavigationViewItem { Tag: "appearance" } &&
+                    Settings.CurrentPageKey == "appearance" && Navigation.SelectedItem is NavigationViewItem { Tag: "widgets" } &&
                     Tree(Frame).OfType<Page>().Count(Shown) == 1 && Find<ScrollViewer>(Page, "Page_appearance") is { VerticalOffset: 0 } scroller && Shown(scroller), 4000);
+                await Check("detail-transition-and-final-focus", () =>
+                    (new UISettings().AnimationsEnabled ? transition is DrillInNavigationTransitionInfo : transition is SuppressNavigationTransitionInfo) &&
+                    ReferenceEquals(Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(Page.XamlRoot), Find<TextBlock>(Page, "SettingsPageTitle")), 4000);
                 await Act("frame-back", () => Frame.GoBack());
                 await Check("back-restores-selection", () => Settings.CurrentPageKey == "basic" && Navigation.SelectedItem is NavigationViewItem { Tag: "basic" } && Frame.CanGoForward, 2000);
                 await Act("frame-forward", () => Frame.GoForward());
                 await Check("forward-restores-page", () => Settings.CurrentPageKey == "appearance" && Find<Slider>(Page, "Opacity") is { } slider && Shown(slider), 3000);
             }
             finally { await Ui(() => { Frame.Navigated -= OnNav; return true; }); }
+        }
+
+        private async Task VerifyHomeFeatureCards()
+        {
+            (string Card, string Route, string Title, string Parent)[] cards =
+            [
+                ("profile", "schedule", "课表与档案", "basic"), ("widgets", "widgets", "组件与主界面", "widgets"),
+                ("notification", "notification", "通知服务", "notification"), ("basic", "basic", "通用", "basic")
+            ];
+            bool At(string route, string title, string parent) => Settings.CurrentPageKey == route &&
+                Navigation.SelectedItem is NavigationViewItem selected && Equals(selected.Tag, parent) &&
+                Find<ScrollViewer>(Page, "Page_" + route) is { } body && Shown(body) &&
+                Find<TextBlock>(body, "SettingsPageTitle") is { } heading && Shown(heading) && heading.Text == title;
+
+            var saved = SettingsService.Load();
+            await Act("open-feature-card-home", () => Settings.NavigateTo("home"));
+            await Check("four-default-feature-cards", () => At("home", "主页", "home") && Find<Grid>(Page, "HomeCards") is { } grid &&
+                Tree(grid).OfType<Button>().Count(b => Id(b)?.StartsWith("Feature_", StringComparison.Ordinal) == true) == cards.Length &&
+                cards.All(c => Find<Button>(grid, "Feature_" + c.Card) is { IsEnabled: true } b && Shown(b)), 4000);
+            var homeDepth = await Ui(() => Frame.BackStackDepth);
+            foreach (var (card, route, title, parent) in cards)
+            {
+                await Act("invoke-feature-" + card, () => new ButtonAutomationPeer(Need<Button>(Need<Grid>(Page, "HomeCards"), "Feature_" + card)).Invoke());
+                await Check("feature-destination-" + card, () => At(route, title, parent) && Frame.CanGoBack && Frame.BackStackDepth == homeDepth + 1, 4000);
+                if (route == "basic")
+                    await Check("general-shows-saved-startup-values", () => Find<ToggleSwitch>(Page, "RunAtStartup")?.IsOn == saved.RunAtStartup &&
+                        Find<ToggleSwitch>(Page, "StartupSplash")?.IsOn == saved.ShowStartupSplash &&
+                        Find<ToggleSwitch>(Page, "UrlProtocol")?.IsOn == saved.RegisterUrlProtocol, 3000);
+                await Act("back-from-feature-" + card, () => Frame.GoBack());
+                await Check("feature-returns-home-" + card, () => At("home", "主页", "home") && Frame.BackStackDepth == homeDepth &&
+                    Find<Grid>(Page, "HomeCards") is { } grid && Find<Button>(grid, "Feature_" + card) is { } tile && Shown(tile), 4000);
+            }
         }
 
         private async Task InvokeMeasuredHomeEntry()
@@ -227,57 +264,38 @@ internal sealed partial class NativeDesktop
 
         private async Task VerifyOverlay()
         {
-            var overlay = host.Overlay;
-            await Check("managed-timetable-rendered", () => overlay.IsAvailable && overlay.AppWindow.IsVisible && host.ReadOverlay().Today.Current?.Subject == CourseName && VisibleText(overlay.Content, CourseName), 6000);
-            await Check("overlay-nonactivating-tool-window", () =>
+            var overlay = host._overlay;
+            T Element<T>(string name) where T : Avalonia.Controls.Control => Avalonia.Controls.ControlExtensions.FindControl<T>(overlay, name)!;
+            var track = await Ui(() => Element<Avalonia.Controls.Panel>("NotificationTrack"));
+            var island = await Ui(() => Element<Avalonia.Controls.Border>("IslandBackground"));
+            await Check("managed-timetable-rendered", () => overlay.IsVisible && host.ReadOverlay().Today.Current?.Subject == CourseName && island.Bounds.Width > 0, 5000);
+            await Act("open-notification-settings", () => Settings.NavigateTo("notification"));
+            await Check("reminders-initially-collapsed", () => Tree(Page).OfType<Expander>().Count() >= 3 && Tree(Page).OfType<Expander>().All(x => !x.IsExpanded), 3500);
+            await Act("expand-details-only", () => Tree(Page).OfType<Expander>().First().IsExpanded = true);
+            await Act("refresh-reminder-settings", Settings.RefreshSettings);
+            await Check("refresh-preserves-disclosure", () => Tree(Page).OfType<Expander>().First().IsExpanded && !AppServices.Settings.Notification.IsClassOnPreparingNotificationEnabled);
+            await Act("reenter-notifications", () => { Settings.NavigateTo("home"); Settings.NavigateTo("notification"); });
+            await Check("reentry-collapses-details", () => Tree(Page).OfType<Expander>().Count() >= 3 && Tree(Page).OfType<Expander>().All(x => !x.IsExpanded), 3000);
+            await Snapshot("native-reminders-collapsed.png", () => Settings.Content, true);
+            await Act("schedule-enabled-reminder", () =>
             {
-                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(overlay);
-                var style = GetWindowLongW(hwnd, -20);
-                return hwnd != 0 && GetForegroundWindow() != hwnd && (style & 0x08000080) == 0x08000080 && (style & 0x40000) == 0 && !overlay.AppWindow.IsShownInSwitchers;
-            });
-            await VerifyOverlayThemes(overlay);
-            var before = await Ui(() => overlay.AppWindow.Size);
-            await Act("start-native-notification", () => (AppServices.NotificationService ?? throw new InvalidOperationException("No notification service")).DebugTriggerTestNotification());
-            await Check("notification-mask-visible", () => VisibleText(overlay.Content, "测试提醒") && !VisibleText(overlay.Content, CourseName), 1800);
-            await Check("notification-content-visible", () => VisibleText(overlay.Content, "通知系统工作正常") && !VisibleText(overlay.Content, CourseName), 5000);
-            await Snapshot("native-reminder.png", () => overlay.Content);
-            await Check("notification-restores-course-and-bounds", () => overlay.IsAvailable && VisibleText(overlay.Content, CourseName) &&
-                !VisibleText(overlay.Content, "测试提醒") && !VisibleText(overlay.Content, "通知系统工作正常") && overlay.AppWindow.Size is var after &&
-                Math.Abs(after.Width - before.Width) <= Math.Max(8, before.Width / 30) && Math.Abs(after.Height - before.Height) <= 3, 11000);
-        }
-
-        private async Task VerifyOverlayThemes(NativeOverlayWindow overlay)
-        {
-            var accessibility = await Ui(() => new AccessibilitySettings());
-            Windows.UI.Color? SurfaceColor() => Find<Border>(overlay.Content, "DesktopOverlay")?.Background is SolidColorBrush brush ? brush.Color : null;
-            bool Applied(ElementTheme theme, string mode) => overlay.Content is FrameworkElement root && root.RequestedTheme == theme &&
-                (accessibility.HighContrast || root.ActualTheme == theme) && AppServices.Settings.ThemeMode == mode && SettingsService.Load().ThemeMode == mode &&
-                VisibleText(overlay.Content, CourseName);
-            var originalPage = await Ui(() => Settings.CurrentPageKey);
-            await Act("open-local-overlay-appearance", () => Settings.NavigateTo("appearance"));
-            await Check("overlay-dark-palette-visible", () => Applied(ElementTheme.Dark, "dark") && SurfaceColor().HasValue &&
-                Find<ComboBox>(Page, "Theme") is { SelectedIndex: 2 }, 4000);
-            var dark = await Ui(() => SurfaceColor()!.Value);
-            await Snapshot("native-overlay.png", () => overlay.Content);
-            try
-            {
-                await Act("select-local-overlay-light", () => Need<ComboBox>(Page, "Theme").SelectedIndex = 1);
-                await Check("overlay-light-palette-applied", () => Applied(ElementTheme.Light, "light") && SurfaceColor() is { } light &&
-                    (accessibility.HighContrast ? light.Equals(dark) : !light.Equals(dark)), 4000, () =>
-                    $"selected={Need<ComboBox>(Page, "Theme").SelectedIndex} requested={((FrameworkElement)overlay.Content).RequestedTheme} actual={((FrameworkElement)overlay.Content).ActualTheme} model={AppServices.Settings.ThemeMode} disk={SettingsService.Load().ThemeMode} dark={dark} visible={SurfaceColor()} contrast={accessibility.HighContrast} hasCourse={VisibleText(overlay.Content, CourseName)}");
-                await Snapshot("native-overlay-light.png", () => overlay.Content);
-            }
-            finally
-            {
-                await Ui(() =>
+                var s = AppServices.Settings;
+                s.AllowNotification = true; s.AllowMinorNotification = true; s.AllowNotificationEffect = false;
+                s.Notification.IsClassOnPreparingNotificationEnabled = true;
+                var start = DateTime.Now.AddSeconds(11);
+                if (start.Date != DateTime.Today) throw new InvalidOperationException("Fixture crosses midnight; retry after midnight");
+                var profile = CsesCodec.Parse(TestTimetable());
+                foreach (var schedule in profile.Schedules)
                 {
-                    Need<ComboBox>(Page, "Theme").SelectedIndex = 2;
-                    if (originalPage != "appearance" && Frame.CanGoBack) Frame.GoBack(new SuppressNavigationTransitionInfo());
-                    return true;
-                });
-            }
-            await Check("overlay-dark-palette-restored-before-reminder", () => Applied(ElementTheme.Dark, "dark") && SurfaceColor() is { } restored &&
-                restored.Equals(dark) && Settings.CurrentPageKey == originalPage, 4000);
+                    var course = schedule.Classes.Single(); course.StartTime = start.ToString("HH:mm:ss");
+                    course.EndTime = (start.Hour == 23 ? start.Date.AddDays(1).AddSeconds(-1) : start.AddMinutes(35)).ToString("HH:mm:ss");
+                }
+                AppServices.ApplyManagedSettings(s, CsesCodec.Serialize(profile));
+            });
+            await Check("scheduled-reminder-while-collapsed", () => track.IsVisible && Tree(Page).OfType<Expander>().All(x => !x.IsExpanded), 6000);
+            await Check("full-next-subject-on-classroom", () => Element<Avalonia.Controls.TextBlock>("NotificationOverlaySubject") is { Text: CourseName, IsEffectivelyVisible: true }, 6000);
+            await Check("notification-restores-course-and-bounds", () => !track.IsVisible && Element<Avalonia.Controls.Border>("CardContent") is { IsEffectivelyVisible: true } card && Math.Abs(island.Bounds.Width - Math.Ceiling(card.Bounds.Width + card.Margin.Left * 2)) <= 2, 16000);
+            await Act("restore-all-day-fixture", () => AppServices.ApplyManagedSettings(AppServices.Settings, TestTimetable()));
         }
 
         private async Task VerifyDayCache()
@@ -350,14 +368,19 @@ internal sealed partial class NativeDesktop
             _step = "open-auxiliary-profile-editor";
             var path = SettingsService.TimetableStoragePath;
             var original = await File.ReadAllBytesAsync(path);
+            await Act("open-schedule-settings", () => Settings.NavigateTo("schedule"));
+            await Check("profile-management-entry-visible", () => Find<Button>(Page, "ProfileInfo") is { } button && Shown(button), 4000);
+            await Act("invoke-profile-information", () => new ButtonAutomationPeer(Need<Button>(Page, "ProfileInfo")).Invoke());
+            await Check("profile-information-opened-from-settings", () =>
+                Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime d &&
+                d.Windows.OfType<Views.ProfileEditorWindow>().SingleOrDefault() is { IsVisible: true } w &&
+                Avalonia.Controls.ControlExtensions.FindControl<Avalonia.Controls.ScrollViewer>(w, "PageProfile") is { IsVisible: true }, 5000);
             var (window, page, editor) = await Ui(() =>
             {
                 var lifetime = Avalonia.Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime
                     ?? throw new InvalidOperationException("Missing auxiliary desktop lifetime");
-                if (lifetime.Windows.OfType<Views.ProfileEditorWindow>().Any()) throw new InvalidOperationException("An editor was already open");
                 var settings = Settings;
                 var key = settings.CurrentPageKey;
-                host._bridge.Command(NativeSettingsKeys.Profile);
                 return (settings, key, lifetime.Windows.OfType<Views.ProfileEditorWindow>().Single());
             });
             nint editorHwnd = 0;
@@ -391,7 +414,7 @@ internal sealed partial class NativeDesktop
             }).ToList()
         });
 
-        private async Task Snapshot(string fileName, Func<UIElement> root, bool opaque = false)
+        internal async Task Snapshot(string fileName, Func<UIElement> root, bool opaque = false)
         {
             try
             {

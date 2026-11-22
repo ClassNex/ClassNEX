@@ -15,7 +15,6 @@
     <Version>0.5.0</Version>
     <InformationalVersion>26w46d</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
-    <NoWarn>$(NoWarn);NU1903</NoWarn>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
   </PropertyGroup>
 
@@ -40,6 +39,7 @@
     <ProjectReference Include="..\ClassNex.AI\ClassNex.AI.csproj" />
     <PackageReference Include="Avalonia" Version="11.3.12" />
     <PackageReference Include="Avalonia.Desktop" Version="11.3.12" />
+    <PackageReference Include="Tmds.DBus.Protocol" Version="0.21.3" />
     <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.3.12" />
     <PackageReference Include="AvaloniaFluentUI" Version="1.0.3" />
     <PackageReference Include="YamlDotNet" Version="16.3.0" />

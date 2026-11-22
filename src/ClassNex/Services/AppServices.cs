@@ -10,6 +10,9 @@ namespace ClassNex.Services;
 
 public static class AppServices
 {
+    public static ISettingsService SettingsStore => SettingsService.Store;
+    internal static Views.MainWindow? MainWindow { get; set; }
+    private static bool _applyingRevision;
     public static AppSettings Settings { get; private set; } = new();
 
     public static IScheduleService Schedule { get; private set; } = null!;
@@ -49,34 +52,8 @@ public static class AppServices
         Settings = SettingsService.Load();
         AccountService.Load();
 
-        if (Settings.Widgets.Count == 0)
-            Settings.Widgets = AppSettings.CreateDefaultWidgets();
-
-        
-        if (Math.Abs(Settings.BackgroundOpacity - 0.55) < 0.001)
-            Settings.BackgroundOpacity = Styles.CiPalette.CardOpacity;
-
-        
-        
-        
         if (Settings.SampleSeedVersion > 0 && Settings.SampleSeedVersion < SampleSeedVersion)
         {
-            if (string.IsNullOrWhiteSpace(Settings.TimetablePath))
-            {
-                try
-                {
-                    var sample = CsesCodec.SamplePath;
-                    if (File.Exists(sample))
-                        File.Copy(sample, SettingsService.TimetableStoragePath, true);
-
-                    Settings.TimeLayout = new TimeLayout();
-                }
-                catch
-                {
-                    
-                }
-            }
-
             Settings.SampleSeedVersion = SampleSeedVersion;
             SettingsService.Save(Settings);
         }
@@ -86,13 +63,12 @@ public static class AppServices
         Day = new(Time, Schedule);
         TimeLayout = new TimeLayoutService(() => Settings, Schedule, SaveSettings);
         Widgets = new WidgetService(() => Settings, SaveSettings);
-        Ai = new NexAiService(new AppServicesAiContext());
+        Ai = new NexAiService(new AppServicesAiContext(() => Settings, Schedule, Time, SettingsService.DataDirectory));
 
         
         Schedule.ProfileChanged += () => TimeLayout.EnsureFromProfile(Schedule.Profile);
 
         Schedule.Load(ResolveTimetablePath());
-        TimeLayout.EnsureFromProfile(Schedule.Profile);
     }
 
     
@@ -107,12 +83,12 @@ public static class AppServices
     public static void ReloadTimetable()
     {
         Schedule.Reload();
-        TimeLayout.EnsureFromProfile(Schedule.Profile);
     }
 
     public static void SaveSettings()
     {
-        SettingsService.Save(Settings);
+        if (_applyingRevision) return;
+        SettingsStore.Save(Settings);
         SettingsChanged?.Invoke();
         LocalSettingsChanged?.Invoke();
     }
@@ -120,34 +96,39 @@ public static class AppServices
     public static void ApplyManagedSettings(AppSettings remote, string? timetableYaml)
     {
         var local = Settings;
-        var management = local.CentralManagement;
         remote.Widgets ??= AppSettings.CreateDefaultWidgets();
         remote.Notification ??= new NotificationSettings();
         remote.TimeLayout ??= new TimeLayout();
-        remote.CentralManagement = management;
-        remote.AccountEndpoint = local.AccountEndpoint;
-        remote.AccountClientId = local.AccountClientId;
-        remote.UserName = local.UserName;
-        remote.Email = local.Email;
-        remote.IsOobeCompleted = local.IsOobeCompleted;
-        remote.IsDebugOptionsEnabled = local.IsDebugOptionsEnabled;
+        CentralSettingsPayload.PreserveLocal(remote, local);
         remote.BackgroundOpacity = Math.Clamp(remote.BackgroundOpacity, 0.1, 1);
         remote.FontScale = Math.Clamp(remote.FontScale, 0.8, 2.4);
         remote.MainWindowScale = Math.Clamp(remote.MainWindowScale, 0.5, 4);
 
+        var reload = false;
         if (!string.IsNullOrWhiteSpace(timetableYaml))
         {
-            File.WriteAllText(
-                SettingsService.TimetableStoragePath,
-                timetableYaml,
-                new UTF8Encoding(false));
-            remote.TimetablePath = SettingsService.TimetableStoragePath;
+            var target = SettingsService.TimetableStoragePath;
+            reload = !File.Exists(target) || !string.Equals(File.ReadAllText(target), timetableYaml, StringComparison.Ordinal);
+            if (reload)
+            {
+                _ = CsesCodec.Parse(timetableYaml);
+                var temporary = Path.Combine(SettingsService.DataDirectory, $".timetable-{Guid.NewGuid():N}.tmp");
+                try { File.WriteAllText(temporary, timetableYaml, new UTF8Encoding(false)); File.Move(temporary, target, true); }
+                finally { File.Delete(temporary); }
+            }
+            reload |= !string.Equals(Schedule.FilePath, target, StringComparison.OrdinalIgnoreCase);
+            remote.TimetablePath = target;
         }
 
-        Settings = remote;
-        SettingsService.Save(Settings);
-        Schedule.Load(ResolveTimetablePath());
-        TimeLayout.EnsureFromProfile(Schedule.Profile);
+        _applyingRevision = true;
+        try
+        {
+            Settings = remote;
+            if (reload) Schedule.Load(ResolveTimetablePath());
+            else TimeLayout.EnsureFromProfile(Schedule.Profile);
+            SettingsStore.Save(Settings);
+        }
+        finally { _applyingRevision = false; }
         SettingsChanged?.Invoke();
         ManagedSettingsApplied?.Invoke();
     }

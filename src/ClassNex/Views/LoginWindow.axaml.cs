@@ -14,10 +14,14 @@ public partial class LoginWindow : AppWindow
 {
     private DispatcherTimer? _pollTimer;
     private string _loginUrl = "";
-    private bool _pollBusy;
+    private readonly Func<string, bool> _openBrowser;
+    private int _attempt, _pollingAttempt = -1;
 
-    public LoginWindow()
+    public LoginWindow() : this(OpenBrowser) { }
+
+    internal LoginWindow(Func<string, bool> openBrowser)
     {
+        _openBrowser = openBrowser;
         InitializeComponent();
 
         StartLoginButton.Click += (_, _) => StartLogin();
@@ -60,11 +64,14 @@ public partial class LoginWindow : AppWindow
         {
         }
 
+        AccountService.Changed += OnAccountChanged;
         RefreshState();
     }
 
     protected override void OnClosed(EventArgs e)
     {
+        AccountService.Changed -= OnAccountChanged;
+        _attempt++;
         _pollTimer?.Stop();
         AccountService.CancelLogin();
         base.OnClosed(e);
@@ -79,21 +86,43 @@ public partial class LoginWindow : AppWindow
         StateDone.IsVisible = false;
         StateLoggedIn.IsVisible = profile is not null;
 
-        if (profile is null)
-            return;
+        ShowProfile();
+    }
 
-        CurrentNameText.Text = profile!.DisplayName;
-        CurrentEmailText.Text = profile.Email;
-        AccountAvatar.Apply(CurrentAvatar, profile.DisplayName, AccountService.AvatarImagePath);
+    private void ShowProfile()
+    {
+        var profile = AccountService.Current;
+        var name = profile?.DisplayName ?? "";
+        var email = profile?.Email ?? "";
+        CurrentNameText.Text = DoneNameText.Text = name;
+        CurrentEmailText.Text = DoneEmailText.Text = email;
+        CurrentEmailText.IsVisible = DoneEmailText.IsVisible = !string.IsNullOrWhiteSpace(email);
+        var path = AccountService.AvatarImagePath;
+        if (StateLoggedIn.IsVisible || profile is null) AccountAvatar.Apply(CurrentAvatar, name, path);
+        if (StateDone.IsVisible || profile is null) AccountAvatar.Apply(DoneAvatar, name, path);
+    }
+
+    private void OnAccountChanged()
+    {
+        if (!Dispatcher.UIThread.CheckAccess()) { Dispatcher.UIThread.Post(OnAccountChanged); return; }
+        if (!IsVisible || StateFlow.IsVisible) return;
+        if (StateDone.IsVisible && AccountService.Current is not null) ShowProfile();
+        else RefreshState();
+    }
+
+    internal void BeginAccountSwitch()
+    {
+        if (AccountService.Current is not null && !StateFlow.IsVisible) StartLogin();
     }
 
     private void StartLogin()
     {
+        _attempt++;
         try
         {
             _loginUrl = AccountService.BuildLoginUrl();
             ShowFlow("已打开默认浏览器，请在浏览器中完成登录或注册。");
-            if (!OpenBrowser(_loginUrl))
+            if (!_openBrowser(_loginUrl))
                 FlowStatusText.Text = "无法自动打开浏览器，请点击「重新打开浏览器」再试。";
             StartPolling();
         }
@@ -109,7 +138,7 @@ public partial class LoginWindow : AppWindow
     {
         if (!string.IsNullOrWhiteSpace(_loginUrl) && AccountService.FlowActive)
         {
-            if (!OpenBrowser(_loginUrl))
+            if (!_openBrowser(_loginUrl))
                 FlowStatusText.Text = "无法打开浏览器，请检查默认浏览器设置后重试。";
             return;
         }
@@ -119,25 +148,26 @@ public partial class LoginWindow : AppWindow
 
     private void StartPolling()
     {
-        _pollTimer?.Stop();
-        _pollTimer = new DispatcherTimer
+        if (_pollTimer is null)
         {
-            Interval = TimeSpan.FromSeconds(1),
-        };
-        _pollTimer.Tick += async (_, _) => await PollOnceAsync();
+            _pollTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            _pollTimer.Tick += async (_, _) => await PollOnceAsync();
+        }
         _pollTimer.Start();
     }
 
     private async Task PollOnceAsync()
     {
-        if (_pollBusy || !AccountService.TryTakeCode(out var code) || code is null)
+        var attempt = _attempt;
+        if (_pollingAttempt == attempt || !AccountService.TryTakeCode(out var code) || code is null)
             return;
 
-        _pollBusy = true;
+        _pollingAttempt = attempt;
         FlowStatusText.Text = "已收到浏览器授权，正在同步账户资料…";
         try
         {
             var (ok, message) = await AccountService.CompleteLoginAsync(code);
+            if (attempt != _attempt) return;
             if (ok)
             {
                 _pollTimer?.Stop();
@@ -150,7 +180,7 @@ public partial class LoginWindow : AppWindow
         }
         finally
         {
-            _pollBusy = false;
+            if (_pollingAttempt == attempt) _pollingAttempt = -1;
         }
     }
 
@@ -167,26 +197,16 @@ public partial class LoginWindow : AppWindow
 
     private void ShowSuccess()
     {
-        var profile = AccountService.Current;
-        if (profile is null)
-            return;
-
-        AppServices.Settings.UserName = profile.DisplayName;
-        AppServices.Settings.Email = profile.Email;
-        AppServices.SaveSettings();
-
-        DoneNameText.Text = profile.DisplayName;
-        DoneEmailText.Text = profile.Email;
-        AccountAvatar.Apply(DoneAvatar, profile.DisplayName, AccountService.AvatarImagePath);
-
         StateIdle.IsVisible = false;
         StateFlow.IsVisible = false;
         StateDone.IsVisible = true;
         StateLoggedIn.IsVisible = false;
+        ShowProfile();
     }
 
     private void CancelLogin()
     {
+        _attempt++;
         _pollTimer?.Stop();
         AccountService.CancelLogin();
         _loginUrl = "";

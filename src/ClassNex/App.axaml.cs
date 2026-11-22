@@ -7,27 +7,24 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using ClassNex.Core.Abstractions;
-using ClassNex.Notification.Service;
-using ClassNex.Plugin;
 using ClassNex.Services;
 using ClassNex.Styles;
 using ClassNex.Views;
-using ClassNex.WinUI;
 using AvaloniaFluentUI.Styling;
 
 namespace ClassNex;
 
 public partial class App : Application
 {
+    private MainWindow? _mainWindow;
     private NativeDesktop? _desktop;
     private ProfileEditorWindow? _profileEditor;
     private LoginWindow? _loginWindow;
+    private DesktopRuntime? _runtime;
     private Views.OobeWindow? _oobeWindow;
     private Views.OobeWindow? _oobePreview;
     private Views.NexChatWindow? _nexChatWindow;
     private Services.NexVoiceCoordinator? _nexVoice;
-    private NotificationService? _notificationService;
-    private IPluginService? _pluginService;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
@@ -42,113 +39,90 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             
-            desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            desktop.ShutdownMode = AppServices.Settings.IsOobeCompleted
+                ? ShutdownMode.OnExplicitShutdown
+                : ShutdownMode.OnMainWindowClose;
 
             ApplyCiPalette();
             ApplyTheme(AppServices.Settings.ThemeMode);
 
-            _desktop = new NativeDesktop();
-
+            desktop.Exit += (_, args) =>
+            {
+                DisposeDesktopServices();
+                Environment.ExitCode = args.ApplicationExitCode;
+                Microsoft.UI.Xaml.Application.Current.Exit();
+            };
             if (!AppServices.Settings.IsOobeCompleted)
             {
-                
-                
-                
-                
                 _oobeWindow = new Views.OobeWindow();
                 desktop.MainWindow = _oobeWindow;
                 _oobeWindow.Show();
+                base.OnFrameworkInitializationCompleted();
+                return;
             }
-            else if (AppServices.Settings.IsMainWindowVisible)
+            _mainWindow = new MainWindow();
+            _desktop = new NativeDesktop(_mainWindow);
+            desktop.MainWindow = _mainWindow;
+            if (AppServices.Settings.IsMainWindowVisible) _mainWindow.Show();
+            _runtime = new DesktopRuntime(_mainWindow, AppServices.SettingsStore, AppServices.Schedule, AppServices.Time,
+                AppServices.TimeLayout, AppServices.Widgets, AppServices.Ai, () => AppServices.Settings);
+            _runtime.Start();
+
+#if DEBUG
+            if (desktop.Args is ["--review-alpha-plugin"])
             {
-                _desktop.Overlay.ShowOverlay();
+                Dispatcher.UIThread.Post(() => _ = VerifyLegacyPluginAsync(desktop));
+                base.OnFrameworkInitializationCompleted();
+                return;
             }
-
-            
-            _notificationService = new NotificationService(
-                _desktop.Overlay,
-                () => AppServices.Settings,
-                AppServices.Day.Read,
-                _desktop.Enqueue);
-
-            
-            
-            
-            Services.AppServices.NotificationService = _notificationService;
-            Services.AppServices.Management = new Services.CentralManagementService();
-            Services.AppServices.Management.Start();
-            _notificationService.Start();
-
-            var pluginServices = new PluginServiceProvider();
-            pluginServices.Add(AppServices.Schedule);
-            pluginServices.Add(AppServices.Time);
-            pluginServices.Add(AppServices.TimeLayout);
-            pluginServices.Add(AppServices.Widgets);
-            pluginServices.Add<INotificationService>(_notificationService);
-            pluginServices.Add(AppServices.Ai);
-
-            _pluginService = new PluginService(
-                Path.Combine(AppContext.BaseDirectory, "plugins"),
-                pluginServices,
-                _notificationService,
-                AppServices.Ai);
-            Services.AppServices.Plugins = _pluginService;
-            _ = _pluginService.LoadAllAsync();
+            if (desktop.Args is ["--review-account", var issuer, var control])
+            {
+                _desktop.Connect();
+                Dispatcher.UIThread.Post(() => _ = VerifyAccountAsync(issuer, control, desktop));
+                base.OnFrameworkInitializationCompleted();
+                return;
+            }
+            if (desktop.Args is ["--review-ui", var output] &&
+                File.Exists(Path.Combine(AppContext.BaseDirectory, "..", ".classnex-review")))
+            {
+                _desktop.Connect();
+                Dispatcher.UIThread.Post(() => _ = ReviewWindowsAsync(output, desktop), DispatcherPriority.Background);
+                base.OnFrameworkInitializationCompleted();
+                return;
+            }
+#endif
 
             Dispatcher.UIThread.Post(EnsureTrayMenu, DispatcherPriority.Background);
 
             
-            _nexVoice = new Services.NexVoiceCoordinator(_desktop.Overlay);
-            Services.AppServices.NexVoice = _nexVoice;
-
-
-
-            if (AppServices.Settings.IsNexVoiceWakeEnabled)
+            if (AppServices.Settings.IsOobeCompleted)
             {
-                DispatcherTimer.RunOnce(() => _nexVoice?.Start(), TimeSpan.FromSeconds(2));
+                _nexVoice = new Services.NexVoiceCoordinator();
+                Services.AppServices.NexVoice = _nexVoice;
+                if (AppServices.Settings.IsNexVoiceWakeEnabled)
+                    DispatcherTimer.RunOnce(() => _nexVoice?.Start(), TimeSpan.FromSeconds(2));
+                DispatcherTimer.RunOnce(() => _nexVoice?.RefreshEdgeBar(), TimeSpan.FromSeconds(3));
             }
 
             
-            DispatcherTimer.RunOnce(() => _nexVoice?.RefreshEdgeBar(), TimeSpan.FromSeconds(3));
-
-            
             HandleUrlProtocol(Environment.GetCommandLineArgs());
-
-            
             _desktop.Connect();
+
             _desktop.StartVerificationIfRequested();
+
+            DispatcherTimer.RunOnce(() => _mainWindow?.WarmNotificationMask(), TimeSpan.FromSeconds(1));
 
 #if DEBUG
             
             
-            switch (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_NOTIFY"))
+            if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_NOTIFY") == "1")
             {
-                case "prepare":
-                    DispatcherTimer.RunOnce(
-                        () => _notificationService?.DebugTriggerClassPreparing(),
-                        TimeSpan.FromSeconds(3));
-                    break;
-                case "on":
-                    DispatcherTimer.RunOnce(
-                        () => _notificationService?.DebugTriggerClassOn(),
-                        TimeSpan.FromSeconds(3));
-                    break;
-                case "off":
-                    DispatcherTimer.RunOnce(
-                        () => _notificationService?.DebugTriggerClassOff(),
-                        TimeSpan.FromSeconds(3));
-                    break;
-                case "1":
-                    DispatcherTimer.RunOnce(
-                        () => _notificationService?.DebugTriggerClassPreparing(),
-                        TimeSpan.FromSeconds(3));
-                    DispatcherTimer.RunOnce(
-                        () => _notificationService?.DebugTriggerClassOn(),
-                        TimeSpan.FromSeconds(8));
-                    DispatcherTimer.RunOnce(
-                        () => _notificationService?.DebugTriggerClassOff(),
-                        TimeSpan.FromSeconds(13));
-                    break;
+                DispatcherTimer.RunOnce(() => _runtime?.Notifications.DebugTriggerClassPreparing(),
+                    TimeSpan.FromSeconds(3));
+                DispatcherTimer.RunOnce(() => _runtime?.Notifications.DebugTriggerClassOn(),
+                    TimeSpan.FromSeconds(8));
+                DispatcherTimer.RunOnce(() => _runtime?.Notifications.DebugTriggerClassOff(),
+                    TimeSpan.FromSeconds(13));
             }
 #endif
 
@@ -217,7 +191,7 @@ public partial class App : Application
                 
                 if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_EDITMODE") == "1")
                 {
-                    Dispatcher.UIThread.Post(() => OpenSettings("widgets"), DispatcherPriority.Background);
+                    Dispatcher.UIThread.Post(() => _mainWindow?.EnterEditMode(), DispatcherPriority.Background);
                 }
 
                 if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_EDITOR") == "1")
@@ -229,7 +203,7 @@ public partial class App : Application
 
                 if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_TRAY") == "1")
                 {
-                    DispatcherTimer.RunOnce(() => OnTrayIconClick(null, EventArgs.Empty), TimeSpan.FromSeconds(3));
+                    DispatcherTimer.RunOnce(OpenTrayMenuOnce, TimeSpan.FromSeconds(3));
                 }
 
                 if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_LOGIN") == "1")
@@ -268,6 +242,8 @@ public partial class App : Application
                     shotTimer.Tick += (_, _) =>
                     {
                         shotTimer.Stop();
+                        if (_mainWindow is not null)
+                            SaveWindowShot(_mainWindow, "_shot_main.png");
                         if (_profileEditor is not null)
                             SaveWindowShot(_profileEditor, "_shot_editor.png");
                         if (_oobeWindow is not null)
@@ -350,10 +326,10 @@ public partial class App : Application
                 OpenProfileEditor();
                 break;
             case "show":
-                app._desktop?.Overlay.ShowOverlay();
+                app._mainWindow?.Show();
                 break;
             case "hide":
-                app._desktop?.Overlay.HideOverlay();
+                app._mainWindow?.Hide();
                 break;
             case "settings":
             default:
@@ -415,20 +391,26 @@ public partial class App : Application
             
             try
             {
-                var fam = Current!.TryFindResource("AppFontFamily", out var fontResource) && fontResource is FontFamily appFont
-                    ? appFont
-                    : throw new InvalidOperationException("找不到应用字体资源。");
+                var fam = (FontFamily)Current!.FindResource("AppFontFamily")!;
                 var fontLines = new List<string>();
                 foreach (var (label, weight) in new[]
                          {
-                             ("Light", FontWeight.Light),
                              ("Normal", FontWeight.Normal),
                              ("Medium", FontWeight.Medium),
                              ("Bold", FontWeight.Bold),
                          })
                 {
                     var ok = FontManager.Current.TryGetGlyphTypeface(new Typeface(fam, FontStyle.Normal, weight), out var gt);
-                    fontLines.Add($"{label,-6} = {(ok ? $"{gt!.FamilyName} / weight {gt.Weight}" : "未命中")}");
+                    fontLines.Add($"{label,-6} = {(ok ? $"{gt!.FamilyName} / weight {gt.Weight}" : "未命中（回退系统字体）")}");
+                }
+
+                foreach (var name in new[] { "HarmonyOS_Sans_SC_Regular.ttf", "HarmonyOS_Sans_SC_Bold.ttf" })
+                {
+                    var fileFamily = new FontFamily($"avares://ClassNex/Assets/Fonts/{name}#HarmonyOS Sans SC");
+                    if (FontManager.Current.TryGetGlyphTypeface(new Typeface(fileFamily), out var fgt))
+                        fontLines.Add($"{name,-20} = {fgt.FamilyName} / weight {fgt.Weight}");
+                    else
+                        fontLines.Add($"{name,-20} = 加载失败");
                 }
 
                 File.AppendAllText(path, "\n[HarmonyOS Sans SC 字体探针]\n" + string.Join("\n", fontLines) + "\n");
@@ -520,6 +502,7 @@ public partial class App : Application
                 Current.RequestedThemeVariant = ThemeVariant.Dark;
                 break;
             default:
+                Current.RequestedThemeVariant = ThemeVariant.Default;
                 theme.PreferSystemTheme = true;
                 break;
         }
@@ -534,7 +517,19 @@ public partial class App : Application
 
         var s = AppServices.Settings;
 
-        s.IsMainWindowVisible = app._desktop?.Overlay.IsAvailable != true;
+        if (app._mainWindow is { IsVisible: true } visible)
+        {
+            visible.Hide();
+            s.IsMainWindowVisible = false;
+        }
+        else
+        {
+            app._mainWindow ??= new MainWindow();
+            app._mainWindow.Show();
+            app._mainWindow.Activate();
+            s.IsMainWindowVisible = true;
+        }
+
         AppServices.SaveSettings();
     }
 
@@ -559,7 +554,6 @@ public partial class App : Application
         app._profileEditor.Closed += (_, _) =>
         {
             app._profileEditor = null;
-            Dispatcher.UIThread.Post(MemoryTrimmer.Trim, DispatcherPriority.Background);
         };
         app._profileEditor.SelectTab(tabIndex);
         app._profileEditor.Show();
@@ -580,30 +574,24 @@ public partial class App : Application
         app._loginWindow.Closed += (_, _) =>
         {
             app._loginWindow = null;
-            Dispatcher.UIThread.Post(MemoryTrimmer.Trim, DispatcherPriority.Background);
         };
         app._loginWindow.Show();
     }
 
+    private void DisposeDesktopServices()
+    {
+        _desktop?.Dispose();
+        _desktop = null;
+        _nexVoice?.Dispose();
+        AppServices.NexVoice = _nexVoice = null;
+        _runtime?.Dispose();
+        _runtime = null;
+        AppServices.Day.Dispose();
+    }
+
     public static void ExitApp()
     {
-        if (Current is App app)
-        {
-            app._desktop?.Dispose();
-            app._nexVoice?.Dispose();
-            app._nexVoice = null;
-            AppServices.NexVoice = null;
-            app._pluginService?.StopAll();
-            app._pluginService = null;
-            AppServices.Management?.Dispose();
-            AppServices.Management = null;
-            app._notificationService?.Dispose();
-            app._notificationService = null;
-            AppServices.Day.Dispose();
-        }
-
         Lifetime?.Shutdown();
-        Microsoft.UI.Xaml.Application.Current.Exit();
     }
 
     
@@ -658,18 +646,18 @@ public partial class App : Application
             if (ReferenceEquals(app._nexChatWindow, window))
                 app._nexChatWindow = null;
         };
-        PositionNexChatWindow(window, app._desktop?.Overlay);
+        PositionNexChatWindow(window, app._mainWindow);
         window.Show();
         window.Activate();
     }
 
-    private static void PositionNexChatWindow(NexChatWindow window, NativeOverlayWindow? overlay)
+    private static void PositionNexChatWindow(NexChatWindow window, MainWindow? mainWindow)
     {
-        if (window.Screens.Primary is not { } screen)
+        if (mainWindow?.Screens.Primary is not { } screen)
             return;
 
         var scale = screen.Scaling > 0 ? screen.Scaling : 1;
-        var top = overlay is { IsAvailable: true } ? overlay.AppWindow.Position.Y + overlay.AppWindow.Size.Height : screen.WorkingArea.Y;
+        var top = mainWindow.GetIslandScreenRect()?.Bottom ?? screen.WorkingArea.Y + (int)(96 * scale);
         top += (int)(12 * scale);
         var availableHeight = Math.Max((int)(window.MinHeight * scale), screen.WorkingArea.Bottom - top - 8);
         var availableWidth = Math.Max((int)(window.MinWidth * scale), screen.WorkingArea.Width - 24);
@@ -703,7 +691,14 @@ public partial class App : Application
 
     private void OnTrayIconClick(object? sender, EventArgs e)
     {
-        OpenTrayMenuOnce();
+        if (!AppServices.Settings.IsOobeCompleted) { _oobeWindow?.Activate(); return; }
+        switch (AppServices.Settings.TrayClickBehavior)
+        {
+            case 0: ToggleMainWindow(); break;
+            case 1: OpenSettings(); break;
+            case 2: OpenProfileEditor(); break;
+            default: OpenTrayMenuOnce(); break;
+        }
     }
 
     private void OpenTrayMenuOnce()
@@ -758,15 +753,15 @@ public partial class App : Application
             return;
 
         var menu = new Views.TrayMenuWindow();
-        menu.Build(new[]
-        {
+        Views.TrayMenuWindow.Item[] actions =
+        [
             new Views.TrayMenuWindow.Item("\uE0BA", "显示 / 隐藏主界面", ToggleMainWindow),
             Views.TrayMenuWindow.Separator,
             new Views.TrayMenuWindow.Item("\uE1F9", "编辑档案…", () => OpenProfileEditor(0)),
             new Views.TrayMenuWindow.Item("\uE19E", "加载课表…", () => _ = LoadTimetableFromMenuAsync()),
             new Views.TrayMenuWindow.Item("\uE24A", "换课…", () => OpenProfileEditor(3)),
             Views.TrayMenuWindow.Separator,
-            new Views.TrayMenuWindow.Item("\uE12C", "编辑主界面…", () => OpenSettings("interface")),
+            new Views.TrayMenuWindow.Item("\uE12C", "编辑主界面…", () => OpenSettings("widgets")),
             new Views.TrayMenuWindow.Item("\uE154", "应用设置…", () => OpenSettings()),
             Views.TrayMenuWindow.Separator,
             new Views.TrayMenuWindow.Item("\uE412", "NEX Intelligence…", OpenNexChat,
@@ -774,7 +769,23 @@ public partial class App : Application
             Views.TrayMenuWindow.Separator,
             new Views.TrayMenuWindow.Item("\uE145", "重启 ClassNEX", RestartApp),
             new Views.TrayMenuWindow.Item("\uE140", "退出", ExitApp),
-        });
+        ];
+        menu.Build(actions);
+        if (TrayIcon.GetIcons(this)?.FirstOrDefault() is { Menu: null } icon)
+        {
+            var context = new NativeMenu();
+            foreach (var item in actions)
+            {
+                if (ReferenceEquals(item, Views.TrayMenuWindow.Separator)) context.Items.Add(new NativeMenuItemSeparator());
+                else
+                {
+                    var entry = new NativeMenuItem(item.Header);
+                    entry.Click += (_, _) => item.Action();
+                    context.Items.Add(entry);
+                }
+            }
+            icon.Menu = context;
+        }
 
         menu.Closed += (_, _) =>
         {
@@ -832,6 +843,14 @@ public partial class App : Application
     
     private async Task LoadTimetableFromMenuAsync()
     {
-        if (_desktop != null) await _desktop.PickTimetableAsync();
+        var owner = _mainWindow ?? Lifetime?.MainWindow;
+        if (owner is null)
+            return;
+
+        var path = await Services.FilePickerHelper.PickTimetableAsync(owner);
+        if (path is null)
+            return;
+
+        Services.AppServices.LoadTimetable(path);
     }
 }

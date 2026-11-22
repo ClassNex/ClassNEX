@@ -1,0 +1,33 @@
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:p="using:AvaloniaFluentUI.Controls.Primitives">
+    <Style Selector="Border.sectionSurface"><Setter Property="Background" Value="{DynamicResource ClassNexSurfaceBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource ClassNexOutlineBrush}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="{StaticResource ClassNexCardRadius}"/><Setter Property="Padding" Value="20,16"/></Style>
+    <Style Selector="TextBlock.muted"><Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/><Setter Property="FontSize" Value="13"/></Style>
+    <Style Selector="TextBlock.sectionLabel"><Setter Property="FontSize" Value="16"/><Setter Property="Margin" Value="0,4,0,2"/></Style>
+    <Style Selector="Button.sectionLink"><Setter Property="MinHeight" Value="38"/><Setter Property="Padding" Value="12,7"/><Setter Property="Margin" Value="0,0,8,6"/></Style>
+    <Style Selector="p|NavigationViewItemPresenter:not(:selected) /template/ Border#SelectionIndicator">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button.stepButton">
+        <Setter Property="Width" Value="28"/>
+        <Setter Property="Height" Value="28"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.homeLink">
+        <Setter Property="MinHeight" Value="46"/>
+        <Setter Property="Padding" Value="14,8"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+    </Style>
+    <Style Selector="Button.widgetChoice">
+        <Setter Property="VerticalAlignment" Value="Stretch"/>
+        <Setter Property="MinHeight" Value="70"/>
+        <Setter Property="Background" Value="{DynamicResource ClassNexSurfaceBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ClassNexOutlineBrush}"/>
+    </Style>
+    <Style Selector="Button.workPrimary">
+        <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="MinHeight" Value="36"/>
+    </Style>
+</Styles>

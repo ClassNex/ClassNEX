@@ -25,6 +25,7 @@ public sealed partial class NativeSettingsWindow
     {
         Identify(element, id, title);
         _targets[id] = element;
+        if (_currentExpander != null) _detailOwners[id] = _currentExpander;
         return element;
     }
 
@@ -45,7 +46,8 @@ public sealed partial class NativeSettingsWindow
         bool? stacked = null;
         grid.SizeChanged += (_, args) =>
         {
-            var small = args.NewSize.Width < 510;
+            var threshold = editor is ToggleSwitch ? 225 : editor is ComboBox or CalendarDatePicker or NumberBox ? 315 : 350;
+            var small = args.NewSize.Width < threshold;
             if (small == stacked) return;
             stacked = small;
             Grid.SetColumnSpan(label, small ? 2 : 1);

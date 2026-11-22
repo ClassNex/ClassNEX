@@ -2,48 +2,51 @@ using ClassNex.Models;
 
 namespace ClassNex.Services;
 
-
-
-
-
+/// <summary>编辑作息时间表并维护关联课程的起止时间。</summary>
 public interface ITimeLayoutService
 {
-    
+    /// <summary>当前设置持有的可编辑时间表。</summary>
     TimeLayout Layout { get; }
 
+    /// <summary>本次时间表更改已交给设置存储时触发。</summary>
     event Action? Changed;
 
-    
+    /// <summary>仅在时间表为空且档案有课程计划时从档案派生布局。</summary>
     void EnsureFromProfile(ScheduleProfile profile);
 
-    
+    /// <summary>加入项目，并按起始时间重排后保存。</summary>
     void Add(ClassTime time);
 
+    /// <summary>尝试在指定项目后插入；间隙不足可缩短时段，失败返回 null 并给出原因。</summary>
     ClassTime? InsertNext(ClassTime? after, ClassTimeKind kind, out string notice);
 
+    /// <summary>复制项目到可用时间位置；冲突时通过 notice 提供说明。</summary>
     ClassTime? Duplicate(ClassTime source, out string notice);
 
-    
+    /// <summary>移除指定时间项目并保存。</summary>
     void Remove(ClassTime time);
 
-    
+    /// <summary>修改名称、类别及时间，并传播对应时段的起止时间变化到档案课程。</summary>
     void Update(ClassTime original, ClassTime updated);
 
-    
+    /// <summary>与相对位置上的项目交换起止时间，再按时间排序。</summary>
     void Move(ClassTime time, int delta);
 
-    
+    /// <summary>清空当前时间表，不删除档案中的科目或授课记录。</summary>
     void Clear();
 
+    /// <summary>写回当前设置并通知时间表订阅者。</summary>
     void Save();
 }
 
+/// <summary>基于当前设置的作息编辑器，在课时调整时同步匹配的 CSES 记录。</summary>
 public sealed class TimeLayoutService : ITimeLayoutService
 {
     private readonly Func<AppSettings> _settings;
     private readonly IScheduleService _schedule;
     private readonly Action _saveSettings;
 
+    /// <summary>连接当前设置、活动档案及设置保存回调。</summary>
     public TimeLayoutService(
         Func<AppSettings> settingsAccessor,
         IScheduleService schedule,
@@ -54,10 +57,13 @@ public sealed class TimeLayoutService : ITimeLayoutService
         _saveSettings = saveSettings;
     }
 
+    /// <inheritdoc />
     public TimeLayout Layout => _settings().TimeLayout;
 
+    /// <inheritdoc />
     public event Action? Changed;
 
+    /// <inheritdoc />
     public void EnsureFromProfile(ScheduleProfile profile)
     {
         if (!Layout.IsEmpty || profile.Schedules.Count == 0)
@@ -67,6 +73,7 @@ public sealed class TimeLayoutService : ITimeLayoutService
         Save();
     }
 
+    /// <inheritdoc />
     public void Add(ClassTime time)
     {
         Layout.Times.Add(time);
@@ -74,6 +81,7 @@ public sealed class TimeLayoutService : ITimeLayoutService
         Save();
     }
 
+    /// <inheritdoc />
     public ClassTime? InsertNext(ClassTime? after, ClassTimeKind kind, out string notice)
     {
         notice = "";
@@ -148,6 +156,7 @@ public sealed class TimeLayoutService : ITimeLayoutService
         return time;
     }
 
+    /// <inheritdoc />
     public ClassTime? Duplicate(ClassTime source, out string notice)
     {
         notice = "";
@@ -235,12 +244,14 @@ public sealed class TimeLayoutService : ITimeLayoutService
         return copy;
     }
 
+    /// <inheritdoc />
     public void Remove(ClassTime time)
     {
         Layout.Times.Remove(time);
         Save();
     }
 
+    /// <inheritdoc />
     public void Update(ClassTime original, ClassTime updated)
     {
         var oldStart = original.Start;
@@ -260,6 +271,7 @@ public sealed class TimeLayoutService : ITimeLayoutService
         Save();
     }
 
+    /// <inheritdoc />
     public void Move(ClassTime time, int delta)
     {
         var index = Layout.Times.IndexOf(time);
@@ -276,12 +288,14 @@ public sealed class TimeLayoutService : ITimeLayoutService
         Save();
     }
 
+    /// <inheritdoc />
     public void Clear()
     {
         Layout.Times.Clear();
         Save();
     }
 
+    /// <inheritdoc />
     public void Save()
     {
         _saveSettings();

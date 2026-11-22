@@ -7,7 +7,7 @@ internal sealed partial class NativeDesktop
     private void RemoteChanged() => Enqueue(() => QueueRefresh(true));
     private void StatusChanged(string _) => Enqueue(() =>
     {
-        if (_settings?.CurrentPageKey is "basic" or "nex" or "home") _settings.RefreshSettings();
+        if (_settings?.CurrentPageKey is "basic" or "nex" or "home" or "central") _settings.RefreshSettings();
     });
 
     internal void Enqueue(Action action)
@@ -39,11 +39,10 @@ internal sealed partial class NativeDesktop
             }
             if (previous.Edge != _applied.Edge || previous.Side != _applied.Side) AppServices.NexVoice?.RefreshEdgeBar();
             var show = AppServices.Settings.IsOobeCompleted && AppServices.Settings.IsMainWindowVisible;
-            if (show != Overlay.IsAvailable)
+            if (show != _overlay.IsVisible)
             {
-                if (show) Overlay.ShowOverlay(); else Overlay.HideOverlay();
+                if (show) _overlay.Show(); else _overlay.Hide();
             }
-            if (show) Overlay.RefreshOverlay();
             if (refresh || previous.Theme != _applied.Theme) _settings?.RefreshSettings();
         });
     }
@@ -59,9 +58,9 @@ internal sealed partial class NativeDesktop
         AppServices.TimeLayout.Changed -= ScheduleChanged;
         AppServices.Widgets.Changed -= RemoteChanged;
         AccountService.Changed -= RemoteChanged;
+        if (AppServices.Plugins is { } plugins) plugins.Changed -= RemoteChanged;
         if (AppServices.Management is { } management) management.StatusChanged -= StatusChanged;
         if (AppServices.NexVoice is { } voice) voice.StatusChanged -= StatusChanged;
         _settings?.Close();
-        Overlay.Close();
     }
 }

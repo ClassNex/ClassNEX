@@ -132,9 +132,6 @@ public partial class NexChatWindow : AppWindow
         _agent.Reset();
         _toolCards.Clear();
         MessagePanel.Children.Clear();
-        Dispatcher.UIThread.Post(
-            MemoryTrimmer.Trim,
-            DispatcherPriority.Background);
     }
 
     
@@ -202,8 +199,8 @@ public partial class NexChatWindow : AppWindow
     private void ShowWelcome()
     {
         var model = NexConfig.ResolveModel(AppServices.Settings);
-        var keyNote = NexConfig.IsUsingBuiltInKey(AppServices.Settings) ? "内置接口" : "自定义接口";
-        AddNotice($"我是 NEX，可以帮你查课表、看应用状态、也可以按权限读写文件。当前使用{keyNote}，模型：{model}。", false);
+        var configured = NexConfig.ResolveApiKey(AppServices.Settings).Length != 0;
+        AddNotice(configured ? $"可以询问课程和课表。当前模型：{model}。" : "请先在设置 → NEX Intelligence 中配置接口密钥。", false);
     }
 
     private void AddUserBubble(string text)

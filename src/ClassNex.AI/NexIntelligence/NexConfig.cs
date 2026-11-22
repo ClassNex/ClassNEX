@@ -11,7 +11,7 @@ public static class NexConfig
     public const string BuiltInApiBaseUrl = "https://cyberspace.furruka.asia";
 
     
-    public const string BuiltInApiKey = "sk-Yv5VB4pAcA6YKCk7YzfLMrnce6hszbSUbjxrBSj9w6bznHML";
+    private const string KeyEnvironmentVariable = "CLASSNEX_NEX_API_KEY";
 
     
     public const string BuiltInModel = "z-ai/glm-5.3";
@@ -21,12 +21,16 @@ public static class NexConfig
 
     
     public static string ResolveApiKey(Models.AppSettings settings) =>
-        string.IsNullOrWhiteSpace(settings.NexApiKey) ? BuiltInApiKey : settings.NexApiKey.Trim();
+        !string.IsNullOrWhiteSpace(settings.NexApiKey) ? settings.NexApiKey.Trim() :
+        IsDefaultEndpoint(settings) ? Environment.GetEnvironmentVariable(KeyEnvironmentVariable)?.Trim() ?? "" : "";
 
     public static string ResolveModel(Models.AppSettings settings) =>
         string.IsNullOrWhiteSpace(settings.NexModel) ? BuiltInModel : settings.NexModel.Trim();
 
     
     public static bool IsUsingBuiltInKey(Models.AppSettings settings) =>
-        string.IsNullOrWhiteSpace(settings.NexApiKey);
+        string.IsNullOrWhiteSpace(settings.NexApiKey) && IsDefaultEndpoint(settings) && ResolveApiKey(settings).Length != 0;
+
+    private static bool IsDefaultEndpoint(Models.AppSettings settings) =>
+        string.Equals(ResolveBaseUrl(settings).TrimEnd('/'), BuiltInApiBaseUrl, StringComparison.OrdinalIgnoreCase);
 }

@@ -7,7 +7,6 @@ using Windows.Graphics;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.System;
-using Windows.UI.ViewManagement;
 
 namespace ClassNex.WinUI;
 
@@ -29,7 +28,7 @@ public sealed partial class NativeSettingsWindow
             if (width > 0 && height > 0)
             {
                 var w = Math.Min(Px(1240), Math.Max(1, width - Px(16)));
-                var h = Math.Min(Px(620), Math.Max(1, height - Px(16)));
+                var h = Math.Min(Px(780), Math.Max(1, height - Px(32)));
                 if (AppWindow.Presenter is OverlappedPresenter presenter)
                 {
                     presenter.PreferredMinimumWidth = Math.Min(w, Px(520));
@@ -40,14 +39,12 @@ public sealed partial class NativeSettingsWindow
         }
         var icon = Path.Combine(AppContext.BaseDirectory, "Assets", "icon.ico");
         if (File.Exists(icon)) AppWindow.SetIcon(icon);
-        _shell.ActualThemeChanged += (_, _) => MatchCaptionTheme();
-        _shell.Loaded += (_, _) => MatchCaptionTheme();
     }
 
     private void MatchCaptionTheme()
     {
         if (_closed || !AppWindowTitleBar.IsCustomizationSupported()) return;
-        AppWindow.TitleBar.PreferredTheme = new AccessibilitySettings().HighContrast ? TitleBarTheme.UseDefaultAppMode
+        AppWindow.TitleBar.PreferredTheme = HighContrast ? TitleBarTheme.UseDefaultAppMode
             : _shell.ActualTheme == ElementTheme.Dark ? TitleBarTheme.Dark : TitleBarTheme.Light;
     }
 

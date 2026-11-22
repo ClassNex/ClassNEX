@@ -1,0 +1,320 @@
+using System.Runtime.CompilerServices;
+using Avalonia;
+using Avalonia.Animation;
+using Avalonia.Animation.Easings;
+using Avalonia.Controls;
+using Avalonia.Media;
+using Avalonia.Styling;
+
+namespace ClassNex.Controls;
+
+public class SlantedMaskControl : Control
+{
+
+    public static readonly StyledProperty<IBrush?> FillProperty =
+        AvaloniaProperty.Register<SlantedMaskControl, IBrush?>(nameof(Fill), Brushes.Black);
+
+    public static readonly StyledProperty<double> SlantedHeightProperty =
+        AvaloniaProperty.Register<SlantedMaskControl, double>(nameof(SlantedHeight), 80.0);
+
+    public static readonly StyledProperty<int> RegionDurationMsProperty =
+        AvaloniaProperty.Register<SlantedMaskControl, int>(nameof(RegionDurationMs), 300);
+
+    public static readonly StyledProperty<int> StageStaggerMsProperty =
+        AvaloniaProperty.Register<SlantedMaskControl, int>(nameof(StageStaggerMs), 120);
+
+    public static readonly StyledProperty<double> Region0ProgressProperty =
+        AvaloniaProperty.Register<SlantedMaskControl, double>(nameof(Region0Progress), 0.0);
+
+    public static readonly StyledProperty<double> Region1ProgressProperty =
+        AvaloniaProperty.Register<SlantedMaskControl, double>(nameof(Region1Progress), 0.0);
+
+    public static readonly StyledProperty<double> Region2ProgressProperty =
+        AvaloniaProperty.Register<SlantedMaskControl, double>(nameof(Region2Progress), 0.0);
+
+    public static readonly StyledProperty<double> Region3ProgressProperty =
+        AvaloniaProperty.Register<SlantedMaskControl, double>(nameof(Region3Progress), 0.0);
+
+    public static readonly StyledProperty<double> Region4ProgressProperty =
+        AvaloniaProperty.Register<SlantedMaskControl, double>(nameof(Region4Progress), 0.0);
+
+    public static readonly StyledProperty<bool> IsOpenedProperty = AvaloniaProperty.Register<SlantedMaskControl, bool>(
+        nameof(IsOpened));
+
+    public bool IsOpened
+    {
+        get => GetValue(IsOpenedProperty);
+        set => SetValue(IsOpenedProperty, value);
+    }
+
+    public IBrush? Fill
+    {
+        get => GetValue(FillProperty);
+        set => SetValue(FillProperty, value);
+    }
+
+    public double SlantedHeight
+    {
+        get => GetValue(SlantedHeightProperty);
+        set => SetValue(SlantedHeightProperty, value);
+    }
+
+    public int RegionDurationMs
+    {
+        get => GetValue(RegionDurationMsProperty);
+        set => SetValue(RegionDurationMsProperty, value);
+    }
+
+    public int StageStaggerMs
+    {
+        get => GetValue(StageStaggerMsProperty);
+        set => SetValue(StageStaggerMsProperty, value);
+    }
+
+    public double Region0Progress
+    {
+        get => GetValue(Region0ProgressProperty);
+        set => SetValue(Region0ProgressProperty, value);
+    }
+
+    public double Region1Progress
+    {
+        get => GetValue(Region1ProgressProperty);
+        set => SetValue(Region1ProgressProperty, value);
+    }
+
+    public double Region2Progress
+    {
+        get => GetValue(Region2ProgressProperty);
+        set => SetValue(Region2ProgressProperty, value);
+    }
+
+    public double Region3Progress
+    {
+        get => GetValue(Region3ProgressProperty);
+        set => SetValue(Region3ProgressProperty, value);
+    }
+
+    public double Region4Progress
+    {
+        get => GetValue(Region4ProgressProperty);
+        set => SetValue(Region4ProgressProperty, value);
+    }
+
+    private CancellationTokenSource? _cts;
+
+    private static readonly double Tan30 = Math.Tan(Math.PI / 3.0);
+
+    public SlantedMaskControl()
+    {
+
+        Region0Progress = Region1Progress = Region2Progress = Region3Progress = Region4Progress = 0.0;
+    }
+
+    static SlantedMaskControl()
+    {
+
+        Region0ProgressProperty.Changed.AddClassHandler<SlantedMaskControl>((o, _) => o.InvalidateVisual());
+        Region1ProgressProperty.Changed.AddClassHandler<SlantedMaskControl>((o, _) => o.InvalidateVisual());
+        Region2ProgressProperty.Changed.AddClassHandler<SlantedMaskControl>((o, _) => o.InvalidateVisual());
+        Region3ProgressProperty.Changed.AddClassHandler<SlantedMaskControl>((o, _) => o.InvalidateVisual());
+        Region4ProgressProperty.Changed.AddClassHandler<SlantedMaskControl>((o, _) => o.InvalidateVisual());
+        IsOpenedProperty.Changed.AddClassHandler<SlantedMaskControl>((o, _) =>
+        {
+            if (o.IsOpened)
+                o.Open();
+            else
+                o.Close();
+        });
+    }
+
+    #region 公共 API：Open / Close
+
+    public async void Open()
+    {
+        await StartSequence(open: true);
+    }
+
+    public async void Close()
+    {
+        await StartSequence(open: false);
+    }
+
+    private async Task StartSequence(bool open)
+    {
+
+        _cts?.Cancel();
+        using var lifetime = new CancellationTokenSource();
+        _cts = lifetime;
+        var token = lifetime.Token;
+
+        int dur = Math.Max(1, RegionDurationMs);
+        int stag = Math.Max(0, StageStaggerMs);
+
+        try
+        {
+            var animation = new Animation
+            {
+                Duration = TimeSpan.FromMilliseconds(stag + dur),
+                FillMode = FillMode.Forward,
+                Easing = open ? new QuarticEaseOut() : new QuadraticEaseIn()
+            };
+            if (open)
+            {
+                Region0Progress = Region1Progress = Region2Progress = Region3Progress = Region4Progress = 0;
+
+                animation.Children.AddRange(BuildRegionAnimKeyframe(0, 0, dur, true));
+                animation.Children.AddRange(BuildRegionAnimKeyframe(4, 0, dur, true));
+
+                animation.Children.AddRange(BuildRegionAnimKeyframe(1, (int)(stag * 0.75), dur, true));
+                animation.Children.AddRange(BuildRegionAnimKeyframe(3, (int)(stag * 0.75), dur, true));
+
+                animation.Children.AddRange(BuildRegionAnimKeyframe(2, (int)(stag * 1), dur, true));
+            }
+            else
+            {
+                Region0Progress = Region1Progress = Region2Progress = Region3Progress = Region4Progress = 1;
+
+                animation.Children.AddRange(BuildRegionAnimKeyframe(2, 0, dur, false));
+
+                animation.Children.AddRange(BuildRegionAnimKeyframe(1, (int)(stag * 0.75), dur, false));
+                animation.Children.AddRange(BuildRegionAnimKeyframe(3, (int)(stag * 0.75), dur, false));
+
+                animation.Children.AddRange(BuildRegionAnimKeyframe(0, (int)(stag * 1), dur, false));
+                animation.Children.AddRange(BuildRegionAnimKeyframe(4, (int)(stag * 1), dur, false));
+            }
+
+            await animation.RunAsync(this, token);
+        }
+        catch (TaskCanceledException)
+        {
+
+        }
+        catch (OperationCanceledException)
+        {
+
+        }
+        finally
+        {
+            if (ReferenceEquals(_cts, lifetime)) _cts = null;
+
+            if (!token.IsCancellationRequested)
+            {
+                double finish = open ? 1.0 : 0.0;
+                Region0Progress = Region1Progress = Region2Progress = Region3Progress = Region4Progress = finish;
+            }
+        }
+    }
+
+    private IList<KeyFrame> BuildRegionAnimKeyframe(int regionIndex, int delayMs, int durationMs, bool forward, bool last = false)
+    {
+        var targetProperty = GetRegionProperty(regionIndex);
+        double from = forward ? 0.0 : 1.0;
+        double to = forward ? 1.0 : 0.0;
+
+        var kf0 = new KeyFrame
+        {
+            KeyTime = TimeSpan.FromMilliseconds(delayMs),
+            Setters = { new Setter(targetProperty, from) }
+        };
+        var kf1 = new KeyFrame
+        {
+            Setters = { new Setter(targetProperty, to) }
+        };
+        if (last)
+        {
+            kf1.Cue = new Cue(1.0);
+        }
+        else
+        {
+            kf1.KeyTime = TimeSpan.FromMilliseconds(delayMs + durationMs);
+        }
+
+        return [kf0, kf1];
+    }
+
+    private static AvaloniaProperty<double> GetRegionProperty(int idx)
+    {
+        return idx switch
+        {
+            0 => Region0ProgressProperty,
+            1 => Region1ProgressProperty,
+            2 => Region2ProgressProperty,
+            3 => Region3ProgressProperty,
+            4 => Region4ProgressProperty,
+            _ => throw new ArgumentOutOfRangeException(nameof(idx))
+        };
+    }
+
+    #endregion
+
+    #region 绘制
+
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+    public override void Render(DrawingContext context)
+    {
+        base.Render(context);
+
+        var size = Bounds;
+        if (size.Width <= 0 || size.Height <= 0) return;
+
+        double h = SlantedHeight;
+        if (h <= 0) h = size.Height;
+        if (h > size.Height) h = size.Height;
+        double offset = Math.Tan(Math.PI / 6.0) * h;
+
+        double totalW = size.Width + offset;
+
+        ReadOnlySpan<double> p =
+        [
+            Math.Clamp(Region0Progress, 0.0, 1.0),
+            Math.Clamp(Region1Progress, 0.0, 1.0),
+            Math.Clamp(Region2Progress, 0.0, 1.0),
+            Math.Clamp(Region3Progress, 0.0, 1.0),
+            Math.Clamp(Region4Progress, 0.0, 1.0)
+        ];
+
+        ReadOnlySpan<double> boundaries = [0, 0.1, 0.3, 0.7, 0.9, 1];
+
+        var brush = Fill ?? Brushes.Black;
+        if (p[0] == 1 && p[1] == 1 && p[2] == 1 && p[3] == 1 && p[4] == 1)
+        {
+            context.FillRectangle(brush, new Rect(0, 0, size.Width, h));
+            return;
+        }
+
+        for (int i = 0; i < 5; i++)
+        {
+            double prog = p[i];
+            if (prog <= 0) continue;
+
+            double rx0 = totalW * boundaries[i];
+            double rx1 = totalW * boundaries[i + 1];
+            double rCenter = (rx0 + rx1) / 2.0;
+
+            double fullW = rx1 - rx0 + 0.5;
+            double currentW = fullW * prog;
+            if (currentW < 0.0001) continue;
+
+            var p1 = new Point(rCenter - currentW / 2.0, 0);
+            var p2 = new Point(rCenter + currentW / 2.0, 0);
+            var p3 = new Point(rCenter + currentW / 2.0 - offset, h);
+            var p4 = new Point(rCenter - currentW / 2.0 - offset, h);
+
+            var geom = new StreamGeometry();
+            using (var g = geom.Open())
+            {
+                g.BeginFigure(p1, isFilled: true);
+                g.LineTo(p2);
+                g.LineTo(p3);
+                g.LineTo(p4);
+                g.LineTo(p1);
+                g.EndFigure(isClosed: true);
+            }
+
+            context.DrawGeometry(brush, null, geom);
+        }
+    }
+
+    #endregion
+}

@@ -1,4 +1,5 @@
 using ClassNex.Models;
+using ClassNex.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
@@ -12,15 +13,32 @@ public sealed partial class NativeSettingsWindow
 
     private void BasicPage()
     {
-        Section("启动与行为");
-        Switch("RunAtStartup", "开机自启", s => s.RunAtStartup, (s, v) => s.RunAtStartup = v, "登录 Windows 后自动启动 ClassNEX。");
-        Switch("UrlProtocol", "注册 URL 协议", s => s.RegisterUrlProtocol, (s, v) => s.RegisterUrlProtocol = v);
-        Switch("StartupSplash", "显示启动画面", s => s.ShowStartupSplash, (s, v) => s.ShowStartupSplash = v);
-        Date("SemesterStart", "单周起始日期", s => new DateTimeOffset(s.SingleWeekStartTime.Date), (s, v) => { if (v.HasValue) s.SingleWeekStartTime = v.Value.Date; });
-        Choice("TrayBehavior", "单击托盘图标", ["显示 / 隐藏主界面", "打开应用设置", "打开档案编辑器"], s => s.TrayClickBehavior, (s, v) => s.TrayClickBehavior = v);
-        Switch("TeachingSafeMode", "教学安全模式", s => s.TeachingSafeMode, (s, v) => s.TeachingSafeMode = v);
-        Choice("CrashHandling", "异常处理", ["显示崩溃报告", "忽略并继续", "重新启动应用"], s => s.CrashHandlingMode, (s, v) => s.CrashHandlingMode = v);
-        Section("集控管理");
+        var layout = new Grid();
+        Identify(layout, "GeneralCards", "通用设置分组");
+        SetCards(layout, [
+            GroupCard("启动", "\uE945", () =>
+            {
+                Switch("RunAtStartup", "开机自启", s => s.RunAtStartup, (s, v) => s.RunAtStartup = v, "登录 Windows 后启动。");
+                Switch("StartupSplash", "显示启动画面", s => s.ShowStartupSplash, (s, v) => s.ShowStartupSplash = v);
+                Switch("UrlProtocol", "注册 URL 协议", s => s.RegisterUrlProtocol, (s, v) => s.RegisterUrlProtocol = v);
+            }),
+            GroupCard("课表与档案", "\uE787", () =>
+            {
+                Date("SemesterStart", "单周起始日期", s => new DateTimeOffset(s.SingleWeekStartTime.Date), (s, v) => { if (v.HasValue) s.SingleWeekStartTime = v.Value.Date; });
+                ActionRow("GoToSchedule", "课表与当前档案", "管理档案", () => NavigateTo("schedule"));
+            }),
+            GroupCard("托盘", "\uE7F8", () => Choice("TrayBehavior", "单击托盘图标", ["显示 / 隐藏主界面", "打开应用设置", "打开档案编辑器", "打开托盘菜单"], s => s.TrayClickBehavior, (s, v) => s.TrayClickBehavior = v)),
+            GroupCard("运行与恢复", "\uE9D9", () =>
+            {
+                Switch("TeachingSafeMode", "教学安全模式", s => s.TeachingSafeMode, (s, v) => s.TeachingSafeMode = v);
+                Choice("CrashHandling", "异常处理", ["显示崩溃报告", "忽略并继续", "重新启动应用"], s => s.CrashHandlingMode, (s, v) => s.CrashHandlingMode = v);
+            })
+        ]);
+        _body.Children.Add(layout);
+    }
+
+    private void CentralPage()
+    {
         Switch("CentralEnabled", "启用集控", s => s.CentralManagement.IsEnabled, (s, v) => s.CentralManagement.IsEnabled = v,
             "在集控后台登录同一个 ClassNEX ID，然后选择要管理的设备。");
         Field("CentralUrl", "集控服务地址", s => s.CentralManagement.ServerUrl, (s, v) => s.CentralManagement.ServerUrl = v.Trim());
@@ -56,28 +74,50 @@ public sealed partial class NativeSettingsWindow
 
     private void NotificationPage()
     {
+        Section("提醒通知");
         Switch("Notifications", "允许课堂提醒", s => s.AllowNotification, (s, v) => s.AllowNotification = v);
-        Switch("NotificationEffects", "提醒效果", s => s.AllowNotificationEffect, (s, v) => s.AllowNotificationEffect = v);
-        Switch("MinorNotifications", "允许次要提醒", s => s.AllowMinorNotification, (s, v) => s.AllowMinorNotification = v);
-        Section("课前准备");
-        Switch("ClassPrepare", "发出课前准备提醒", s => s.Notification.IsClassOnPreparingNotificationEnabled, (s, v) => s.Notification.IsClassOnPreparingNotificationEnabled = v);
-        Number("PrepareMinutes", "室内课程 · 课间剩余分钟", 1, 60, s => s.Notification.ClassOnBreakReminderMinutes, (s, v) =>
+        Detail("PrepareDetails", "课前准备", () =>
         {
-            s.Notification.ClassOnBreakReminderMinutes = v;
-            s.Notification.InDoorClassPreparingDeltaTime = 60 * v;
+            Switch("ClassPrepare", "发出课前准备提醒", s => s.Notification.IsClassOnPreparingNotificationEnabled, (s, v) => s.Notification.IsClassOnPreparingNotificationEnabled = v);
+            Number("PrepareMinutes", "室内课程 · 课间剩余分钟", 1, 60, s => s.Notification.ClassOnBreakReminderMinutes, (s, v) =>
+            {
+                s.Notification.ClassOnBreakReminderMinutes = v;
+                s.Notification.InDoorClassPreparingDeltaTime = 60 * v;
+            });
+            Number("OutdoorSeconds", "室外课程 · 提前秒数", 0, 3600, s => s.Notification.OutDoorClassPreparingDeltaTime, (s, v) => s.Notification.OutDoorClassPreparingDeltaTime = v);
+            Field("PreparingText", "室内课程提醒文字", s => s.Notification.ClassOnPreparingText, (s, v) => s.Notification.ClassOnPreparingText = v);
+            Field("PreparingMask", "室内课程遮罩文字", s => s.Notification.ClassOnPreparingMaskText, (s, v) => s.Notification.ClassOnPreparingMaskText = v);
+            Field("OutdoorText", "室外课程提醒文字", s => s.Notification.OutdoorClassOnPreparingText, (s, v) => s.Notification.OutdoorClassOnPreparingText = v);
+            Field("OutdoorMask", "室外课程遮罩文字", s => s.Notification.OutdoorClassOnPreparingMaskText, (s, v) => s.Notification.OutdoorClassOnPreparingMaskText = v);
         });
-        Number("OutdoorSeconds", "室外课程 · 提前秒数", 0, 3600, s => s.Notification.OutDoorClassPreparingDeltaTime, (s, v) => s.Notification.OutDoorClassPreparingDeltaTime = v);
-        Field("PreparingText", "室内课程提醒文字", s => s.Notification.ClassOnPreparingText, (s, v) => s.Notification.ClassOnPreparingText = v);
-        Field("PreparingMask", "室内课程遮罩文字", s => s.Notification.ClassOnPreparingMaskText, (s, v) => s.Notification.ClassOnPreparingMaskText = v);
-        Field("OutdoorText", "室外课程提醒文字", s => s.Notification.OutdoorClassOnPreparingText, (s, v) => s.Notification.OutdoorClassOnPreparingText = v);
-        Field("OutdoorMask", "室外课程遮罩文字", s => s.Notification.OutdoorClassOnPreparingMaskText, (s, v) => s.Notification.OutdoorClassOnPreparingMaskText = v);
-        Section("上课与下课");
-        Switch("ClassOn", "上课提醒", s => s.Notification.IsClassOnNotificationEnabled, (s, v) => s.Notification.IsClassOnNotificationEnabled = v);
-        Field("ClassOnMask", "上课遮罩文字", s => s.Notification.ClassOnMaskText, (s, v) => s.Notification.ClassOnMaskText = v);
-        Switch("ClassOff", "下课提醒", s => s.Notification.IsClassOffNotificationEnabled, (s, v) => s.Notification.IsClassOffNotificationEnabled = v);
-        Field("ClassOffMask", "下课遮罩文字", s => s.Notification.ClassOffMaskText, (s, v) => s.Notification.ClassOffMaskText = v);
-        Field("ClassOffText", "下课提醒文字", s => s.Notification.ClassOffOverlayText, (s, v) => s.Notification.ClassOffOverlayText = v);
-        Switch("Teacher", "显示科任老师名字", s => s.Notification.ShowTeacherName, (s, v) => s.Notification.ShowTeacherName = v);
+        Detail("ClassOnDetails", "上课提醒", () =>
+        {
+            Switch("ClassOn", "上课提醒", s => s.Notification.IsClassOnNotificationEnabled, (s, v) => s.Notification.IsClassOnNotificationEnabled = v);
+            Field("ClassOnMask", "上课遮罩文字", s => s.Notification.ClassOnMaskText, (s, v) => s.Notification.ClassOnMaskText = v);
+        });
+        Detail("ClassOffDetails", "下课提醒", () =>
+        {
+            Switch("ClassOff", "下课提醒", s => s.Notification.IsClassOffNotificationEnabled, (s, v) => s.Notification.IsClassOffNotificationEnabled = v);
+            Field("ClassOffMask", "下课遮罩文字", s => s.Notification.ClassOffMaskText, (s, v) => s.Notification.ClassOffMaskText = v);
+            Field("ClassOffText", "下课提醒文字", s => s.Notification.ClassOffOverlayText, (s, v) => s.Notification.ClassOffOverlayText = v);
+        });
+        Detail("DisplayDetails", "提醒显示", () =>
+        {
+            Switch("NotificationEffects", "提醒效果", s => s.AllowNotificationEffect, (s, v) => s.AllowNotificationEffect = v);
+            Switch("MinorNotifications", "允许次要提醒", s => s.AllowMinorNotification, (s, v) => s.AllowMinorNotification = v);
+            Switch("Teacher", "显示科任老师名字", s => s.Notification.ShowTeacherName, (s, v) => s.Notification.ShowTeacherName = v);
+        });
+    }
+
+    private void Detail(string id, string title, Action fill)
+    {
+        var child = new StackPanel { Spacing = 8 };
+        var expander = Target(id, title, new Expander { Header = title, Content = child, IsExpanded = false, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch });
+        var parent = _body;
+        _body = child;
+        _currentExpander = expander;
+        try { fill(); } finally { _body = parent; _currentExpander = null; }
+        parent.Children.Add(expander);
     }
 
     private void NexPage()
@@ -100,18 +140,31 @@ public sealed partial class NativeSettingsWindow
 
     private void AccountPage()
     {
-        var photo = MakeAvatar();
-        _body.Children.Add(photo);
-        StatusRow("AccountName", "用户名", _ => Or(_bridge.Status(AccountName), "尚未登录"));
-        StatusRow("AccountEmail", "邮箱", _ => Or(_bridge.Status(AccountEmail), "—"));
+        var identity = new Grid { ColumnSpacing = 14 };
+        identity.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+        identity.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
+        var photo = new PersonPicture { Width = 52, Height = 52 };
+        var updatePhoto = BindPhoto(photo);
+        identity.Children.Add(photo);
+        var labels = new StackPanel { Spacing = 3, VerticalAlignment = VerticalAlignment.Center };
+        var user = Target("AccountName", "账户名称", Text("", "SubtitleTextBlockStyle"));
+        var mail = Target("AccountEmail", "邮箱", Text(""));
+        labels.Children.Add(user); labels.Children.Add(mail);
+        Grid.SetColumn(labels, 1); identity.Children.Add(labels);
+        _body.Children.Add(identity);
         var action = ActionButton("AccountAction", "浏览器登录", AccountAction);
-        var switchAccount = ActionButton("SwitchAccount", "切换账户", () => _bridge.Command(Login));
+        var switchAccount = ActionButton("SwitchAccount", "切换账户", () => _bridge.Command(SwitchIdentity));
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         actions.Children.Add(switchAccount);
         actions.Children.Add(action);
         _bindings.Add(_ =>
         {
-            var signedIn = !string.IsNullOrWhiteSpace(_bridge.Status(AccountName));
+            var name = _bridge.Status(AccountName);
+            var signedIn = !string.IsNullOrWhiteSpace(name);
+            user.Text = Or(name, "未登录");
+            mail.Text = signedIn ? _bridge.Status(AccountEmail) : "";
+            mail.Visibility = mail.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+            updatePhoto();
             var label = signedIn ? "退出登录" : "浏览器登录";
             switchAccount.Visibility = signedIn ? Visibility.Visible : Visibility.Collapsed;
             if (!Equals(action.Content, label)) { action.Content = label; Identify(action, "AccountAction", label); }
@@ -131,58 +184,35 @@ public sealed partial class NativeSettingsWindow
             _bridge.Command(Logout);
     }
 
-    private PersonPicture MakeAvatar()
-    {
-        var avatar = new PersonPicture { Width = 64, Height = 64, HorizontalAlignment = HorizontalAlignment.Left };
-        string? stamp = null;
-        var request = 0;
-        _bindings.Add(settings =>
-        {
-            var displayName = _bridge.Status(AccountName);
-            if (avatar.DisplayName != displayName) avatar.DisplayName = displayName;
-            var path = string.IsNullOrWhiteSpace(displayName) ? "" : _bridge.Status(AccountAvatar);
-            var modified = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : DateTime.MinValue;
-            var nextStamp = $"{path}|{modified.Ticks}";
-            if (stamp == nextStamp) return;
-            stamp = nextStamp;
-            var ticket = ++request;
-            avatar.ProfilePicture = null;
-            if (modified != DateTime.MinValue) _ = LoadPhoto(path, ticket);
-        });
-        async Task LoadPhoto(string path, int ticket)
-        {
-            try
-            {
-                await using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 4096, true);
-                using var stream = file.AsRandomAccessStream();
-                var image = new BitmapImage { DecodePixelWidth = 128 };
-                await image.SetSourceAsync(stream);
-                if (!_closed && ticket == request) avatar.ProfilePicture = image;
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or System.Runtime.InteropServices.COMException or NotSupportedException) { }
-        }
-        return avatar;
-    }
-
     private void AboutPage()
     {
+        var identity = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "icon.ico");
+        if (File.Exists(iconPath)) identity.Children.Add(new Image { Width = 48, Height = 48, Source = new BitmapImage(new Uri(iconPath)) });
+        identity.Children.Add(Text("ClassNEX", "SubtitleTextBlockStyle"));
+        _body.Children.Add(identity);
         var version = ActionButton("Version", "当前版本", OnVersionClicked);
-        _bindings.Add(_ => { var value = Or(_bridge.Status(NativeSettingsKeys.Version), "ClassNEX"); if (!Equals(version.Content, value)) version.Content = value; });
+        _bindings.Add(_ => { var value = Or(_bridge.Status(NativeSettingsKeys.Version), "未提供版本号"); if (!Equals(version.Content, value)) version.Content = value; });
         Row("当前版本", "ClassNEX 桌面客户端", version);
         CommandRow("AboutRepo", "项目主页", "打开 GitHub", Repo);
         CommandRow("AboutIssues", "反馈与建议", "反馈问题", Issues);
         CommandRow("AboutLicense", "开放源代码许可", "查看许可", License, "GNU General Public License v3.0");
-        ActionRow("AboutPrivacy", "隐私政策", "查看政策", ShowPrivacy);
+        ActionRow("AboutPrivacy", "隐私与安全性", "查看", () => NavigateTo("privacy"));
+        ActionRow("AboutUpdate", "版本更新", "打开更新", () => NavigateTo("update"));
         CommandRow("OobePreview", "首次启动向导", "预览 OOBE", Oobe, "不会重置你的账户、课表或偏好。");
+        if (_bridge.ReadSettings().IsDebugOptionsEnabled) ActionRow("AboutDebug", "开发者选项", "打开", () => NavigateTo("debug"));
     }
 
-    private async void ShowPrivacy()
+    private void PrivacyPage()
     {
-        await new ContentDialog
-        {
-            XamlRoot = _shell.XamlRoot, Title = "隐私政策", CloseButtonText = "知道了",
-            Content = Text("ClassNEX 是一款本地运行的桌面课表悬浮窗。课程表和设置保存在你的电脑上；登录账户后，头像、昵称和邮箱会由 ClassNEX 账户服务同步到本机，仅用于界面展示。应用还会连接 GitHub 获取版本信息与发布包。我们不会收集、出售或与第三方共享你的任何数据。")
-        }.ShowAsync();
+        Section("本机数据");
+        ActionRow("PrivacyData", "课表与设置", "打开数据目录", () => RunUserAction(() => OpenFolder(SettingsService.DataDirectory)), "课表、设置和本机账户资料保存在应用的数据目录。");
+        ActionRow("PrivacyLogs", "运行日志", "打开日志目录", () => RunUserAction(() => OpenFolder(SettingsService.LogsDirectory)), "发生异常时可查看本地日志。发送给他人前请检查内容。");
+        Section("联网与权限");
+        ActionRow("PrivacyAccount", "ClassNEX ID", "管理账户", () => NavigateTo("account"), "通过浏览器登录后，从账户服务读取昵称、邮箱和头像。");
+        ActionRow("PrivacyCentral", "设备集控", "查看集控", () => NavigateTo("central"), "连接集控后，会与配置的服务器交换设备状态、课表和可同步的设置。");
+        ActionRow("PrivacyNex", "课堂助手与语音", "管理助手", () => NavigateTo("nex"), "使用助手时，对话会发送到配置的模型服务。启用语音唤醒会使用麦克风。");
+        ActionRow("PrivacyPlugins", "本机插件", "查看插件", () => NavigateTo("plugins"), "启用的插件运行在 ClassNEX 进程中。只安装你信任的扩展。");
     }
 
     private async void OnVersionClicked()
@@ -214,7 +244,7 @@ public sealed partial class NativeSettingsWindow
         Section("NEX Intelligence 接口");
         Field("NexUrl", "服务地址", s => s.NexApiBaseUrl, (s, v) => s.NexApiBaseUrl = v.Trim(), detail: "留空使用内置服务。");
         var key = Target("NexKey", "接口密钥", new PasswordBox { Header = "接口密钥", PasswordRevealMode = PasswordRevealMode.Hidden });
-        _bindings.Add(s => key.PlaceholderText = string.IsNullOrEmpty(s.NexApiKey) ? "使用内置密钥" : "已保存自定义密钥；输入以替换");
+        _bindings.Add(s => key.PlaceholderText = string.IsNullOrEmpty(s.NexApiKey) ? "输入接口密钥" : "已保存自定义密钥；输入以替换");
         void CommitKey()
         {
             if (_closed || string.IsNullOrWhiteSpace(key.Password) || !_targets.TryGetValue("NexKey", out var current) || current != key) return;

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -11,6 +12,9 @@ public static class AccountService
     private const string RedirectUri = "http://localhost:17171/callback";
 
     private static readonly object CodeLock = new();
+    private static readonly object AvatarGate = new();
+    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(20) };
+    private static string _verifier = "";
     private static HttpListener? _listener;
     private static string _state = "";
     private static string? _receivedCode;
@@ -35,14 +39,13 @@ public static class AccountService
     {
         try
         {
-            if (!File.Exists(FilePath))
-                return;
+            if (!File.Exists(FilePath)) { Current = null; return; }
 
             var json = File.ReadAllText(FilePath);
             if (!string.IsNullOrWhiteSpace(json))
             {
                 Current = JsonSerializer.Deserialize<AccountProfile>(json, JsonOptions);
-                if (Current is not null && !string.IsNullOrWhiteSpace(Current.AvatarUrl))
+                if (Current is not null && !File.Exists(AvatarPath) && !string.IsNullOrWhiteSpace(Current.AvatarUrl))
                     _ = RefreshAvatarAsync();
             }
         }
@@ -50,10 +53,11 @@ public static class AccountService
         {
             Current = null;
         }
+        finally { Changed?.Invoke(); }
     }
 
     public static string? AvatarImagePath =>
-        File.Exists(AvatarPath) ? AvatarPath : null;
+        Current is { IsLoggedIn: true } && File.Exists(AvatarPath) ? AvatarPath : null;
 
     public static bool FlowActive => _listener is { IsListening: true };
 
@@ -62,6 +66,8 @@ public static class AccountService
         var settings = AppServices.Settings;
         var endpoint = settings.AccountEndpoint.TrimEnd('/');
         _state = Guid.NewGuid().ToString("N");
+        _verifier = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+        var challenge = Convert.ToBase64String(SHA256.HashData(Encoding.ASCII.GetBytes(_verifier))).TrimEnd('=').Replace('+', '-').Replace('/', '_');
         lock (CodeLock)
             _receivedCode = null;
 
@@ -72,6 +78,7 @@ public static class AccountService
                "&response_type=code" +
                "&scope=openid%20profile%20email" +
                $"&state={_state}" +
+               $"&code_challenge_method=S256&code_challenge={challenge}" +
                "&prompt=login" +
                $"&redirect_uri={Uri.EscapeDataString(RedirectUri)}";
     }
@@ -88,6 +95,7 @@ public static class AccountService
 
     public static void CancelLogin()
     {
+        _state = _verifier = "";
         StopListener();
         lock (CodeLock)
             _receivedCode = null;
@@ -95,20 +103,22 @@ public static class AccountService
 
     public static async Task<(bool Ok, string Message)> CompleteLoginAsync(string code)
     {
+        var expectedState = _state;
+        if (expectedState.Length == 0) return (false, "登录已取消");
         try
         {
             var settings = AppServices.Settings;
             var endpoint = settings.AccountEndpoint.TrimEnd('/');
-            var form = new FormUrlEncodedContent(new Dictionary<string, string>
+            using var form = new FormUrlEncodedContent(new Dictionary<string, string>
             {
                 ["grant_type"] = "authorization_code",
                 ["client_id"] = settings.AccountClientId,
                 ["code"] = code,
+                ["code_verifier"] = _verifier,
                 ["redirect_uri"] = RedirectUri,
             });
 
-            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
-            using var response = await http.PostAsync(
+            using var response = await Http.PostAsync(
                 $"{endpoint}/api/login/oauth/access_token", form);
             var text = await response.Content.ReadAsStringAsync();
 
@@ -128,9 +138,16 @@ public static class AccountService
             if (profile is null)
                 return (false, "无法获取账户资料");
 
+            if (expectedState != _state) return (false, "登录已取消");
+            _state = _verifier = "";
             StopListener();
-            Current = profile;
+            lock (AvatarGate)
+            {
+                File.Delete(AvatarPath);
+                Current = profile;
+            }
             Save();
+            _ = RefreshAvatarAsync();
             return (true, "");
         }
         catch (Exception ex)
@@ -141,21 +158,20 @@ public static class AccountService
 
     public static async Task<string?> RefreshAvatarAsync()
     {
-        if (Current is null)
-            return null;
-
-        return await DownloadAvatarAsync(Current.AvatarUrl);
+        return Current is { } profile ? await DownloadAvatarAsync(profile) : null;
     }
 
     public static void Logout()
     {
-        StopListener();
-        Current = null;
+        CancelLogin();
+        lock (AvatarGate)
+        {
+            Current = null;
+            File.Delete(AvatarPath);
+        }
 
         if (File.Exists(FilePath))
             File.Delete(FilePath);
-        if (File.Exists(AvatarPath))
-            File.Delete(AvatarPath);
 
         Changed?.Invoke();
     }
@@ -191,7 +207,7 @@ public static class AccountService
             while (listener.IsListening)
             {
                 var context = await listener.GetContextAsync();
-                _ = Task.Run(() => HandleCallback(listener, context));
+                HandleCallback(listener, context);
             }
         }
         catch
@@ -205,7 +221,7 @@ public static class AccountService
         {
             var state = context.Request.QueryString["state"] ?? "";
             var code = context.Request.QueryString["code"] ?? "";
-            var ok = state == _state && code.Length > 0;
+            var ok = ReferenceEquals(listener, _listener) && _state.Length != 0 && state == _state && code.Length > 0;
             var html = ok
                 ? """
                   <!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
@@ -251,12 +267,11 @@ public static class AccountService
             centralEndpoint = AppSettings.DefaultCentralEndpoint;
         var url = centralEndpoint.TrimEnd('/') + "/api/v1/auth/profile";
 
-        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
             "Bearer",
             accessToken);
-        using var response = await http.SendAsync(request);
+        using var response = await Http.SendAsync(request);
         if (!response.IsSuccessStatusCode)
             return null;
         var text = await response.Content.ReadAsStringAsync();
@@ -287,12 +302,12 @@ public static class AccountService
         if (string.IsNullOrWhiteSpace(profile.Name))
             return null;
 
-        await DownloadAvatarAsync(profile.AvatarUrl);
         return profile;
     }
 
-    private static async Task<string?> DownloadAvatarAsync(string avatarUrl)
+    private static async Task<string?> DownloadAvatarAsync(AccountProfile profile)
     {
+        var avatarUrl = profile.AvatarUrl;
         if (string.IsNullOrWhiteSpace(avatarUrl))
             return null;
 
@@ -302,9 +317,19 @@ public static class AccountService
                 ? avatarUrl
                 : AppServices.Settings.AccountEndpoint.TrimEnd('/') + "/" + avatarUrl.TrimStart('/');
 
-            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
-            var bytes = await http.GetByteArrayAsync(url);
-            await File.WriteAllBytesAsync(AvatarPath, bytes);
+            var bytes = await Http.GetByteArrayAsync(url);
+            var temporary = Path.Combine(SettingsService.DataDirectory, $".avatar-{Guid.NewGuid():N}.tmp");
+            try
+            {
+                await File.WriteAllBytesAsync(temporary, bytes);
+                lock (AvatarGate)
+                {
+                    if (!ReferenceEquals(Current, profile)) return null;
+                    File.Move(temporary, AvatarPath, true);
+                }
+            }
+            finally { File.Delete(temporary); }
+            Changed?.Invoke();
             return AvatarPath;
         }
         catch

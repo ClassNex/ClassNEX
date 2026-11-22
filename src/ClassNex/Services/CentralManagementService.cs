@@ -13,12 +13,17 @@ public sealed class CentralManagementService : IDisposable
     };
 
     private readonly CentralManagementClient _client = new();
+    private readonly CancellationTokenSource _lifetime = new();
     private Timer? _timer;
     private Timer? _publishTimer;
     private int _busy;
     private int _publishing;
-    private int _localPublishPending;
+    private long _localVersion;
+    private long _publishedVersion;
+    private bool _polling;
+    private bool IsDirty => Volatile.Read(ref _publishedVersion) != Volatile.Read(ref _localVersion);
     private bool _registeredForSession;
+    private AccountProfile? _lastAccount;
     private bool _localEventsSubscribed;
     private DateTime _lastReportAt = DateTime.MinValue;
 
@@ -33,26 +38,49 @@ public sealed class CentralManagementService : IDisposable
             Timeout.InfiniteTimeSpan);
         if (!_localEventsSubscribed)
         {
+            _lastAccount = AccountService.Current;
             AppServices.LocalSettingsChanged += OnLocalSettingsChanged;
             AppServices.Schedule.Saved += OnLocalSettingsChanged;
+            AccountService.Changed += OnAccountChanged;
             _localEventsSubscribed = true;
         }
 
         _timer ??= new Timer(
             _ => _ = TickAsync(),
             null,
-            TimeSpan.FromSeconds(1),
-            TimeSpan.FromSeconds(2));
+            Timeout.InfiniteTimeSpan,
+            Timeout.InfiniteTimeSpan);
+        UpdatePolling();
+    }
+
+    private void OnAccountChanged()
+    {
+        if (ReferenceEquals(_lastAccount, AccountService.Current)) return;
+        _lastAccount = AccountService.Current;
+        _registeredForSession = false;
+        Interlocked.Exchange(ref _publishedVersion, Volatile.Read(ref _localVersion));
+        UpdatePolling();
+    }
+
+    private void UpdatePolling()
+    {
+        var enabled = AppServices.Settings.CentralManagement.IsEnabled && AccountService.Current?.IsLoggedIn == true;
+        if (_polling == enabled) return;
+        _polling = enabled;
+        _timer?.Change(enabled ? TimeSpan.FromSeconds(1) : Timeout.InfiniteTimeSpan,
+            enabled ? TimeSpan.FromSeconds(2) : Timeout.InfiniteTimeSpan);
     }
 
     public async Task ConnectAndSyncAsync(CancellationToken cancellationToken = default)
     {
-        await RegisterDeviceAsync(cancellationToken);
+        UpdatePolling();
         await SyncNowAsync(cancellationToken);
     }
 
     public async Task SyncNowAsync(CancellationToken cancellationToken = default)
     {
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token);
+        cancellationToken = linked.Token;
         if (Interlocked.CompareExchange(ref _busy, 1, 0) != 0)
             return;
 
@@ -67,7 +95,8 @@ public sealed class CentralManagementService : IDisposable
 
             NormalizeServerUrl(management);
             var accessToken = RequireAccessToken();
-            if (Volatile.Read(ref _localPublishPending) != 0)
+            var localVersion = Volatile.Read(ref _localVersion);
+            if (IsDirty)
             {
                 SetStatus("本机更改等待自动上传");
                 return;
@@ -105,8 +134,13 @@ public sealed class CentralManagementService : IDisposable
                                  config.SettingsJson,
                                  JsonOptions)
                              ?? throw new InvalidOperationException("集控设置格式无效");
-                await Dispatcher.UIThread.InvokeAsync(() =>
-                    AppServices.ApplyManagedSettings(remote, config.TimetableYaml));
+                var accepted = await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    if (cancellationToken.IsCancellationRequested || Volatile.Read(ref _localVersion) != localVersion || IsDirty) return false;
+                    AppServices.ApplyManagedSettings(remote, config.TimetableYaml);
+                    return true;
+                });
+                if (!accepted) return;
                 management = AppServices.Settings.CentralManagement;
                 management.AppliedRevision = config.Revision;
                 applied = true;
@@ -119,6 +153,7 @@ public sealed class CentralManagementService : IDisposable
             if (applied || ShouldReport())
                 await ReportAsync(accessToken, null, cancellationToken);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (Exception ex)
         {
             SetStatus("同步失败：" + ex.Message);
@@ -146,6 +181,7 @@ public sealed class CentralManagementService : IDisposable
     {
         var management = AppServices.Settings.CentralManagement;
         management.IsEnabled = false;
+        UpdatePolling();
         management.SelectedClassId = "";
         management.SelectedClassName = "";
         management.AppliedRevision = 0;
@@ -165,9 +201,13 @@ public sealed class CentralManagementService : IDisposable
 
     private void OnLocalSettingsChanged()
     {
+        UpdatePolling();
         if (!AppServices.Settings.CentralManagement.IsEnabled)
+        {
+            Interlocked.Exchange(ref _publishedVersion, Volatile.Read(ref _localVersion));
             return;
-        Interlocked.Exchange(ref _localPublishPending, 1);
+        }
+        Interlocked.Increment(ref _localVersion);
         _publishTimer?.Change(TimeSpan.FromMilliseconds(600), Timeout.InfiniteTimeSpan);
     }
 
@@ -179,33 +219,35 @@ public sealed class CentralManagementService : IDisposable
         try
         {
             var management = AppServices.Settings.CentralManagement;
+            var version = Volatile.Read(ref _localVersion);
+            var cancellation = _lifetime.Token;
             if (!management.IsEnabled)
                 return;
             if (string.IsNullOrWhiteSpace(management.SelectedClassId))
             {
-                Interlocked.Exchange(ref _localPublishPending, 0);
+                Interlocked.Exchange(ref _publishedVersion, version);
                 return;
             }
 
             NormalizeServerUrl(management);
             var accessToken = RequireAccessToken();
             var timetable = File.Exists(AppServices.TimetablePath)
-                ? await File.ReadAllTextAsync(AppServices.TimetablePath)
+                ? await File.ReadAllTextAsync(AppServices.TimetablePath, cancellation)
                 : "";
             var revision = await _client.PublishAsync(
                 management.ServerUrl,
                 accessToken,
                 new CentralClientPublishRequest(
                     management.ClientId,
-                    JsonSerializer.Serialize(AppServices.Settings, JsonOptions),
-                    timetable));
+                    await Dispatcher.UIThread.InvokeAsync(() => CentralSettingsPayload.Serialize(AppServices.Settings)),
+                    timetable), cancellation);
 
             management = AppServices.Settings.CentralManagement;
             management.SelectedClassId = revision.ClassId;
             management.SelectedClassName = revision.ClassName;
             management.AppliedRevision = revision.Revision;
             management.LastSyncTime = DateTime.Now;
-            Interlocked.Exchange(ref _localPublishPending, 0);
+            Interlocked.Exchange(ref _publishedVersion, version);
             SetStatus($"已同步本机更改 · {revision.ClassName} · 修订 {revision.Revision}");
         }
         catch (Exception ex)
@@ -215,8 +257,8 @@ public sealed class CentralManagementService : IDisposable
         finally
         {
             Interlocked.Exchange(ref _publishing, 0);
-            if (Volatile.Read(ref _localPublishPending) != 0)
-                _publishTimer?.Change(TimeSpan.FromSeconds(5), Timeout.InfiniteTimeSpan);
+            if (IsDirty && _polling && !_lifetime.IsCancellationRequested)
+                _publishTimer?.Change(TimeSpan.FromSeconds(1), Timeout.InfiniteTimeSpan);
         }
     }
 
@@ -261,7 +303,7 @@ public sealed class CentralManagementService : IDisposable
                 management.ClientId,
                 AppVersion,
                 Environment.MachineName,
-                JsonSerializer.Serialize(AppServices.Settings, JsonOptions),
+                await Dispatcher.UIThread.InvokeAsync(() => CentralSettingsPayload.Serialize(AppServices.Settings)),
                 timetable,
                 error),
             cancellationToken);
@@ -316,10 +358,12 @@ public sealed class CentralManagementService : IDisposable
 
     public void Dispose()
     {
+        _lifetime.Cancel();
         if (_localEventsSubscribed)
         {
             AppServices.LocalSettingsChanged -= OnLocalSettingsChanged;
             AppServices.Schedule.Saved -= OnLocalSettingsChanged;
+            AccountService.Changed -= OnAccountChanged;
             _localEventsSubscribed = false;
         }
 

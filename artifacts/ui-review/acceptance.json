@@ -1,0 +1,1100 @@
+{
+  "Passed": true,
+  "Checks": [
+    "Anonymous fixture, no production account or management connection",
+    "Alpha settings and edited portable timetable survive first startup",
+    "Disabled wake preference rejects delayed autostart without touching an engine",
+    "Enabling wake twice installs only one set of engine handlers",
+    "Rapid off/on ignores the stale engine result and queued events",
+    "A current engine event is delivered once after restarting",
+    "Only confirmed primary failure starts one fallback and releases the old handlers",
+    "Disposed coordinator cannot reopen an engine",
+    "Visiting onboarding account step does not authorize or open a browser",
+    "Fourth onboarding step loads the saved wake preference: False",
+    "Preview back-navigation keeps the unsaved voice switch position",
+    "Closing or finishing the preview does not commit the edited preference: False",
+    "Closing a preview preserves the active classroom and settings windows",
+    "Visiting onboarding account step does not authorize or open a browser",
+    "Fourth onboarding step loads the saved wake preference: True",
+    "Closing or finishing the preview does not commit the edited preference: True",
+    "Closing a preview preserves the active classroom and settings windows",
+    "Settings navigation still works after both onboarding previews close",
+    "Opening sign-in does not start browser authorization",
+    "\u5E94\u7528\u8BBE\u7F6E: backend accepted 96 dpi",
+    "\u6863\u6848\u7F16\u8F91\u5668: backend accepted 96 dpi",
+    "\u767B\u5F55 ClassNEX: backend accepted 96 dpi",
+    "ClassNEX \u4E3B\u754C\u9762: backend accepted 96 dpi",
+    "Theme light at 96 dpi",
+    "Navigation reached home: light at 96 dpi",
+    "Navigation reached widgets: light at 96 dpi",
+    "Adjacent widget cards align despite wrapped labels at 96 dpi in light",
+    "Navigation reached notification: light at 96 dpi",
+    "Navigation reached plugins: light at 96 dpi",
+    "Navigation reached appearance: light at 96 dpi",
+    "Navigation reached account: light at 96 dpi",
+    "Navigation reached nex: light at 96 dpi",
+    "Navigation reached central: light at 96 dpi",
+    "Navigation reached schedule: light at 96 dpi",
+    "Navigation reached profile: light at 96 dpi",
+    "Navigation reached basic: light at 96 dpi",
+    "Navigation reached window: light at 96 dpi",
+    "Navigation reached debug: light at 96 dpi",
+    "Navigation reached about: light at 96 dpi",
+    "Theme dark at 96 dpi",
+    "Navigation reached home: dark at 96 dpi",
+    "Navigation reached widgets: dark at 96 dpi",
+    "Adjacent widget cards align despite wrapped labels at 96 dpi in dark",
+    "Navigation reached notification: dark at 96 dpi",
+    "Navigation reached plugins: dark at 96 dpi",
+    "Navigation reached appearance: dark at 96 dpi",
+    "Navigation reached account: dark at 96 dpi",
+    "Navigation reached nex: dark at 96 dpi",
+    "Navigation reached central: dark at 96 dpi",
+    "Navigation reached schedule: dark at 96 dpi",
+    "Navigation reached profile: dark at 96 dpi",
+    "Navigation reached basic: dark at 96 dpi",
+    "Navigation reached window: dark at 96 dpi",
+    "Navigation reached debug: dark at 96 dpi",
+    "Navigation reached about: dark at 96 dpi",
+    "Normal mask fits 317.0 plus margins 16.0 in 349.0 at 96 dpi",
+    "Reminder track starts with the mask: preparing",
+    "Full subject appears for preparing at 96 dpi",
+    "After preparing, mask 349.0 fits widgets 317.0 with inset 16.0 at 96 dpi (visible=1.0, track=False)",
+    "Normal mask fits 317.0 plus margins 16.0 in 349.0 at 96 dpi",
+    "Reminder track starts with the mask: break",
+    "Full subject appears for break at 96 dpi",
+    "After break, mask 349.0 fits widgets 317.0 with inset 16.0 at 96 dpi (visible=1.0, track=False)",
+    "\u5E94\u7528\u8BBE\u7F6E: backend accepted 120 dpi",
+    "\u6863\u6848\u7F16\u8F91\u5668: backend accepted 120 dpi",
+    "\u767B\u5F55 ClassNEX: backend accepted 120 dpi",
+    "ClassNEX \u4E3B\u754C\u9762: backend accepted 120 dpi",
+    "Theme light at 120 dpi",
+    "Navigation reached home: light at 120 dpi",
+    "Navigation reached widgets: light at 120 dpi",
+    "Adjacent widget cards align despite wrapped labels at 120 dpi in light",
+    "Navigation reached notification: light at 120 dpi",
+    "Navigation reached plugins: light at 120 dpi",
+    "Navigation reached appearance: light at 120 dpi",
+    "Navigation reached account: light at 120 dpi",
+    "Navigation reached nex: light at 120 dpi",
+    "Navigation reached central: light at 120 dpi",
+    "Navigation reached schedule: light at 120 dpi",
+    "Navigation reached profile: light at 120 dpi",
+    "Navigation reached basic: light at 120 dpi",
+    "Navigation reached window: light at 120 dpi",
+    "Navigation reached debug: light at 120 dpi",
+    "Navigation reached about: light at 120 dpi",
+    "Theme dark at 120 dpi",
+    "Navigation reached home: dark at 120 dpi",
+    "Navigation reached widgets: dark at 120 dpi",
+    "Adjacent widget cards align despite wrapped labels at 120 dpi in dark",
+    "Navigation reached notification: dark at 120 dpi",
+    "Navigation reached plugins: dark at 120 dpi",
+    "Navigation reached appearance: dark at 120 dpi",
+    "Navigation reached account: dark at 120 dpi",
+    "Navigation reached nex: dark at 120 dpi",
+    "Navigation reached central: dark at 120 dpi",
+    "Navigation reached schedule: dark at 120 dpi",
+    "Navigation reached profile: dark at 120 dpi",
+    "Navigation reached basic: dark at 120 dpi",
+    "Navigation reached window: dark at 120 dpi",
+    "Navigation reached debug: dark at 120 dpi",
+    "Navigation reached about: dark at 120 dpi",
+    "Normal mask fits 319.2 plus margins 16.0 in 352.0 at 120 dpi",
+    "Reminder track starts with the mask: preparing",
+    "Full subject appears for preparing at 120 dpi",
+    "After preparing, mask 352.0 fits widgets 319.2 with inset 16.0 at 120 dpi (visible=1.0, track=False)",
+    "Normal mask fits 319.2 plus margins 16.0 in 352.0 at 120 dpi",
+    "Reminder track starts with the mask: break",
+    "Full subject appears for break at 120 dpi",
+    "After break, mask 352.0 fits widgets 319.2 with inset 16.0 at 120 dpi (visible=1.0, track=False)",
+    "\u5E94\u7528\u8BBE\u7F6E: backend accepted 144 dpi",
+    "\u6863\u6848\u7F16\u8F91\u5668: backend accepted 144 dpi",
+    "\u767B\u5F55 ClassNEX: backend accepted 144 dpi",
+    "ClassNEX \u4E3B\u754C\u9762: backend accepted 144 dpi",
+    "Theme light at 144 dpi",
+    "Navigation reached home: light at 144 dpi",
+    "Navigation reached widgets: light at 144 dpi",
+    "Adjacent widget cards align despite wrapped labels at 144 dpi in light",
+    "Navigation reached notification: light at 144 dpi",
+    "Navigation reached plugins: light at 144 dpi",
+    "Navigation reached appearance: light at 144 dpi",
+    "Navigation reached account: light at 144 dpi",
+    "Navigation reached nex: light at 144 dpi",
+    "Navigation reached central: light at 144 dpi",
+    "Navigation reached schedule: light at 144 dpi",
+    "Navigation reached profile: light at 144 dpi",
+    "Navigation reached basic: light at 144 dpi",
+    "Navigation reached window: light at 144 dpi",
+    "Navigation reached debug: light at 144 dpi",
+    "Navigation reached about: light at 144 dpi",
+    "Theme dark at 144 dpi",
+    "Navigation reached home: dark at 144 dpi",
+    "Navigation reached widgets: dark at 144 dpi",
+    "Adjacent widget cards align despite wrapped labels at 144 dpi in dark",
+    "Navigation reached notification: dark at 144 dpi",
+    "Navigation reached plugins: dark at 144 dpi",
+    "Navigation reached appearance: dark at 144 dpi",
+    "Navigation reached account: dark at 144 dpi",
+    "Navigation reached nex: dark at 144 dpi",
+    "Navigation reached central: dark at 144 dpi",
+    "Navigation reached schedule: dark at 144 dpi",
+    "Navigation reached profile: dark at 144 dpi",
+    "Navigation reached basic: dark at 144 dpi",
+    "Navigation reached window: dark at 144 dpi",
+    "Navigation reached debug: dark at 144 dpi",
+    "Navigation reached about: dark at 144 dpi",
+    "30 warm navigation requests: 8 ms on UI thread (does not measure frame rate)",
+    "Non-topmost classroom fixture respects its saved setting",
+    "Classroom native width matches the working area at the review DPI",
+    "Preparing mask starts its full-length progress track with an inset on both ends",
+    "Preparing detail displays the full next course from the live timetable",
+    "Preparing detail remains visible through the first eight seconds",
+    "The progress track remains active across the ten-second message turn",
+    "Class-on and break expiry both restore the measured classroom width",
+    "Editing components suppresses classroom reminders",
+    "NEX, schedule and reminder surfaces do not overlap or force topmost",
+    "A hidden classroom cannot receive reminders",
+    "Restoring the classroom restores both content and its notification channel",
+    "System theme tracking restored",
+    "Overlay honors the disabled always-on-top setting",
+    "Edge bar exposes one wake action and stays out of the taskbar",
+    "Window references released on close",
+    "Appearance slider persists its new value",
+    "Notification toggle persisted to anonymous data",
+    "Long page scrolls to additional settings",
+    "Back returned to the previously visited category",
+    "Revisited settings open at the top",
+    "Plugin switch ready: True",
+    "Settings switch changed plugin lifecycle: \u5DF2\u52A0\u8F7D",
+    "Plugin switch ready: False",
+    "Settings switch changed plugin lifecycle: \u5DF2\u7981\u7528",
+    "Plugin settings called real DLL once per transition",
+    "Closing settings immediately commits the last slider change"
+  ],
+  "Captures": [
+    {
+      "Surface": "oobe-voice-preview",
+      "Theme": "light",
+      "Scaling": 1.25,
+      "Width": 1300,
+      "Height": 863,
+      "VisibleText": 8
+    },
+    {
+      "Surface": "classroom",
+      "Theme": "light",
+      "Scaling": 1,
+      "Width": 1554,
+      "Height": 76,
+      "VisibleText": 6
+    },
+    {
+      "Surface": "overview",
+      "Theme": "light",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 34
+    },
+    {
+      "Surface": "widgets",
+      "Theme": "light",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 44
+    },
+    {
+      "Surface": "notifications",
+      "Theme": "light",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 52
+    },
+    {
+      "Surface": "plugins",
+      "Theme": "light",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 27
+    },
+    {
+      "Surface": "appearance",
+      "Theme": "light",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 41
+    },
+    {
+      "Surface": "account",
+      "Theme": "light",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 26
+    },
+    {
+      "Surface": "nex",
+      "Theme": "light",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 36
+    },
+    {
+      "Surface": "central",
+      "Theme": "light",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 38
+    },
+    {
+      "Surface": "schedule-settings",
+      "Theme": "light",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 29
+    },
+    {
+      "Surface": "profile-settings",
+      "Theme": "light",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 27
+    },
+    {
+      "Surface": "system",
+      "Theme": "light",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 39
+    },
+    {
+      "Surface": "overlay-settings",
+      "Theme": "light",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 27
+    },
+    {
+      "Surface": "developer",
+      "Theme": "light",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 25
+    },
+    {
+      "Surface": "about",
+      "Theme": "light",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 33
+    },
+    {
+      "Surface": "schedule",
+      "Theme": "light",
+      "Scaling": 1,
+      "Width": 1148,
+      "Height": 759,
+      "VisibleText": 46
+    },
+    {
+      "Surface": "profile",
+      "Theme": "light",
+      "Scaling": 1,
+      "Width": 1148,
+      "Height": 759,
+      "VisibleText": 33
+    },
+    {
+      "Surface": "login",
+      "Theme": "light",
+      "Scaling": 1,
+      "Width": 458,
+      "Height": 439,
+      "VisibleText": 7
+    },
+    {
+      "Surface": "classroom",
+      "Theme": "dark",
+      "Scaling": 1,
+      "Width": 1554,
+      "Height": 76,
+      "VisibleText": 6
+    },
+    {
+      "Surface": "overview",
+      "Theme": "dark",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 34
+    },
+    {
+      "Surface": "widgets",
+      "Theme": "dark",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 44
+    },
+    {
+      "Surface": "notifications",
+      "Theme": "dark",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 52
+    },
+    {
+      "Surface": "plugins",
+      "Theme": "dark",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 27
+    },
+    {
+      "Surface": "appearance",
+      "Theme": "dark",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 41
+    },
+    {
+      "Surface": "account",
+      "Theme": "dark",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 26
+    },
+    {
+      "Surface": "nex",
+      "Theme": "dark",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 36
+    },
+    {
+      "Surface": "central",
+      "Theme": "dark",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 38
+    },
+    {
+      "Surface": "schedule-settings",
+      "Theme": "dark",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 29
+    },
+    {
+      "Surface": "profile-settings",
+      "Theme": "dark",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 27
+    },
+    {
+      "Surface": "system",
+      "Theme": "dark",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 39
+    },
+    {
+      "Surface": "overlay-settings",
+      "Theme": "dark",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 27
+    },
+    {
+      "Surface": "developer",
+      "Theme": "dark",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 25
+    },
+    {
+      "Surface": "about",
+      "Theme": "dark",
+      "Scaling": 1,
+      "Width": 988,
+      "Height": 690,
+      "VisibleText": 33
+    },
+    {
+      "Surface": "schedule",
+      "Theme": "dark",
+      "Scaling": 1,
+      "Width": 1148,
+      "Height": 759,
+      "VisibleText": 46
+    },
+    {
+      "Surface": "profile",
+      "Theme": "dark",
+      "Scaling": 1,
+      "Width": 1148,
+      "Height": 759,
+      "VisibleText": 33
+    },
+    {
+      "Surface": "login",
+      "Theme": "dark",
+      "Scaling": 1,
+      "Width": 458,
+      "Height": 439,
+      "VisibleText": 7
+    },
+    {
+      "Surface": "classroom",
+      "Theme": "light",
+      "Scaling": 1.25,
+      "Width": 1920,
+      "Height": 95,
+      "VisibleText": 6
+    },
+    {
+      "Surface": "overview",
+      "Theme": "light",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 34
+    },
+    {
+      "Surface": "widgets",
+      "Theme": "light",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 44
+    },
+    {
+      "Surface": "notifications",
+      "Theme": "light",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 52
+    },
+    {
+      "Surface": "plugins",
+      "Theme": "light",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 27
+    },
+    {
+      "Surface": "appearance",
+      "Theme": "light",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 41
+    },
+    {
+      "Surface": "account",
+      "Theme": "light",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 26
+    },
+    {
+      "Surface": "nex",
+      "Theme": "light",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 36
+    },
+    {
+      "Surface": "central",
+      "Theme": "light",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 38
+    },
+    {
+      "Surface": "schedule-settings",
+      "Theme": "light",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 29
+    },
+    {
+      "Surface": "profile-settings",
+      "Theme": "light",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 27
+    },
+    {
+      "Surface": "system",
+      "Theme": "light",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 39
+    },
+    {
+      "Surface": "overlay-settings",
+      "Theme": "light",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 27
+    },
+    {
+      "Surface": "developer",
+      "Theme": "light",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 25
+    },
+    {
+      "Surface": "about",
+      "Theme": "light",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 33
+    },
+    {
+      "Surface": "schedule",
+      "Theme": "light",
+      "Scaling": 1.25,
+      "Width": 1437,
+      "Height": 950,
+      "VisibleText": 46
+    },
+    {
+      "Surface": "profile",
+      "Theme": "light",
+      "Scaling": 1.25,
+      "Width": 1437,
+      "Height": 950,
+      "VisibleText": 33
+    },
+    {
+      "Surface": "login",
+      "Theme": "light",
+      "Scaling": 1.25,
+      "Width": 574,
+      "Height": 550,
+      "VisibleText": 7
+    },
+    {
+      "Surface": "classroom",
+      "Theme": "dark",
+      "Scaling": 1.25,
+      "Width": 1920,
+      "Height": 95,
+      "VisibleText": 6
+    },
+    {
+      "Surface": "overview",
+      "Theme": "dark",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 34
+    },
+    {
+      "Surface": "widgets",
+      "Theme": "dark",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 44
+    },
+    {
+      "Surface": "notifications",
+      "Theme": "dark",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 52
+    },
+    {
+      "Surface": "plugins",
+      "Theme": "dark",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 27
+    },
+    {
+      "Surface": "appearance",
+      "Theme": "dark",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 41
+    },
+    {
+      "Surface": "account",
+      "Theme": "dark",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 26
+    },
+    {
+      "Surface": "nex",
+      "Theme": "dark",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 36
+    },
+    {
+      "Surface": "central",
+      "Theme": "dark",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 38
+    },
+    {
+      "Surface": "schedule-settings",
+      "Theme": "dark",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 29
+    },
+    {
+      "Surface": "profile-settings",
+      "Theme": "dark",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 27
+    },
+    {
+      "Surface": "system",
+      "Theme": "dark",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 39
+    },
+    {
+      "Surface": "overlay-settings",
+      "Theme": "dark",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 27
+    },
+    {
+      "Surface": "developer",
+      "Theme": "dark",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 25
+    },
+    {
+      "Surface": "about",
+      "Theme": "dark",
+      "Scaling": 1.25,
+      "Width": 1237,
+      "Height": 863,
+      "VisibleText": 33
+    },
+    {
+      "Surface": "schedule",
+      "Theme": "dark",
+      "Scaling": 1.25,
+      "Width": 1437,
+      "Height": 950,
+      "VisibleText": 46
+    },
+    {
+      "Surface": "profile",
+      "Theme": "dark",
+      "Scaling": 1.25,
+      "Width": 1437,
+      "Height": 950,
+      "VisibleText": 33
+    },
+    {
+      "Surface": "login",
+      "Theme": "dark",
+      "Scaling": 1.25,
+      "Width": 574,
+      "Height": 550,
+      "VisibleText": 7
+    },
+    {
+      "Surface": "classroom",
+      "Theme": "light",
+      "Scaling": 1.5,
+      "Width": 1920,
+      "Height": 114,
+      "VisibleText": 6
+    },
+    {
+      "Surface": "overview",
+      "Theme": "light",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 34
+    },
+    {
+      "Surface": "widgets",
+      "Theme": "light",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 44
+    },
+    {
+      "Surface": "notifications",
+      "Theme": "light",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 52
+    },
+    {
+      "Surface": "plugins",
+      "Theme": "light",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 27
+    },
+    {
+      "Surface": "appearance",
+      "Theme": "light",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 41
+    },
+    {
+      "Surface": "account",
+      "Theme": "light",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 26
+    },
+    {
+      "Surface": "nex",
+      "Theme": "light",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 36
+    },
+    {
+      "Surface": "central",
+      "Theme": "light",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 38
+    },
+    {
+      "Surface": "schedule-settings",
+      "Theme": "light",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 29
+    },
+    {
+      "Surface": "profile-settings",
+      "Theme": "light",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 27
+    },
+    {
+      "Surface": "system",
+      "Theme": "light",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 39
+    },
+    {
+      "Surface": "overlay-settings",
+      "Theme": "light",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 27
+    },
+    {
+      "Surface": "developer",
+      "Theme": "light",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 25
+    },
+    {
+      "Surface": "about",
+      "Theme": "light",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 33
+    },
+    {
+      "Surface": "schedule",
+      "Theme": "light",
+      "Scaling": 1.5,
+      "Width": 1724,
+      "Height": 1091,
+      "VisibleText": 46
+    },
+    {
+      "Surface": "profile",
+      "Theme": "light",
+      "Scaling": 1.5,
+      "Width": 1724,
+      "Height": 1091,
+      "VisibleText": 33
+    },
+    {
+      "Surface": "login",
+      "Theme": "light",
+      "Scaling": 1.5,
+      "Width": 688,
+      "Height": 660,
+      "VisibleText": 7
+    },
+    {
+      "Surface": "classroom",
+      "Theme": "dark",
+      "Scaling": 1.5,
+      "Width": 1920,
+      "Height": 114,
+      "VisibleText": 6
+    },
+    {
+      "Surface": "overview",
+      "Theme": "dark",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 34
+    },
+    {
+      "Surface": "widgets",
+      "Theme": "dark",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 44
+    },
+    {
+      "Surface": "notifications",
+      "Theme": "dark",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 52
+    },
+    {
+      "Surface": "plugins",
+      "Theme": "dark",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 27
+    },
+    {
+      "Surface": "appearance",
+      "Theme": "dark",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 41
+    },
+    {
+      "Surface": "account",
+      "Theme": "dark",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 26
+    },
+    {
+      "Surface": "nex",
+      "Theme": "dark",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 36
+    },
+    {
+      "Surface": "central",
+      "Theme": "dark",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 38
+    },
+    {
+      "Surface": "schedule-settings",
+      "Theme": "dark",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 29
+    },
+    {
+      "Surface": "profile-settings",
+      "Theme": "dark",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 27
+    },
+    {
+      "Surface": "system",
+      "Theme": "dark",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 39
+    },
+    {
+      "Surface": "overlay-settings",
+      "Theme": "dark",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 27
+    },
+    {
+      "Surface": "developer",
+      "Theme": "dark",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 25
+    },
+    {
+      "Surface": "about",
+      "Theme": "dark",
+      "Scaling": 1.5,
+      "Width": 1484,
+      "Height": 1035,
+      "VisibleText": 33
+    },
+    {
+      "Surface": "schedule",
+      "Theme": "dark",
+      "Scaling": 1.5,
+      "Width": 1724,
+      "Height": 1091,
+      "VisibleText": 46
+    },
+    {
+      "Surface": "profile",
+      "Theme": "dark",
+      "Scaling": 1.5,
+      "Width": 1724,
+      "Height": 1091,
+      "VisibleText": 33
+    },
+    {
+      "Surface": "login",
+      "Theme": "dark",
+      "Scaling": 1.5,
+      "Width": 688,
+      "Height": 660,
+      "VisibleText": 7
+    },
+    {
+      "Surface": "overview-compact",
+      "Theme": "dark",
+      "Scaling": 1.5,
+      "Width": 1080,
+      "Height": 900,
+      "VisibleText": 34
+    },
+    {
+      "Surface": "reminder-mask",
+      "Theme": "dark",
+      "Scaling": 1.5,
+      "Width": 1920,
+      "Height": 114,
+      "VisibleText": 9
+    },
+    {
+      "Surface": "reminder-subject",
+      "Theme": "dark",
+      "Scaling": 1.5,
+      "Width": 1920,
+      "Height": 114,
+      "VisibleText": 10
+    },
+    {
+      "Surface": "reminder-message",
+      "Theme": "dark",
+      "Scaling": 1.5,
+      "Width": 1920,
+      "Height": 114,
+      "VisibleText": 8
+    },
+    {
+      "Surface": "reminder-restored",
+      "Theme": "dark",
+      "Scaling": 1.5,
+      "Width": 1920,
+      "Height": 114,
+      "VisibleText": 7
+    },
+    {
+      "Surface": "reminder-break",
+      "Theme": "dark",
+      "Scaling": 1.5,
+      "Width": 1920,
+      "Height": 114,
+      "VisibleText": 10
+    }
+  ],
+  "ElapsedMs": 96969,
+  "WorkingSetBytes": 430866432,
+  "ManagedBytes": 51785936
+}

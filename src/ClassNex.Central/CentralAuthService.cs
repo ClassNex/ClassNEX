@@ -1,15 +1,17 @@
-using System.Collections.Concurrent;
+using Microsoft.Extensions.Caching.Memory;
+using System.Security.Cryptography;
+using System.Text;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 
 namespace ClassNex.Central;
 
-public sealed class CentralAuthService
+public sealed class CentralAuthService : IDisposable
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(20) };
-    private readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
+    private readonly MemoryCache _cache = new(new MemoryCacheOptions { SizeLimit = 256 });
 
     public CentralAuthService(
         string casdoorUrl,
@@ -70,7 +72,7 @@ public sealed class CentralAuthService
             form);
         var text = await response.Content.ReadAsStringAsync();
         if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException("Casdoor 授权码换取失败：" + text);
+            throw new InvalidOperationException($"Casdoor 授权码换取失败（HTTP {(int)response.StatusCode}）");
 
         using var document = JsonDocument.Parse(text);
         if (!document.RootElement.TryGetProperty("access_token", out var tokenElement) ||
@@ -85,9 +87,8 @@ public sealed class CentralAuthService
         if (string.IsNullOrWhiteSpace(accessToken))
             return null;
 
-        if (_cache.TryGetValue(accessToken, out var cached) &&
-            cached.ExpiresAt > DateTimeOffset.UtcNow)
-            return cached.User;
+        var key = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(accessToken)));
+        if (_cache.TryGetValue<CentralUser>(key, out var cached)) return cached;
 
         using var request = new HttpRequestMessage(
             HttpMethod.Get,
@@ -103,15 +104,15 @@ public sealed class CentralAuthService
                 return null;
             return ParseUser(
                 await fallback.Content.ReadAsStringAsync(),
-                accessToken);
+                key);
         }
 
         return ParseUser(
             await response.Content.ReadAsStringAsync(),
-            accessToken);
+            key);
     }
 
-    private CentralUser? ParseUser(string text, string accessToken)
+    private CentralUser? ParseUser(string text, string key)
     {
         using var document = JsonDocument.Parse(text);
         var root = document.RootElement;
@@ -128,18 +129,17 @@ public sealed class CentralAuthService
             subject,
             Get("name"),
             Get("email"),
-            Get("preferred_username"));
-        _cache[accessToken] = new CacheEntry(
-            user,
-            DateTimeOffset.UtcNow.AddMinutes(2));
+            Get("preferred_username"), Get("picture"));
+        _cache.Set(key, user, new MemoryCacheEntryOptions { Size = 1, AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(2) });
         return user;
     }
 
-    private sealed record CacheEntry(CentralUser User, DateTimeOffset ExpiresAt);
+    public void Dispose() { _cache.Dispose(); _http.Dispose(); }
 }
 
 public sealed record CentralUser(
     string Subject,
     string Name,
     string Email,
-    string PreferredUsername);
+    string PreferredUsername,
+    string Picture = "");

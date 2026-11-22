@@ -1,388 +1,293 @@
 using ClassNex.Core.Abstractions;
 using ClassNex.Models;
-using ClassNex.Services;
 
-namespace ClassNex.Notification.Service;
+namespace ClassNex.Services;
 
-public sealed class NotificationService : INotificationService, IDisposable
+public sealed class NotificationService : INotificationService, INotificationPublisher, IDisposable
 {
-    public static TimeSpan OverlayPageInterval { get; } = TimeSpan.FromSeconds(10);
-
-    private readonly INotificationSurface _surface;
+    private readonly Dictionary<string, INotificationSurface> _channels;
     private readonly Func<AppSettings> _settings;
-    private readonly Func<DateTime, TodaySummary> _readDay;
-    private readonly Action<Action> _dispatch;
-    private int _tickPending;
-    private Timer? _timer;
+    private readonly ITimeService _time;
+    private readonly IScheduleService _schedule;
+    private readonly TimeProvider _clock;
+    private readonly object _gate = new();
+    private readonly NotificationQueue _queue = new();
+    private readonly Dictionary<string, DateTimeOffset> _seen = new(StringComparer.Ordinal);
+    private readonly ClassroomReminders _classroom = new();
+    private ITimer? _timer;
+    private bool _running, _disposed, _hasOverlay;
+    private NotificationRequest? _active;
+    private DateTimeOffset _overlayAt, _end, _nextScheduleCheck;
+    private int _lastSeconds = -1;
 
-    private string _lastKey = "\0";
-    private string? _prepareKey;
-    private bool _started;
-    private int _displayGeneration;
-    private DateTime? _prepareCountdownTarget;
+    public NotificationService(INotificationSurface surface, Func<AppSettings> settings, ITimeService time, IScheduleService schedule,
+        TimeProvider? clock = null) : this(new Dictionary<string, INotificationSurface> { ["classroom"] = surface }, settings, time, schedule, clock) { }
 
-    public NotificationService(
-        INotificationSurface surface,
-        Func<AppSettings> settings,
-        ITimeService time,
-        IScheduleService schedule) : this(surface, settings, now => time.GetTodaySummary(schedule.Profile, now), action => action()) { }
-
-    public NotificationService(INotificationSurface surface, Func<AppSettings> settings, Func<DateTime, TodaySummary> readDay, Action<Action> dispatch)
+    public NotificationService(IReadOnlyDictionary<string, INotificationSurface> channels, Func<AppSettings> settings, ITimeService time,
+        IScheduleService schedule, TimeProvider? clock = null)
     {
-        _surface = surface;
+        _channels = new(channels, StringComparer.Ordinal);
         _settings = settings;
-        _readDay = readDay;
-        _dispatch = dispatch;
+        _time = time;
+        _schedule = schedule;
+        _clock = clock ?? TimeProvider.System;
     }
+
+    public event Action<string, Exception>? Failed;
 
     public void Start()
     {
-        if (_started)
-            return;
-
-        _started = true;
-        _lastKey = CurrentKey(DateTime.Now);
-        _timer ??= new Timer(_ => QueueTick(), null, Timeout.Infinite, Timeout.Infinite);
-        _timer.Change(TimeSpan.Zero, TimeSpan.FromSeconds(1));
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_running) return;
+            _running = true;
+            _classroom.Reset();
+            _nextScheduleCheck = DateTimeOffset.MinValue;
+            _schedule.ProfileChanged += OnScheduleChanged;
+            _timer ??= _clock.CreateTimer(_ => Tick(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            Tick();
+        }
     }
 
     public void Stop()
     {
-        _timer?.Change(Timeout.Infinite, Timeout.Infinite);
-        _started = false;
-        Interlocked.Increment(ref _displayGeneration);
-        _prepareKey = null;
-        _prepareCountdownTarget = null;
-    }
-
-    private void QueueTick()
-    {
-        if (Interlocked.Exchange(ref _tickPending, 1) != 0) return;
-        _dispatch(() =>
+        lock (_gate)
         {
-            try { if (_started) OnTick(); }
-            finally { Volatile.Write(ref _tickPending, 0); }
-        });
-    }
-
-    private void OnTick()
-    {
-        if (!_settings().AllowNotification)
-            return;
-
-        UpdatePrepareCountdown();
-
-        var now = DateTime.Now;
-        var summary = _readDay(now);
-        var current = FindCurrent(summary.Slots, now.TimeOfDay);
-        var key = CurrentKey(summary, now.TimeOfDay, current);
-
-        if (key != _lastKey)
-        {
-            _lastKey = key;
-            _prepareKey = null;
-            if (key.StartsWith("course:", StringComparison.Ordinal))
-                ShowClassOn(now, current);
-            else if (key.StartsWith("break:", StringComparison.Ordinal))
-                ShowClassOff(now, current, summary);
+            if (!_running) return;
+            _running = false;
+            _schedule.ProfileChanged -= OnScheduleChanged;
+            _timer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            _queue.Clear();
+            _seen.Clear();
+            Finish();
         }
-
-        if (current is null || current.Value.Title == "课间休息")
-            TryShowPreparing(summary, now);
-        else
-            _prepareKey = null;
     }
 
-    private void TryShowPreparing(TodaySummary summary, DateTime now)
+    public void RefreshSchedule()
     {
-        var settings = _settings();
-        var notification = settings.Notification;
-        if (!settings.AllowMinorNotification ||
-            !notification.IsClassOnPreparingNotificationEnabled)
+        lock (_gate)
         {
-            _prepareKey = null;
-            return;
+            if (!_running) return;
+            _nextScheduleCheck = DateTimeOffset.MinValue;
+            Tick();
         }
+    }
 
-        var next = summary.Slots.FirstOrDefault(slot => slot.Start > now.TimeOfDay);
-        if (next is null)
+    private void OnScheduleChanged()
+    {
+        lock (_gate)
         {
-            _prepareKey = null;
-            return;
+            _classroom.Reset();
+            _queue.RemovePrefix(ClassroomReminders.Prefix);
+            ResetPreparing();
+            RefreshSchedule();
         }
+    }
 
-        var threshold = next.IsOutDoor
-            ? notification.OutDoorClassPreparingDeltaTime
-            : notification.ClassOnBreakReminderMinutes * 60;
-        var remaining = next.Start - now.TimeOfDay;
-        if (remaining <= TimeSpan.Zero || remaining > TimeSpan.FromSeconds(Math.Max(0, threshold)))
+    public bool Publish(NotificationRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        lock (_gate)
         {
-            _prepareKey = null;
-            return;
+            if (!_running || !_settings().AllowNotification || request.Id?.StartsWith(ClassroomReminders.Prefix, StringComparison.Ordinal) == true) return false;
+            var now = _clock.GetLocalNow();
+            if (!Enqueue(request, now)) return false;
+            Dispatch(now);
+            ArmTimer(now);
+            return true;
         }
-
-        var key = $"prepare:{next.Start}:{next.Subject}";
-        if (_prepareKey == key)
-            return;
-
-        _prepareKey = key;
-        ShowPreparing(next, remaining, notification);
     }
 
-    private void ShowPreparing(CourseSlot next, TimeSpan remaining, NotificationSettings notification)
+    private bool Enqueue(NotificationRequest request, DateTimeOffset now)
     {
-        if (!_surface.IsAvailable)
-            return;
-
-        var mask = next.IsOutDoor
-            ? notification.OutdoorClassOnPreparingMaskText
-            : notification.ClassOnPreparingMaskText;
-        var message = next.IsOutDoor
-            ? notification.OutdoorClassOnPreparingText
-            : notification.ClassOnPreparingText;
-        var teacher = notification.ShowTeacherName ? next.Teacher ?? "" : "";
-        var generation = BeginDisplay();
-        var countdownTarget = DateTime.Now.Add(remaining);
-        _prepareCountdownTarget = countdownTarget;
-        ShowMask(mask, "\uE0FF", "\uE54F");
-        var maskDuration = TimeSpan.FromSeconds(3);
-        var overlayDelay = remaining > maskDuration ? maskDuration : remaining;
-        var hideDelay = remaining > maskDuration ? remaining : maskDuration;
-        Schedule(generation, overlayDelay, () =>
+        if (string.IsNullOrWhiteSpace(request.Id) || string.IsNullOrWhiteSpace(request.Channel) || !_channels.TryGetValue(request.Channel, out var surface) ||
+            _active?.Id == request.Id || (_seen.TryGetValue(request.Id, out var until) && until > now)) return false;
+        try { if (!surface.IsAvailable) return false; }
+        catch (Exception ex) { Report(request.Channel, ex); return false; }
+        if (!_queue.Add(request, now)) return false;
+        if (_seen.Count >= 256)
         {
-            var countdown = countdownTarget - DateTime.Now;
-            if (countdown < TimeSpan.Zero)
-                countdown = TimeSpan.Zero;
-            _surface.ShowOverlay(
-                FormatPrepareCountdown(countdown),
-                next.Subject,
-                teacher,
-                next.TimeRange,
-                "下节课是：",
-                message,
-                true,
-                countdown);
-        });
-        Schedule(generation, hideDelay, _surface.Hide);
-    }
-
-    private void ShowClassOn(DateTime now, (string Title, TimeSpan Start, TimeSpan End)? current)
-    {
-        var notification = _settings().Notification;
-        if (!notification.IsClassOnNotificationEnabled || current is null)
-            return;
-
-        if (!_surface.IsAvailable)
-            return;
-
-        var generation = BeginDisplay();
-        ShowMask(notification.ClassOnMaskText, "\uE0FF", "\uE54F");
-        Schedule(generation, TimeSpan.FromSeconds(5), _surface.Hide);
-    }
-
-    private void ShowClassOff(
-        DateTime now,
-        (string Title, TimeSpan Start, TimeSpan End)? current,
-        TodaySummary summary)
-    {
-        var notification = _settings().Notification;
-        if (!notification.IsClassOffNotificationEnabled || current is null)
-            return;
-
-        if (!_surface.IsAvailable)
-            return;
-
-        var next = summary.Slots.FirstOrDefault(slot => slot.Start > now.TimeOfDay);
-        var generation = BeginDisplay();
-        ShowMask(notification.ClassOffMaskText, "\uE0FF", "\uE250");
-
-        if (next is null)
-        {
-            Schedule(generation, TimeSpan.FromSeconds(5), _surface.Hide);
-            return;
+            foreach (var key in _seen.Where(item => item.Value <= now).Select(item => item.Key).ToArray()) _seen.Remove(key);
+            if (_seen.Count >= 256) _seen.Remove(_seen.MinBy(item => item.Value).Key);
         }
-
-        var gap = next.Start - current.Value.Start;
-        var overlay = string.IsNullOrWhiteSpace(notification.ClassOffOverlayText)
-            ? $"本节{notification.ClassOffMaskText}长 {FormatDuration(gap)}"
-            : $"{notification.ClassOffOverlayText} · {FormatDuration(gap)}";
-        var teacher = notification.ShowTeacherName ? next.Teacher ?? "" : "";
-        Schedule(generation, TimeSpan.FromMilliseconds(1200), () =>
-            _surface.ShowOverlay(
-                overlay,
-                next.Subject,
-                teacher,
-                next.TimeRange,
-                "下节课是：",
-                "",
-                false,
-                TimeSpan.FromSeconds(6.8)));
-        Schedule(generation, TimeSpan.FromSeconds(8), _surface.Hide);
+        _seen[request.Id] = request.ExpiresAt;
+        if (_active is not null && _active.Priority < request.Priority) Finish();
+        return true;
     }
 
-    private int BeginDisplay()
+    public bool Cancel(string id)
     {
-        _prepareCountdownTarget = null;
-        return Interlocked.Increment(ref _displayGeneration);
-    }
-
-    private void UpdatePrepareCountdown()
-    {
-        if (_prepareCountdownTarget is not { } target)
-            return;
-
-        var remaining = target - DateTime.Now;
-        if (remaining <= TimeSpan.Zero)
+        lock (_gate)
         {
-            _prepareCountdownTarget = null;
-            return;
+            if (_queue.Remove(id)) return true;
+            if (_active is null || _active.Id != id) return false;
+            Finish();
+            var now = _clock.GetLocalNow();
+            Dispatch(now);
+            ArmTimer(now);
+            return true;
         }
-
-        _surface.UpdateCountdown(FormatPrepareCountdown(remaining));
     }
 
-    private static string FormatPrepareCountdown(TimeSpan remaining)
+    private void Tick()
     {
-        var seconds = Math.Max(0, (int)Math.Ceiling(remaining.TotalSeconds));
-        return $"距上课还剩 {seconds} 秒";
-    }
-
-    private async void Schedule(int generation, TimeSpan delay, Action action)
-    {
-        await Task.Delay(delay);
-        if (generation == _displayGeneration)
-            action();
-    }
-
-    private void ShowMask(
-        string text,
-        string leftGlyph = "\uE0FF",
-        string rightGlyph = "\uE54F")
-    {
-        _surface.ShowMask(text, leftGlyph, rightGlyph, _settings().AllowNotificationEffect);
-    }
-
-    public void DebugTriggerClassPreparing()
-    {
-        var now = DateTime.Now;
-        var summary = _readDay(now);
-        var next = summary.Slots.FirstOrDefault(slot => slot.Start > now.TimeOfDay);
-        if (next is not null)
+        lock (_gate)
         {
-            ShowPreparing(next, next.Start - now.TimeOfDay, _settings().Notification);
-            return;
+            if (!_running) return;
+            var now = _clock.GetLocalNow();
+            try
+            {
+                var settings = _settings();
+                if (!settings.AllowNotification || !settings.AllowMinorNotification || !settings.Notification.IsClassOnPreparingNotificationEnabled)
+                    ResetPreparing();
+                if (now >= _nextScheduleCheck)
+                {
+                    var day = _time.GetTodaySummary(_schedule.Profile, now.DateTime);
+                    _classroom.Evaluate(day, settings, now, request => Enqueue(request, now));
+                    _nextScheduleCheck = now.AddSeconds(30);
+                    if (day.Current is { } current) CheckAt(now, current.End - now.TimeOfDay);
+                    if (day.Next is { } next)
+                    {
+                        CheckAt(now, next.Start - now.TimeOfDay);
+                        var lead = next.IsOutDoor ? settings.Notification.OutDoorClassPreparingDeltaTime : (long)settings.Notification.ClassOnBreakReminderMinutes * 60;
+                        CheckAt(now, next.Start - now.TimeOfDay - TimeSpan.FromSeconds(Math.Clamp(lead, 0, 86400)));
+                    }
+                    CheckAt(now, TimeSpan.FromDays(1) - now.TimeOfDay);
+                }
+                if (!settings.AllowNotification) { _queue.Clear(); Finish(); }
+                else Dispatch(now);
+            }
+            catch (Exception ex)
+            {
+                _nextScheduleCheck = now.AddSeconds(5);
+                Report("schedule", ex);
+                Finish();
+            }
+            if (_running) ArmTimer(now);
         }
-
-        if (summary.Slots.Count > 0)
-            ShowPreparing(summary.Slots[0], TimeSpan.FromSeconds(60), _settings().Notification);
-        else
-            ShowPreparing(
-                new CourseSlot("演示课程", "演示课程", "", "", now.TimeOfDay + TimeSpan.FromMinutes(1),
-                    now.TimeOfDay + TimeSpan.FromMinutes(41)),
-                TimeSpan.FromMinutes(1),
-                _settings().Notification);
     }
 
-    public void DebugTriggerClassOn()
+    private void CheckAt(DateTimeOffset now, TimeSpan remaining)
     {
-        var now = DateTime.Now;
-        var current = FindCurrent(
-            _readDay(now).Slots,
-            now.TimeOfDay);
-        current ??= ("演示课程", now.TimeOfDay, now.TimeOfDay + TimeSpan.FromMinutes(40));
-        ShowClassOn(now, current);
+        if (remaining > TimeSpan.Zero && now + remaining < _nextScheduleCheck) _nextScheduleCheck = now + remaining;
     }
 
-    public void DebugTriggerClassOff()
+    private void ResetPreparing()
     {
-        var now = DateTime.Now;
-        var summary = _readDay(now);
-        var current = FindCurrent(summary.Slots, now.TimeOfDay);
-        current ??= ("课间休息", now.TimeOfDay, now.TimeOfDay + TimeSpan.FromMinutes(10));
-        ShowClassOff(now, current, summary);
+        _queue.RemovePrefix(ClassroomReminders.PreparingPrefix);
+        foreach (var id in _seen.Keys.Where(id => id.StartsWith(ClassroomReminders.PreparingPrefix, StringComparison.Ordinal)).ToArray()) _seen.Remove(id);
+        if (_active?.Id.StartsWith(ClassroomReminders.PreparingPrefix, StringComparison.Ordinal) == true) Finish();
     }
 
-    public void DebugTriggerTestNotification()
+    private void Dispatch(DateTimeOffset now)
     {
-        if (!_surface.IsAvailable)
-            return;
-
-        var generation = BeginDisplay();
-        ShowMask("测试提醒", "\uE0FF", "\uE54F");
-        Schedule(generation, TimeSpan.FromMilliseconds(1200), () =>
-            _surface.ShowOverlay(
-                "这是一条测试提醒",
-                "通知系统工作正常",
-                "",
-                DateTime.Now.ToString("HH:mm"),
-                "",
-                "",
-                false,
-                TimeSpan.FromSeconds(6.8)));
-        Schedule(generation, TimeSpan.FromSeconds(8), _surface.Hide);
+        while (_running)
+        {
+            var currentChannel = _active?.Channel ?? "dispatch";
+            try
+            {
+                if (_active != null && (now >= _end || !_channels[_active.Channel].IsAvailable)) Finish();
+                if (_active == null)
+                {
+                    if (_queue.Take(now) is not { } next) return;
+                    currentChannel = next.Channel;
+                    var surface = _channels[next.Channel];
+                    if (!surface.IsAvailable) continue;
+                    _active = next;
+                    _hasOverlay = false;
+                    _lastSeconds = -1;
+                    var duration = next.ExpiresAt - now < next.Duration ? next.ExpiresAt - now : next.Duration;
+                    _end = now + duration;
+                    _overlayAt = now + (next.MaskDuration < duration ? next.MaskDuration : duration);
+                    surface.ShowMask(next.Mask, next.LeftGlyph, next.RightGlyph, _settings().AllowNotificationEffect, duration);
+                }
+                if (_active is not { Overlay: { } overlay } request || now < _overlayAt) return;
+                var channel = _channels[request.Channel];
+                var seconds = overlay.CountdownTo is { } target ? (int)Math.Clamp(Math.Ceiling((target - now).TotalSeconds), 0, int.MaxValue) : -1;
+                if (!_hasOverlay)
+                {
+                    _hasOverlay = true;
+                    channel.ShowOverlay(seconds >= 0 ? $"距上课还剩 {seconds} 秒" : overlay.Caption, overlay.Subject, overlay.Teacher,
+                        overlay.Time, overlay.Prefix, overlay.Message, overlay.Vertical, _end - now);
+                }
+                else if (seconds >= 0 && seconds != _lastSeconds) channel.UpdateCountdown($"距上课还剩 {seconds} 秒");
+                _lastSeconds = seconds;
+                return;
+            }
+            catch (Exception ex)
+            {
+                Report(currentChannel, ex);
+                Finish();
+            }
+        }
     }
 
-    private string CurrentKey(DateTime now)
+    private void ArmTimer(DateTimeOffset now)
     {
-        var summary = _readDay(now);
-        return CurrentKey(summary, now.TimeOfDay, FindCurrent(summary.Slots, now.TimeOfDay));
+        if (!_running) return;
+        var due = _nextScheduleCheck;
+        if (_active is not null)
+        {
+            if (_end < due) due = _end;
+            if (!_hasOverlay && _active.Overlay != null && _overlayAt < due) due = _overlayAt;
+            if (_hasOverlay && _active.Overlay?.CountdownTo is { } target)
+            {
+                var next = target - TimeSpan.FromSeconds(Math.Max(0, _lastSeconds - 1));
+                if (next > now && next < due) due = next;
+            }
+        }
+        var delay = due - _clock.GetLocalNow();
+        _timer?.Change(delay < TimeSpan.FromMilliseconds(1) ? TimeSpan.FromMilliseconds(1) : delay, Timeout.InfiniteTimeSpan);
     }
 
-    private static string CurrentKey(
-        TodaySummary summary,
-        TimeSpan now,
-        (string Title, TimeSpan Start, TimeSpan End)? current)
+    private void Finish()
     {
-        if (current is { } c)
-            return c.Title == "课间休息" ? $"break:{c.Start}" : $"course:{c.Start}:{c.Title}";
-
-        if (summary.IsFinished)
-            return "finished";
-
-        return summary.Slots.Count == 0 ? "empty" : "before";
+        if (_active is not { } active) return;
+        _active = null;
+        try { _channels[active.Channel].Hide(); } catch (Exception ex) { Report(active.Channel, ex); }
     }
 
-    private static string FormatDuration(TimeSpan span)
+    private void Report(string origin, Exception error)
     {
-        if (span.TotalSeconds <= 0)
-            return "0 分钟";
-
-        var parts = new List<string>(3);
-        if (span.Hours > 0)
-            parts.Add($"{span.Hours} 小时");
-        if (span.Minutes > 0)
-            parts.Add(span.Seconds > 0 ? $"{span.Minutes} 分" : $"{span.Minutes} 分钟");
-        if (span.Seconds > 0)
-            parts.Add($"{span.Seconds} 秒");
-
-        return string.Join(" ", parts);
+        System.Diagnostics.Trace.TraceError("Notification {0}: {1}", origin, error.Message);
+        try { Failed?.Invoke(origin, error); } catch (Exception ex) { System.Diagnostics.Trace.TraceError("Notification observer: {0}", ex.Message); }
     }
+
+    private static string PreviewId => "preview/" + Guid.NewGuid().ToString("N");
+    private void Preview(Func<DateTimeOffset, NotificationRequest> create)
+    {
+        lock (_gate)
+        {
+            if (!_running || !_settings().AllowNotification) return;
+            Finish();
+            Publish(create(_clock.GetLocalNow()));
+        }
+    }
+
+    public void DebugTriggerClassPreparing() => Preview(now =>
+    {
+        var day = _time.GetTodaySummary(_schedule.Profile, now.DateTime);
+        return ClassroomReminders.Preparing(now, _settings().Notification, day.Next ?? day.Slots.FirstOrDefault() ?? ClassroomReminders.SampleCourse(now),
+            day.Next is { } next ? next.Start - now.TimeOfDay : TimeSpan.FromMinutes(1), PreviewId);
+    });
+
+    public void DebugTriggerClassOn() => Preview(now => ClassroomReminders.ClassOn(now, _settings().Notification, PreviewId));
+
+    public void DebugTriggerClassOff() => Preview(now => ClassroomReminders.ClassOff(now, _settings().Notification,
+        _time.GetTodaySummary(_schedule.Profile, now.DateTime).Next ?? ClassroomReminders.SampleCourse(now), now.TimeOfDay, PreviewId));
+
+    public void DebugTriggerTestNotification() => Preview(now => new(PreviewId, "测试提醒", now.AddSeconds(8), TimeSpan.FromMilliseconds(1200),
+        TimeSpan.FromSeconds(8), Overlay: new("这是一条测试提醒", "通知系统工作正常", "", now.ToString("HH:mm"))));
 
     public void Dispose()
     {
-        Stop();
-        _timer?.Dispose();
-        _timer = null;
-    }
-
-    private static (string Title, TimeSpan Start, TimeSpan End)? FindCurrent(
-        IReadOnlyList<CourseSlot> slots,
-        TimeSpan now)
-    {
-        for (var i = 0; i < slots.Count; i++)
+        lock (_gate)
         {
-            if (i > 0)
-            {
-                var gapStart = slots[i - 1].End;
-                var gapEnd = slots[i].Start;
-                if (gapEnd > gapStart && now >= gapStart && now < gapEnd)
-                    return ("课间休息", gapStart, gapEnd);
-            }
-
-            if (slots[i].Contains(now))
-                return (slots[i].Subject, slots[i].Start, slots[i].End);
+            Stop();
+            _disposed = true;
+            _timer?.Dispose();
+            _timer = null;
         }
-
-        return null;
     }
 }

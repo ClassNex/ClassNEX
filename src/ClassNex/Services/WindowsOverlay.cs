@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Avalonia;
 
 namespace ClassNex.Services;
 
@@ -39,6 +40,31 @@ internal static class WindowsOverlay
     [DllImport("user32.dll")]
     private static extern bool GetCursorPos(out Point lpPoint);
 
+    [DllImport("gdi32.dll")] private static extern nint CreateRoundRectRgn(int left, int top, int right, int bottom, int ellipseWidth, int ellipseHeight);
+    [DllImport("gdi32.dll")] private static extern int CombineRgn(nint result, nint first, nint second, int mode);
+    [DllImport("gdi32.dll")] private static extern bool DeleteObject(nint handle);
+    [DllImport("user32.dll")] private static extern int SetWindowRgn(nint window, nint region, bool redraw);
+
+    internal static bool SetInputRegion(nint window, PixelRect? island, int radius, PixelRect? toolbar, int toolRadius)
+    {
+        if (!OperatingSystem.IsWindows() || window == 0) return false;
+        if (island is not { } body) return SetWindowRgn(window, 0, true) != 0;
+        static nint Round(PixelRect r, int radius) => CreateRoundRectRgn(r.X, r.Y, r.Right + 1, r.Bottom + 1, 2 * radius, 2 * radius);
+        var region = Round(body, radius);
+        if (region == 0) return false;
+        if (toolbar is { } edit)
+        {
+            var extra = Round(edit, toolRadius);
+            if (extra == 0) { DeleteObject(region); return false; }
+            var combined = CombineRgn(region, region, extra, 2);
+            DeleteObject(extra);
+            if (combined == 0) { DeleteObject(region); return false; }
+        }
+        if (SetWindowRgn(window, region, true) != 0) return true;
+        DeleteObject(region);
+        return false;
+    }
+
     private static IntPtr GetExStyle(IntPtr hWnd) =>
         IntPtr.Size == 8 ? GetWindowLongPtr64(hWnd, GwlExStyle) : new IntPtr(GetWindowLong32(hWnd, GwlExStyle));
 
@@ -51,7 +77,7 @@ internal static class WindowsOverlay
     }
 
     
-    public static void SetClickThrough(IntPtr hWnd, bool enabled)
+    public static void SetClickThrough(IntPtr hWnd, bool enabled, bool keepNonActivating = false)
     {
         if (!OperatingSystem.IsWindows() || hWnd == IntPtr.Zero)
             return;
@@ -64,6 +90,7 @@ internal static class WindowsOverlay
                 style |= WsExTransparent | WsExLayered | WsExNoActivate;
             else
                 style &= ~(long)(WsExTransparent | WsExNoActivate);
+            if (keepNonActivating) style |= WsExNoActivate;
 
             SetExStyle(hWnd, new IntPtr(style));
         }

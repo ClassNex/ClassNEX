@@ -8,15 +8,17 @@
 
 ## 0. 一分钟上手
 
+日常开发分支是 `main`。从 `2949eff` 与重构分支 `aaba73d` 按功能合并，不用重置主线；旧分支验收见 [26.0 归档](docs/26.0-acceptance.md)。本轮实窗、旧布局迁移和回环身份验证见 [主线验收](docs/mainline-desktop-acceptance.md)。下文各节保留历史记录。
+
 ```powershell
 cd E:\ClassNex
+dotnet restore ClassNex.sln
 dotnet build src\ClassNex\ClassNex.csproj -c Debug -t:Rebuild
-$env:CLASSNEX_VERIFY = "1"
-.\src\ClassNex\bin\Debug\net10.0-windows10.0.19041.0\ClassNex.exe
+./tools/review_desktop.ps1 -Round my-review
 ```
 
 - 仓库：https://github.com/ClassNex/ClassNEX （GPL-3.0，分支 `main`）
-- 技术栈：.NET 10、Windows App SDK 1.8（原生设置和桌面浮窗）、Avalonia 11.3.12 + AvaloniaFluentUI（已有辅助窗口）、YamlDotNet 16.3.0。下文早期版本的界面记录不代表现版设置和浮窗。
+- 技术栈：.NET 10、Windows App SDK 1.8（原生设置）、Avalonia 11.3.12 + AvaloniaFluentUI（透明课表浮窗、档案、OOBE、登录、托盘）、YamlDotNet 16.3.0。
 - 数据目录：应用载荷的 `..\data\`，包含 `Settings.json`、`timetable.yaml` 等。要试改设置，请用隔离目录，不要复制真实的账户、密钥或集控配置。
 - 正文使用中文；按照 `AGENTS.md`，仓库代码不添加注释。
 - 调试开关（都在 Debug 构建生效）：
@@ -562,7 +564,7 @@ python tools\gh_release.py "E:\ClassNex\build\ClassNEX-26w41f-Alpha-win-x64.zip"
 
 `ClassNex.Core` 提供供课表、设置、时间、插件和通知共用的模型与接口。`ClassNex.Notification.Service`、`ClassNex.Plugin`、`ClassNex.AI`、`ClassNex.WinUI` 分别实现提醒、插件加载、助手和原生桌面界面，彼此不依赖。`ClassNex` 是客户端入口和服务组合根；`ClassNex.Central` 与 `ClassNex.Launcher` 单独生成。详见 `docs/ARCHITECTURE.md`、`docs/PLUGIN_SDK.md`。
 
-原生设置和浮窗使用 WinUI 3 控件与系统主题；外观不再由旧的设置卡片、图片图标或 Avalonia 动画决定。档案编辑器、OOBE、托盘和登录等辅助窗口仍复用原界面和账户服务。两套窗口共用主 STA、设置实例和便携数据目录。
+原生设置使用 WinUI `Frame` 与系统 Mica。桌面课表使用历史透明浮窗和独立日期、时间组件；所有窗口共用主 STA、设置实例和便携数据目录。
 
 ---
 
@@ -581,6 +583,6 @@ python tools\gh_release.py "E:\ClassNex\build\ClassNEX-26w41f-Alpha-win-x64.zip"
 
 > 读一下 `E:\ClassNex\HANDOFF.md`，然后我们继续做 ClassNEX。
 > 记住：ClassIsland 简称 CI，什么都要先参照 CI 的文件/源码（在 `E:\ci-source`，已 clone）；
-> 设置与桌面课表使用真正的 WinUI 3 和系统图标；其余既有辅助窗口使用 AvaloniaFluentUI。改文件不用 PowerShell 的 `Set-Content`（会写坏编码）；
+> 设置使用真正的 WinUI 3；桌面课表保留透明 Avalonia 浮窗，既有辅助窗口沿用 AvaloniaFluentUI。不要用 `Set-Content` 改源文件；
 > 打包上传要等我说，发布说明只写这一版。
 > 今天想做：<你要做的功能>
