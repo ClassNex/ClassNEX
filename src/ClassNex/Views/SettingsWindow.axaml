@@ -199,43 +199,66 @@
                                         </ResourceDictionary>
                                     </ResourceDictionary.ThemeDictionaries>
                                     <DataTemplate x:Key="HomeFeatureTemplate">
-                                        <Button Classes="home-feature" Click="OnDashboardFeatureClick" AutomationProperties.Name="{Binding FeatureTitle}">
-                                            <Grid RowDefinitions="48,*" RowSpacing="12">
-                                                <Grid Width="48" Height="48" HorizontalAlignment="Left">
-                                                    <Image Source="{Binding Icon}" IsVisible="{Binding !ShowAvatar}" RenderOptions.BitmapInterpolationMode="HighQuality"/>
-                                                    <Border IsVisible="{Binding ShowAvatar}" CornerRadius="24" ClipToBounds="True" Background="{DynamicResource ControlFillColorSecondaryBrush}">
-                                                        <Panel>
-                                                            <TextBlock Text="{Binding Initial}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="20"/>
-                                                            <Image Source="{Binding Avatar}" Stretch="UniformToFill"/>
-                                                        </Panel>
-                                                    </Border>
-                                                </Grid>
-                                                <StackPanel Grid.Row="1" Spacing="4">
-                                                    <TextBlock Text="{Binding FeatureTitle}" FontSize="14" TextTrimming="CharacterEllipsis"/>
-                                                    <TextBlock Text="{Binding FeatureDescription}" Classes="home-detail" MaxLines="3"/>
+                                        <Button Classes="home-feature" Width="{Binding $parent[ItemsControl].Tag}" Click="OnDashboardFeatureClick"
+                                                AutomationProperties.Name="{Binding FeatureTitle}" AutomationProperties.HelpText="{Binding FeatureAction}">
+                                            <Grid RowDefinitions="*,Auto">
+                                                <StackPanel Margin="20,16,20,16" Spacing="6">
+                                                    <Grid ColumnDefinitions="28,*" ColumnSpacing="8" Margin="0,0,0,4">
+                                                        <Grid Width="28" Height="28" VerticalAlignment="Center">
+                                                            <Image Source="{Binding Icon}" IsVisible="{Binding !ShowAvatar}" RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                                                            <Border IsVisible="{Binding ShowAvatar}" CornerRadius="14" ClipToBounds="True" Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                                                <Panel>
+                                                                    <TextBlock Text="{Binding Initial}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="14"/>
+                                                                    <Image Source="{Binding Avatar}" Stretch="UniformToFill"/>
+                                                                </Panel>
+                                                            </Border>
+                                                        </Grid>
+                                                        <TextBlock Classes="home-kicker" Grid.Column="1" Text="{Binding FeatureKicker}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                    </Grid>
+                                                    <TextBlock Classes="home-state-title" Text="{Binding FeatureTitle}" ToolTip.Tip="{Binding FeatureTitle}"/>
+                                                    <TextBlock Classes="home-detail home-card-detail" Text="{Binding FeatureDescription}" MaxLines="3"/>
                                                 </StackPanel>
-                                                <ui:FontIcon Classes="home-symbol" Grid.RowSpan="2" Glyph="&#xE8A7;" Margin="0,0,-12,-12" FontSize="14"
-                                                             Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom"/>
+                                                <Border Classes="home-feature-footer" Grid.Row="1" MinHeight="44" Padding="20,0" BorderThickness="0,1,0,0"
+                                                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
+                                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding FeatureAction}" FontSize="14" TextTrimming="CharacterEllipsis"/>
+                                                        <ui:FontIcon Classes="home-symbol home-chevron" Grid.Column="1" Glyph="&#xE76C;"/>
+                                                    </Grid>
+                                                </Border>
                                             </Grid>
                                         </Button>
                                     </DataTemplate>
                                     <DataTemplate x:Key="HomeEntryTemplate">
-                                        <Grid Margin="0,0,12,12">
-                                            <Button Classes="home-entry" AutomationProperties.Name="{Binding Title}" Click="OnDashboardEntryClick">
-                                                <Grid ColumnDefinitions="32,*,24" ColumnSpacing="12">
-                                                    <Image Source="{Binding Icon}" Width="32" Height="32" VerticalAlignment="Center" RenderOptions.BitmapInterpolationMode="HighQuality"/>
-                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
-                                                        <TextBlock Text="{Binding Title}" FontSize="14" TextTrimming="CharacterEllipsis"/>
-                                                        <TextBlock Text="{Binding Description}" Classes="home-detail" MaxLines="2"/>
-                                                    </StackPanel>
-                                                </Grid>
-                                            </Button>
-                                            <Button Classes="home-star" Theme="{StaticResource TransparentButton}" Click="OnDashboardFavoriteClick" Padding="4" Width="28" Height="28"
-                                                    HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,12,12,0"
-                                                    AutomationProperties.Name="{Binding FavoriteAction}" ToolTip.Tip="{Binding FavoriteAction}">
-                                                <ui:FontIcon Classes="home-symbol" FontSize="14" Glyph="{Binding FavoriteGlyph}"/>
-                                            </Button>
-                                        </Grid>
+                                        <Border Classes="home-group-row" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
+                                            <Grid ColumnDefinitions="*,48">
+                                                <Button Classes="home-entry" Theme="{StaticResource TransparentButton}" Click="OnDashboardEntryClick"
+                                                        AutomationProperties.Name="{Binding Title}" AutomationProperties.HelpText="{Binding Description}">
+                                                    <Grid ColumnDefinitions="28,*,Auto" ColumnSpacing="12">
+                                                        <Image Source="{Binding Icon}" Width="28" Height="28" VerticalAlignment="Center" RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                                                            <TextBlock Text="{Binding Title}" FontSize="14" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"/>
+                                                            <TextBlock Classes="home-detail home-card-detail" Text="{Binding Description}" MaxLines="2"/>
+                                                        </StackPanel>
+                                                        <ui:FontIcon Classes="home-symbol home-chevron" Grid.Column="2" Glyph="&#xE76C;"/>
+                                                    </Grid>
+                                                </Button>
+                                                <Button Classes="home-star" Grid.Column="1" Theme="{StaticResource TransparentButton}" Click="OnDashboardFavoriteClick"
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding FavoriteAction}" ToolTip.Tip="{Binding FavoriteAction}">
+                                                    <ui:FontIcon Classes="home-symbol" FontSize="16" Glyph="{Binding FavoriteGlyph}"/>
+                                                </Button>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                    <DataTemplate x:Key="HomeGroupTemplate">
+                                        <Border Classes="home-group" AutomationProperties.Name="{Binding Title}">
+                                            <StackPanel>
+                                                <StackPanel Margin="20,16,20,16" Spacing="4">
+                                                    <TextBlock Text="{Binding Title}" FontSize="20" TextWrapping="Wrap" AutomationProperties.HeadingLevel="2"/>
+                                                    <TextBlock Classes="home-detail home-card-detail" Text="{Binding Description}" MaxLines="2"/>
+                                                </StackPanel>
+                                                <ItemsControl Classes="home-group-entries" ItemsSource="{Binding Entries}" ItemTemplate="{StaticResource HomeEntryTemplate}"/>
+                                            </StackPanel>
+                                        </Border>
                                     </DataTemplate>
                                 </ResourceDictionary>
                             </Grid.Resources>
@@ -243,28 +266,65 @@
                                 <Style Selector="ui|FontIcon.home-symbol">
                                     <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
                                 </Style>
+                                <Style Selector="ui|FontIcon.home-chevron">
+                                    <Setter Property="FontSize" Value="12"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                </Style>
+                                <Style Selector="TextBlock.home-kicker">
+                                    <Setter Property="FontSize" Value="13"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                </Style>
+                                <Style Selector="TextBlock.home-state-title">
+                                    <Setter Property="FontSize" Value="20"/>
+                                    <Setter Property="TextWrapping" Value="Wrap"/>
+                                    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                    <Setter Property="MaxLines" Value="2"/>
+                                </Style>
                                 <Style Selector="TextBlock.home-detail">
                                     <Setter Property="FontSize" Value="12"/>
                                     <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
                                     <Setter Property="TextWrapping" Value="Wrap"/>
                                     <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
                                 </Style>
+                                <Style Selector="TextBlock.home-card-detail">
+                                    <Setter Property="FontSize" Value="13"/>
+                                </Style>
                                 <Style Selector="Button.home-feature, Button.home-entry">
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                                     <Setter Property="VerticalContentAlignment" Value="Stretch"/>
                                     <Setter Property="HorizontalAlignment" Value="Stretch"/>
                                     <Setter Property="VerticalAlignment" Value="Stretch"/>
+                                </Style>
+                                <Style Selector="Button.home-feature">
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="MinHeight" Value="180"/>
                                     <Setter Property="CornerRadius" Value="8"/>
                                     <Setter Property="BorderThickness" Value="1"/>
                                     <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}"/>
+                                    <Setter Property="Background" Value="{DynamicResource HomeFeatureSurface}"/>
                                 </Style>
-                                <Style Selector="Button.home-feature">
-                                    <Setter Property="Width" Value="232"/><Setter Property="Height" Value="172"/>
-                                    <Setter Property="Padding" Value="24"/><Setter Property="Background" Value="{DynamicResource HomeFeatureSurface}"/>
+                                <Style Selector="Border.home-group">
+                                    <Setter Property="CornerRadius" Value="8"/>
+                                    <Setter Property="BorderThickness" Value="1"/>
+                                    <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}"/>
+                                    <Setter Property="Background" Value="{DynamicResource HomeFeatureSurface}"/>
+                                    <Setter Property="ClipToBounds" Value="True"/>
+                                    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                                    <Setter Property="VerticalAlignment" Value="Top"/>
                                 </Style>
                                 <Style Selector="Button.home-entry">
-                                    <Setter Property="MinHeight" Value="96"/><Setter Property="Padding" Value="16"/>
-                                    <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}"/>
+                                    <Setter Property="MinHeight" Value="64"/>
+                                    <Setter Property="Padding" Value="18,9,4,9"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="CornerRadius" Value="0"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                </Style>
+                                <Style Selector="Button.home-star">
+                                    <Setter Property="Width" Value="36"/>
+                                    <Setter Property="Height" Value="36"/>
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="CornerRadius" Value="4"/>
                                 </Style>
                                 <Style Selector="RadioButton.home-tab">
                                     <Setter Property="Template">
@@ -304,6 +364,7 @@
                                 <ScrollViewer x:Name="DashboardFeatureScroll" Margin="36,0" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
                                               ScrollChanged="OnDashboardScrollChanged">
                                     <ItemsControl x:Name="DashboardFeatures" ItemTemplate="{StaticResource HomeFeatureTemplate}">
+                                        <ItemsControl.Tag><x:Double>300</x:Double></ItemsControl.Tag>
                                         <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="12"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                     </ItemsControl>
                                 </ScrollViewer>
@@ -329,8 +390,8 @@
                                     <TextBlock x:Name="DashboardCount" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                     <TextBox x:Name="DashboardQuery" Grid.Column="1" Width="240" Watermark="搜索设置入口" AutomationProperties.Name="搜索主页设置入口" TextChanged="OnDashboardQueryChanged"/>
                                 </Grid>
-                                <ItemsControl x:Name="DashboardEntries" Margin="0,0,-12,0" Tag="1" ItemTemplate="{StaticResource HomeEntryTemplate}">
-                                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="{Binding $parent[ItemsControl].Tag}"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                <ItemsControl x:Name="DashboardEntries" Tag="1" ItemTemplate="{StaticResource HomeGroupTemplate}">
+                                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="{Binding $parent[ItemsControl].Tag}" RowSpacing="12" ColumnSpacing="12"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                 </ItemsControl>
                                 <TextBlock x:Name="DashboardEmpty" Classes="home-detail" IsVisible="False" Margin="0,8,0,0"/>
                             </StackPanel>

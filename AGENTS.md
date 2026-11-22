@@ -36,7 +36,7 @@ ClassNEX，ClassIsland 风格的课表应用。Avalonia 11 + AvaloniaFluentUI，
 ## 当前状态
 
 持有者：无
-上次完成：按 TubaWinUi3 的实物布局重做客户端设置窗口。48 高标题栏、200 宽侧栏、独立主页和设置总览已接入原有业务；键盘搜索可跳到实际设置和组件标签。设置内使用本地微软 Fluent 彩色图标与系统符号；未登录问候仍为“Hello，请先登录”。桌面浮窗、通知、OOBE 和集控未改。
+上次完成：已交付 TubaWinUi3 风格的客户端设置窗口，以及单独一轮 Windows 设置风格的首页卡片优化。上排显示账户、课表等实际状态，整卡可翻页；下方九个入口分成“课表与桌面”和“账户与应用”，星标与导航独立。修复从收藏返回全部时列表偶尔未恢复。侧栏、横幅、未登录问候、原偏好以及桌面浮窗、通知、OOBE 和集控均保留。
 改了文件：`src/ClassNex/Views/SettingsWindow*`、`src/ClassNex/Styles/{CiPalette*,SettingsIcons.cs}`、`src/ClassNex/Assets/SettingsIcons/`、`src/ClassNex/{ClassNex.csproj,Services/WidgetSettingsBuilder.cs,ViewModels/WidgetItem.cs}`、`tools/{capture_window,verify_settings}.ps1`、`HANDOFF.md`、`AGENTS.md`。
-进行中：全量 Debug 构建 0 警告、0 错误。通过 `tools/verify_settings.ps1` 在全新的匿名副本中验证；不要复用曾经登录的测试副本，也不要提交 `build` 里的参考素材或截图。
-下一步：在已验证的设置壳上单独优化首页大卡片和设置入口的视觉风格；不打包或打发布标签。
+进行中：两阶段均已完成。全量 Debug 构建 0 警告、0 错误；最终通过 `tools/verify_settings.ps1` 在未登录、关闭集控的独立副本中验证 40 项，包括两种主题、宽窄窗、收藏恢复、大卡片偏好、键盘导航和设置回写。未打包或创建发布标签。
+下一步：如需再次验收，运行 `tools/verify_settings.ps1`，按输出路径查看八张截图。不要复用曾经登录的测试副本，也不要提交 `build` 下的测试数据、截图与参考程序素材；发布等待用户另行要求。

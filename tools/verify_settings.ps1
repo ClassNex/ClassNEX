@@ -84,8 +84,10 @@ $loopback = 'http://127.0.0.1:1'
 $settings = [ordered]@{
     IsOobeCompleted = $true; CentralManagement = @{ IsEnabled = $false; ServerUrl = $loopback }
     AccountEndpoint = $loopback; NexApiBaseUrl = $loopback
+    ShowStartupSplash = $false; IsMainWindowVisible = $false
     IsNexVoiceWakeEnabled = $false; IsNexEdgeBarEnabled = $false
-    IsClassOnNotificationEnabled = $false; IsClassOnPreparingNotificationEnabled = $false; IsClassOffNotificationEnabled = $false
+    AllowNotification = $false
+    Notification = @{ IsClassOnNotificationEnabled = $false; IsClassOnPreparingNotificationEnabled = $false; IsClassOffNotificationEnabled = $false }
 }
 [IO.File]::WriteAllText((Join-Path $dataDir 'Settings.json'), ($settings | ConvertTo-Json -Depth 3), $utf8)
 [IO.File]::WriteAllText((Join-Path $dataDir '.test-fixture'), 'ClassNEX settings verification', $utf8)
@@ -127,10 +129,10 @@ try {
     Write-Host $report.TrimEnd()
     $lines = $report -split '\r?\n'
     if ($lines -match '^FAIL\b') { throw "Settings verification failed: $logPath" }
-    foreach ($required in 'signed-out greeting', 'favorites filter and persistence', 'slider writes real setting', 'toggle writes real setting') {
+    foreach ($required in 'signed-out greeting', 'dashboard groups contain the nine distinct real entries', 'compact card fits without horizontal page overflow', 'favorites filter and persistence', 'grouped row opens the matching settings page', 'slider writes real setting', 'toggle writes real setting') {
         if ($lines -notcontains "PASS $required") { throw "Incomplete report, missing '$required': $logPath" }
     }
-    foreach ($shot in 'home_light', 'home_dark', 'home_narrow', 'appearance_narrow', 'overview_dark') {
+    foreach ($shot in 'home_light', 'home_dark', 'home_narrow', 'cards_light', 'cards_dark', 'cards_narrow', 'appearance_narrow', 'overview_dark') {
         $image = Get-Item -LiteralPath (Join-Path $appDir "_settings_$shot.png")
         if ($image.Length -eq 0) { throw "Empty screenshot: $($image.FullName)" }
     }

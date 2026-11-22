@@ -12,6 +12,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using ClassNex.Models;
 using ClassNex.Services;
 using ClassNex.Styles;
 
@@ -19,19 +20,30 @@ namespace ClassNex.Views;
 
 public partial class SettingsWindow
 {
-    private readonly List<DashboardEntry> _dashboardEntries = [];
+    private const double DashboardFeatureGap = 12;
+    private const double DashboardMinimumCardWidth = 360;
+    private readonly Dictionary<string, DashboardEntry> _dashboardEntries = new(StringComparer.Ordinal);
+    private DashboardGroup[] _dashboardGroups = [];
     private readonly List<string> _dashboardFeatures = ["account", "profile", "appearance", "notification", "widgets"];
     private readonly HashSet<string> _dashboardFavorites = [];
     private Bitmap? _dashboardAvatar;
     private (string? Path, DateTime Modified) _dashboardAvatarStamp;
     private bool _dashboardInitialized;
+    private bool _dashboardFavoritesOnly;
+    private int _dashboardRefreshQueued;
+    private int _dashboardFirstCard;
+    private int _dashboardVisibleCards = 1;
+    private bool _dashboardAlignmentQueued;
 
     private sealed record DashboardPreferences(string[]? Featured, string[]? Favorites);
+    private sealed record DashboardGroup(string Title, string Description, IReadOnlyList<DashboardEntry> Entries);
 
-    private sealed class DashboardEntry(string key, string title, string description, IImage icon) : INotifyPropertyChanged
+    private sealed class DashboardEntry(string key, string title, string description, string action) : INotifyPropertyChanged
     {
+        private string _featureKicker = title;
         private string _featureTitle = title;
         private string _featureDescription = description;
+        private string _featureAction = action;
         private bool _favorite;
         private bool _showAvatar;
         private string _initial = "";
@@ -40,9 +52,11 @@ public partial class SettingsWindow
         public string Key { get; } = key;
         public string Title { get; } = title;
         public string Description { get; } = description;
-        public IImage Icon { get; } = icon;
+        public IImage Icon { get; } = SettingsNavigationIcon(key);
+        public string FeatureKicker { get => _featureKicker; set => Set(ref _featureKicker, value); }
         public string FeatureTitle { get => _featureTitle; set => Set(ref _featureTitle, value); }
         public string FeatureDescription { get => _featureDescription; set => Set(ref _featureDescription, value); }
+        public string FeatureAction { get => _featureAction; set => Set(ref _featureAction, value); }
         public bool ShowAvatar { get => _showAvatar; set => Set(ref _showAvatar, value); }
         public string Initial { get => _initial; set => Set(ref _initial, value); }
         public Bitmap? Avatar { get => _avatar; set => Set(ref _avatar, value); }
@@ -74,38 +88,52 @@ public partial class SettingsWindow
     {
         if (_dashboardInitialized) return;
         _dashboardInitialized = true;
-        (string Key, string Name, string Detail)[] definitions =
+        _dashboardGroups =
         [
-            ("profile", "今日课表", "查看当前与下一节课，在档案编辑器里调整课程和作息。"),
-            ("account", "ClassNEX 账户", "查看头像、用户名和邮箱，管理浏览器授权与登录。"),
-            ("basic", "基本设置", "开机时启动、学期开始日期和托盘点击行为。"),
-            ("appearance", "外观", "调整主题、字号、背景透明度和主界面缩放。"),
-            ("window", "窗口", "设置桌面课表的位置、排列、淡化与鼠标穿透。"),
-            ("widgets", "主界面组件", "添加、启用或排列桌面课表中的各类组件。"),
-            ("notification", "课堂提醒", "调整课前、上课、下课提醒的内容与时长。"),
-            ("nex", "NEX Intelligence", "打开助手设置，管理对话、唤醒和默认权限。"),
-            ("about", "关于 ClassNEX", "查看当前版本、项目信息、许可与欢迎向导。")
+            new("课表与桌面", "课程、提醒和桌面课表的显示方式。",
+            [
+                new("profile", "今日课表", "查看当前与下一节课，在档案编辑器里调整课程和作息。", "编辑课表"),
+                new("notification", "课堂提醒", "调整课前、上课、下课提醒的内容与时长。", "设置提醒"),
+                new("appearance", "外观", "调整主题、字号、背景透明度和主界面缩放。", "调整外观"),
+                new("window", "窗口", "设置桌面课表的位置、排列、淡化与鼠标穿透。", "设置窗口"),
+                new("widgets", "主界面组件", "添加、启用或排列桌面课表中的各类组件。", "管理组件")
+            ]),
+            new("账户与应用", "账户资料、启动选项、助手和版本信息。",
+            [
+                new("account", "ClassNEX 账户", "查看头像、用户名和邮箱，管理浏览器授权与登录。", "查看账户"),
+                new("basic", "基本设置", "开机时启动、学期开始日期和托盘点击行为。", "打开基本设置"),
+                new("nex", "NEX Intelligence", "打开助手设置，管理对话、唤醒和默认权限。", "打开助手设置"),
+                new("about", "关于 ClassNEX", "查看当前版本、项目信息、许可与欢迎向导。", "查看版本信息")
+            ])
         ];
-        foreach (var (key, title, detail) in definitions)
-            _dashboardEntries.Add(new(key, title, detail, SettingsNavigationIcon(key)));
+        foreach (var entry in _dashboardGroups.SelectMany(group => group.Entries))
+            _dashboardEntries.Add(entry.Key, entry);
         LoadDashboardPreferences();
-        foreach (var entry in _dashboardEntries) entry.Favorite = _dashboardFavorites.Contains(entry.Key);
+        foreach (var entry in _dashboardEntries.Values) entry.Favorite = _dashboardFavorites.Contains(entry.Key);
+        DashboardFeatures.Tag = DashboardMinimumCardWidth;
         DisplayDashboardFeatures();
         FilterDashboard();
         ResizeDashboard(PageHome.Bounds.Width);
-        AppServices.Schedule.ProfileChanged += OnDashboardScheduleChanged;
+        AppServices.Schedule.ProfileChanged += OnDashboardSourceChanged;
+        AppServices.SettingsChanged += OnDashboardSourceChanged;
         Closed += (_, _) =>
         {
-            AppServices.Schedule.ProfileChanged -= OnDashboardScheduleChanged;
+            AppServices.Schedule.ProfileChanged -= OnDashboardSourceChanged;
+            AppServices.SettingsChanged -= OnDashboardSourceChanged;
             _dashboardAvatar?.Dispose();
             _dashboardAvatar = null;
         };
     }
 
-    private void OnDashboardScheduleChanged() => Dispatcher.UIThread.Post(() =>
+    private void OnDashboardSourceChanged()
     {
-        if (PageHome.IsVisible && IsVisible) RefreshSettingsDashboardState();
-    });
+        if (Interlocked.Exchange(ref _dashboardRefreshQueued, 1) != 0) return;
+        Dispatcher.UIThread.Post(() =>
+        {
+            Interlocked.Exchange(ref _dashboardRefreshQueued, 0);
+            if (PageHome.IsVisible && IsVisible) RefreshSettingsDashboardState();
+        }, DispatcherPriority.Background);
+    }
 
     private void RefreshSettingsDashboardState()
     {
@@ -116,9 +144,10 @@ public partial class SettingsWindow
         var name = signedIn && !string.IsNullOrWhiteSpace(user!.DisplayName) ? user.DisplayName.Trim() : "同学";
         var greeting = now.Hour switch { >= 5 and < 11 => "早上好", >= 11 and < 17 => "中午好", _ => "晚上好" };
         HomeGreetingText.Text = signedIn ? $"{greeting}，{name}" : "Hello，请先登录";
-        var account = _dashboardEntries.First(item => item.Key == "account");
-        account.FeatureTitle = signedIn ? name : "登录 ClassNEX 账户";
-        account.FeatureDescription = signedIn ? $"已登录 · {(string.IsNullOrWhiteSpace(user!.Email) ? "未提供邮箱" : user.Email.Trim())}" : "通过浏览器安全登录，自动同步头像、用户名和邮箱。";
+        var account = _dashboardEntries["account"];
+        account.FeatureTitle = signedIn ? name : "尚未登录";
+        account.FeatureDescription = signedIn ? (string.IsNullOrWhiteSpace(user!.Email) ? "当前账户未提供邮箱。" : user.Email.Trim()) : "使用浏览器登录后，这里会显示你的头像、用户名和邮箱。";
+        account.FeatureAction = signedIn ? "查看账户" : "登录账户";
         account.Initial = AccountAvatar.Initial(name);
         account.ShowAvatar = signedIn;
         var path = signedIn ? AccountService.AvatarImagePath : null;
@@ -145,11 +174,50 @@ public partial class SettingsWindow
         }
         var today = AppServices.Time.GetTodaySummary(AppServices.Schedule.Profile, now);
         var course = today.Current ?? today.Next ?? today.Slots.LastOrDefault();
-        var timetable = _dashboardEntries.First(item => item.Key == "profile");
-        var courseName = course is not null && !string.IsNullOrWhiteSpace(course.Subject) ? course.Subject : course?.DisplayName;
-        timetable.FeatureTitle = course is null ? "今天没有课程" : $"{(today.Current is not null ? "正在上课" : today.Next is not null ? "下一节" : "今日最后一节")} · {courseName}";
-        timetable.FeatureDescription = course is null ? $"{now:M月d日 dddd} · 点击编辑档案，添加课程与作息。"
+        var timetable = _dashboardEntries["profile"];
+        timetable.FeatureKicker = course is null ? "今日课表" : $"今日课表 · {(today.Current is not null ? "正在上课" : today.Next is not null ? "下一节" : "最后一节")}";
+        timetable.FeatureTitle = course is null ? "今天没有课程" : !string.IsNullOrWhiteSpace(course.Subject) ? course.Subject : course.DisplayName;
+        timetable.FeatureDescription = course is null ? $"{now:M月d日 dddd} · 可在档案编辑器中添加课程与作息。"
             : $"{course.TimeRange}{(string.IsNullOrWhiteSpace(course.Detail) ? "" : " · " + course.Detail)}\n今日 {today.Slots.Count} 节课，已完成 {today.Slots.Count(item => item.End <= now.TimeOfDay)} 节。";
+        RefreshDashboardSettingsCards();
+    }
+
+    private void RefreshDashboardSettingsCards()
+    {
+        var settings = AppServices.Settings;
+        var appearance = _dashboardEntries["appearance"];
+        appearance.FeatureTitle = settings.ThemeMode switch { "dark" => "深色主题", "light" => "浅色主题", _ => "跟随系统主题" };
+        appearance.FeatureDescription = $"主界面缩放 {settings.MainWindowScale:0.##} 倍 · 背景不透明度 {settings.BackgroundOpacity:P0}";
+
+        var reminder = _dashboardEntries["notification"];
+        var options = settings.Notification;
+        reminder.FeatureTitle = settings.AllowNotification ? "课堂提醒已开启" : "课堂提醒已关闭";
+        var preparing = settings.AllowMinorNotification && options.IsClassOnPreparingNotificationEnabled ? $"室内课提前 {options.ClassOnBreakReminderMinutes} 分钟提醒" : "课前提醒已关闭";
+        reminder.FeatureDescription = settings.AllowNotification
+            ? $"{preparing}\n上课提醒：{OnOff(options.IsClassOnNotificationEnabled)} · 下课提醒：{OnOff(options.IsClassOffNotificationEnabled)}"
+            : "当前不显示课前、上课和下课提醒。";
+
+        var widgets = _dashboardEntries["widgets"];
+        widgets.FeatureTitle = $"已启用 {settings.Widgets.Count(widget => widget.IsEnabled)} 个组件";
+        widgets.FeatureDescription = $"布局中共有 {settings.Widgets.Count} 个组件，可调整字号和排列顺序。";
+
+        var window = _dashboardEntries["window"];
+        window.FeatureTitle = settings.Orientation == LayoutOrientation.Vertical ? "纵向排列" : "横向排列";
+        window.FeatureDescription = settings.IsClickThrough ? "鼠标穿透已开启，点击会落到后方的窗口。" : "鼠标穿透已关闭，桌面课表可以接收点击。";
+
+        var basic = _dashboardEntries["basic"];
+        basic.FeatureTitle = settings.RunAtStartup ? "开机时自动启动" : "手动启动应用";
+        var trayAction = settings.TrayClickBehavior switch { 1 => "打开应用设置", 2 => "打开档案编辑器", _ => "显示或隐藏主界面" };
+        basic.FeatureDescription = $"单周起始日 {settings.SingleWeekStartTime:yyyy/M/d}\n点击托盘图标：{trayAction}";
+
+        var nex = _dashboardEntries["nex"];
+        nex.FeatureTitle = settings.IsNexIntelligenceEnabled ? "NEX 助手已开启" : "NEX 助手已关闭";
+        nex.FeatureDescription = settings.IsNexIntelligenceEnabled
+            ? $"侧边唤醒条：{OnOff(settings.IsNexEdgeBarEnabled)} · 语音唤醒：{OnOff(settings.IsNexVoiceWakeEnabled)}"
+            : "可在助手设置中开启对话与唤醒。";
+        _dashboardEntries["about"].FeatureTitle = VersionText.Text ?? "ClassNEX";
+
+        static string OnOff(bool enabled) => enabled ? "开" : "关";
     }
 
     private static string DashboardPreferencesPath => Path.Combine(SettingsService.DataDirectory, "SettingsHome.json");
@@ -161,14 +229,13 @@ public partial class SettingsWindow
             if (!File.Exists(DashboardPreferencesPath)) return;
             var saved = JsonSerializer.Deserialize<DashboardPreferences>(File.ReadAllText(DashboardPreferencesPath));
             if (saved is null) return;
-            var keys = _dashboardEntries.Select(item => item.Key).ToHashSet(StringComparer.Ordinal);
-            var featured = saved.Featured?.Where(keys.Contains).Distinct().ToArray();
+            var featured = saved.Featured?.Where(_dashboardEntries.ContainsKey).Distinct().ToArray();
             if (featured is { Length: > 0 })
             {
                 _dashboardFeatures.Clear();
                 _dashboardFeatures.AddRange(featured);
             }
-            if (saved.Favorites is not null) _dashboardFavorites.UnionWith(saved.Favorites.Where(keys.Contains));
+            if (saved.Favorites is not null) _dashboardFavorites.UnionWith(saved.Favorites.Where(_dashboardEntries.ContainsKey));
         }
         catch (Exception error) when (error is JsonException or IOException or UnauthorizedAccessException)
         {
@@ -191,23 +258,35 @@ public partial class SettingsWindow
         }
     }
 
-    private void DisplayDashboardFeatures() => DashboardFeatures.ItemsSource = _dashboardFeatures.Select(key => _dashboardEntries.First(entry => entry.Key == key)).ToArray();
+    private void DisplayDashboardFeatures()
+    {
+        DashboardFeatures.ItemsSource = _dashboardFeatures.Select(key => _dashboardEntries[key]).ToArray();
+        ResizeDashboardFeatures(DashboardFeatureScroll.Viewport.Width);
+        QueueDashboardAlignment();
+    }
 
     private void FilterDashboard()
     {
         if (!_dashboardInitialized || DashboardEntries is null) return;
-        var favoritesOnly = DashboardFavoritesTab.IsChecked == true;
+        var favoritesOnly = _dashboardFavoritesOnly;
         var query = DashboardQuery.Text?.Trim() ?? "";
-        var items = _dashboardEntries.Where(entry => (!favoritesOnly || entry.Favorite) && (query.Length == 0 || entry.Title.Contains(query, StringComparison.OrdinalIgnoreCase) || entry.Description.Contains(query, StringComparison.OrdinalIgnoreCase))).ToArray();
-        DashboardEntries.ItemsSource = items;
-        DashboardCount.Text = $"{(favoritesOnly ? "收藏" : "全部设置")} · {items.Length} 个入口";
-        DashboardEmpty.IsVisible = items.Length == 0;
-        DashboardEmpty.Text = query.Length != 0 ? "没有匹配的设置入口。" : "还没有收藏。点击设置卡片右上角的星标，即可在这里快速打开。";
+        bool Matches(DashboardEntry entry) => (!favoritesOnly || entry.Favorite) && (query.Length == 0 ||
+            entry.Title.Contains(query, StringComparison.OrdinalIgnoreCase) || entry.Description.Contains(query, StringComparison.OrdinalIgnoreCase));
+        var groups = _dashboardGroups.Select(group => group with { Entries = group.Entries.Where(Matches).ToArray() })
+            .Where(group => group.Entries.Count != 0).ToArray();
+        DashboardEntries.ItemsSource = groups;
+        ResizeDashboardGroups(PageHome.Bounds.Width);
+        var count = groups.Sum(group => group.Entries.Count);
+        DashboardCount.Text = $"{(favoritesOnly ? "收藏" : "全部设置")} · {count} 个入口";
+        DashboardEmpty.IsVisible = count == 0;
+        DashboardEmpty.Text = query.Length != 0 ? "没有匹配的设置入口。" : "还没有收藏。点击设置入口右侧的星标，即可在这里快速打开。";
     }
 
     private void OnDashboardFilterChanged(object? sender, RoutedEventArgs e)
     {
-        if (sender is RadioButton { IsChecked: true }) FilterDashboard();
+        if (sender is not RadioButton { IsChecked: true } selected) return;
+        _dashboardFavoritesOnly = selected == DashboardFavoritesTab;
+        FilterDashboard();
     }
     private void OnDashboardQueryChanged(object? sender, TextChangedEventArgs e) => FilterDashboard();
     private void OnDashboardSizeChanged(object? sender, SizeChangedEventArgs e) => ResizeDashboard(e.NewSize.Width);
@@ -218,18 +297,87 @@ public partial class SettingsWindow
         DashboardArtwork.Width = Math.Clamp(width - 200, 0, 750);
         DashboardArtwork.Opacity = Math.Clamp((width - 400) / 400, .42, 1);
         DashboardQuery.Width = Math.Min(240, Math.Max(110, (width - 72) * 0.44));
-        var columns = Math.Max(1, (int)((width - 60) / 248));
-        DashboardEntries.Tag = columns;
+        ResizeDashboardGroups(width);
+        var viewport = DashboardFeatureScroll.Viewport.Width;
+        ResizeDashboardFeatures(viewport > 0 ? viewport : width - DashboardFeatureScroll.Margin.Left - DashboardFeatureScroll.Margin.Right);
     }
 
-    private void OnDashboardPrevious(object? sender, RoutedEventArgs e) => DashboardFeatureScroll.Offset = new Vector(Math.Max(0, DashboardFeatureScroll.Offset.X - 244), 0);
-    private void OnDashboardNext(object? sender, RoutedEventArgs e) => DashboardFeatureScroll.Offset = new Vector(Math.Min(DashboardFeatureScroll.Extent.Width, DashboardFeatureScroll.Offset.X + 244), 0);
+    private void ResizeDashboardGroups(double width)
+    {
+        var room = width - DashboardLibrary.Margin.Left - DashboardLibrary.Margin.Right;
+        DashboardEntries.Tag = room >= 2 * DashboardMinimumCardWidth + DashboardFeatureGap && DashboardEntries.ItemCount > 1 ? 2 : 1;
+    }
+
+    private void ResizeDashboardFeatures(double viewport)
+    {
+        if (!double.IsFinite(viewport) || viewport <= 0 || _dashboardFeatures.Count == 0) return;
+        var visible = Math.Clamp((int)((viewport + DashboardFeatureGap) / (DashboardMinimumCardWidth + DashboardFeatureGap)), 1, Math.Min(3, _dashboardFeatures.Count));
+        var width = (viewport - (visible - 1) * DashboardFeatureGap) / visible;
+        if (_dashboardVisibleCards == visible && DashboardFeatures.Tag is double previous && Math.Abs(previous - width) < .01) return;
+        _dashboardVisibleCards = visible;
+        DashboardFeatures.Tag = width;
+        QueueDashboardAlignment();
+    }
+
+    private int DashboardLastStart => Math.Max(0, _dashboardFeatures.Count - _dashboardVisibleCards);
+
+    private double DashboardCardOffset(int index)
+    {
+        if (index <= 0) return 0;
+        if (index >= DashboardLastStart) return Math.Max(0, DashboardFeatureScroll.Extent.Width - DashboardFeatureScroll.Viewport.Width);
+        if (DashboardFeatures.ContainerFromIndex(index) is { } container && container.Bounds.X > 0) return container.Bounds.X;
+        return DashboardFeatures.Tag is double width ? index * (width + DashboardFeatureGap) : 0;
+    }
+
+    private void ScrollDashboardToCard(int index)
+    {
+        _dashboardFirstCard = Math.Clamp(index, 0, DashboardLastStart);
+        DashboardFeatureScroll.Offset = new Vector(DashboardCardOffset(_dashboardFirstCard), 0);
+        UpdateDashboardArrows();
+    }
+
+    private void QueueDashboardAlignment()
+    {
+        if (_dashboardAlignmentQueued) return;
+        _dashboardAlignmentQueued = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _dashboardAlignmentQueued = false;
+            if (DashboardFeatureScroll.Viewport.Width > 0) ScrollDashboardToCard(_dashboardFirstCard);
+        }, DispatcherPriority.Loaded);
+    }
+
+    private void OnDashboardPrevious(object? sender, RoutedEventArgs e) => StepDashboardFeature(-1);
+    private void OnDashboardNext(object? sender, RoutedEventArgs e) => StepDashboardFeature(1);
+
+    private void StepDashboardFeature(int direction)
+    {
+        var offset = DashboardFeatureScroll.Offset.X;
+        for (var i = direction > 0 ? 1 : DashboardLastStart - 1; i >= 0 && i <= DashboardLastStart; i += direction)
+            if ((DashboardCardOffset(i) - offset) * direction > 1)
+            {
+                ScrollDashboardToCard(i);
+                return;
+            }
+    }
 
     private void OnDashboardScrollChanged(object? sender, ScrollChangedEventArgs e)
     {
-        if (DashboardPrevious is null || DashboardNext is null) return;
-        var end = DashboardFeatureScroll.Extent.Width - DashboardFeatureScroll.Viewport.Width;
-        DashboardPrevious.IsVisible = DashboardNext.IsVisible = end > 1;
+        if (DashboardPrevious is null || DashboardNext is null || !_dashboardInitialized) return;
+        if (e.ViewportDelta.X != 0 || e.ExtentDelta.X != 0)
+        {
+            ResizeDashboardFeatures(DashboardFeatureScroll.Viewport.Width);
+            QueueDashboardAlignment();
+        }
+        else if (!_dashboardAlignmentQueued && e.OffsetDelta.X != 0 && DashboardFeatures.Tag is double width)
+            _dashboardFirstCard = Math.Clamp((int)Math.Round(DashboardFeatureScroll.Offset.X / (width + DashboardFeatureGap)), 0, DashboardLastStart);
+        UpdateDashboardArrows();
+    }
+
+    private void UpdateDashboardArrows()
+    {
+        var end = Math.Max(0, DashboardFeatureScroll.Extent.Width - DashboardFeatureScroll.Viewport.Width);
+        DashboardPrevious.IsVisible = DashboardNext.IsVisible = DashboardLastStart > 0 && end > 1;
         DashboardPrevious.IsEnabled = DashboardFeatureScroll.Offset.X > 1;
         DashboardNext.IsEnabled = DashboardFeatureScroll.Offset.X < end - 1;
     }
@@ -254,15 +402,17 @@ public partial class SettingsWindow
         entry.Favorite = !entry.Favorite;
         if (entry.Favorite) _dashboardFavorites.Add(entry.Key); else _dashboardFavorites.Remove(entry.Key);
         SaveDashboardPreferences();
-        if (DashboardFavoritesTab.IsChecked == true) FilterDashboard();
+        if (_dashboardFavoritesOnly) FilterDashboard();
     }
 
-    private void OnDashboardEditFeatures(object? sender, RoutedEventArgs e)
+    private void OnDashboardEditFeatures(object? sender, RoutedEventArgs e) => CreateDashboardFeaturePicker().ShowAt(DashboardEditFeatures);
+
+    private Flyout CreateDashboardFeaturePicker()
     {
         var panel = new StackPanel { Spacing = 6, MinWidth = 224 };
         panel.Children.Add(new TextBlock { Text = "选择显示在主页顶部的大卡片", Margin = new Thickness(0, 0, 0, 6) });
         var toggles = new List<(DashboardEntry Entry, ToggleSwitch Toggle)>();
-        foreach (var entry in _dashboardEntries)
+        foreach (var entry in _dashboardGroups.SelectMany(group => group.Entries))
         {
             var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 12 };
             row.Children.Add(new TextBlock { Text = entry.Title, VerticalAlignment = VerticalAlignment.Center });
@@ -285,7 +435,7 @@ public partial class SettingsWindow
                 SaveDashboardPreferences();
             };
         }
-        new Flyout { Content = new ScrollViewer { Content = panel, MaxHeight = Math.Min(400, Math.Max(200, Bounds.Height - 160)) } }.ShowAt(DashboardEditFeatures);
+        return new Flyout { Content = new ScrollViewer { Content = panel, MaxHeight = Math.Min(400, Math.Max(200, Bounds.Height - 160)) } };
     }
 }
 

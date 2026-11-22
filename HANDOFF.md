@@ -216,7 +216,7 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 
 - **范围和参考**：这里只改 ClassNEX 客户端设置窗口。CI 的 `E:\ci-source\ClassIsland\Views\SettingsWindowNew.axaml` 用于核对原有设置交互；外壳和布局按用户指定的 `D:\TubaWinUi3` 移植。首页参考 `DashboardPage`（不是工具分类的 `HomePage`），总览参考 `SettingsPage`。解出的 XAML 和原图只留在已忽略的 `build\captures` 作对照，不随源码或安装包分发。
 - **窗口与导航**：`SettingsWindow.axaml` 使用 AvaloniaFluentUI `AppWindow` 和支持时的 Mica。标题栏高 48，返回/折叠导航、应用图标与标题、最大宽 320 的左对齐搜索框在同一行；系统窗口按钮保留独立区域。侧栏展开宽 200、收起宽 48，宽度低于 600 时默认收起。配色集中在 `CiPalette.Settings*.cs`，只对设置窗口生效，不更改桌面课表、提醒、OOBE 或集控。
-- **主页 `home`**：顶部是 280 高的问候横幅和 ClassNEX 原生绘制的课表插画。未登录显示“Hello，请先登录”，已登录显示分时问候和账户名；账户卡读取头像、名称及邮箱，课表卡展示科目全名、时间和当日完成数。横向大卡片为 232 × 172，可以翻页或点“编辑大卡片”选择入口。下方是可搜索、收藏的自适应设置入口；选择和收藏保存在本机 `data\SettingsHome.json`，不替代应用设置。实现见 `SettingsWindow.Home.cs`。
+- **主页 `home`**：顶部保留问候横幅和 ClassNEX 原生绘制的课表插画。未登录显示“Hello，请先登录”，已登录显示分时问候和账户名。仅首页卡片借鉴 Windows 设置风格：上方状态卡分为名称、当前状态和底部操作行，根据窗口宽度显示完整卡片；账户和课表读本地实际状态。下方的九个入口分成两组，整行打开，独立的星标负责收藏。窄窗时分组纵排；编辑大卡片、翻页、搜索与“全部设置 / 收藏”保留，偏好继续使用原来的 `data\SettingsHome.json`。实现见 `SettingsWindow.Home.cs`。
 - **设置总览 `settings`**：从侧栏底部“设置”进入；依次显示应用标识、版本、链接和各个已启用分类。宽 172 的“跳转到分类”在同一纵向滚动区定位；单独打开“基本”“外观”“窗口”“组件”“NEX Intelligence”“提醒”“账户”“关于”时使用同一组真实控件，从顶部显示。调试分类仍须解锁。统一行高下限 76、圆角 8、行距 4、标题/说明字号 14/12；窄窗会把尾部操作移到文字下方，三条外观滑轨使用一致的可伸缩网格。样式见 `SettingsWindow.SectionStyles.axaml`。
 - **切页与搜索**：`SettingsWindow.Navigation.cs` 按导航项的稳定 `Tag` 注册目标、返回历史和分类锚点，不按可见中文文本或顺序猜页面。顶栏搜索 (`Ctrl+F`) 来自真实设置标题/子项及少量同义入口，回车激活并可展开父组、选中组件或滚到目标控件；`Alt+左` 返回。启动只显示主页，首次不预热、不播放叠页动画；后续切页只做 167ms 不透明度过渡，切换分类重置滚动位置。
 - **图标**：侧栏与主页共用本地 Microsoft Fluent UI System Icons Color 资源；设置行和标题栏使用 Windows 的 Segoe Fluent Icons，以 Segoe MDL2 Assets 回退。原版 Tuba 横幅及未确认授权的私有图标未纳入仓库，不宣称素材逐像素相同。授权和维护约定见 5.6。
@@ -411,7 +411,7 @@ git push origin main
 - 建议将本次全量 Debug 构建的应用载荷复制到新建的 `build\verify-settings-<本次标识>\app\`，用与 `app` 同级的 `data\` 放匿名测试课表和设置；设置 `IsOobeCompleted=true`，不附带用户账户、集控凭证或 API 密钥。自检不会更改已安装客户端的配置。常规 Debug 产物路径见第 0 节。
 - 建议全量重建后执行 `./tools/verify_settings.ps1`。脚本每次新建 `build/verify-settings-<随机标识>`，只复制运行依赖和仓库示例课表，不复制现有用户的 `data`。默认测试结束会关闭该测试进程，`-KeepOpen` 可保留窗口。测试目录和 `build/captures` 都不入库。
 - 从新 PowerShell 会话启动隔离目录里的 `ClassNex.exe`，同时设置 `CLASSNEX_VERIFY=1`、`CLASSNEX_VERIFY_PAGE=home`、`CLASSNEX_VERIFY_SETTINGS=1`。只有窗口创建后 `SettingsWindow.Verify.cs` 才运行；仅设 `CLASSNEX_VERIFY_SETTINGS` 不会自动打开窗口。
-- `_settings_verify.log`、`_settings_home_light.png`、`_settings_home_dark.png`、`_settings_home_narrow.png`、`_settings_overview_dark.png` 和 `_settings_appearance_narrow.png` 均输出到该 `app\`，不是 `data\`。逐项查看 `PASS/FAIL`、对照宽窄窗和深浅色截图，不要把截图存在理解为检查已通过。
+- `_settings_verify.log`、首页 `_settings_home_{light,dark,narrow}.png`、入口分组 `_settings_cards_{light,dark,narrow}.png`、总览 `_settings_overview_dark.png` 和外观 `_settings_appearance_narrow.png` 均输出到该 `app\`，不是 `data\`。逐项查看 `PASS/FAIL`，对照宽窄窗和深浅色截图；截图存在不等于检查通过。
 - 要验证真实开关、滑块写盘和收藏持久化，需给这个实例设置 `CLASSNEX_VERIFY_EDIT_FIXTURE=1`，并在隔离 `data\` 放置 `.test-fixture` 标记。存在 `account.json` 或启用集控时拒绝运行写入自检。不要对日常数据目录运行测试，不需要登录生产账户或操作鼠标。
 
 ### 5.4 FluentAvalonia 2.4.0 的 API 与直觉不同
