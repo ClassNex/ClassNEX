@@ -22,6 +22,8 @@ public sealed class WidgetContext
 
     
     public string CountdownText { get; init; } = "";
+    public double ScheduleWidth { get; init; } = 560;
+    public bool HasClock { get; init; }
 }
 
 
@@ -131,9 +133,9 @@ public abstract class WidgetBase
             Height = height,
             Padding = new Thickness(padding, 0),
             CornerRadius = new CornerRadius(radius),
-            Background = background ?? CiPalette.ChipSurfaceBrush(),
-            BorderBrush = borderBrush ?? CiPalette.ChipBorderBrush(),
-            BorderThickness = new Thickness(1),
+            Background = background ?? CiPalette.SurfaceBrush("SubtleFillColorSecondaryBrush", 0.06),
+            BorderBrush = borderBrush,
+            BorderThickness = new Thickness(borderBrush is null ? 0 : 1),
             VerticalAlignment = VerticalAlignment.Center,
             Margin = margin ?? default,
             Child = content,

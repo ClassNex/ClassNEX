@@ -3,13 +3,13 @@ using Avalonia.Animation;
 using Avalonia.Animation.Easings;
 using Avalonia.Styling;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Rendering.Composition;
 using Avalonia.Threading;
-using ClassNex.Controls;
 using ClassNex.Models;
 using ClassNex.Services;
 using ClassNex.Styles;
@@ -47,12 +47,14 @@ public partial class MainWindow : Window
     
     private double _hoverFadeTarget = 1.0;
 
-    private bool _startupPlayed;
-    private bool _startupScheduled;
-
-    private static readonly Easing IslandWidthEasing = Easing.Parse("0.65, 0, 0.35, 1.0");
+    private volatile bool _closed;
+    private bool _showingNotification;
+    private double _normalWidth;
+    private (int X, int Y)? _lastHoverPoint;
+    private int _refreshPosted;
 
 #if DEBUG
+    private static readonly bool VerifyLayout = Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_LAYOUT") == "1";
     private string _hoverDebugRect = "";
     private string _hoverDebugCursor = "";
 #endif
@@ -64,32 +66,27 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
-        ApplySettings();
-        RebuildWidgets();
-        RefreshWidgets();
-
         AppServices.SettingsChanged += ApplySettings;
         AppServices.Schedule.ProfileChanged += OnDataChanged;
         AppServices.TimeLayout.Changed += OnDataChanged;
         AppServices.Widgets.Changed += OnWidgetsChanged;
+        Screens.Changed += OnDisplayChanged;
+        ScalingChanged += OnDisplayChanged;
 
         
         _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _timer.Tick += (_, _) =>
         {
             RefreshWidgets();
-            EnforcePlacement();
 #if DEBUG
             DumpLayoutIfRequested();
 #endif
         };
-        _timer.Start();
 
         
         
-        _hoverTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(30) };
+        _hoverTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(45) };
         _hoverTimer.Tick += (_, _) => UpdateHoverFade();
-        _hoverTimer.Start();
 
         
         Deactivated += (_, _) => EnforcePlacement();
@@ -98,18 +95,17 @@ public partial class MainWindow : Window
         
         
         
-#if DEBUG
         CardContent.SizeChanged += (_, args) =>
         {
-            if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_LAYOUT") == "1")
-                System.IO.File.AppendAllText(
-                    System.IO.Path.Combine(AppContext.BaseDirectory, "_verify_layout.log"),
-                    $"  [SizeChanged] content {args.PreviousSize.Width:0.0} -> {args.NewSize.Width:0.0}\n");
-            SetIslandWidth(args.NewSize.Width + IslandContentMargin * 2);
+            if (args.NewSize.Width <= 0) return;
+            _normalWidth = args.NewSize.Width + IslandContentMargin * 2;
+            if (!_nexPanelActive && !_showingNotification)
+            {
+                SetIslandWidth(_normalWidth);
+                IslandBackground.Height = Math.Max(CiPalette.IslandHeight, args.NewSize.Height);
+            }
         };
-#else
-        CardContent.SizeChanged += (_, args) => SetIslandWidth(args.NewSize.Width + IslandContentMargin * 2);
-#endif
+        NexPanel.SizeChanged += (_, e) => { if (_nexPanelActive) SetIslandWidth(e.NewSize.Width); };
 
         
         PropertyChanged += (_, args) =>
@@ -117,52 +113,66 @@ public partial class MainWindow : Window
             if (args.Property != IsVisibleProperty)
                 return;
 
-            if (IsVisible)
-            {
-                if (!_startupPlayed)
-                    ScheduleStartupEntrance();
-                else
-                    PlayFadeInAnimation();
-            }
-            else
-            {
-                ResetEntranceVisual();
-            }
+            UpdateRunningState();
+            UpdateReminderAvailability();
+            if (IsVisible) { RefreshWidgets(); PlayFadeInAnimation(); }
+            else if (_showingNotification) ResetNotification();
         };
 
         
         
         if (Application.Current is { } app)
         {
-            app.ActualThemeVariantChanged += (_, _) => Dispatcher.UIThread.Post(() =>
-            {
-                ApplySettings();
-                RebuildWidgets();
-                RefreshWidgets();
-            });
+            app.ActualThemeVariantChanged += OnThemeChanged;
         }
-
-        
+        RebuildWidgets();
+        ApplySettings();
+        RefreshWidgets();
     }
 
-    
-    private void EnsureTopmost()
+    private void OnThemeChanged(object? sender, EventArgs e) => Dispatcher.UIThread.Post(() =>
     {
-        if (!IsVisible)
-            return;
+        if (!_closed) ReloadManagedSettings();
+    });
 
-        if (!Topmost)
-            Topmost = true;
+    private void OnDisplayChanged(object? sender, EventArgs e) => Dispatcher.UIThread.Post(() =>
+    {
+        if (!_closed) { ApplySettings(); RefreshWidgets(); }
+    });
+
+    private void UpdateRunningState()
+    {
+        _lastHoverPoint = null;
+        if (IsVisible && !_closed) _timer.Start(); else _timer.Stop();
+        if (IsVisible && !_closed && !_editMode && AppServices.Settings.HoverOpacity < 0.999) _hoverTimer.Start();
+        else { _hoverTimer.Stop(); HoverHost.Opacity = _hoverFadeTarget = 1; }
     }
 
-    
+    protected override void OnClosed(EventArgs e)
+    {
+        _closed = true;
+        UpdateRunningState();
+        StopNotificationOverlayMessageTicker();
+        CancelTurn();
+        AppServices.SettingsChanged -= ApplySettings;
+        AppServices.Schedule.ProfileChanged -= OnDataChanged;
+        AppServices.TimeLayout.Changed -= OnDataChanged;
+        AppServices.Widgets.Changed -= OnWidgetsChanged;
+        Screens.Changed -= OnDisplayChanged;
+        ScalingChanged -= OnDisplayChanged;
+        if (Application.Current is { } app) app.ActualThemeVariantChanged -= OnThemeChanged;
+        UpdateReminderAvailability();
+        base.OnClosed(e);
+    }
 
     public void ApplySettings()
     {
+        if (_closed) return;
+        if (!Dispatcher.UIThread.CheckAccess()) { Dispatcher.UIThread.Post(ApplySettings); return; }
         var s = AppServices.Settings;
 
         
-        Topmost = true;
+        Topmost = s.Topmost;
 
         
         
@@ -179,30 +189,23 @@ public partial class MainWindow : Window
         
         
         
-        IslandBackground.Background = CiPalette.IslandSurfaceBrush();
-        IslandBackground.BoxShadow = CiPalette.IslandShadow();
-        IslandBackground.Opacity = Math.Clamp(s.BackgroundOpacity, 0.05, 1.0);
-        IslandBackground.Height = CiPalette.IslandHeight;
+        IslandBackground.Background = CiPalette.SurfaceBrush("SolidBackgroundFillColorBaseBrush", 1);
+        IslandBackground.Opacity = _nexPanelActive ? 0 : Math.Clamp(s.BackgroundOpacity, 0.05, 1.0);
         IslandBackground.CornerRadius = new CornerRadius(CiPalette.IslandCornerRadius);
         NexPanel.CornerRadius = new CornerRadius(CiPalette.IslandCornerRadius);
-        IslandSheen.Background = CiPalette.IslandSheenBrush();
-        NexSheen.Background = CiPalette.IslandSheenBrush();
-        NotificationMaskBg.Fill = CiPalette.SakuraAccentGradient();
-        NotificationTrackFill.Background = CiPalette.SakuraAccentBrush();
+        NotificationMaskBg.Fill = CiPalette.AccentBrush();
+        NotificationTrackFill.Background = _showingNotification && !NotificationOverlay.IsVisible ? CiPalette.OnAccentBrush() : CiPalette.AccentBrush();
 
         
-        if (CardContent.Bounds.Width > 0)
-            SetIslandWidth(CardContent.Bounds.Width + IslandContentMargin * 2);
+        if (!_showingNotification && !_nexPanelActive && _normalWidth > 0) SetIslandWidth(_normalWidth);
 
         
         var vertical = s.Orientation == LayoutOrientation.Vertical;
         WidgetHost.Orientation = vertical ? Orientation.Vertical : Orientation.Horizontal;
         WidgetHost.Spacing = 0;
-        var editRows = _editMode ? 30 : 0;
-        if (vertical)
-            IslandBackground.Height = CiPalette.IslandHeight * Math.Max(1, _widgets.Count) + editRows;
-        else
-            IslandBackground.Height = CiPalette.IslandHeight + editRows;
+        WidgetViewport.HorizontalScrollBarVisibility = vertical ? ScrollBarVisibility.Disabled : _editMode ? ScrollBarVisibility.Auto : ScrollBarVisibility.Hidden;
+        WidgetViewport.VerticalScrollBarVisibility = !vertical ? ScrollBarVisibility.Disabled : _editMode ? ScrollBarVisibility.Auto : ScrollBarVisibility.Hidden;
+        IslandBackground.Height = _showingNotification || _nexPanelActive ? CiPalette.IslandHeight : Math.Max(CiPalette.IslandHeight, CardContent.Bounds.Height);
 
         
         EditBarHost.IsVisible = _editMode;
@@ -214,12 +217,18 @@ public partial class MainWindow : Window
         var primary = Screens.Primary;
         if (primary is not null)
         {
-            var screenScaling = primary.Scaling <= 0 ? 1.0 : primary.Scaling;
+            var screenScaling = IsVisible && RenderScaling > 0 ? RenderScaling : Math.Max(1, primary.Scaling);
             Width = primary.WorkingArea.Width / screenScaling;
+            CardContent.MaxWidth = Math.Max(1, Width / scale - IslandContentMargin * 2);
+            CardContent.MaxHeight = Math.Max(CiPalette.IslandHeight, primary.WorkingArea.Height / screenScaling / scale - (_editMode ? 85 : 20));
+            NexPanel.MaxWidth = Math.Max(1, Math.Min(820, CardContent.MaxWidth));
+            NexPanel.MinWidth = Math.Min(240, NexPanel.MaxWidth);
+            if (_showingNotification) SetIslandWidth(462);
         }
 
         
         ApplyClickThrough();
+        UpdateRunningState();
 
         
         EnforcePlacement();
@@ -238,7 +247,6 @@ public partial class MainWindow : Window
         
         
         
-        WrapPanelResizingAnimationAssist.SetIsResizingAnimationEnabled(WidgetHost, false);
 
         foreach (var config in AppServices.Widgets.Widgets.Where(w => w.IsEnabled).OrderBy(w => w.Order))
         {
@@ -274,9 +282,7 @@ public partial class MainWindow : Window
         {
             WidgetHost.Children.Add(new Border
             {
-                Background = CiPalette.ChipSurfaceBrush(),
-                BorderBrush = CiPalette.ChipBorderBrush(),
-                BorderThickness = new Thickness(1),
+                Background = Brushes.Transparent,
                 CornerRadius = new CornerRadius(8),
                 Padding = new Thickness(12, 0),
                 VerticalAlignment = VerticalAlignment.Center,
@@ -299,6 +305,19 @@ public partial class MainWindow : Window
         var now = DateTime.Now;
         var profile = AppServices.Schedule.Profile;
         var today = AppServices.Time.GetTodaySummary(profile, now);
+        var vertical = AppServices.Settings.Orientation == LayoutOrientation.Vertical;
+        var otherWidth = 0d;
+        var schedules = 0;
+        var hasClock = false;
+        var needsCountdown = false;
+        foreach (var widget in _widgets)
+        {
+            if (widget is ScheduleWidget) schedules++;
+            else if (!vertical) otherWidth += Math.Max(widget.View.DesiredSize.Width, widget.View.Bounds.Width);
+            hasClock |= widget is ClockWidget;
+            needsCountdown |= widget is CountdownWidget && widget.Config.CountdownTarget is null ||
+                              widget is TextWidget && widget.Config.Text?.Contains("{countdown}", StringComparison.Ordinal) == true;
+        }
 
         var ctx = new WidgetContext
         {
@@ -306,7 +325,9 @@ public partial class MainWindow : Window
             Profile = profile,
             Today = today,
             Now = now,
-            CountdownText = AppServices.Time.GetCountdownText(today.Slots, now.TimeOfDay),
+            CountdownText = needsCountdown ? AppServices.Time.GetCountdownText(today.Slots, now.TimeOfDay) : "",
+            HasClock = hasClock,
+            ScheduleWidth = Math.Max(100, (AvailableIslandWidth - 2 * IslandContentMargin - otherWidth) / Math.Max(schedules, 1)),
         };
 
         foreach (var widget in _widgets)
@@ -315,14 +336,22 @@ public partial class MainWindow : Window
             {
                 widget.Refresh(ctx);
             }
-            catch
+            catch (Exception error)
             {
-                
+                System.Diagnostics.Trace.TraceError("Widget {0}: {1}", widget.Type, error.Message);
             }
         }
     }
 
-    private void OnDataChanged() => Dispatcher.UIThread.Post(RefreshWidgets);
+    private void OnDataChanged()
+    {
+        if (_closed || Interlocked.Exchange(ref _refreshPosted, 1) != 0) return;
+        Dispatcher.UIThread.Post(() =>
+        {
+            Volatile.Write(ref _refreshPosted, 0);
+            if (!_closed && IsVisible) RefreshWidgets();
+        });
+    }
 
 #if DEBUG
     
@@ -331,7 +360,7 @@ public partial class MainWindow : Window
     
     private void DumpLayoutIfRequested()
     {
-        if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_LAYOUT") != "1")
+        if (!VerifyLayout)
             return;
 
         try
@@ -360,14 +389,15 @@ public partial class MainWindow : Window
 
     private void OnWidgetsChanged() => Dispatcher.UIThread.Post(() =>
     {
+        if (_closed) return;
         RebuildWidgets();
         RefreshWidgets();
     });
 
     public void ReloadManagedSettings()
     {
-        ApplySettings();
         RebuildWidgets();
+        ApplySettings();
         RefreshWidgets();
     }
 
@@ -378,6 +408,7 @@ public partial class MainWindow : Window
         base.OnOpened(e);
         _hwnd = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
         ApplyClickThrough();
+        UpdateRunningState();
         EnforcePlacement();
 
         
@@ -389,10 +420,6 @@ public partial class MainWindow : Window
             ShowSkeleton();
             DispatcherTimer.RunOnce(HideSkeleton, TimeSpan.FromMilliseconds(380));
         }
-        else if (!keepSkeleton)
-        {
-            ScheduleStartupEntrance();
-        }
 
         if (double.IsNaN(IslandBackground.Width))
             IslandBackground.Width = 0;
@@ -403,108 +430,38 @@ public partial class MainWindow : Window
 
     private bool _nexPanelActive;
 
-    private TranslateTransform? CardShift => CardContent.RenderTransform as TranslateTransform;
-
-    private TranslateTransform? NexShift => NexPanel.RenderTransform as TranslateTransform;
-
-    
-    
-    
-    
     public void ShowNexPanel(string text, bool placeholder)
     {
-        if (!IsVisible)
-            Show();
-
-        if (!Topmost)
-            Topmost = true;
-
+        if (_editMode || string.IsNullOrWhiteSpace(text)) return;
+        if (!IsVisible) Show();
         NexPanelText.Text = text;
-        
-        
         NexPanelText.Foreground = CiPalette.PrimaryTextBrush();
-        NexPanelText.Opacity = placeholder ? 0.62 : 1.0;
-
-        if (!_nexPanelActive)
-        {
-            _nexPanelActive = true;
-
-            
-            
-            NexPanel.Background = IslandBackground.Background;
-            NexPanel.BorderBrush = null;
-            NexPanel.BorderThickness = new Thickness(0);
-            IslandBackground.Opacity = 0;
-            NexPanel.IsVisible = true;
-            CardContent.IsVisible = false;
-            CardContent.Opacity = 0;
-
-            if (CardShift is { } card)
-                card.Y = 0;
-            if (NexShift is { } nex)
-                nex.Y = 24;
-            NexPanel.Opacity = 0;
-
-            Dispatcher.UIThread.Post(() =>
-            {
-                
-                if (CardShift is { } c)
-                    c.Y = -26;
-                if (NexShift is { } n)
-                    n.Y = 0;
-                NexPanel.Opacity = 1;
-
-                SetIslandWidth(NexPanel.Bounds.Width + IslandContentMargin * 2);
-            }, DispatcherPriority.Background);
-        }
-        else
-        {
-            CardContent.IsVisible = false;
-            CardContent.Opacity = 0;
-            SetIslandWidth(NexPanel.Bounds.Width + IslandContentMargin * 2);
-        }
-
-        // Raise after the panel is configured so a z-order call can never hide it.
-        var handle = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
-        if (handle != IntPtr.Zero)
-            SetWindowPos(handle, HwndTopmost, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate);
-
-        Activate();
+        NexPanelText.Opacity = placeholder ? 0.68 : 1;
+        if (_nexPanelActive) return;
+        _nexPanelActive = true;
+        if (_showingNotification) ResetNotification();
+        UpdateReminderAvailability();
+        IslandBackground.Opacity = 0;
+        NexPanel.Background = CiPalette.SurfaceBrush("SolidBackgroundFillColorBaseBrush", 1);
+        NexPanel.IsVisible = true;
+        NexPanel.Opacity = 1;
+        CardContent.IsVisible = false;
+        if (AppServices.Settings.Topmost && _hwnd != IntPtr.Zero)
+            SetWindowPos(_hwnd, HwndTopmost, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate);
     }
 
-    
     public void HideNexPanel()
     {
-        if (!_nexPanelActive)
-            return;
-
+        if (!_nexPanelActive) return;
         _nexPanelActive = false;
-
-        if (NexShift is { } n)
-            n.Y = 24;
-        NexPanel.Opacity = 0;
-
-        DispatcherTimer.RunOnce(() =>
-        {
-            if (_nexPanelActive)
-                return;
-
-            NexPanel.IsVisible = false;
-            CardContent.IsVisible = true;
-            CardContent.Opacity = 1;
-            if (CardShift is { } c)
-                c.Y = 0;
-
-            
-            IslandBackground.Opacity = Math.Clamp(AppServices.Settings.BackgroundOpacity, 0.05, 1.0);
-            SetIslandWidth(CardContent.Bounds.Width + IslandContentMargin * 2);
-        }, TimeSpan.FromMilliseconds(280));
+        NexPanel.IsVisible = false;
+        CardContent.IsVisible = true;
+        CardContent.Opacity = 1;
+        IslandBackground.Opacity = Math.Clamp(AppServices.Settings.BackgroundOpacity, 0.05, 1.0);
+        SetIslandWidth(_normalWidth);
+        UpdateReminderAvailability();
     }
 
-    
-    
-    
-    
     private void ShowSkeleton()    {
         var brush = CiPalette.SkeletonBrush();
         SkeletonBlock1.Background = brush;
@@ -521,789 +478,17 @@ public partial class MainWindow : Window
 
         SkeletonHost.IsVisible = false;
         WidgetHost.IsVisible = true;
-        ScheduleStartupEntrance();
     }
 
     
-    private double? _preNotificationIslandWidth;
-    private int _notificationTransitionGeneration;
-    private ScaleTransform _notificationMaskTurnScale = new();
-    private SkewTransform _notificationMaskTurnSkew = new();
-    private TranslateTransform _notificationMaskTurnShift = new();
-    private ScaleTransform _notificationOverlayTurnScale = new();
-    private SkewTransform _notificationOverlayTurnSkew = new();
-    private TranslateTransform _notificationOverlayTurnShift = new();
-    private DispatcherTimer? _notificationOverlayMessageTimer;
-    private bool _notificationMessagePageShown;
-    private bool _notificationMessagePageSwitching;
+    private double AvailableIslandWidth => Math.Max(1, (double.IsFinite(Width) ? Width : Bounds.Width) / Math.Clamp(ReminderScale, 0.4, 5));
 
-    
-    
-    
-    
-    private void ExpandIslandForNotification()
-    {
-        _preNotificationIslandWidth ??= IslandBackground.Width;
-
-        var scale = Math.Max(0.1, AppServices.Settings.MainWindowScale);
-        var full = Bounds.Width / scale;   
-        if (full > IslandBackground.Width)
-            IslandBackground.Width = full;
-
-        
-        if (ElementComposition.GetElementVisual(IslandBackground) is { } visual)
-            visual.Scale = new Vector3D(1, 1, 1);
-    }
-
-    
-    
-    
-    
-    private void StartNotificationTrack(TimeSpan duration)
-    {
-        
-        _trackFullWidth = Math.Max(1, IslandBackground.Width - IslandContentMargin * 2);
-        NotificationTrack.Width = _trackFullWidth;
-        NotificationTrackFill.Width = _trackFullWidth;
-        NotificationTrack.IsVisible = true;
-
-        var visual = ElementComposition.GetElementVisual(NotificationTrackFill);
-        if (visual is null)
-            return;
-
-        visual.StopAnimation(nameof(visual.Scale));
-        visual.CenterPoint = new Vector3D(0, visual.Size.Y / 2, 0);
-        visual.Scale = new Vector3D(1, 1, 1);
-        var anim = visual.Compositor.CreateVector3DKeyFrameAnimation();
-        anim.InsertKeyFrame(0f, new Vector3D(1, 1, 1));
-        anim.InsertKeyFrame(1f, new Vector3D(0, 1, 1), new LinearEasing());
-        anim.Duration = TimeSpan.FromMilliseconds(Math.Max(1, duration.TotalMilliseconds));
-        visual.StartAnimation(nameof(visual.Scale), anim);
-    }
-
-    private double _trackFullWidth;
-
-    
-    private void RestoreIslandAfterNotification()
-    {
-        NotificationTrack.IsVisible = false;
-        if (_preNotificationIslandWidth is { } previous)
-        {
-            IslandBackground.Width = previous;
-            _preNotificationIslandWidth = null;
-        }
-    }
-
-    
-    public PixelRect? GetIslandScreenRect()
-    {
-        if (IslandBackground is not { } island || !island.IsLoaded)
-            return null;
-
-        var topLeft = island.PointToScreen(new Point(0, 0));
-        var bottomRight = island.PointToScreen(new Point(island.Bounds.Width, island.Bounds.Height));
-        var size = new PixelSize(
-            Math.Max(1, bottomRight.X - topLeft.X),
-            Math.Max(1, bottomRight.Y - topLeft.Y));
-        return new PixelRect(topLeft, size);
-    }
-
-    
-    public PixelPoint? GetIslandCenterOnScreen()
-    {
-        if (IslandBackground is not { } island || !island.IsLoaded)
-            return null;
-
-        return island.PointToScreen(new Point(island.Bounds.Width / 2, island.Bounds.Height / 2));
-    }
-
-    
-    
-    
-    
-    
-    public void ShowNotificationMask(
-        string text,
-        string leftGlyph = "\uE0FF",
-        string rightGlyph = "\uE54F")
-    {
-        _notificationTransitionGeneration++;
-        StopNotificationOverlayMessageTicker();
-        ResetNotificationOverlayPages();
-        NotificationMaskText.Text = text;
-        NotificationMaskLeftIcon.Text = leftGlyph;
-        NotificationMaskRightIcon.Text = rightGlyph;
-        ResetNotificationMaskTurn();
-        ResetNotificationOverlayTurn();
-        NotificationMask.Opacity = 1;
-        NotificationOverlay.Opacity = 0;
-        NotificationMaskContent.Opacity = 0;
-        NotificationMaskContent.IsVisible = true;
-        NotificationOverlay.IsVisible = false;
-        NotificationTrack.IsVisible = false;
-        if (ElementComposition.GetElementVisual(NotificationTrackFill) is { } trackVisual)
-            trackVisual.StopAnimation(nameof(trackVisual.Scale));
-        NotificationMask.IsVisible = true;
-
-        ExpandIslandForNotification();
-
-        CardContent.Opacity = 0;
-
-        NotificationMaskBg.IsOpened = true;
-
-        Avalonia.Controls.Documents.TextElement.SetForeground(NotificationMask, Brushes.Black);
-        NotificationMaskText.Foreground = Brushes.Black;
-        NotificationMaskLeftIcon.Foreground = Brushes.Black;
-        NotificationMaskRightIcon.Foreground = Brushes.Black;
-
-        var easing = Easing.Parse("0.25, 1, 0.5, 1");
-
-        var fade = new Animation
-        {
-            Delay = TimeSpan.FromMilliseconds(260),
-            Duration = TimeSpan.FromMilliseconds(250),
-            FillMode = FillMode.Forward,
-            Easing = easing,
-            Children =
-            {
-                new KeyFrame { Cue = new Cue(0), Setters = { new Setter(OpacityProperty, 0.0) } },
-                new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, 1.0) } },
-            },
-        };
-        _ = fade.RunAsync(NotificationMaskContent);
-
-        var scale = new Animation
-        {
-            Delay = TimeSpan.FromMilliseconds(260),
-            Duration = TimeSpan.FromMilliseconds(750),
-            FillMode = FillMode.Forward,
-            Easing = easing,
-            Children =
-            {
-                new KeyFrame
-                {
-                    Cue = new Cue(0),
-                    Setters =
-                    {
-                        new Setter(ScaleTransform.ScaleXProperty, 1.1),
-                        new Setter(ScaleTransform.ScaleYProperty, 1.1),
-                    },
-                },
-                new KeyFrame
-                {
-                    Cue = new Cue(1),
-                    Setters =
-                    {
-                        new Setter(ScaleTransform.ScaleXProperty, 1.0),
-                        new Setter(ScaleTransform.ScaleYProperty, 1.0),
-                    },
-                },
-            },
-        };
-        _ = scale.RunAsync(NotificationMaskContent);
-    }
-
-    
-    public void HideNotificationMask()
-    {
-        var generation = ++_notificationTransitionGeneration;
-        StopNotificationOverlayMessageTicker();
-        NotificationMaskBg.IsOpened = false;
-
-        var fade = new Animation
-        {
-            Duration = TimeSpan.FromMilliseconds(200),
-            FillMode = FillMode.Forward,
-            Children =
-            {
-                new KeyFrame { Cue = new Cue(0), Setters = { new Setter(OpacityProperty, 1.0) } },
-                new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, 0.0) } },
-            },
-        };
-        if (NotificationMask.IsVisible)
-            _ = fade.RunAsync(NotificationMaskContent);
-        if (NotificationOverlay.IsVisible)
-            _ = fade.RunAsync(NotificationOverlay);
-
-        DispatcherTimer.RunOnce(() =>
-        {
-            if (generation != _notificationTransitionGeneration)
-                return;
-
-            NotificationMask.IsVisible = false;
-            NotificationOverlay.IsVisible = false;
-            NotificationMask.Opacity = 1;
-            NotificationOverlay.Opacity = 1;
-            ResetNotificationMaskTurn();
-            ResetNotificationOverlayTurn();
-
-            CardContent.Opacity = 1;
-
-            RestoreIslandAfterNotification();
-        }, TimeSpan.FromMilliseconds(240));
-    }
-
-    
-    
-    
-    
-    public void ShowNotificationOverlay(
-        string left,
-        string subject,
-        string teacher,
-        string time,
-        string prefix = "下节课是：",
-        string message = "",
-        bool verticalPageTurn = false,
-        TimeSpan trackDuration = default)
-    {
-        var generation = ++_notificationTransitionGeneration;
-        StopNotificationOverlayMessageTicker();
-        ResetNotificationOverlayPages();
-        NotificationOverlayLeft.Text = left;
-        NotificationOverlaySubject.Text = subject;
-        NotificationOverlayTeacher.Text = teacher;
-        NotificationOverlayTeacher.IsVisible = !string.IsNullOrWhiteSpace(teacher);
-        NotificationOverlayTime.Text = time;
-        NotificationOverlayPrefix.Text = prefix;
-        NotificationOverlayPrefix.IsVisible = !string.IsNullOrWhiteSpace(prefix);
-        NotificationOverlayMessagePage.Text = message;
-        NotificationOverlay.IsVisible = true;
-        StartNotificationTrack(trackDuration > TimeSpan.Zero
-            ? trackDuration
-            : TimeSpan.FromSeconds(6.8));
-
-        if (!string.IsNullOrWhiteSpace(message))
-        {
-            _notificationOverlayMessageTimer = new DispatcherTimer
-            {
-                Interval = TimeSpan.FromSeconds(10),
-            };
-            _notificationOverlayMessageTimer.Tick += OnNotificationOverlayMessageTick;
-            _notificationOverlayMessageTimer.Start();
-        }
-
-        if (NotificationMask.IsVisible)
-        {
-            PrepareNotificationPageTurn(verticalPageTurn);
-            _ = PlayNotificationPageTurnAsync(generation, verticalPageTurn);
-            return;
-        }
-
-        ResetNotificationOverlayTurn();
-        NotificationOverlay.Opacity = 0;
-        _ = PlayNotificationOverlayFadeInAsync();
-    }
-
-    public void UpdateNotificationOverlayCountdown(string text)
-    {
-        if (NotificationOverlay.IsVisible)
-            NotificationOverlayLeft.Text = text;
-    }
-
-    private void OnNotificationOverlayMessageTick(object? sender, EventArgs e)
-    {
-        _ = ToggleNotificationOverlayMessagePageAsync();
-    }
-
-    private async Task ToggleNotificationOverlayMessagePageAsync()
-    {
-        if (_notificationMessagePageSwitching ||
-            !NotificationOverlay.IsVisible ||
-            string.IsNullOrWhiteSpace(NotificationOverlayMessagePage.Text))
-        {
-            return;
-        }
-
-        var generation = _notificationTransitionGeneration;
-        _notificationMessagePageSwitching = true;
-
-        Control outgoing = _notificationMessagePageShown
-            ? NotificationOverlayMessagePage
-            : NotificationOverlayCoursePage;
-        Control incoming = _notificationMessagePageShown
-            ? NotificationOverlayCoursePage
-            : NotificationOverlayMessagePage;
-
-        outgoing.RenderTransform = new TranslateTransform();
-        incoming.RenderTransform = new TranslateTransform(0, -40);
-        incoming.Opacity = 0;
-        incoming.IsVisible = true;
-        outgoing.ZIndex = 2;
-        incoming.ZIndex = 1;
-
-        var easing = Easing.Parse("0.65, 0, 0.35, 1");
-        var fadeOut = new Animation
-        {
-            Duration = TimeSpan.FromMilliseconds(250),
-            FillMode = FillMode.Forward,
-            Easing = easing,
-            Children =
-            {
-                new KeyFrame
-                {
-                    Cue = new Cue(0),
-                    Setters =
-                    {
-                        new Setter(OpacityProperty, 1.0),
-                        new Setter(TranslateTransform.YProperty, 0.0),
-                    },
-                },
-                new KeyFrame
-                {
-                    Cue = new Cue(1),
-                    Setters =
-                    {
-                        new Setter(OpacityProperty, 0.0),
-                        new Setter(TranslateTransform.YProperty, 40.0),
-                    },
-                },
-            },
-        };
-        var fadeIn = new Animation
-        {
-            Duration = TimeSpan.FromMilliseconds(250),
-            FillMode = FillMode.Forward,
-            Easing = easing,
-            Children =
-            {
-                new KeyFrame
-                {
-                    Cue = new Cue(0),
-                    Setters =
-                    {
-                        new Setter(OpacityProperty, 0.0),
-                        new Setter(TranslateTransform.YProperty, -40.0),
-                    },
-                },
-                new KeyFrame
-                {
-                    Cue = new Cue(1),
-                    Setters =
-                    {
-                        new Setter(OpacityProperty, 1.0),
-                        new Setter(TranslateTransform.YProperty, 0.0),
-                    },
-                },
-            },
-        };
-
-        await Task.WhenAll(
-            fadeOut.RunAsync(outgoing),
-            fadeIn.RunAsync(incoming));
-
-        if (generation != _notificationTransitionGeneration || !NotificationOverlay.IsVisible)
-        {
-            _notificationMessagePageSwitching = false;
-            return;
-        }
-
-        outgoing.IsVisible = false;
-        outgoing.Opacity = 0;
-        outgoing.RenderTransform = new TranslateTransform();
-        incoming.Opacity = 1;
-        incoming.RenderTransform = new TranslateTransform();
-        outgoing.ZIndex = 0;
-        incoming.ZIndex = 0;
-        _notificationMessagePageShown = !_notificationMessagePageShown;
-        _notificationMessagePageSwitching = false;
-    }
-
-    private void ResetNotificationOverlayPages()
-    {
-        NotificationOverlayCoursePage.RenderTransform = new TranslateTransform();
-        NotificationOverlayCoursePage.Opacity = 1;
-        NotificationOverlayCoursePage.IsVisible = true;
-        NotificationOverlayCoursePage.ZIndex = 0;
-        NotificationOverlayMessagePage.RenderTransform = new TranslateTransform();
-        NotificationOverlayMessagePage.Opacity = 0;
-        NotificationOverlayMessagePage.IsVisible = false;
-        NotificationOverlayMessagePage.ZIndex = 0;
-        _notificationMessagePageShown = false;
-        _notificationMessagePageSwitching = false;
-    }
-
-    private void StopNotificationOverlayMessageTicker()
-    {
-        if (_notificationOverlayMessageTimer is not { } timer)
-            return;
-
-        timer.Stop();
-        timer.Tick -= OnNotificationOverlayMessageTick;
-        _notificationOverlayMessageTimer = null;
-    }
-
-    private void PrepareNotificationPageTurn(bool vertical)
-    {
-        _notificationMaskTurnScale = new ScaleTransform(1, 1);
-        _notificationMaskTurnSkew = new SkewTransform(0, 0);
-        _notificationMaskTurnShift = new TranslateTransform();
-        NotificationMask.RenderTransform = new TransformGroup
-        {
-            Children = { _notificationMaskTurnScale, _notificationMaskTurnSkew, _notificationMaskTurnShift },
-        };
-        NotificationMask.RenderTransformOrigin =
-            vertical
-                ? new RelativePoint(0.5, -0.10, RelativeUnit.Relative)
-                : new RelativePoint(-0.10, 0.5, RelativeUnit.Relative);
-
-        _notificationOverlayTurnScale = vertical
-            ? new ScaleTransform(1, 0.06)
-            : new ScaleTransform(0.06, 1);
-        _notificationOverlayTurnSkew = vertical
-            ? new SkewTransform(0, 5)
-            : new SkewTransform(5, 0);
-        _notificationOverlayTurnShift = vertical
-            ? new TranslateTransform(0, 42)
-            : new TranslateTransform(42, 0);
-        NotificationOverlay.RenderTransform = new TransformGroup
-        {
-            Children = { _notificationOverlayTurnScale, _notificationOverlayTurnSkew, _notificationOverlayTurnShift },
-        };
-        NotificationOverlay.RenderTransformOrigin =
-            vertical
-                ? new RelativePoint(0.5, -0.10, RelativeUnit.Relative)
-                : new RelativePoint(-0.10, 0.5, RelativeUnit.Relative);
-
-        NotificationMask.Opacity = 1;
-        NotificationOverlay.Opacity = 0;
-        NotificationMask.ZIndex = 2;
-        NotificationOverlay.ZIndex = 3;
-    }
-
-    private async Task PlayNotificationPageTurnAsync(int generation, bool vertical)
-    {
-        var outgoing = CreateNotificationPageTurnAnimation(true, vertical);
-        var incoming = CreateNotificationPageTurnAnimation(false, vertical);
-        await Task.WhenAll(
-            outgoing.RunAsync(NotificationMask),
-            incoming.RunAsync(NotificationOverlay));
-
-        if (generation != _notificationTransitionGeneration)
-            return;
-
-        NotificationMaskBg.IsOpened = false;
-        NotificationMaskContent.Opacity = 0;
-        NotificationMaskContent.IsVisible = false;
-        NotificationMask.IsVisible = false;
-        NotificationMask.Opacity = 1;
-        NotificationOverlay.Opacity = 1;
-        ResetNotificationMaskTurn();
-        ResetNotificationOverlayTurn();
-    }
-
-    private static Animation CreateNotificationPageTurnAnimation(bool outgoing, bool vertical)
-    {
-        var scaleProperty = vertical
-            ? ScaleTransform.ScaleYProperty
-            : ScaleTransform.ScaleXProperty;
-        var skewProperty = vertical
-            ? SkewTransform.AngleYProperty
-            : SkewTransform.AngleXProperty;
-        var shiftProperty = vertical
-            ? TranslateTransform.YProperty
-            : TranslateTransform.XProperty;
-
-        if (outgoing)
-        {
-            return new Animation
-            {
-                Duration = TimeSpan.FromMilliseconds(360),
-                FillMode = FillMode.Forward,
-                Easing = Easing.Parse("0.1, 0.9, 0.2, 1"),
-                Children =
-                {
-                    new KeyFrame
-                    {
-                        Cue = new Cue(0),
-                        Setters =
-                        {
-                            new Setter(OpacityProperty, 1.0),
-                            new Setter(scaleProperty, 1.0),
-                            new Setter(skewProperty, 0.0),
-                            new Setter(shiftProperty, 0.0),
-                        },
-                    },
-                    new KeyFrame
-                    {
-                        Cue = new Cue(0.38),
-                        Setters =
-                        {
-                            new Setter(OpacityProperty, 0.0),
-                            new Setter(scaleProperty, 0.06),
-                            new Setter(skewProperty, -5.0),
-                            new Setter(shiftProperty, -18.0),
-                        },
-                    },
-                    new KeyFrame
-                    {
-                        Cue = new Cue(1),
-                        Setters =
-                        {
-                            new Setter(OpacityProperty, 0.0),
-                            new Setter(scaleProperty, 0.06),
-                            new Setter(skewProperty, -5.0),
-                            new Setter(shiftProperty, -18.0),
-                        },
-                    },
-                },
-            };
-        }
-
-        return new Animation
-        {
-            Duration = TimeSpan.FromMilliseconds(360),
-            FillMode = FillMode.Forward,
-            Easing = Easing.Parse("0.1, 0.9, 0.2, 1"),
-            Children =
-            {
-                new KeyFrame
-                {
-                    Cue = new Cue(0),
-                    Setters =
-                    {
-                        new Setter(OpacityProperty, 0.0),
-                        new Setter(scaleProperty, 0.06),
-                        new Setter(skewProperty, 5.0),
-                        new Setter(shiftProperty, 42.0),
-                    },
-                },
-                new KeyFrame
-                {
-                    Cue = new Cue(0.38),
-                    Setters =
-                    {
-                        new Setter(OpacityProperty, 0.0),
-                        new Setter(scaleProperty, 0.06),
-                        new Setter(skewProperty, 5.0),
-                        new Setter(shiftProperty, 42.0),
-                    },
-                },
-                new KeyFrame
-                {
-                    Cue = new Cue(1),
-                    Setters =
-                    {
-                        new Setter(OpacityProperty, 1.0),
-                        new Setter(scaleProperty, 1.0),
-                        new Setter(skewProperty, 0.0),
-                        new Setter(shiftProperty, 0.0),
-                    },
-                },
-            },
-        };
-    }
-
-    private async Task PlayNotificationOverlayFadeInAsync()
-    {
-        var fade = new Animation
-        {
-            Duration = TimeSpan.FromMilliseconds(180),
-            FillMode = FillMode.Forward,
-            Easing = Easing.Parse("0.25, 1, 0.5, 1"),
-            Children =
-            {
-                new KeyFrame { Cue = new Cue(0), Setters = { new Setter(OpacityProperty, 0.0) } },
-                new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, 1.0) } },
-            },
-        };
-        await fade.RunAsync(NotificationOverlay);
-    }
-
-    private void ResetNotificationMaskTurn()
-    {
-        _notificationMaskTurnScale = new ScaleTransform(1, 1);
-        _notificationMaskTurnSkew = new SkewTransform(0, 0);
-        _notificationMaskTurnShift = new TranslateTransform();
-        NotificationMask.RenderTransform = new TransformGroup
-        {
-            Children = { _notificationMaskTurnScale, _notificationMaskTurnSkew, _notificationMaskTurnShift },
-        };
-        NotificationMask.RenderTransformOrigin = RelativePoint.Center;
-        NotificationMask.ZIndex = 0;
-    }
-
-    private void ResetNotificationOverlayTurn()
-    {
-        _notificationOverlayTurnScale = new ScaleTransform(1, 1);
-        _notificationOverlayTurnSkew = new SkewTransform(0, 0);
-        _notificationOverlayTurnShift = new TranslateTransform();
-        NotificationOverlay.RenderTransform = new TransformGroup
-        {
-            Children = { _notificationOverlayTurnScale, _notificationOverlayTurnSkew, _notificationOverlayTurnShift },
-        };
-        NotificationOverlay.RenderTransformOrigin = RelativePoint.Center;
-        NotificationOverlay.ZIndex = 0;
-    }
-
-    
-    
-    
-    
-    public void WarmNotificationMask()
-    {
-        NotificationMaskBg.IsOpened = true;
-        DispatcherTimer.RunOnce(() => NotificationMaskBg.IsOpened = false, TimeSpan.FromMilliseconds(60));
-    }
-
-    
-    
-    
-    
-    
     private void SetIslandWidth(double target)
     {
-        var previous = IslandBackground.Width;
-        IslandBackground.Width = target;
-
-        var visual = ElementComposition.GetElementVisual(IslandBackground);
-        if (visual is null)
-            return;
-
-        
-        visual.CenterPoint = new System.Numerics.Vector3((float)target / 2, (float)(CiPalette.IslandHeight / 2), 0f);
-
-        
-        var from = double.IsNaN(previous) || previous <= 0.5
-            ? 0f
-            : (float)(previous / target);
-        if (Math.Abs(from - 1f) < 0.001f)
-            return;
-
-        if (target > previous)
-        {
-            visual.StopAnimation(nameof(visual.Scale));
-            visual.Scale = new System.Numerics.Vector3(1f, 1f, 1f);
-            return;
-        }
-
-        var compositor = visual.Compositor;
-        var anim = compositor.CreateVector3KeyFrameAnimation();
-        anim.InsertKeyFrame(0f, new System.Numerics.Vector3(from, 1f, 1f));
-        anim.InsertKeyFrame(1f, new System.Numerics.Vector3(1f, 1f, 1f), IslandWidthEasing);
-        anim.Duration = TimeSpan.FromMilliseconds(300);
-        anim.Target = nameof(visual.Scale);
-        visual.StartAnimation(nameof(visual.Scale), anim);
+        if (!double.IsFinite(target) || target <= 0) return;
+        IslandBackground.Width = Math.Min(AvailableIslandWidth, Math.Ceiling(target));
+        _lastHoverPoint = null;
     }
-
-    
-    
-    
-    
-    private void ResetEntranceVisual()
-    {
-        if (!_startupPlayed)
-            return;
-
-        var visual = ElementComposition.GetElementVisual(LinePanel);
-        if (visual is not null)
-        {
-            visual.Opacity = 1f;
-            visual.Scale = new Vector3D(1f, 1f, 1f);
-        }
-
-        foreach (var child in WidgetHost.Children.OfType<Control>())
-        {
-            var childVisual = ElementComposition.GetElementVisual(child);
-            if (childVisual is null)
-                continue;
-
-            childVisual.Opacity = 1f;
-        }
-    }
-
-    private void ScheduleStartupEntrance()
-    {
-        if (_startupPlayed || _startupScheduled)
-            return;
-
-        _startupScheduled = true;
-        DispatcherTimer.RunOnce(() =>
-        {
-            _startupScheduled = false;
-            PlayStartupEntrance();
-        }, TimeSpan.FromMilliseconds(80));
-    }
-
-    private void PlayStartupEntrance()
-    {
-        if (_startupPlayed || !IsVisible)
-            return;
-
-        _startupPlayed = true;
-
-        var visual = ElementComposition.GetElementVisual(LinePanel);
-        if (visual is null)
-        {
-            PlayFadeInAnimation();
-            return;
-        }
-
-        var bounds = LinePanel.Bounds;
-        visual.CenterPoint = new Vector3D(
-            (float)(bounds.Width / 2),
-            (float)(bounds.Height / 2),
-            0);
-        visual.Opacity = 0f;
-        visual.Scale = new Vector3D(0.94f, 0.90f, 1f);
-
-        var compositor = visual.Compositor;
-
-        var fade = compositor.CreateScalarKeyFrameAnimation();
-        fade.InsertKeyFrame(0f, 0f);
-        fade.InsertKeyFrame(1f, 1f, Easing.Parse("0.16, 1, 0.3, 1"));
-        fade.Duration = TimeSpan.FromMilliseconds(420);
-        visual.StartAnimation(nameof(visual.Opacity), fade);
-
-        var scale = compositor.CreateVector3KeyFrameAnimation();
-        scale.InsertKeyFrame(0f, new System.Numerics.Vector3(0.94f, 0.90f, 1f));
-        scale.InsertKeyFrame(0.62f, new System.Numerics.Vector3(1.012f, 1.006f, 1f), Easing.Parse("0.22, 1, 0.36, 1"));
-        scale.InsertKeyFrame(1f, new System.Numerics.Vector3(1f, 1f, 1f));
-        scale.Duration = TimeSpan.FromMilliseconds(760);
-        visual.StartAnimation(nameof(visual.Scale), scale);
-
-        AnimateWidgetStagger();
-    }
-
-    private void AnimateWidgetStagger()
-    {
-        var children = WidgetHost.Children.OfType<Control>().ToList();
-        for (var i = 0; i < children.Count; i++)
-        {
-            var child = children[i];
-            var visual = ElementComposition.GetElementVisual(child);
-            if (visual is null)
-                continue;
-
-            var delay = TimeSpan.FromMilliseconds(90 + Math.Min(i, 8) * 45);
-
-            visual.Opacity = 0f;
-
-            if (delay <= TimeSpan.Zero)
-            {
-                StartWidgetEntrance(visual);
-                continue;
-            }
-
-            DispatcherTimer.RunOnce(() =>
-            {
-                if (child.IsLoaded)
-                    StartWidgetEntrance(visual);
-            }, delay);
-        }
-    }
-
-    private static void StartWidgetEntrance(CompositionVisual visual)
-    {
-        var compositor = visual.Compositor;
-
-        var fade = compositor.CreateScalarKeyFrameAnimation();
-        fade.InsertKeyFrame(0f, 0f);
-        fade.InsertKeyFrame(1f, 1f, Easing.Parse("0.16, 1, 0.3, 1"));
-        fade.Duration = TimeSpan.FromMilliseconds(430);
-        visual.StartAnimation(nameof(visual.Opacity), fade);
-    }
-
     private void PlayFadeInAnimation()
     {
         var compositionVisual = ElementComposition.GetElementVisual(CardHost);
@@ -1354,6 +539,8 @@ public partial class MainWindow : Window
         var cursor = WindowsOverlay.GetCursorPosition();
         if (cursor is null || Bounds.Width <= 0 || Bounds.Height <= 0)
             return;
+        if (_lastHoverPoint == cursor) return;
+        _lastHoverPoint = cursor;
 
         
         
@@ -1367,8 +554,11 @@ public partial class MainWindow : Window
         var bottom = islandBottomRight.Y;
 
 #if DEBUG
-        _hoverDebugRect = $"{left},{top}..{right},{bottom}";
-        _hoverDebugCursor = $"{cursor.Value.X},{cursor.Value.Y}";
+        if (VerifyLayout)
+        {
+            _hoverDebugRect = $"{left},{top}..{right},{bottom}";
+            _hoverDebugCursor = $"{cursor.Value.X},{cursor.Value.Y}";
+        }
 #endif
 
         var hovered = cursor.Value.X >= left && cursor.Value.X <= right
@@ -1397,15 +587,12 @@ public partial class MainWindow : Window
         if (!IsVisible)
             return;
 
-        if (!Topmost)
-            Topmost = true;
-
         var screen = Screens.Primary;
         if (screen is null)
             return;
 
         var wa = screen.WorkingArea;
-        var scale = screen.Scaling <= 0 ? 1.0 : screen.Scaling;
+        var scale = RenderScaling > 0 ? RenderScaling : Math.Max(1, screen.Scaling);
 
         
         var widthPx = (int)Math.Round(Bounds.Width * scale);

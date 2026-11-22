@@ -11,6 +11,7 @@ namespace ClassNex.Widgets;
 public sealed class NextClassWidget : WidgetBase
 {
     private readonly TextBlock _text;
+    private (Models.CourseSlot? Now, Models.CourseSlot? Next, bool Empty, bool Enabled, double Scale)? _last;
 
     public NextClassWidget()
     {
@@ -20,7 +21,7 @@ public sealed class NextClassWidget : WidgetBase
         {
             Width = 6,
             Height = 6,
-            Fill = CiPalette.SakuraAccentBrush(),
+            Fill = CiPalette.AccentBrush(),
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 0, 7, 0),
         };
@@ -40,11 +41,15 @@ public sealed class NextClassWidget : WidgetBase
     public override void Refresh(WidgetContext ctx)
     {
         string message;
-
-        if (ctx.Today.Current is { } current)
-            message = $"正在上 {current.DisplayName} · 至 {current.EndText}";
-        else if (ctx.Today.Next is { } next)
-            message = Config.ShowNextClass ? $"下节课 {next.DisplayName} · {next.StartText}" : "";
+        var state = (ctx.Today.Current, ctx.Today.Next, ctx.Today.IsEmpty, Config.ShowNextClass, Config.FontScale);
+        if (_last == state) return;
+        _last = state;
+        if (Config.ShowNextClass && ctx.Today.Next is { } next)
+            message = $"下节 {next.Subject} · {next.StartText}";
+        else if (ctx.Today.Current is { } current)
+            message = $"正在上 {current.Subject} · 至 {current.EndText}";
+        else if (ctx.Today.Next is not null)
+            message = "";
         else if (ctx.Today.IsEmpty)
             message = "今天没有课程";
         else

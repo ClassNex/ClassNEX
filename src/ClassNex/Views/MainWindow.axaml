@@ -57,18 +57,13 @@
                                     Height="44"
                                     HorizontalAlignment="Center"
                                     CornerRadius="14"
-                                    BorderThickness="0"
-                                    BoxShadow="0 10 30 2 #66000000">
-                                <Border x:Name="IslandSheen"
-                                        CornerRadius="13"
-                                        IsHitTestVisible="False"/>
-                            </Border>
+                                    BorderThickness="0"/>
 
                             
                             <Border x:Name="CardContent"
                                     Margin="16,0"
                                     MinWidth="20"
-                                    Background="Transparent"
+                                    Background="Transparent" ClipToBounds="True"
                                     HorizontalAlignment="Center">
                                 <Border.RenderTransform>
                                     <TranslateTransform/>
@@ -83,11 +78,10 @@
                                     </Transitions>
                                 </Border.Transitions>
                                 <Grid>
-                                    <StackPanel x:Name="WidgetHost"
-                                                Orientation="Horizontal"
-                                                Spacing="0"
-                                                HorizontalAlignment="Center"
-                                                VerticalAlignment="Stretch"/>
+                                    <ScrollViewer x:Name="WidgetViewport" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                                        <StackPanel x:Name="WidgetHost" Orientation="Horizontal" Spacing="0"
+                                                    HorizontalAlignment="Center" VerticalAlignment="Stretch"/>
+                                    </ScrollViewer>
 
                                     
                                     <StackPanel x:Name="SkeletonHost"
@@ -118,9 +112,6 @@
                                     <TranslateTransform/>
                                 </Border.RenderTransform>
                                 <Grid>
-                                    <Border x:Name="NexSheen"
-                                            CornerRadius="13"
-                                            IsHitTestVisible="False"/>
                                     <TextBlock x:Name="NexPanelText"
                                                Margin="18,0"
                                                FontSize="17"
@@ -137,13 +128,13 @@
                                     ClipToBounds="True"
                                     IsVisible="False"
                                     IsHitTestVisible="False"
-                                    TextElement.Foreground="Black"
+                                    TextElement.Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
                                     Width="{Binding #IslandBackground.Width}">
                                 <Panel>
                                     <ctl:SlantedMaskControl x:Name="NotificationMaskBg"
                                                             ClipToBounds="True"
-                                                            RegionDurationMs="360"
-                                                            StageStaggerMs="120"
+                                                            RegionDurationMs="190"
+                                                            StageStaggerMs="50"
                                                             Fill="{DynamicResource AccentFillColorDefaultBrush}"/>
                                     <Border Padding="12 0">
                                         <StackPanel x:Name="NotificationMaskContent"
@@ -158,14 +149,15 @@
                                             <TextBlock x:Name="NotificationMaskLeftIcon"
                                                        Text="&#xE0FF;" FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
                                                        FontSize="20" Height="20" Width="20" TextAlignment="Center"
-                                                       Foreground="Black" VerticalAlignment="Center"/>
+                                                       Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}" VerticalAlignment="Center"/>
                                             <TextBlock x:Name="NotificationMaskText"
-                                                       FontSize="18" FontWeight="Bold" Foreground="Black" Margin="8,0"
+                                                       FontSize="18" Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}" Margin="8,0"
+                                                       TextTrimming="CharacterEllipsis"
                                                        VerticalAlignment="Center"/>
                                             <TextBlock x:Name="NotificationMaskRightIcon"
                                                        Text="&#xE54F;" FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
                                                        FontSize="20" Height="20" Width="20" TextAlignment="Center"
-                                                       Foreground="Black" VerticalAlignment="Center"/>
+                                                       Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Border>
                                 </Panel>
@@ -179,27 +171,28 @@
                                     IsVisible="False"
                                     IsHitTestVisible="False"
                                     TextElement.Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                    ClipToBounds="True" CornerRadius="14"
                                     Width="{Binding #IslandBackground.Width}">
                                 
                                 <Grid>
                                     <Grid x:Name="NotificationOverlayCoursePage"
-                                          ColumnDefinitions="*,*" Margin="12,0">
+                                          ColumnDefinitions="1.6*,3*,Auto" Margin="16,0" ColumnSpacing="10">
                                         <Grid.RenderTransform>
                                             <TranslateTransform/>
                                         </Grid.RenderTransform>
                                         <TextBlock x:Name="NotificationOverlayLeft" Grid.Column="0"
-                                                   FontSize="16"
-                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6"
-                                                    HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <TextBlock x:Name="NotificationOverlayPrefix" Text="下节课是："
-                                                       FontSize="14" Opacity="0.7" VerticalAlignment="Center"/>
-                                            <TextBlock x:Name="NotificationOverlaySubject" FontSize="20" FontWeight="Bold"
-                                                       VerticalAlignment="Center"/>
-                                            <TextBlock x:Name="NotificationOverlayTeacher" FontSize="14" Opacity="0.7"
-                                                       VerticalAlignment="Center"/>
-                                            <TextBlock x:Name="NotificationOverlayTime" FontSize="14" Opacity="0.7"
-                                                       VerticalAlignment="Center"/>
+                                                   FontSize="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                        <Grid Grid.Column="1" RowDefinitions="Auto,Auto" VerticalAlignment="Center">
+                                            <TextBlock x:Name="NotificationOverlayPrefix" Text="下节课"
+                                                       FontSize="10" LineHeight="12" Opacity="0.72"/>
+                                            <TextBlock x:Name="NotificationOverlaySubject" Grid.Row="1" FontSize="17"
+                                                       LineHeight="20" TextTrimming="CharacterEllipsis"/>
+                                        </Grid>
+                                        <StackPanel Grid.Column="2" MaxWidth="106" VerticalAlignment="Center">
+                                            <TextBlock x:Name="NotificationOverlayTime" FontSize="13" LineHeight="16"
+                                                       TextAlignment="Right" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock x:Name="NotificationOverlayTeacher" FontSize="11" Opacity="0.72"
+                                                       TextAlignment="Right" TextTrimming="CharacterEllipsis"/>
                                         </StackPanel>
                                     </Grid>
                                     <TextBlock x:Name="NotificationOverlayMessagePage"
@@ -224,7 +217,7 @@
                                    HorizontalAlignment="Center"
                                    IsVisible="False"
                                    Width="{Binding #IslandBackground.Width}">
-                                <Border Background="#4D808080"/>
+                                <Border Background="{DynamicResource ControlStrongStrokeColorDefaultBrush}"/>
                                 <Border x:Name="NotificationTrackFill"
                                         Background="{DynamicResource AccentFillColorDefaultBrush}"
                                         HorizontalAlignment="Left"/>

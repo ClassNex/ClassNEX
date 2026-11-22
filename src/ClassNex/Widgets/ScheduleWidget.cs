@@ -1,6 +1,4 @@
 using Avalonia;
-using Avalonia.Animation;
-using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Input;
@@ -23,7 +21,11 @@ public sealed class ScheduleWidget : WidgetBase
     private TextBlock? _pillText;
     private Border? _progressTrack;
     private Border? _progressFill;
-    private string? _signature;
+    private string? _state;
+    private List<CourseSlot>? _lastSlots;
+    private (string Title, TimeSpan Start, TimeSpan End)? _current;
+    private CourseSlot? _next;
+    private (double Font, double Spacing, bool Fade, int Width) _viewOptions;
     private TimeSpan _currentStart;
     private TimeSpan _currentEnd;
 
@@ -65,49 +67,33 @@ public sealed class ScheduleWidget : WidgetBase
 
         if (ctx.Profile.Schedules.Count == 0 && ctx.Profile.Subjects.Count == 0)
         {
-            ClearCurrent();
-            CurrentProgress = null;
-            if (_signature != "import")
-            {
-                _root.Children.Clear();
-                _root.Children.Add(BuildImportHint());
-            }
-
-            _signature = "import";
+            ShowPlaceholder("import");
             return;
         }
 
         if (ctx.Today.IsEmpty)
         {
-            ClearCurrent();
-            CurrentProgress = null;
-            if (_signature != "empty")
-            {
-                _root.Children.Clear();
-                _root.Children.Add(BuildEmptyHint());
-            }
-
-            _signature = "empty";
+            ShowPlaceholder("empty");
             return;
         }
 
         var slots = ctx.Today.Slots;
         var cur = FindCurrent(slots, now);
-        var slotSignature = string.Join(
-            ";",
-            slots.Select(slot => $"{slot.DisplayName}|{slot.Start}|{slot.End}"));
-        var signature = cur is null
-            ? $"{ctx.Today.DateText}|{slotSignature}|none"
-            : $"{ctx.Today.DateText}|{slotSignature}|{cur.Value.Title}|{cur.Value.Start}|{cur.Value.End}";
-
-        if (signature == _signature && _root.Children.Count > 0)
+        var budget = double.IsFinite(ctx.ScheduleWidth) ? (int)Math.Max(100, Math.Floor(ctx.ScheduleWidth / 4) * 4) : 560;
+        var options = (Config.FontScale, Config.ScheduleSpacing, Config.FadeCompletedClasses, budget);
+        if (_state == "day" && _current == cur && _next == ctx.Today.Next && options == _viewOptions &&
+            _lastSlots is not null && slots.Count == _lastSlots.Count && slots.SequenceEqual(_lastSlots))
         {
             if (cur is not null)
                 UpdateCurrentLive(now);
             return;
         }
 
-        _signature = signature;
+        _state = "day";
+        _current = cur;
+        _next = ctx.Today.Next;
+        _lastSlots = slots;
+        _viewOptions = options;
         ClearCurrent();
 
         _currentStart = cur?.Start ?? default;
@@ -146,8 +132,63 @@ public sealed class ScheduleWidget : WidgetBase
             if (isCurrent)
                 AddExpanded(slot.Subject, slot.Start, slot.End, now);
             else
-                _root.Children.Add(BuildMinimized(slot, isFinished));
+                _root.Children.Add(slot == ctx.Today.Next ? BuildNext(slot) : BuildMinimized(slot, isFinished));
         }
+        FitToViewport(slots, budget);
+    }
+
+    private void ShowPlaceholder(string state)
+    {
+        if (_state == state && _viewOptions.Font == Config.FontScale) return;
+        _state = state;
+        _lastSlots = null;
+        _viewOptions.Font = Config.FontScale;
+        ClearCurrent();
+        CurrentProgress = null;
+        _root.Children.Clear();
+        _root.Children.Add(state == "import" ? BuildImportHint() : BuildEmptyHint());
+    }
+
+    private Control BuildNext(CourseSlot slot)
+    {
+        var title = Text(slot.Subject, Size(15), White());
+        title.MaxWidth = Size(154);
+        title.TextTrimming = TextTrimming.CharacterEllipsis;
+        var label = Text($"下节 · {slot.StartText}", Size(10.5), White(0.74), FontWeight.Normal);
+        var stack = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Spacing = 0, Margin = new Thickness(8, 0, 8, 0), Children = { label, title } };
+        ToolTip.SetTip(stack, $"{slot.Subject}  {slot.TimeRange}");
+        return stack;
+    }
+
+    private void FitToViewport(IReadOnlyList<CourseSlot> slots, double available)
+    {
+        foreach (var item in _root.Children) item.Measure(Avalonia.Size.Infinity);
+        var width = _root.Children.Sum(c => c.DesiredSize.Width);
+        if (width <= available) return;
+
+        var more = new Button { Content = "…", Padding = new Thickness(5, 0), MinWidth = 24, Height = 25, VerticalAlignment = VerticalAlignment.Center };
+        ToolTip.SetTip(more, "查看今天的全部课程");
+        var flyout = new MenuFlyout();
+        foreach (var slot in slots)
+        {
+            var item = new MenuItem { Header = $"{slot.TimeRange}   {slot.Subject}" };
+            item.Click += (_, _) => App.OpenProfileEditor(0);
+            flyout.Items.Add(item);
+        }
+        more.Flyout = flyout;
+        more.Measure(Avalonia.Size.Infinity);
+        width += more.DesiredSize.Width;
+        var focus = _root.Children.ToList().FindIndex(c => c.Tag is null);
+        if (focus < 0) focus = Math.Max(0, _root.Children.Count - 1);
+        var toCull = _root.Children.Select((control, i) => (control, distance: Math.Abs(i - focus)))
+            .Where(x => x.control.Tag is CourseSlot).OrderByDescending(x => x.distance).ToArray();
+        foreach (var (control, _) in toCull)
+        {
+            if (width <= available) break;
+            _root.Children.Remove(control);
+            width -= control.DesiredSize.Width;
+        }
+        _root.Children.Add(more);
     }
 
     private Control BuildImportHint()
@@ -160,7 +201,7 @@ public sealed class ScheduleWidget : WidgetBase
             Children =
             {
                 Text("尚未导入课程", Size(13.5), White(0.74)),
-                Text("前往导入 ›", Size(13.5), CiPalette.SakuraAccentBrush()),
+                Text("前往导入 ›", Size(13.5), CiPalette.AccentBrush()),
             },
         };
 
@@ -277,22 +318,12 @@ public sealed class ScheduleWidget : WidgetBase
             FontWeight.Medium);
 
         var spacing = Math.Clamp(Config.ScheduleSpacing, 0.5, 2.0);
-        var pill = Pill(
-            text,
-            padding: 7,
-            margin: new Thickness(0, 0, WidgetGap * spacing, 0));
+        var pill = new Border { Child = text, Tag = slot, Padding = new Thickness(5,0), VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, WidgetGap * spacing, 0) };
+        ToolTip.SetTip(pill, $"{slot.Subject}  {slot.TimeRange}");
 
         var faded = isFinished && Config.FadeCompletedClasses;
         pill.Opacity = faded ? 0.42 : 1.0;
-        pill.Transitions = new Transitions
-        {
-            new DoubleTransition
-            {
-                Property = Visual.OpacityProperty,
-                Duration = TimeSpan.FromMilliseconds(160),
-                Easing = new CubicEaseInOut(),
-            },
-        };
 
         return pill;
     }
@@ -301,6 +332,9 @@ public sealed class ScheduleWidget : WidgetBase
         BuildExpandedItem(string title, TimeSpan start, TimeSpan end, TimeSpan now, bool isBreak)
     {
         var name = Text(title, Size(16.5), White(), FontWeight.Bold);
+        name.MaxWidth = Size(190);
+        name.TextTrimming = TextTrimming.CharacterEllipsis;
+        ToolTip.SetTip(name, title);
         name.VerticalAlignment = VerticalAlignment.Center;
 
         var left = LeftOf(end, now);
@@ -334,14 +368,14 @@ public sealed class ScheduleWidget : WidgetBase
         {
             Height = 2,
             CornerRadius = new CornerRadius(1),
-            Background = CiPalette.SakuraAccentTint(0.16),
+            Background = CiPalette.WithOpacity(CiPalette.PrimaryTextBrush(), 0.14),
         };
 
         var fill = new Border
         {
             Height = 2,
             CornerRadius = new CornerRadius(1),
-            Background = CiPalette.SakuraAccentGradient(),
+            Background = CiPalette.AccentBrush(),
             HorizontalAlignment = HorizontalAlignment.Left,
             Width = 0,
         };
@@ -364,10 +398,8 @@ public sealed class ScheduleWidget : WidgetBase
 
         var mask = new Border
         {
-            Background = CiPalette.SakuraAccentTint(isBreak ? 0.12 : 0.18),
-            BorderBrush = CiPalette.SakuraAccentTint(isBreak ? 0.30 : 0.46),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(10),
+            Background = CiPalette.AccentTint(isBreak ? 0.08 : 0.13),
+            CornerRadius = new CornerRadius(8),
             Height = 36,
             VerticalAlignment = VerticalAlignment.Center,
             ClipToBounds = true,
@@ -385,7 +417,7 @@ public sealed class ScheduleWidget : WidgetBase
 
         var pill = new Border
         {
-            Background = CiPalette.SakuraAccentGradient(),
+            Background = CiPalette.AccentBrush(),
             CornerRadius = new CornerRadius(10),
             Padding = new Thickness(8, 1),
             Height = 20,

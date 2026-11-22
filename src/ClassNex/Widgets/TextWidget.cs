@@ -10,6 +10,8 @@ namespace ClassNex.Widgets;
 public sealed class TextWidget : WidgetBase
 {
     private readonly TextBlock _text;
+    private (string Template, long Minute, string Day, string Parity, string? Current, string? Next, string Countdown)? _lastText;
+    private (bool Enabled, string? Color)? _color;
 
     public TextWidget()
     {
@@ -28,20 +30,23 @@ public sealed class TextWidget : WidgetBase
     {
         var template = Config.Text ?? "{date}";
 
-        _text.Text = template
-            .Replace("{date}", ctx.Today.DateText)
-            .Replace("{day}", ctx.Today.DayText)
-            .Replace("{time}", ctx.Now.ToString("HH:mm"))
-            .Replace("{parity}", ctx.Today.ParityText)
-            .Replace("{countdown}", ctx.CountdownText)
-            .Replace("{current}", ctx.Today.Current?.DisplayName ?? "")
-            .Replace("{next}", ctx.Today.Next?.DisplayName ?? "");
+        var textState = (template, ctx.Now.Ticks / TimeSpan.TicksPerMinute, ctx.Today.DateText, ctx.Today.Parity, ctx.Today.Current?.DisplayName, ctx.Today.Next?.DisplayName, ctx.CountdownText);
+        if (_lastText != textState)
+        {
+            _lastText = textState;
+            _text.Text = template.Replace("{date}", ctx.Today.DateText).Replace("{day}", ctx.Today.DayText)
+                .Replace("{time}", ctx.Now.ToString("HH:mm")).Replace("{parity}", ctx.Today.ParityText)
+                .Replace("{countdown}", ctx.CountdownText).Replace("{current}", ctx.Today.Current?.DisplayName ?? "")
+                .Replace("{next}", ctx.Today.Next?.DisplayName ?? "");
+        }
 
-        _text.Foreground = Config.UseCustomFontColor
-                           && !string.IsNullOrWhiteSpace(Config.FontColor)
-                           && Color.TryParse(Config.FontColor, out var custom)
-            ? new SolidColorBrush(custom)
-            : White();
+        var colorState = (Config.UseCustomFontColor, Config.FontColor);
+        if (_color != colorState)
+        {
+            _color = colorState;
+            _text.Foreground = Config.UseCustomFontColor && Color.TryParse(Config.FontColor, out var custom)
+                ? new SolidColorBrush(custom) : White();
+        }
 
         _text.FontSize = Size(14.5);
     }

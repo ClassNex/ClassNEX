@@ -10,21 +10,22 @@ namespace ClassNex.Services;
 public sealed class MainWindowNotificationSurface : INotificationSurface
 {
     private readonly TopmostEffectWindow _effectWindow;
+    private readonly MainWindow _window;
 
-    public MainWindowNotificationSurface(TopmostEffectWindow effectWindow)
+    public MainWindowNotificationSurface(MainWindow window, TopmostEffectWindow effectWindow)
     {
+        _window = window;
         _effectWindow = effectWindow;
     }
 
-    private static MainWindow? Window =>
-        AppServices.Settings.IsMainWindowVisible &&
-        AppServices.MainWindow is { IsEditMode: false } mainWindow
-            ? mainWindow
-            : null;
+    private MainWindow? Window => _window.CanPresentReminder ? _window : null;
 
-    public bool IsAvailable => Window is not null;
+    public bool IsAvailable => _window.CanPresentReminder;
 
-    public void ShowMask(string text, string leftGlyph, string rightGlyph, bool playEffect)
+    public void ShowMask(string text, string leftGlyph, string rightGlyph, bool playEffect) =>
+        ShowMask(text, leftGlyph, rightGlyph, playEffect, TimeSpan.Zero);
+
+    public void ShowMask(string text, string leftGlyph, string rightGlyph, bool playEffect, TimeSpan lifetime)
     {
         Dispatcher.UIThread.Post(() =>
         {
@@ -35,15 +36,15 @@ public sealed class MainWindowNotificationSurface : INotificationSurface
             if (playEffect)
             {
                 var center = mainWindow.GetIslandCenterOnScreen() ?? new PixelPoint(0, 0);
-                var clipCornerRadius = 14 * Math.Max(0.1, AppServices.Settings.EffectiveScale);
+                var clipCornerRadius = CiPalette.IslandCornerRadius * mainWindow.ReminderScale;
                 _effectWindow.PlayEffect(new RippleEffect(
                     center,
-                    CiPalette.SakuraAccentBrush(),
+                    CiPalette.AccentBrush(),
                     mainWindow.GetIslandScreenRect,
                     clipCornerRadius));
             }
 
-            mainWindow.ShowNotificationMask(text, leftGlyph, rightGlyph);
+            mainWindow.ShowNotificationMask(text, leftGlyph, rightGlyph, lifetime);
         });
     }
 
@@ -70,7 +71,7 @@ public sealed class MainWindowNotificationSurface : INotificationSurface
 
     public void Hide()
     {
-        Dispatcher.UIThread.Post(() => Window?.HideNotificationMask());
+        Dispatcher.UIThread.Post(() => _window.HideNotificationMask());
     }
 
     public void UpdateCountdown(string text)

@@ -10,6 +10,7 @@ namespace ClassNex.Widgets;
 public sealed class CountdownWidget : WidgetBase
 {
     private readonly TextBlock _text;
+    private (DateTime Date, DateTimeOffset? Target, string? Name, bool Accent, string Live, double Font)? _last;
 
     public CountdownWidget()
     {
@@ -21,6 +22,9 @@ public sealed class CountdownWidget : WidgetBase
 
     public override void Refresh(WidgetContext ctx)
     {
+        var state = (ctx.Now.Date, Config.CountdownTarget, Config.CountdownName, Config.UseCountdownAccent, ctx.CountdownText, Config.FontScale);
+        if (_last == state) return;
+        _last = state;
         if (Config.CountdownTarget is { } target)
         {
             var days = (target.Date - ctx.Now.Date).Days;
@@ -32,7 +36,7 @@ public sealed class CountdownWidget : WidgetBase
                 _ => $"{name} 已过 {-days} 天",
             };
 
-            _text.Foreground = Config.UseCountdownAccent ? CiPalette.SakuraAccentBrush() : White();
+            _text.Foreground = Config.UseCountdownAccent ? CiPalette.AccentBrush() : White();
         }
         else
         {

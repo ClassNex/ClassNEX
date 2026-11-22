@@ -9,6 +9,7 @@ namespace ClassNex.Widgets;
 public sealed class ClockWidget : WidgetBase
 {
     private readonly TextBlock _text;
+    private (long Tick, bool Seconds, bool Flash, double Font)? _last;
 
     public ClockWidget()
     {
@@ -25,6 +26,10 @@ public sealed class ClockWidget : WidgetBase
 
     public override void Refresh(WidgetContext ctx)
     {
+        var unit = Config.ShowSeconds || Config.FlashTimeSeparator ? TimeSpan.TicksPerSecond : TimeSpan.TicksPerMinute;
+        var state = (ctx.Now.Ticks / unit, Config.ShowSeconds, Config.FlashTimeSeparator, Config.FontScale);
+        if (_last == state) return;
+        _last = state;
         if (Config.ShowSeconds)
         {
             _text.Text = ctx.Now.ToString("HH:mm:ss");

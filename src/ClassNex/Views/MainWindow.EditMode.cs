@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -25,12 +26,20 @@ public partial class MainWindow
     
     public bool IsEditMode => _editMode;
 
+    private volatile bool _canPresentReminder;
+    internal bool CanPresentReminder => _canPresentReminder;
+    internal double ReminderScale => Math.Max(0.1, AppServices.Settings.EffectiveScale);
+    private void UpdateReminderAvailability() => _canPresentReminder = !_closed && IsVisible && !_editMode && !_nexPanelActive;
+
     public void EnterEditMode()
     {
         if (_editMode)
             return;
 
+        if (_nexPanelActive) HideNexPanel();
         _editMode = true;
+        UpdateReminderAvailability();
+        if (_showingNotification) HideNotificationMask();
         RebuildWidgets();
         RefreshWidgets();
         ApplySettings();
@@ -42,6 +51,7 @@ public partial class MainWindow
             return;
 
         _editMode = false;
+        UpdateReminderAvailability();
         RebuildWidgets();
         RefreshWidgets();
         ApplySettings();
@@ -56,14 +66,38 @@ public partial class MainWindow
     {
         var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2 };
 
-        row.Children.Add(new TextBlock
+        var handle = new TextBlock
         {
-            Text = WidgetRegistry.DisplayNameOf(config.Type),
+            Text = "⠿  " + WidgetRegistry.DisplayNameOf(config.Type),
             FontSize = 13,
             Foreground = CiPalette.PrimaryTextBrush(),
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 0, 6, 0),
-        });
+            Cursor = new Cursor(StandardCursorType.SizeAll),
+        };
+        ToolTip.SetTip(handle, "拖到另一组件上交换位置，也可用更多菜单移动");
+        handle.PointerPressed += (_, e) =>
+        {
+            if (!e.GetCurrentPoint(handle).Properties.IsLeftButtonPressed) return;
+            e.Pointer.Capture(handle);
+            e.Handled = true;
+        };
+        handle.PointerReleased += (_, e) =>
+        {
+            if (e.Pointer.Captured != handle) return;
+            var point = e.GetPosition(WidgetHost);
+            e.Pointer.Capture(null);
+            for (var i = 0; i < _widgets.Count; i++)
+            {
+                if (!WidgetHost.Children[i].Bounds.Contains(point)) continue;
+                var list = AppServices.Settings.Widgets;
+                var delta = list.IndexOf(_widgets[i].Config) - list.IndexOf(config);
+                if (delta != 0) AppServices.Widgets.Move(config, delta);
+                break;
+            }
+            e.Handled = true;
+        };
+        row.Children.Add(handle);
 
         
         row.Children.Add(ToolButton("\uE154", "该组件的设置", () => App.OpenSettings("widgets")));
@@ -78,8 +112,8 @@ public partial class MainWindow
 
         return new Border
         {
-            Background = CiPalette.IslandSurfaceBrush(),
-            BorderBrush = CiPalette.IslandBorderBrush(),
+            Background = CiPalette.SurfaceBrush("SolidBackgroundFillColorBaseBrush", 1),
+            BorderBrush = CiPalette.SurfaceBrush("ControlStrokeColorDefaultBrush"),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(8),
             Padding = new Thickness(8, 2),
@@ -150,10 +184,10 @@ public partial class MainWindow
             {
                 Text = compact ? "＋" : "＋ 添加组件",
                 FontSize = compact ? 16 : 14,
-                Foreground = CiPalette.SakuraAccentBrush(),
+                Foreground = CiPalette.PrimaryTextBrush(),
             },
-            Background = CiPalette.SakuraAccentTint(0.14),
-            BorderBrush = CiPalette.SakuraAccentTint(0.3),
+            Background = CiPalette.AccentTint(0.10),
+            BorderBrush = CiPalette.SurfaceBrush("ControlStrokeColorDefaultBrush"),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(8),
             Padding = compact ? new Thickness(10, 12) : new Thickness(10, 6),
@@ -185,7 +219,7 @@ public partial class MainWindow
         var done = new Button
         {
             Content = new TextBlock { Text = "✓ 完成", FontSize = 14, Foreground = CiPalette.OnAccentBrush() },
-            Background = CiPalette.SakuraAccentGradient(),
+            Background = CiPalette.AccentBrush(),
             BorderThickness = new Thickness(0),
             CornerRadius = new CornerRadius(8),
             Padding = new Thickness(12, 6),
@@ -196,12 +230,11 @@ public partial class MainWindow
         EditBarHost.Children.Clear();
         EditBarHost.Children.Add(new Border
         {
-            Background = CiPalette.IslandSurfaceBrush(),
-            BorderBrush = CiPalette.IslandBorderBrush(),
+            Background = CiPalette.SurfaceBrush("SolidBackgroundFillColorBaseBrush", 1),
+            BorderBrush = CiPalette.SurfaceBrush("ControlStrokeColorDefaultBrush"),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(12),
             Padding = new Thickness(6),
-            BoxShadow = BoxShadows.Parse("0 8 24 2 #55000000"),
             Child = row,
         });
     }

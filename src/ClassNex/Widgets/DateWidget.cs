@@ -11,6 +11,7 @@ public sealed class DateWidget : WidgetBase
 {
     private readonly TextBlock _weekday;
     private readonly TextBlock _date;
+    private (long Minute, string Parity, bool Clock, double Scale)? _last;
 
     public DateWidget()
     {
@@ -33,7 +34,7 @@ public sealed class DateWidget : WidgetBase
             Width = 3,
             Height = 19,
             CornerRadius = new CornerRadius(1.5),
-            Background = CiPalette.SakuraAccentBrush(),
+            Background = CiPalette.AccentBrush(),
             VerticalAlignment = VerticalAlignment.Center,
         };
 
@@ -65,9 +66,14 @@ public sealed class DateWidget : WidgetBase
 
     public override void Refresh(WidgetContext ctx)
     {
-        _weekday.Text = ctx.Today.DayText;
-        _date.Text = ctx.Today.DateText;
-        _weekday.FontSize = Size(9.5);
+        var state = (ctx.Now.Ticks / TimeSpan.TicksPerMinute, ctx.Today.Parity, ctx.HasClock, Config.FontScale);
+        if (_last == state) return;
+        _last = state;
+        _weekday.Text = $"{ctx.Today.DayText} · {ctx.Today.ParityText}";
+        _date.Text = ctx.HasClock ? ctx.Today.DateText : $"{ctx.Today.DateText}  {ctx.Now:HH:mm}";
+        _weekday.FontSize = Size(10.5);
+        _weekday.LineHeight = Size(13);
         _date.FontSize = Size(15);
+        _date.LineHeight = Size(18);
     }
 }

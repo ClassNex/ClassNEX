@@ -9,6 +9,7 @@ namespace ClassNex.Widgets;
 public sealed class DividerWidget : WidgetBase
 {
     private readonly Border _line;
+    private Models.LayoutOrientation? _orientation;
 
     public override string Type => "divider";
 
@@ -28,6 +29,8 @@ public sealed class DividerWidget : WidgetBase
 
     public override void Refresh(WidgetContext ctx)
     {
+        if (_orientation == ctx.Settings.Orientation) return;
+        _orientation = ctx.Settings.Orientation;
         if (ctx.Settings.Orientation == Models.LayoutOrientation.Vertical)
         {
             _line.Width = double.NaN;
