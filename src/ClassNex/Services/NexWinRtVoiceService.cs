@@ -24,6 +24,11 @@ public sealed class NexWinRtVoiceService : INexVoiceService
     private bool _listening;
     private bool _dictating;
     private bool _starting;
+    private bool _startingDictation;
+    private bool _maintainingWake;
+    private bool _disposed;
+    private CancellationTokenSource? _session;
+    private CancellationTokenSource? _microphoneTest;
     private bool _wakeRunning;
     private bool _dictationProbed;
     private bool _sapiOnly;
@@ -53,32 +58,36 @@ public sealed class NexWinRtVoiceService : INexVoiceService
 
     public async Task<bool> StartAsync()
     {
-        if (_listening || _starting)
+        if (_disposed || _listening || _starting)
             return _listening;
 
         _starting = true;
+        var session = _session = new CancellationTokenSource();
+        var token = session.Token;
         try
         {
             var language = PickLanguage();
 
             _wakeRecognizer = new SpeechRecognizer(language);
             _wakeRecognizer.Constraints.Add(new SpeechRecognitionListConstraint(WakePhrases, "wake"));
-            var compile = await _wakeRecognizer.CompileConstraintsAsync();
+            var compile = await _wakeRecognizer.CompileConstraintsAsync().AsTask(token);
+            token.ThrowIfCancellationRequested();
             if (compile.Status != SpeechRecognitionResultStatus.Success)
             {
                 ErrorOccurred?.Invoke("唤醒词表编译失败：" + compile.Status);
                 return false;
             }
 
-            _wakeRecognizer.ContinuousRecognitionSession.ResultGenerated += OnWakeResult;
+            _wakeRecognizer.ContinuousRecognitionSession.ResultGenerated += (sender, e) => Post(token, () => OnWakeResult(sender, e));
             
-            _wakeRecognizer.ContinuousRecognitionSession.Completed += (_, e) =>
+            _wakeRecognizer.ContinuousRecognitionSession.Completed += (_, e) => Post(token, () =>
             {
                 _wakeRunning = false;
                 NexVoiceLog.Write($"唤醒会话结束：状态={e.Status}（看门狗会自动拉起来）");
-            };
+            });
             _wakeRecognizer.ContinuousRecognitionSession.AutoStopSilenceTimeout = TimeSpan.FromMinutes(30);
-            await _wakeRecognizer.ContinuousRecognitionSession.StartAsync();
+            await _wakeRecognizer.ContinuousRecognitionSession.StartAsync().AsTask(token);
+            token.ThrowIfCancellationRequested();
             _wakeRunning = true;
             _lastWakeActivityUtc = DateTime.UtcNow;
 
@@ -96,15 +105,25 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         }
         catch (Exception ex)
         {
+            if (token.IsCancellationRequested) return false;
             NexVoiceLog.Write("WinRT 启动失败：" + ex);
             ErrorOccurred?.Invoke("语音识别启动失败：" + ex.Message);
             return false;
         }
         finally
         {
-            _starting = false;
+            if (ReferenceEquals(_session, session))
+            {
+                _starting = false;
+                if (!_listening) Stop();
+            }
         }
     }
+
+    private static void Post(CancellationToken token, Action action) => Dispatcher.UIThread.Post(() =>
+    {
+        if (!token.IsCancellationRequested) action();
+    });
 
     public void Start()
     {
@@ -188,20 +207,26 @@ public sealed class NexWinRtVoiceService : INexVoiceService
     
     public async Task<string> TestMicrophoneAsync()
     {
-        var access = CheckMicrophoneAccess();
-        var devices = await DescribeAudioDevicesAsync();
-        NexVoiceLog.Write($"麦克风测试开始：权限={access}；{devices}");
-
+        if (_disposed) return "语音服务已经关闭";
+        _microphoneTest?.Cancel();
+        using var pending = new CancellationTokenSource();
+        _microphoneTest = pending;
+        var token = pending.Token;
         try
         {
+            var access = CheckMicrophoneAccess();
+            var devices = await DescribeAudioDevicesAsync();
+            token.ThrowIfCancellationRequested();
+            NexVoiceLog.Write($"麦克风测试开始：权限={access}；{devices}");
             var language = PickLanguage();
             using var recognizer = new SpeechRecognizer(language);
             recognizer.Constraints.Add(new SpeechRecognitionTopicConstraint(SpeechRecognitionScenario.Dictation, "test"));
-            var compile = await recognizer.CompileConstraintsAsync();
+            var compile = await recognizer.CompileConstraintsAsync().AsTask(token);
+            token.ThrowIfCancellationRequested();
             if (compile.Status != SpeechRecognitionResultStatus.Success)
                 return $"约束编译失败：{compile.Status}";
 
-            var result = await recognizer.RecognizeAsync();
+            var result = await recognizer.RecognizeAsync().AsTask(token);
             NexVoiceLog.Write($"麦克风测试结果：{result.Status} / 「{result.Text}」");
             return result.Status switch
             {
@@ -214,33 +239,41 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         }
         catch (Exception ex)
         {
+            if (token.IsCancellationRequested) return "麦克风测试已取消";
             NexVoiceLog.Write("麦克风测试异常：" + ex);
             return DescribeSpeechError(ex);
         }
+        finally { if (ReferenceEquals(_microphoneTest, pending)) _microphoneTest = null; }
     }
 
     public void Stop()
     {
-        _watchdog?.Stop();
-        try
+        var session = _session;
+        _session = null;
+        _microphoneTest?.Cancel();
+        _listening = _dictating = _starting = _startingDictation = _wakeRunning = _maintainingWake = false;
+        if (_watchdog is { } watchdog)
         {
-            _wakeRecognizer?.ContinuousRecognitionSession.StopAsync().AsTask().Wait(TimeSpan.FromSeconds(2));
-            _dictationRecognizer?.ContinuousRecognitionSession.StopAsync().AsTask().Wait(TimeSpan.FromSeconds(2));
+            watchdog.Stop();
+            watchdog.Tick -= OnWatchdogTick;
         }
-        catch
-        {
-            
-        }
-
-        _wakeRecognizer?.Dispose();
-        _dictationRecognizer?.Dispose();
+        try { session?.Cancel(); }
+        catch (AggregateException ex) { NexVoiceLog.Write("取消语音会话：" + ex.Message); }
+        finally { session?.Dispose(); }
+        CloseRecognizer(_wakeRecognizer);
+        CloseRecognizer(_dictationRecognizer);
+        _sapiDictation?.Dispose();
         _wakeRecognizer = null;
         _dictationRecognizer = null;
-        _listening = false;
-        _dictating = false;
+        _sapiDictation = null;
     }
 
-    
+    private static void CloseRecognizer(SpeechRecognizer? recognizer)
+    {
+        try { recognizer?.Dispose(); }
+        catch (Exception ex) { NexVoiceLog.Write("释放语音识别器失败：" + ex.Message); }
+    }
+
 
     private void OnWakeResult(SpeechContinuousRecognitionSession sender, SpeechContinuousRecognitionResultGeneratedEventArgs args)
     {
@@ -260,120 +293,87 @@ public sealed class NexWinRtVoiceService : INexVoiceService
 
     private async Task StartDictationAsync()
     {
-        if (_dictating)
-            return;
-
-        
-        
-        
-        if (!_sapiOnly && !_dictationProbed)
-        {
-            _dictationProbed = true;
-            _sapiOnly = !await ProbeWinRtDictationAsync();
-            NexVoiceLog.Write(_sapiOnly
-                ? "WinRT 听写不可用（系统语音政策未接受）→ 听写改走 SAPI，唤醒继续用 WinRT"
-                : "WinRT 听写可用，走现代引擎");
-        }
-
-        if (_sapiOnly)
-        {
-            StartSapiDictation();
-            return;
-        }
-
-        SpeechRecognizer dictation;
+        if (!_listening || _dictating || _startingDictation || _session is not { } session) return;
+        var token = session.Token;
+        _startingDictation = true;
         try
         {
-            dictation = _dictationRecognizer ??= await CreateDictationRecognizerAsync();
-        }
-        catch (Exception ex)
-        {
-            NexVoiceLog.Write("准备听写识别器失败，改走 SAPI：" + ex.Message);
-            _sapiOnly = true;
-            StartSapiDictation();
-            return;
-        }
-
-        try
-        {
-            await dictation.ContinuousRecognitionSession.StartAsync();
-        }
-        catch (Exception ex)
-        {
-            NexVoiceLog.Write("启动 WinRT 听写失败，改走 SAPI：" + ex.Message);
-            _sapiOnly = true;
-            StartSapiDictation();
-            return;
-        }
-
-        _dictating = true;
-        WakeWordDetected?.Invoke();
-
-        
-        await PauseWakeSessionAsync();
-    }
-
-    
-    private void StartSapiDictation()
-    {
-        _dictating = true;
-        WakeWordDetected?.Invoke();
-
-        
-        _ = PauseWakeSessionAsync();
-
-        _sapiDictation ??= new NexSapiDictation();
-        _sapiDictation.Recognized -= OnSapiRecognized;
-        _sapiDictation.TimedOut -= OnSapiTimedOut;
-        _sapiDictation.Hypothesis -= OnSapiHypothesis;
-        _sapiDictation.Recognized += OnSapiRecognized;
-        _sapiDictation.TimedOut += OnSapiTimedOut;
-        _sapiDictation.Hypothesis += OnSapiHypothesis;
-        _sapiDictation.ListenOnce(DictationTimeoutSeconds);
-    }
-
-    private void OnSapiHypothesis(string text) => SpeechHypothesized?.Invoke(text);
-
-    private void OnSapiRecognized(string text)
-    {
-        _dictating = false;
-        SpeechRecognized?.Invoke(text);
-        _ = BackToWakeWordAsync();
-    }
-
-    private void OnSapiTimedOut()
-    {
-        _dictating = false;
-        SpeechTimeout?.Invoke();
-        _ = BackToWakeWordAsync();
-    }
-
-    private async Task PauseWakeSessionAsync()
-    {
-        try
-        {
+            if (!_dictationProbed)
+            {
+                var available = await ProbeWinRtDictationAsync(token);
+                token.ThrowIfCancellationRequested();
+                _sapiOnly = !available;
+                _dictationProbed = true;
+            }
+            if (!_sapiOnly)
+            {
+                try
+                {
+                    var recognizer = _dictationRecognizer;
+                    if (recognizer is null)
+                    {
+                        recognizer = await CreateDictationRecognizerAsync(token);
+                        if (token.IsCancellationRequested) { CloseRecognizer(recognizer); return; }
+                        _dictationRecognizer = recognizer;
+                    }
+                    await recognizer.ContinuousRecognitionSession.StartAsync().AsTask(token);
+                    token.ThrowIfCancellationRequested();
+                }
+                catch (Exception ex) when (!token.IsCancellationRequested)
+                {
+                    NexVoiceLog.Write("WinRT 听写失败，改走 SAPI：" + ex.Message);
+                    CloseRecognizer(_dictationRecognizer);
+                    _dictationRecognizer = null;
+                    _sapiOnly = true;
+                }
+            }
+            if (_sapiOnly)
+            {
+                if (_sapiDictation is null)
+                {
+                    var sapi = _sapiDictation = new NexSapiDictation();
+                    sapi.Hypothesis += text => Post(token, () => { if (_dictating) SpeechHypothesized?.Invoke(text); });
+                    sapi.Recognized += text => Post(token, () =>
+                    {
+                        if (!_dictating) return;
+                        _dictating = false;
+                        SpeechRecognized?.Invoke(text);
+                        _ = BackToWakeWordAsync();
+                    });
+                    sapi.TimedOut += () => Post(token, () =>
+                    {
+                        if (!_dictating) return;
+                        _dictating = false;
+                        SpeechTimeout?.Invoke();
+                        _ = BackToWakeWordAsync();
+                    });
+                }
+                if (!_sapiDictation.ListenOnce(DictationTimeoutSeconds)) { SpeechTimeout?.Invoke(); return; }
+            }
+            _dictating = true;
+            WakeWordDetected?.Invoke();
             if (_wakeRecognizer is not null && _wakeRunning)
             {
-                await _wakeRecognizer.ContinuousRecognitionSession.StopAsync();
-                _wakeRunning = false;
+                await _wakeRecognizer.ContinuousRecognitionSession.StopAsync().AsTask(token);
+                if (!token.IsCancellationRequested) _wakeRunning = false;
             }
         }
         catch (Exception ex)
         {
-            NexVoiceLog.Write("暂停唤醒会话失败（不影响听写）：" + ex.Message.Split('\n')[0]);
-            _wakeRunning = false;
+            if (!token.IsCancellationRequested) NexVoiceLog.Write("听写切换失败：" + ex.Message);
         }
+        finally { if (!token.IsCancellationRequested) _startingDictation = false; }
     }
 
-    
-    private async Task<bool> ProbeWinRtDictationAsync()
+    private static async Task<bool> ProbeWinRtDictationAsync(CancellationToken token)
     {
         try
         {
             var language = PickLanguage();
             using var probe = new SpeechRecognizer(language);
             probe.Constraints.Add(new SpeechRecognitionTopicConstraint(SpeechRecognitionScenario.Dictation, "probe"));
-            var compile = await probe.CompileConstraintsAsync();
+            var compile = await probe.CompileConstraintsAsync().AsTask(token);
+            token.ThrowIfCancellationRequested();
             if (compile.Status != SpeechRecognitionResultStatus.Success)
             {
                 NexVoiceLog.Write("WinRT 听写探针：约束编译失败 " + compile.Status);
@@ -381,8 +381,8 @@ public sealed class NexWinRtVoiceService : INexVoiceService
             }
 
             
-            await probe.ContinuousRecognitionSession.StartAsync();
-            await probe.ContinuousRecognitionSession.StopAsync();
+            await probe.ContinuousRecognitionSession.StartAsync().AsTask(token);
+            await probe.ContinuousRecognitionSession.StopAsync().AsTask(token);
             return true;
         }
         catch (Exception ex)
@@ -407,34 +407,37 @@ public sealed class NexWinRtVoiceService : INexVoiceService
         return "听写出错：" + ex.Message;
     }
 
-    private async Task<SpeechRecognizer> CreateDictationRecognizerAsync()
+    private async Task<SpeechRecognizer> CreateDictationRecognizerAsync(CancellationToken token)
     {
-        var language = PickLanguage();
-        var recognizer = new SpeechRecognizer(language);
-        recognizer.Constraints.Add(new SpeechRecognitionTopicConstraint(SpeechRecognitionScenario.Dictation, "dictation"));
-        var compile = await recognizer.CompileConstraintsAsync();
-        if (compile.Status != SpeechRecognitionResultStatus.Success)
-            NexVoiceLog.Write("听写约束编译状态：" + compile.Status);
-
-        recognizer.ContinuousRecognitionSession.ResultGenerated += OnDictationResult;
-        recognizer.ContinuousRecognitionSession.AutoStopSilenceTimeout = TimeSpan.FromSeconds(DictationTimeoutSeconds);
-        recognizer.HypothesisGenerated += (_, e) =>
+        var recognizer = new SpeechRecognizer(PickLanguage());
+        try
         {
-            if (_dictating && !string.IsNullOrWhiteSpace(e.Hypothesis?.Text))
-                SpeechHypothesized?.Invoke(e.Hypothesis.Text);
-        };
-        recognizer.ContinuousRecognitionSession.Completed += (_, _) =>
-        {
-            
-            if (_dictating)
+            recognizer.Constraints.Add(new SpeechRecognitionTopicConstraint(SpeechRecognitionScenario.Dictation, "dictation"));
+            var compile = await recognizer.CompileConstraintsAsync().AsTask(token);
+            token.ThrowIfCancellationRequested();
+            if (compile.Status != SpeechRecognitionResultStatus.Success) throw new InvalidOperationException("听写约束编译状态：" + compile.Status);
+            var session = recognizer.ContinuousRecognitionSession;
+            session.AutoStopSilenceTimeout = TimeSpan.FromSeconds(DictationTimeoutSeconds);
+            session.ResultGenerated += (sender, e) => Post(token, () =>
             {
+                if (ReferenceEquals(_dictationRecognizer, recognizer)) OnDictationResult(sender, e);
+            });
+            recognizer.HypothesisGenerated += (_, e) => Post(token, () =>
+            {
+                if (_dictating && ReferenceEquals(_dictationRecognizer, recognizer) && !string.IsNullOrWhiteSpace(e.Hypothesis?.Text))
+                    SpeechHypothesized?.Invoke(e.Hypothesis.Text);
+            });
+            session.Completed += (_, _) => Post(token, () =>
+            {
+                if (!_dictating || !ReferenceEquals(_dictationRecognizer, recognizer)) return;
                 SpeechTimeout?.Invoke();
                 _ = BackToWakeWordAsync();
-            }
-        };
-
-        return recognizer;
+            });
+            return recognizer;
+        }
+        catch { CloseRecognizer(recognizer); throw; }
     }
+
 
     private void OnDictationResult(SpeechContinuousRecognitionSession sender, SpeechContinuousRecognitionResultGeneratedEventArgs args)
     {
@@ -458,79 +461,44 @@ public sealed class NexWinRtVoiceService : INexVoiceService
     
     private void OnWatchdogTick(object? sender, EventArgs e)
     {
-        if (!_listening || _dictating || _starting)
-            return;
-
-        if (!_wakeRunning)
-        {
-            _ = EnsureWakeSessionAsync();
-            return;
-        }
-
-        var idle = DateTime.UtcNow - _lastWakeActivityUtc;
-        if (idle < TimeSpan.FromMinutes(4))
-            return;
-
-        
-        _ = RefreshWakeSessionAsync();
+        if (!_listening || _starting || _startingDictation || _dictating) return;
+        var refresh = _wakeRunning && DateTime.UtcNow - _lastWakeActivityUtc >= TimeSpan.FromMinutes(4);
+        if (!_wakeRunning || refresh) _ = EnsureWakeSessionAsync(refresh);
     }
 
-    private async Task RefreshWakeSessionAsync()
+    private async Task EnsureWakeSessionAsync(bool refresh = false)
     {
-        if (_wakeRecognizer is null)
-            return;
-
+        if (!_listening || _dictating || _startingDictation || _maintainingWake || (_wakeRunning && !refresh) ||
+            _session is not { } lifetime || _wakeRecognizer is not { } wake) return;
+        var token = lifetime.Token;
+        _maintainingWake = true;
         try
         {
-            await _wakeRecognizer.ContinuousRecognitionSession.StopAsync();
-            _wakeRunning = false;
-            await _wakeRecognizer.ContinuousRecognitionSession.StartAsync();
+            if (refresh)
+            {
+                await wake.ContinuousRecognitionSession.StopAsync().AsTask(token);
+                token.ThrowIfCancellationRequested();
+                _wakeRunning = false;
+                if (_dictating || _startingDictation) return;
+            }
+            await wake.ContinuousRecognitionSession.StartAsync().AsTask(token);
+            token.ThrowIfCancellationRequested();
             _wakeRunning = true;
             _lastWakeActivityUtc = DateTime.UtcNow;
-            NexVoiceLog.Write("看门狗：闲置较久，已刷新唤醒会话（音频管道重启）");
-            return;
         }
         catch (Exception ex)
         {
-            NexVoiceLog.Write("看门狗刷新失败，准备重建识别器：" + ex.Message.Split('\n')[0]);
+            if (token.IsCancellationRequested) return;
+            NexVoiceLog.Write("恢复语音唤醒失败：" + ex.Message);
+            if (refresh && !_dictating && !_startingDictation)
+            {
+                Stop();
+                await StartAsync();
+            }
         }
-
-        
-        try
-        {
-            _wakeRecognizer.Dispose();
-            _wakeRecognizer = null;
-            _wakeRunning = false;
-            _listening = false;
-            await StartAsync();
-            NexVoiceLog.Write("看门狗：已重建语音识别器");
-        }
-        catch (Exception ex)
-        {
-            NexVoiceLog.Write("看门狗重建失败：" + ex.Message.Split('\n')[0]);
-        }
+        finally { if (!token.IsCancellationRequested) _maintainingWake = false; }
     }
 
-    private async Task EnsureWakeSessionAsync()
-    {
-        if (_wakeRunning || _wakeRecognizer is null)
-            return;
-
-        try
-        {
-            await _wakeRecognizer.ContinuousRecognitionSession.StartAsync();
-            _wakeRunning = true;
-            _lastWakeActivityUtc = DateTime.UtcNow;
-            NexVoiceLog.Write("看门狗：唤醒会话已重新拉起，麦克风保持开启");
-        }
-        catch (Exception ex)
-        {
-            
-            NexVoiceLog.Write("看门狗拉起失败：" + ex.Message.Split('\n')[0]);
-        }
-    }
-
-    
     public void ListenForFollowUp()
     {
         if (!_listening || _dictating)
@@ -547,26 +515,25 @@ public sealed class NexWinRtVoiceService : INexVoiceService
 
     private async Task BackToWakeWordAsync()
     {
+        if (!_listening || _session is not { } lifetime) return;
+        var token = lifetime.Token;
         _dictating = false;
-
         _sapiDictation?.Stop();
-
-        try
-        {
-            if (_dictationRecognizer is not null)
-                await _dictationRecognizer.ContinuousRecognitionSession.StopAsync();
-        }
-        catch (Exception ex)
-        {
-            NexVoiceLog.Write("停止听写会话失败（忽略）：" + ex.Message.Split('\n')[0]);
-        }
-
-        _dictationRecognizer?.Dispose();
+        var recognizer = _dictationRecognizer;
         _dictationRecognizer = null;
-
-        
-        await EnsureWakeSessionAsync();
+        if (recognizer != null)
+        {
+            try { await recognizer.ContinuousRecognitionSession.CancelAsync().AsTask(token); }
+            catch (Exception ex) { if (!token.IsCancellationRequested) NexVoiceLog.Write("结束听写：" + ex.Message); }
+            finally { CloseRecognizer(recognizer); }
+        }
+        if (!token.IsCancellationRequested) await EnsureWakeSessionAsync();
     }
 
-    public void Dispose() => Stop();
+
+    public void Dispose()
+    {
+        _disposed = true;
+        Stop();
+    }
 }
