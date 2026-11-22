@@ -1,6 +1,6 @@
 # ClassNEX 续作指南（HANDOFF）
 
-> 最后更新：2026-11-16　｜　当前版本 **26w46d**　｜　发布标签 **26w46d_Alpha**
+> 最后更新：2026-11-22　｜　本分支基线 **26w46d_Alpha**　｜　26.0 重构验收，未发布
 > 已发布：`26w41a_Alpha` ~ `26w46d_Alpha`（GitHub Releases，均为预发布）
 > 这份文档的目的：**第二天打开新会话，照着它就能无缝继续写。**
 
@@ -8,10 +8,13 @@
 
 ## 0. 一分钟上手
 
+本次代码在 `refactor/26w46d-flclash-ui-core`。线上的 `main` 有授权 SHA 之后的新提交，未覆盖。回退保护、模块图、离线联测指令和实窗结果见 [26.0 验收](docs/26.0-acceptance.md)。下文各节保留 Alpha 的历史记录；如有冲突，以本节和验收记录为准。
+
 ```powershell
 cd E:\ClassNex
-dotnet build src\ClassNex\ClassNex.csproj -c Debug          # 编译
-$env:CLASSNEX_VERIFY="1"; Start-Process "E:\ClassNex\src\ClassNex\bin\Debug\net10.0\ClassNex.exe"   # 运行+自检
+dotnet restore ClassNex.sln
+dotnet build src\ClassNex\ClassNex.csproj -c Debug -t:Rebuild
+./tools/review_desktop.ps1 -Round my-review
 ```
 
 - 仓库：https://github.com/ClassNex/ClassNEX （GPL-3.0，分支 `main`）
@@ -588,8 +591,8 @@ python tools\gh_release.py "E:\ClassNex\build\ClassNEX-26w41f-Alpha-win-x64.zip"
 
 ```
 src/ClassNex.Core/          无项目依赖：模型、核心服务、通知/AI/插件接口
-src/ClassNex.Notification/  通知调度，依赖 Core，通过 INotificationSurface 调用界面
-src/ClassNex.Plugins/       插件发现、清单、可回收 AssemblyLoadContext 与生命周期
+src/ClassNex.Notification.Service/  队列、课堂提醒和显示渠道，依赖 Core
+src/ClassNex.Plugin/        插件发现、清单、可回收 AssemblyLoadContext 与生命周期
 src/ClassNex.AI/            NEX HTTP 客户端、Agent、工具和模型目录
 src/ClassNex/
   App.axaml(.cs)          应用入口、组合根、窗口与托盘

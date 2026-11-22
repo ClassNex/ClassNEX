@@ -34,6 +34,8 @@ _verify.log
 # 发布产物
 build/
 
+artifacts/ui-review/*/
+
 _tmp_*.png
 _b*.log
 _build*.log
