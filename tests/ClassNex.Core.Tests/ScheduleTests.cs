@@ -77,6 +77,22 @@ public sealed class ScheduleTests
     }
 
     [TestMethod]
+    public void NewInstallGetsWidgetsButUserCanPersistAnEmptyLayout()
+    {
+        var dir = Directory.CreateTempSubdirectory("classnex-layout-");
+        try
+        {
+            var store = new SettingsStore(Path.Combine(dir.FullName, "Settings.json"));
+            var settings = store.Load();
+            CollectionAssert.AreEqual(new[] { "date", "schedule" }, settings.Widgets.Select(w => w.Type).ToArray());
+            settings.Widgets.Clear();
+            store.Save(settings);
+            Assert.IsEmpty(store.Load().Widgets);
+        }
+        finally { dir.Delete(true); }
+    }
+
+    [TestMethod]
     public void LegacySettingsMigrateKnownEndpointsWithoutReplacingCustomOnes()
     {
         var dir = Directory.CreateTempSubdirectory("classnex-core-migrate-");

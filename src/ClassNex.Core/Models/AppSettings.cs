@@ -67,7 +67,7 @@ public sealed class AppSettings
     public int DefaultBreakingTimePointMinutes { get; set; } = 10;
 
     /// <summary>桌面组件实例及其排列、启用状态和独立参数。</summary>
-    public List<WidgetConfig> Widgets { get; set; } = new();
+    public List<WidgetConfig> Widgets { get; set; } = CreateDefaultWidgets();
 
     /// <summary>当前时间表，包含课程、课间、分隔点与行动。</summary>
     public TimeLayout TimeLayout { get; set; } = new();
