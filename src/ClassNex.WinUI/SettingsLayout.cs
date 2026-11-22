@@ -34,6 +34,10 @@ public sealed partial class NativeSettingsWindow
         _search.QueryIcon = new SymbolIcon(Symbol.Find);
         _searchCompact.Content = new FontIcon { Glyph = "\uE721", FontSize = 16 };
         _searchCompact.Style = ButtonStyle("SubtleButtonStyle");
+        _searchCompact.Padding = new Thickness(0);
+        _searchCompact.HorizontalContentAlignment = HorizontalAlignment.Center;
+        _searchCompact.VerticalContentAlignment = VerticalAlignment.Center;
+        _searchCompact.HorizontalAlignment = HorizontalAlignment.Stretch;
         Identify(_searchCompact, "CompactSettingsSearch", "查找设置");
         ToolTipService.SetToolTip(_searchCompact, "查找设置");
         _searchCompact.Click += (_, _) => OpenSearch();
@@ -48,7 +52,6 @@ public sealed partial class NativeSettingsWindow
             _identityButton.Padding = full ? new Thickness(8, 6, 8, 6) : new Thickness(3);
             _identityLabels.Visibility = _search.Visibility = full ? Visibility.Visible : Visibility.Collapsed;
             _searchCompact.Visibility = full ? Visibility.Collapsed : Visibility.Visible;
-            _searchCompact.HorizontalAlignment = HorizontalAlignment.Stretch;
         }
         _navigation.RegisterPropertyChangedCallback(NavigationView.IsPaneOpenProperty, (_, _) => Layout());
         _navigation.Loaded += (_, _) => Layout();
