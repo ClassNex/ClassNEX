@@ -25,7 +25,7 @@ var casdoorClientId = Environment.GetEnvironmentVariable("CASDOOR_CLIENT_ID")
 var casdoorClientSecret = Environment.GetEnvironmentVariable("CASDOOR_CLIENT_SECRET") ?? "";
 var publicBaseUrl = Environment.GetEnvironmentVariable("CENTRAL_PUBLIC_URL")
                     ?? AppSettings.DefaultCentralEndpoint;
-var auth = new CentralAuthService(
+using var auth = new CentralAuthService(
     casdoorUrl,
     casdoorInternalUrl,
     casdoorClientId,
@@ -140,6 +140,7 @@ app.MapGet("/api/v1/auth/profile", async (HttpRequest request) =>
             name = user.Name,
             email = user.Email,
             preferred_username = user.PreferredUsername,
+            picture = user.Picture,
         });
 });
 
