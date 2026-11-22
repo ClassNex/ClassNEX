@@ -20,13 +20,11 @@ public partial class App : Application
     private SettingsWindow? _settingsWindow;
     private ProfileEditorWindow? _profileEditor;
     private LoginWindow? _loginWindow;
-    private Views.TopmostEffectWindow? _effectWindow;
+    private DesktopRuntime? _runtime;
     private Views.OobeWindow? _oobeWindow;
     private Views.OobeWindow? _oobePreview;
     private Views.NexChatWindow? _nexChatWindow;
     private Services.NexVoiceCoordinator? _nexVoice;
-    private Services.NotificationService? _notificationService;
-    private Services.PluginService? _pluginService;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
@@ -74,40 +72,32 @@ public partial class App : Application
             }
 
             
-            _effectWindow = new Views.TopmostEffectWindow();
-            _notificationService = new Services.NotificationService(
-                new Services.MainWindowNotificationSurface(_effectWindow),
-                () => AppServices.Settings,
-                AppServices.Time,
-                AppServices.Schedule);
+            _runtime = new DesktopRuntime(_mainWindow, AppServices.SettingsStore, AppServices.Schedule, AppServices.Time,
+                AppServices.TimeLayout, AppServices.Widgets, AppServices.Ai, () => AppServices.Settings);
+            _runtime.Start();
+            desktop.Exit += (_, _) => _runtime.Dispose();
 
-            
-            
-            
-            if (_mainWindow is { } mw && mw.Screens.Primary is { } primary)
-                _effectWindow.UpdateWindowPos(primary, 1 / primary.Scaling, false);
-
-            Services.AppServices.MainWindow = _mainWindow;
-            Services.AppServices.NotificationService = _notificationService;
-            Services.AppServices.Management = new Services.CentralManagementService();
-            Services.AppServices.Management.Start();
-            _notificationService.Start();
-
-            var pluginServices = new PluginServiceProvider();
-            pluginServices.Add(AppServices.Schedule);
-            pluginServices.Add(AppServices.Time);
-            pluginServices.Add(AppServices.TimeLayout);
-            pluginServices.Add(AppServices.Widgets);
-            pluginServices.Add<INotificationService>(_notificationService);
-            pluginServices.Add(AppServices.Ai);
-
-            _pluginService = new Services.PluginService(
-                Path.Combine(AppContext.BaseDirectory, "plugins"),
-                pluginServices,
-                _notificationService,
-                AppServices.Ai);
-            Services.AppServices.Plugins = _pluginService;
-            _ = _pluginService.LoadAllAsync();
+#if DEBUG
+            if (desktop.Args is ["--review-alpha-plugin"])
+            {
+                Dispatcher.UIThread.Post(() => _ = VerifyLegacyPluginAsync(desktop));
+                base.OnFrameworkInitializationCompleted();
+                return;
+            }
+            if (desktop.Args is ["--review-account", var issuer, var control])
+            {
+                Dispatcher.UIThread.Post(() => _ = VerifyAccountAsync(issuer, control, desktop));
+                base.OnFrameworkInitializationCompleted();
+                return;
+            }
+            if (desktop.Args is ["--review-ui", var output] &&
+                File.Exists(Path.Combine(AppContext.BaseDirectory, "..", ".classnex-review")))
+            {
+                Dispatcher.UIThread.Post(() => _ = ReviewWindowsAsync(output, desktop), DispatcherPriority.Background);
+                base.OnFrameworkInitializationCompleted();
+                return;
+            }
+#endif
 
             Dispatcher.UIThread.Post(EnsureTrayMenu, DispatcherPriority.Background);
 
@@ -136,11 +126,11 @@ public partial class App : Application
             
             if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_NOTIFY") == "1")
             {
-                DispatcherTimer.RunOnce(() => _notificationService?.DebugTriggerClassPreparing(),
+                DispatcherTimer.RunOnce(() => _runtime?.Notifications.DebugTriggerClassPreparing(),
                     TimeSpan.FromSeconds(3));
-                DispatcherTimer.RunOnce(() => _notificationService?.DebugTriggerClassOn(),
+                DispatcherTimer.RunOnce(() => _runtime?.Notifications.DebugTriggerClassOn(),
                     TimeSpan.FromSeconds(8));
-                DispatcherTimer.RunOnce(() => _notificationService?.DebugTriggerClassOff(),
+                DispatcherTimer.RunOnce(() => _runtime?.Notifications.DebugTriggerClassOff(),
                     TimeSpan.FromSeconds(13));
             }
 #endif
@@ -524,6 +514,7 @@ public partial class App : Application
                 Current.RequestedThemeVariant = ThemeVariant.Dark;
                 break;
             default:
+                Current.RequestedThemeVariant = ThemeVariant.Default;
                 theme.PreferSystemTheme = true;
                 break;
         }
@@ -570,7 +561,6 @@ public partial class App : Application
         app._settingsWindow.Closed += (_, _) =>
         {
             app._settingsWindow = null;
-            Dispatcher.UIThread.Post(MemoryTrimmer.Trim, DispatcherPriority.Background);
         };
         app._settingsWindow.NavigateTo(page);
         app._settingsWindow.Show();
@@ -592,7 +582,6 @@ public partial class App : Application
         app._profileEditor.Closed += (_, _) =>
         {
             app._profileEditor = null;
-            Dispatcher.UIThread.Post(MemoryTrimmer.Trim, DispatcherPriority.Background);
         };
         app._profileEditor.SelectTab(tabIndex);
         app._profileEditor.Show();
@@ -613,7 +602,6 @@ public partial class App : Application
         app._loginWindow.Closed += (_, _) =>
         {
             app._loginWindow = null;
-            Dispatcher.UIThread.Post(MemoryTrimmer.Trim, DispatcherPriority.Background);
         };
         app._loginWindow.Show();
     }
@@ -624,12 +612,7 @@ public partial class App : Application
         {
             app._nexVoice?.Dispose();
             app._nexVoice = null;
-            app._pluginService?.StopAll();
-            app._pluginService = null;
-            AppServices.Management?.Dispose();
-            AppServices.Management = null;
-            app._notificationService?.Dispose();
-            app._notificationService = null;
+            app._runtime?.Dispose();
             app._mainWindow?.Hide();
         }
 

@@ -17,7 +17,6 @@
     
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     
-    <NoWarn>$(NoWarn);NU1903</NoWarn>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
   </PropertyGroup>
 
@@ -39,11 +38,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ClassNex.Core\ClassNex.Core.csproj" />
-    <ProjectReference Include="..\ClassNex.Notification\ClassNex.Notification.csproj" />
-    <ProjectReference Include="..\ClassNex.Plugins\ClassNex.Plugins.csproj" />
+    <ProjectReference Include="..\ClassNex.Notification.Service\ClassNex.Notification.Service.csproj" />
+    <ProjectReference Include="..\ClassNex.Plugin\ClassNex.Plugin.csproj" />
     <ProjectReference Include="..\ClassNex.AI\ClassNex.AI.csproj" />
     <PackageReference Include="Avalonia" Version="11.3.12" />
     <PackageReference Include="Avalonia.Desktop" Version="11.3.12" />
+    <PackageReference Include="Tmds.DBus.Protocol" Version="0.21.3" />
     <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.3.12" />
     <PackageReference Include="AvaloniaFluentUI" Version="1.0.3" />
     <PackageReference Include="YamlDotNet" Version="16.3.0" />

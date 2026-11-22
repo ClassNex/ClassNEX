@@ -3,22 +3,22 @@ using ClassNex.Models;
 
 namespace ClassNex.Services;
 
-public sealed class AppServicesAiContext : IAiApplicationContext
+internal sealed class AppServicesAiContext(Func<AppSettings> settings, IScheduleService schedule, ITimeService time, string workspaceRoot) : IAiApplicationContext
 {
-    public AppSettings Settings => AppServices.Settings;
+    public AppSettings Settings => settings();
 
-    public ScheduleProfile Profile => AppServices.Schedule.Profile;
+    public ScheduleProfile Profile => schedule.Profile;
 
     public IReadOnlyList<CourseSlot> GetTodaySlots(DateTime date) =>
-        AppServices.Time.GetTodaySlots(AppServices.Schedule.Profile, date);
+        time.GetTodaySlots(schedule.Profile, date);
 
     public CourseSlot? GetCurrentCourse(IReadOnlyList<CourseSlot> slots, TimeSpan now) =>
-        AppServices.Time.GetCurrentCourse(slots, now);
+        time.GetCurrentCourse(slots, now);
 
     public CourseSlot? GetNextCourse(IReadOnlyList<CourseSlot> slots, TimeSpan now) =>
-        AppServices.Time.GetNextCourse(slots, now);
+        time.GetNextCourse(slots, now);
 
-    public string WorkspaceRoot => SettingsService.DataDirectory;
+    public string WorkspaceRoot => workspaceRoot;
 
     public string Version => typeof(AppServicesAiContext).Assembly
         .GetName()
