@@ -2,58 +2,47 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained Condition="'$(SelfContained)' == 'true'">true</WindowsAppSDKSelfContained>
     <RootNamespace>ClassNex</RootNamespace>
     <AssemblyName>ClassNex</AssemblyName>
-    
     <Version>0.5.0</Version>
     <InformationalVersion>26w46d</InformationalVersion>
-    
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
-    
     <NoWarn>$(NoWarn);NU1903</NoWarn>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\icon.ico" />
-    
     <AvaloniaResource Include="Assets\avatar.png" />
-    
     <AvaloniaResource Include="Assets\Fonts\*.ttf" />
+    <AvaloniaResource Include="Assets\Oobe\*.png" />
+    <AvaloniaResource Include="Assets\NexAi.png" />
+    <AvaloniaResource Include="Assets\NexWake.wav" />
+    <None Update="Assets\icon.ico;Assets\Fonts\HarmonyOS_Sans_SC_Regular.ttf"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Update="Assets\Fonts\HarmonyOS-Sans-LICENSE.txt"
           CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
-    
-    <AvaloniaResource Include="Assets\Banners\*.png" />
-
-    <AvaloniaResource Include="Assets\SettingsIcons\*.png" />
-    <None Update="Assets\SettingsIcons\Fluent-LICENSE.txt"
-          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
-    
-    <AvaloniaResource Include="Assets\Oobe\*.png" />
-    
-    <AvaloniaResource Include="Assets\NexAi.png" />
-    
-    <AvaloniaResource Include="Assets\NexWake.wav" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\ClassNex.Core\ClassNex.Core.csproj" />
-    <ProjectReference Include="..\ClassNex.Notification\ClassNex.Notification.csproj" />
-    <ProjectReference Include="..\ClassNex.Plugins\ClassNex.Plugins.csproj" />
+    <ProjectReference Include="..\ClassNex.WinUI\ClassNex.WinUI.csproj" />
+    <ProjectReference Include="..\ClassNex.Notification.Service\ClassNex.Notification.Service.csproj" />
+    <ProjectReference Include="..\ClassNex.Plugin\ClassNex.Plugin.csproj" />
     <ProjectReference Include="..\ClassNex.AI\ClassNex.AI.csproj" />
     <PackageReference Include="Avalonia" Version="11.3.12" />
     <PackageReference Include="Avalonia.Desktop" Version="11.3.12" />
     <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.3.12" />
     <PackageReference Include="AvaloniaFluentUI" Version="1.0.3" />
     <PackageReference Include="YamlDotNet" Version="16.3.0" />
-    
     <PackageReference Include="System.Speech" Version="10.0.12" />
   </ItemGroup>
 
@@ -62,5 +51,13 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+
+  <Target Name="PublishNativeResourceIndex" AfterTargets="ComputeFilesToPublish" Condition="'$(WindowsAppSDKSelfContained)' == 'true'">
+    <PropertyGroup><NativeResourceIndex>$(TargetDir)$(AssemblyName).pri</NativeResourceIndex></PropertyGroup>
+    <Error Condition="!Exists('$(NativeResourceIndex)')" Text="The WinUI resource index was not generated: $(NativeResourceIndex)" />
+    <ItemGroup>
+      <ResolvedFileToPublish Include="$(NativeResourceIndex)" RelativePath="$(AssemblyName).pri" CopyToPublishDirectory="PreserveNewest"/>
+    </ItemGroup>
+  </Target>
 
 </Project>

@@ -15,6 +15,7 @@ namespace ClassNex.Services;
 
 public static class SettingsService
 {
+    private static readonly object FileGate = new();
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
@@ -64,7 +65,8 @@ public static class SettingsService
         {
             if (File.Exists(SettingsPath))
             {
-                var json = File.ReadAllText(SettingsPath);
+                string json;
+                lock (FileGate) json = File.ReadAllText(SettingsPath);
                 if (!string.IsNullOrWhiteSpace(json))
                 {
                     var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
@@ -120,7 +122,12 @@ public static class SettingsService
         try
         {
             EnsureDataDirectory();
-            File.WriteAllText(SettingsPath, JsonSerializer.Serialize(settings, JsonOptions));
+            lock (FileGate)
+            {
+                var temporary = SettingsPath + "." + Environment.ProcessId + ".tmp";
+                File.WriteAllText(temporary, JsonSerializer.Serialize(settings, JsonOptions));
+                File.Move(temporary, SettingsPath, true);
+            }
         }
         catch
         {

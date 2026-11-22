@@ -16,8 +16,7 @@ $env:CLASSNEX_VERIFY = "1"
 ```
 
 - 仓库：https://github.com/ClassNex/ClassNEX （GPL-3.0，分支 `main`）
-- 技术栈：**.NET 10 + Avalonia 11.3.12 + AvaloniaFluentUI 1.0.3 + YamlDotNet 16.3.0**
-  （2026-10-05 已从 FluentAvaloniaUI 迁到用户指定的 AvaloniaFluentUI，见 5.6）
+- 技术栈：.NET 10、Windows App SDK 1.8（原生设置和桌面浮窗）、Avalonia 11.3.12 + AvaloniaFluentUI（已有辅助窗口）、YamlDotNet 16.3.0。下文早期版本的界面记录不代表现版设置和浮窗。
 - 数据目录：应用载荷的 `..\data\`，包含 `Settings.json`、`timetable.yaml` 等。要试改设置，请用隔离目录，不要复制真实的账户、密钥或集控配置。
 - 正文使用中文；按照 `AGENTS.md`，仓库代码不添加注释。
 - 调试开关（都在 Debug 构建生效）：
@@ -25,12 +24,9 @@ $env:CLASSNEX_VERIFY = "1"
   - `CLASSNEX_VERIFY_WINDOWS=1` 额外打开「应用设置 + 档案编辑器」（一般情况下不需要，别加）
   - `CLASSNEX_VERIFY_PAGE=home|settings|basic|appearance|window|widgets|nex|notification|account|about` 打开设置窗口并停在指定页；`home` 是主页，`settings` 是设置总览
     （设了它就等于开了 `CLASSNEX_VERIFY_WINDOWS`）
-  - `CLASSNEX_VERIFY_SEARCH=1` 模拟「输入关键字 → 点搜索结果」（同样会开设置窗口）
-  - `CLASSNEX_VERIFY_SETTINGS=1` 在已打开的设置窗口运行布局、导航和交互自检；与 `CLASSNEX_VERIFY=1`、`CLASSNEX_VERIFY_PAGE=home` 搭配。写入测试数据必须另设开关，见 5.3。
+  - `tools/verify_settings.ps1` 在匿名副本中验证原生设置和桌面浮窗，见 5.3。
   - `CLASSNEX_VERIFY_SHOT=1` 等 3 秒把**已存在的**窗口各自渲染成 `_shot_*.png`（不受遮挡影响）
-  - `CLASSNEX_VERIFY_LAYOUT=1` 每秒把窗口/岛/课表当前项的实测尺寸写 `_verify_layout.log`
-  - `CLASSNEX_VERIFY_PILL=1` 强制显示最后 60 秒的倒计时胶囊（核对排版用）
-  - `CLASSNEX_VERIFY_EDITMODE=1` 启动后直接进入编辑模式（核对组件工具条排版）
+  - `CLASSNEX_VERIFY_EDITMODE=1` 打开设置的组件管理页。
   - `CLASSNEX_VERIFY_NOTIFY=prepare|on|off|1` 触发课前、上课、下课或顺序提醒演示
 
 ---
@@ -44,7 +40,7 @@ $env:CLASSNEX_VERIFY = "1"
 1. **什么都先参照 CI** —— 去翻 CI 的**文件/源码**，不要只看截图猜；
    CI 没有就用类似的，最后才自己想。
 2. **ClassIsland 一律叫 "CI"**。
-3. 界面**只用 AvaloniaFluentUI（Fluent）控件**，不要引入别的 UI 风格、也不要再回 FluentAvaloniaUI。
+3. 设置和桌面课表使用原生 WinUI 3，不用 Avalonia 模拟；其余既有辅助窗口继续使用 AvaloniaFluentUI。
 4. 配色/尺寸不要自己发明 —— 优先用 CI 配置文件里的值。
 
 ---
@@ -99,7 +95,9 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 
 ---
 
-## 3. 当前已完成的功能
+## 3. 历代功能与旧实现记录
+
+以下设置和浮窗的 Avalonia 实现、图片图标和动画记录仅用于理解迁移前的行为；现版使用原生 WinUI 3，入口与项目边界见第 9 节。
 
 ### 主界面（悬浮课表）
 - **结构**：`CardHost`(淡入) → `HoverHost`(悬停淡化) → `LayoutTransformControl RootScale`
@@ -408,11 +406,15 @@ git push origin main
 
 ### 5.3 隔离验证客户端设置
 
-- 建议将本次全量 Debug 构建的应用载荷复制到新建的 `build\verify-settings-<本次标识>\app\`，用与 `app` 同级的 `data\` 放匿名测试课表和设置；设置 `IsOobeCompleted=true`，不附带用户账户、集控凭证或 API 密钥。自检不会更改已安装客户端的配置。常规 Debug 产物路径见第 0 节。
-- 建议全量重建后执行 `./tools/verify_settings.ps1`。脚本每次新建 `build/verify-settings-<随机标识>`，只复制运行依赖和仓库示例课表，不复制现有用户的 `data`。默认测试结束会关闭该测试进程，`-KeepOpen` 可保留窗口。测试目录和 `build/captures` 都不入库。
-- 从新 PowerShell 会话启动隔离目录里的 `ClassNex.exe`，同时设置 `CLASSNEX_VERIFY=1`、`CLASSNEX_VERIFY_PAGE=home`、`CLASSNEX_VERIFY_SETTINGS=1`。只有窗口创建后 `SettingsWindow.Verify.cs` 才运行；仅设 `CLASSNEX_VERIFY_SETTINGS` 不会自动打开窗口。
-- `_settings_verify.log`、首页 `_settings_home_{light,dark,narrow}.png`、入口分组 `_settings_cards_{light,dark,narrow}.png`、总览 `_settings_overview_dark.png` 和外观 `_settings_appearance_narrow.png` 均输出到该 `app\`，不是 `data\`。逐项查看 `PASS/FAIL`，对照宽窄窗和深浅色截图；截图存在不等于检查通过。
-- 要验证真实开关、滑块写盘和收藏持久化，需给这个实例设置 `CLASSNEX_VERIFY_EDIT_FIXTURE=1`，并在隔离 `data\` 放置 `.test-fixture` 标记。存在 `account.json` 或启用集控时拒绝运行写入自检。不要对日常数据目录运行测试，不需要登录生产账户或操作鼠标。
+全量构建后运行 `tools/verify_settings.ps1`。它根据 MSBuild 输出清单复制应用文件，在 `build/verify-native-<随机标识>/data` 创建匿名配置与示例课表，然后用 `--verify-native` 启动相邻的独立 `app/ClassNex.exe`。不要复制日常用户的 data、插件、凭据或密钥。脚本不会停止普通客户端。
+
+检查结果在该 `data/_native_verify.log`。只有逐项 `PASS` 且以 `RESULT PASS` 结束才算通过；`-KeepOpen` 可保留该测试窗口。`CLASSNEX_VERIFY_SETTINGS`、旧的 `_settings_verify.log` 和旧设置窗口的截图流程已经退役。
+
+同目录的 `native-home.png`、`native-overlay.png`、`native-overlay-light.png`、`native-reminder.png` 为实际 WinUI 控件的渲染截图；`_native_navigation_metrics.json` 记录当前机器的一次页面切换，不作为帧率基准。成功后只回收本次测试复制的程序，保留报告、截图和数据；`-KeepFixture` 可保留程序用于诊断。用 `-OutputDirectory` 和 `-IntermediateDirectory` 可复测独立的 win-x64 自包含载荷。匿名验收不会连接线上集控，另需现场联测才能断言网络可用。
+
+`XamlControlsResources` 要在 `DesktopApplication.OnLaunched` 加载，不能在应用构造函数中加载。自包含发布必须保留 MSBuild 生成的 `ClassNex.pri`；仅有 `Microsoft.UI.Xaml.dll` 或构建成功都不能证明发布包可以启动。发布流程与验收脚本均检查资源清单。
+
+不要在桌面浮窗构造函数订阅 `AccessibilitySettings.HighContrastChanged`。在这台桌面上它会抛出 COM 异常并由 XAML 终止进程。沿用 `ActualThemeChanged`、`UISettings.ColorValuesChanged`，浮窗可见时由原有时钟检测高对比状态，状态不变不重建资源。
 
 ### 5.4 FluentAvalonia 2.4.0 的 API 与直觉不同
 - `NavigationViewItem` **没有 `Icon`** 属性，要用 `IconSource`（`ui:FontIconSource`），
@@ -433,7 +435,7 @@ git push origin main
   改为在 ListBox 上 `AddHandler(PointerReleasedEvent, handler, RoutingStrategies.Tunnel)`，
   再沿 `e.Source` 的视觉父链找 `DataContext`（CI 的做法）
 
-### 5.6 ⚠️ AvaloniaFluentUI（现用 UI 库，2026-10-05 迁移后新增的坑）
+### 5.6 AvaloniaFluentUI（现用于辅助窗口，2026-10-05 迁移记录）
 
 **它其实是 FluentAvalonia 的 fork**（README 明说），所以控件名基本同名：
 `SettingsExpander` / `NavigationView` / `CommandBar` / `InfoBar` / `TabView` / `NumberBox` / `FontIcon(Source)` / `IconSourceElement` 都有。
@@ -558,26 +560,9 @@ python tools\gh_release.py "E:\ClassNex\build\ClassNEX-26w41f-Alpha-win-x64.zip"
 
 ## 9. 项目结构速查
 
-```
-src/ClassNex.Core/          无项目依赖：模型、核心服务、通知/AI/插件接口
-src/ClassNex.Notification/  通知调度，依赖 Core，通过 INotificationSurface 调用界面
-src/ClassNex.Plugins/       插件发现、清单、可回收 AssemblyLoadContext 与生命周期
-src/ClassNex.AI/            NEX HTTP 客户端、Agent、工具和模型目录
-src/ClassNex/
-  App.axaml(.cs)          应用入口、组合根、窗口与托盘
-  Styles/CiPalette*.cs    悬浮课表与设置窗口各自的颜色定义
-  Styles/SettingsIcons.cs 设置窗口专用彩图缓存及 Windows 字形映射
-  Services/               AppServices(组合根) / 语音协调 / UI Surface / 账户与平台服务
-  Widgets/                WidgetBase + 7 个组件 + WidgetFactory
-  Controls/               TimetableGridBuilder（周课表网格）
-  Views/                  MainWindow（浮窗）/ SettingsWindow / ProfileEditorWindow
-  Assets/                 icon.ico / timetable.yaml / Fonts/（正文及 Lucide）/ SettingsIcons/（Fluent 彩色图标及授权）
-```
+`ClassNex.Core` 提供供课表、设置、时间、插件和通知共用的模型与接口。`ClassNex.Notification.Service`、`ClassNex.Plugin`、`ClassNex.AI`、`ClassNex.WinUI` 分别实现提醒、插件加载、助手和原生桌面界面，彼此不依赖。`ClassNex` 是客户端入口和服务组合根；`ClassNex.Central` 与 `ClassNex.Launcher` 单独生成。详见 `docs/ARCHITECTURE.md`、`docs/PLUGIN_SDK.md`。
 
-依赖方向固定为 `Main -> {Notification, AI, Plugins} -> Core`。`Core` 不允许引用任何模块或
-Avalonia UI；通知模块不允许引用 `MainWindow`；AI 模块不允许直接访问 `AppServices`；
-插件只能通过 `PluginContext` 获取服务。详细结构见 `docs/ARCHITECTURE.md`，
-插件清单格式见 `docs/PLUGIN_SDK.md`。
+原生设置和浮窗使用 WinUI 3 控件与系统主题；外观不再由旧的设置卡片、图片图标或 Avalonia 动画决定。档案编辑器、OOBE、托盘和登录等辅助窗口仍复用原界面和账户服务。两套窗口共用主 STA、设置实例和便携数据目录。
 
 ---
 
@@ -596,7 +581,6 @@ Avalonia UI；通知模块不允许引用 `MainWindow`；AI 模块不允许直�
 
 > 读一下 `E:\ClassNex\HANDOFF.md`，然后我们继续做 ClassNEX。
 > 记住：ClassIsland 简称 CI，什么都要先参照 CI 的文件/源码（在 `E:\ci-source`，已 clone）；
-> 界面只用 **AvaloniaFluentUI** 控件（不是 FluentAvaloniaUI，见 5.6 的坑）；
-> 设置窗口使用 Fluent 彩色图标和 Windows 匹配的系统字形，其他窗口保留原图标（见 5.6）；改文件不用 PowerShell 的 `Set-Content`（会写坏编码）；
+> 设置与桌面课表使用真正的 WinUI 3 和系统图标；其余既有辅助窗口使用 AvaloniaFluentUI。改文件不用 PowerShell 的 `Set-Content`（会写坏编码）；
 > 打包上传要等我说，发布说明只写这一版。
 > 今天想做：<你要做的功能>

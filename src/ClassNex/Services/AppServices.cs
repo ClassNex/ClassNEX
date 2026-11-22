@@ -15,6 +15,7 @@ public static class AppServices
     public static IScheduleService Schedule { get; private set; } = null!;
 
     public static ITimeService Time { get; private set; } = null!;
+    internal static DayScheduleCache Day { get; private set; } = null!;
 
     public static ITimeLayoutService TimeLayout { get; private set; } = null!;
 
@@ -23,9 +24,6 @@ public static class AppServices
     public static IAiService Ai { get; private set; } = null!;
 
     public static IPluginService? Plugins { get; set; }
-
-    
-    public static Views.MainWindow? MainWindow { get; set; }
 
     
     public static INotificationService? NotificationService { get; set; }
@@ -85,6 +83,7 @@ public static class AppServices
 
         Time = new TimeService(() => Settings);
         Schedule = new ScheduleService(() => Settings);
+        Day = new(Time, Schedule);
         TimeLayout = new TimeLayoutService(() => Settings, Schedule, SaveSettings);
         Widgets = new WidgetService(() => Settings, SaveSettings);
         Ai = new NexAiService(new AppServicesAiContext());
@@ -100,8 +99,8 @@ public static class AppServices
     public static void LoadTimetable(string path)
     {
         Settings.TimetablePath = path;
-        SettingsService.Save(Settings);
         Schedule.Load(path);
+        SaveSettings();
     }
 
     
@@ -147,11 +146,9 @@ public static class AppServices
 
         Settings = remote;
         SettingsService.Save(Settings);
-        App.ApplyTheme(Settings.ThemeMode);
         Schedule.Load(ResolveTimetablePath());
         TimeLayout.EnsureFromProfile(Schedule.Profile);
         SettingsChanged?.Invoke();
-        MainWindow?.ReloadManagedSettings();
         ManagedSettingsApplied?.Invoke();
     }
 

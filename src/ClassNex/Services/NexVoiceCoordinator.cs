@@ -15,6 +15,7 @@ namespace ClassNex.Services;
 
 public sealed class NexVoiceCoordinator : IDisposable
 {
+    private readonly INexPresentation _presentation;
     private INexVoiceService _voice = new NexWinRtVoiceService();
     private NexGlowWindow? _glow;
     private DispatcherTimer? _followUpTimer;
@@ -22,6 +23,8 @@ public sealed class NexVoiceCoordinator : IDisposable
     private CancellationTokenSource? _requestCts;
     private int _conversationVersion;
     private bool _started;
+
+    public NexVoiceCoordinator(INexPresentation presentation) => _presentation = presentation;
 
     
     public event Action<string>? StatusChanged;
@@ -135,12 +138,11 @@ public sealed class NexVoiceCoordinator : IDisposable
             _active = true;
 
             
-            var main = AppServices.MainWindow;
-            if (main is not null && !main.IsVisible)
-                main.Show();
+            if (!_presentation.IsAvailable)
+                _presentation.ShowOverlay();
 
             ShowGlow();
-            main?.ShowNexPanel("请讲", true);
+            _presentation.SetNexText("请讲");
             StartWakeTimeout();
         });
     }
@@ -156,7 +158,7 @@ public sealed class NexVoiceCoordinator : IDisposable
             if (!_active)
                 return;
 
-            AppServices.MainWindow?.ShowNexPanel(text, false);
+            _presentation.SetNexText(text);
             StartWakeTimeout();
         });
     }
@@ -185,12 +187,12 @@ public sealed class NexVoiceCoordinator : IDisposable
             CancelCurrentRequest();
 
             var version = ++_conversationVersion;
-            AppServices.MainWindow?.ShowNexPanel(text, false);
+            _presentation.SetNexText(text);
 
             DispatcherTimer.RunOnce(() =>
             {
                 if (_active && version == _conversationVersion)
-                    AppServices.MainWindow?.ShowNexPanel("思考中…", true);
+                    _presentation.SetNexText("思考中…");
             }, TimeSpan.FromMilliseconds(600));
 
             _ = AskNexAsync(text, version);
@@ -240,7 +242,7 @@ public sealed class NexVoiceCoordinator : IDisposable
                 if (!_active || version != _conversationVersion)
                     return;
 
-                AppServices.MainWindow?.ShowNexPanel(text, false);
+                _presentation.SetNexText(text);
             });
         };
 
@@ -251,7 +253,7 @@ public sealed class NexVoiceCoordinator : IDisposable
             {
                 if (_active && version == _conversationVersion)
                 {
-                    AppServices.MainWindow?.ShowNexPanel("出错：" + message, true);
+                    _presentation.SetNexText("出错：" + message);
                     StartFollowUpTimeout(false, TimeSpan.FromSeconds(5));
                 }
             });
@@ -270,9 +272,7 @@ public sealed class NexVoiceCoordinator : IDisposable
                 {
                     if (_active && version == _conversationVersion)
                     {
-                        AppServices.MainWindow?.ShowNexPanel(
-                            "没有收到回答，可以说「NEX」再试一次",
-                            true);
+                        _presentation.SetNexText("没有收到回答，可以说「NEX」再试一次");
                     }
                 });
                 StartFollowUpTimeout(false, TimeSpan.FromSeconds(6));
@@ -301,7 +301,7 @@ public sealed class NexVoiceCoordinator : IDisposable
         if (!_active)
             return;
 
-        AppServices.MainWindow?.ShowNexPanel("请讲，还可以接着问…", true);
+        _presentation.SetNexText("请讲，还可以接着问…");
         StartFollowUpTimeout(true, TimeSpan.FromSeconds(20));
     }
 
@@ -378,10 +378,6 @@ public sealed class NexVoiceCoordinator : IDisposable
     
     public void ShowGlow()
     {
-        var main = AppServices.MainWindow;
-        if (main?.Screens.Primary is not { } screen)
-            return;
-
         if (_glow is null)
         {
             var glow = new NexGlowWindow();
@@ -397,6 +393,7 @@ public sealed class NexVoiceCoordinator : IDisposable
         
         _glow.StartFromLeft = AppServices.Settings.NexEdgeBarSide == "left";
 
+        if (_glow.Screens.Primary is not { } screen) return;
         _glow.UpdateWindowPos(screen, 1 / screen.Scaling, false);
 
         if (!_glow.IsVisible)
@@ -422,7 +419,7 @@ public sealed class NexVoiceCoordinator : IDisposable
         StopConversationTimers();
         CancelCurrentRequest();
         _glow?.StopGlow();
-        AppServices.MainWindow?.HideNexPanel();
+        _presentation.SetNexText(null);
         _voice.BackToWakeWord();
         DispatcherTimer.RunOnce(MemoryTrimmer.Trim, TimeSpan.FromSeconds(1));
         StatusChanged?.Invoke("正在听「嘿 NEX」…");
@@ -435,15 +432,14 @@ public sealed class NexVoiceCoordinator : IDisposable
     public void RefreshEdgeBar()
     {
         var settings = AppServices.Settings;
-        var main = AppServices.MainWindow;
-
-        if (!settings.IsNexEdgeBarEnabled || main?.Screens.Primary is not { } screen)
+        if (!settings.IsNexEdgeBarEnabled)
         {
             _edgeBar?.Hide();
             return;
         }
 
         _edgeBar ??= CreateEdgeBar();
+        if (_edgeBar.Screens.Primary is not { } screen) return;
 
         _edgeBar.IsLeftSide = settings.NexEdgeBarSide == "left";
         _edgeBar.UpdateWindowPos(screen, 1 / screen.Scaling);
@@ -473,9 +469,8 @@ public sealed class NexVoiceCoordinator : IDisposable
 
         NexChime.PlayWake();
 
-        var main = AppServices.MainWindow;
-        if (main is not null && !main.IsVisible)
-            main.Show();
+        if (!_presentation.IsAvailable)
+            _presentation.ShowOverlay();
 
         
         if (_glow?.IsVisible == true)
@@ -487,7 +482,7 @@ public sealed class NexVoiceCoordinator : IDisposable
         _active = true;
 
         ShowGlow();
-        main?.ShowNexPanel("请讲", true);
+        _presentation.SetNexText("请讲");
         StartFollowUpTimeout(true, TimeSpan.FromSeconds(20));
     }
 

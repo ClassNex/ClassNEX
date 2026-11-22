@@ -7,26 +7,27 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using ClassNex.Core.Abstractions;
+using ClassNex.Notification.Service;
+using ClassNex.Plugin;
 using ClassNex.Services;
 using ClassNex.Styles;
 using ClassNex.Views;
+using ClassNex.WinUI;
 using AvaloniaFluentUI.Styling;
 
 namespace ClassNex;
 
 public partial class App : Application
 {
-    private MainWindow? _mainWindow;
-    private SettingsWindow? _settingsWindow;
+    private NativeDesktop? _desktop;
     private ProfileEditorWindow? _profileEditor;
     private LoginWindow? _loginWindow;
-    private Views.TopmostEffectWindow? _effectWindow;
     private Views.OobeWindow? _oobeWindow;
     private Views.OobeWindow? _oobePreview;
     private Views.NexChatWindow? _nexChatWindow;
     private Services.NexVoiceCoordinator? _nexVoice;
-    private Services.NotificationService? _notificationService;
-    private Services.PluginService? _pluginService;
+    private NotificationService? _notificationService;
+    private IPluginService? _pluginService;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
@@ -46,7 +47,7 @@ public partial class App : Application
             ApplyCiPalette();
             ApplyTheme(AppServices.Settings.ThemeMode);
 
-            _mainWindow = new MainWindow();
+            _desktop = new NativeDesktop();
 
             if (!AppServices.Settings.IsOobeCompleted)
             {
@@ -54,40 +55,25 @@ public partial class App : Application
                 
                 
                 
-                _mainWindow.Opened += (_, _) => _mainWindow?.Hide();
-
                 _oobeWindow = new Views.OobeWindow();
                 desktop.MainWindow = _oobeWindow;
                 _oobeWindow.Show();
             }
-            else
+            else if (AppServices.Settings.IsMainWindowVisible)
             {
-                desktop.MainWindow = _mainWindow;
-                _mainWindow.Show();
-
-                if (!AppServices.Settings.IsMainWindowVisible)
-                {
-                    Dispatcher.UIThread.Post(() => _mainWindow?.Hide(), DispatcherPriority.Background);
-                }
-
-
+                _desktop.Overlay.ShowOverlay();
             }
 
             
-            _effectWindow = new Views.TopmostEffectWindow();
-            _notificationService = new Services.NotificationService(
-                new Services.MainWindowNotificationSurface(_effectWindow),
+            _notificationService = new NotificationService(
+                _desktop.Overlay,
                 () => AppServices.Settings,
-                AppServices.Time,
-                AppServices.Schedule);
+                AppServices.Day.Read,
+                _desktop.Enqueue);
 
             
             
             
-            if (_mainWindow is { } mw && mw.Screens.Primary is { } primary)
-                _effectWindow.UpdateWindowPos(primary, 1 / primary.Scaling, false);
-
-            Services.AppServices.MainWindow = _mainWindow;
             Services.AppServices.NotificationService = _notificationService;
             Services.AppServices.Management = new Services.CentralManagementService();
             Services.AppServices.Management.Start();
@@ -101,7 +87,7 @@ public partial class App : Application
             pluginServices.Add<INotificationService>(_notificationService);
             pluginServices.Add(AppServices.Ai);
 
-            _pluginService = new Services.PluginService(
+            _pluginService = new PluginService(
                 Path.Combine(AppContext.BaseDirectory, "plugins"),
                 pluginServices,
                 _notificationService,
@@ -112,7 +98,7 @@ public partial class App : Application
             Dispatcher.UIThread.Post(EnsureTrayMenu, DispatcherPriority.Background);
 
             
-            _nexVoice = new Services.NexVoiceCoordinator();
+            _nexVoice = new Services.NexVoiceCoordinator(_desktop.Overlay);
             Services.AppServices.NexVoice = _nexVoice;
 
 
@@ -129,7 +115,8 @@ public partial class App : Application
             HandleUrlProtocol(Environment.GetCommandLineArgs());
 
             
-            DispatcherTimer.RunOnce(() => _mainWindow?.WarmNotificationMask(), TimeSpan.FromSeconds(1));
+            _desktop.Connect();
+            _desktop.StartVerificationIfRequested();
 
 #if DEBUG
             
@@ -230,7 +217,7 @@ public partial class App : Application
                 
                 if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_EDITMODE") == "1")
                 {
-                    Dispatcher.UIThread.Post(() => _mainWindow?.EnterEditMode(), DispatcherPriority.Background);
+                    Dispatcher.UIThread.Post(() => OpenSettings("widgets"), DispatcherPriority.Background);
                 }
 
                 if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_EDITOR") == "1")
@@ -281,10 +268,6 @@ public partial class App : Application
                     shotTimer.Tick += (_, _) =>
                     {
                         shotTimer.Stop();
-                        if (_mainWindow is not null)
-                            SaveWindowShot(_mainWindow, "_shot_main.png");
-                        if (_settingsWindow is not null)
-                            SaveWindowShot(_settingsWindow, "_shot_settings.png");
                         if (_profileEditor is not null)
                             SaveWindowShot(_profileEditor, "_shot_editor.png");
                         if (_oobeWindow is not null)
@@ -367,10 +350,10 @@ public partial class App : Application
                 OpenProfileEditor();
                 break;
             case "show":
-                app._mainWindow?.Show();
+                app._desktop?.Overlay.ShowOverlay();
                 break;
             case "hide":
-                app._mainWindow?.Hide();
+                app._desktop?.Overlay.HideOverlay();
                 break;
             case "settings":
             default:
@@ -551,42 +534,13 @@ public partial class App : Application
 
         var s = AppServices.Settings;
 
-        if (app._mainWindow is { IsVisible: true } visible)
-        {
-            visible.Hide();
-            s.IsMainWindowVisible = false;
-        }
-        else
-        {
-            app._mainWindow ??= new MainWindow();
-            app._mainWindow.Show();
-            app._mainWindow.Activate();
-            s.IsMainWindowVisible = true;
-        }
-
+        s.IsMainWindowVisible = app._desktop?.Overlay.IsAvailable != true;
         AppServices.SaveSettings();
     }
 
     public static void OpenSettings(string page = "home")
     {
-        if (Current is not App app)
-            return;
-
-        if (app._settingsWindow is { IsVisible: true } existing)
-        {
-            existing.NavigateTo(page);
-            existing.Activate();
-            return;
-        }
-
-        app._settingsWindow = new SettingsWindow();
-        app._settingsWindow.Closed += (_, _) =>
-        {
-            app._settingsWindow = null;
-            Dispatcher.UIThread.Post(MemoryTrimmer.Trim, DispatcherPriority.Background);
-        };
-        app._settingsWindow.NavigateTo(page);
-        app._settingsWindow.Show();
+        (Current as App)?._desktop?.OpenSettings(page);
     }
 
     public static void OpenProfileEditor(int tabIndex = 0)
@@ -635,18 +589,21 @@ public partial class App : Application
     {
         if (Current is App app)
         {
+            app._desktop?.Dispose();
             app._nexVoice?.Dispose();
             app._nexVoice = null;
+            AppServices.NexVoice = null;
             app._pluginService?.StopAll();
             app._pluginService = null;
             AppServices.Management?.Dispose();
             AppServices.Management = null;
             app._notificationService?.Dispose();
             app._notificationService = null;
-            app._mainWindow?.Hide();
+            AppServices.Day.Dispose();
         }
 
         Lifetime?.Shutdown();
+        Microsoft.UI.Xaml.Application.Current.Exit();
     }
 
     
@@ -701,18 +658,18 @@ public partial class App : Application
             if (ReferenceEquals(app._nexChatWindow, window))
                 app._nexChatWindow = null;
         };
-        PositionNexChatWindow(window, app._mainWindow);
+        PositionNexChatWindow(window, app._desktop?.Overlay);
         window.Show();
         window.Activate();
     }
 
-    private static void PositionNexChatWindow(NexChatWindow window, MainWindow? mainWindow)
+    private static void PositionNexChatWindow(NexChatWindow window, NativeOverlayWindow? overlay)
     {
-        if (mainWindow?.Screens.Primary is not { } screen)
+        if (window.Screens.Primary is not { } screen)
             return;
 
         var scale = screen.Scaling > 0 ? screen.Scaling : 1;
-        var top = mainWindow.GetIslandScreenRect()?.Bottom ?? screen.WorkingArea.Y + (int)(96 * scale);
+        var top = overlay is { IsAvailable: true } ? overlay.AppWindow.Position.Y + overlay.AppWindow.Size.Height : screen.WorkingArea.Y;
         top += (int)(12 * scale);
         var availableHeight = Math.Max((int)(window.MinHeight * scale), screen.WorkingArea.Bottom - top - 8);
         var availableWidth = Math.Max((int)(window.MinWidth * scale), screen.WorkingArea.Width - 24);
@@ -875,14 +832,6 @@ public partial class App : Application
     
     private async Task LoadTimetableFromMenuAsync()
     {
-        var owner = _mainWindow ?? Lifetime?.MainWindow;
-        if (owner is null)
-            return;
-
-        var path = await Services.FilePickerHelper.PickTimetableAsync(owner);
-        if (path is null)
-            return;
-
-        Services.AppServices.LoadTimetable(path);
+        if (_desktop != null) await _desktop.PickTimetableAsync();
     }
 }

@@ -18,9 +18,11 @@ internal static class Program
             _ = SetCurrentProcessExplicitAppUserModelID(AppUserModelId);
 
         
-        AppServices.Initialize();
-
-        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        WinUI.DesktopApplication.Run(() =>
+        {
+            AppServices.Initialize();
+            BuildAvaloniaApp().SetupWithClassicDesktopLifetime(args);
+        });
     }
 
     public static AppBuilder BuildAvaloniaApp()

@@ -4,7 +4,7 @@
 
 # <image src="1.png" height="28" width="28"/> ClassNEX
 
-ClassNEX 是一款功能强大、可定制、跨平台的课表信息显示工具，多设备集控和强大的跨平台能力，内置Agent，让课表及课堂信息一目了然。
+ClassNEX 在 Windows 桌面显示课表、倒计时和课堂提醒。客户端可独立使用，也可通过网页集控统一调整多台教室设备。
 
 #### 🌐 官方网站 | 🚀 软件下载 | 📚 项目文档 | 💬 社区交流
 
@@ -33,39 +33,13 @@ ClassNEX 是一款功能强大、可定制、跨平台的课表信息显示工�
 | 模块 | 说明 |
 | --- | --- |
 | **主界面**（悬浮组件课表） | 无边框半透明置顶卡片，内容由**可自定义的组件**拼装：日期、时钟、今日课表、当前/下节课、倒计时、自定义文本；可拖拽、右键菜单 |
-| **应用设置** | 左侧账户卡 + 搜索 + 分组导航；页面：基本 / 外观 / 窗口 / 组件 / 关于（主题、不透明度、全局字号、主界面缩放、组件排列方向、鼠标穿透、单周起始、托盘行为、头像与用户名）；樱花渐变窗口、700 宽胶囊顶栏、主页右侧樱花飘落、回弹启动动画 |
+| **应用设置** | 原生 WinUI 3 导航和设置页；可搜索并调整外观、浮窗、组件、提醒、NEX、账户和集控选项。 |
 | **档案编辑器** | 课表 / 时间表 / 科目 / 调课 四个标签页；**课表可增删改**（点空格新增、点卡片编辑），**时间表节次可编辑**（改时间会同步到课表） |
 | **系统托盘** | 显示/隐藏主界面、编辑档案、加载课表、换课、编辑主界面、应用设置、重启、退出 |
 
-### 配色原则
+### 配色与动效
 
-**核心结论：本应用不硬编码任何强调色。** 主界面与设置界面全部使用 Fluent 标准资源键
-（`AccentFillColorDefaultBrush`、`TextOnAccentFillColorPrimaryBrush`、`SolidBackgroundFillColorSecondaryBrush` …），
-因此深/浅色主题与强调色都能跟随系统。
-
-| 项目 | 做法 |
-| --- | --- |
-| **强调色** | **不写死**，`CustomAccentColor = null` + `PreferUserAccentColor = true`，跟随 **Windows 系统强调色** |
-| **表面色** | 主界面卡片按主题取玻璃色（深色 `#12161C` / 浅色 `#F7F8FA`），叠加 `BackgroundOpacity` 与桌面壁纸，因此会带一点壁纸色 |
-| **科目标识** | **不给科目上色**；课表单元格与主界面科目都是「中性底 + 文字」，只有**选中项**使用主题强调色 |
-
-> 踩坑记录：曾把运行时截图的选中色 `#589499` 当成"主题强调色"、把表面色 `#292D2E` 当成"卡片底色"。
-> 实际上前者是**本机 Windows 强调色**（注册表 `AccentColor` = `#459BAC`）经 Fluent 变体计算的结果，
-> 后者是深色底叠加 **Mica 壁纸透色**（壁纸正好是青绿湖水）。两者都不是固有值 —— 
-> 取色一律以「主题资源键 + 系统配置」为准，不要从截图里吸色。
-
-本应用内置的固定取值（定义于 `src/ClassNex/Styles/` 下的调色板）：
-
-| 用途 | 取值 |
-| --- | --- |
-| 主界面卡片 | 浅色樱花渐变 `#FFFDFE → #FFF4F8 → #FFE6EF → #FFD8E6` / 深色 `#2A1722 → #562B3D` + 不透明度设置 + 圆角 `14` |
-| 组件胶囊 | 浅色白 55% 填充 + 樱花描边 16% / 深色白 7.5% + 樱花描边 20%，圆角 `8` |
-| 樱花强调色 | 浅色 `#D95C7C` / 深色 `#F08AA3`，用于当前课胶囊、进度线、倒计时和日期竖条 |
-| 默认科目渐变第二色 | `#7FFFD4` |
-| 阴影 / 叠加层 | `#48000000` / `#66000000` |
-| 中性深色 / 提醒色 | `#333333` / `#F4EF74` |
-
-排查用脚本见 `tools/`（对运行截图做色彩直方图统计，辅助判断主题取色）。
+应用设置使用 Windows App SDK 的 WinUI 3 控件、Mica 背景和系统主题资源。桌面课表、提醒和助手提示使用同一个浮窗。同一时间只显示一种内容；切换回课表时，按当前内容重新测量窗口。系统关闭动画时，页面直接切换。
 
 ### 运行
 
@@ -74,72 +48,34 @@ ClassNEX 是一款功能强大、可定制、跨平台的课表信息显示工�
 dotnet run --project src/ClassNex
 ```
 
-启动后：桌面上会出现**悬浮课表卡片**，同时**系统托盘**出现 ClassNex 图标（Windows 默认收纳在「显示隐藏的图标」里）。右键卡片或托盘图标可打开菜单。
+首次启动先完成向导。之后可从系统托盘打开「应用设置」。关闭鼠标穿透后，也可右键桌面课表打开菜单。开发版运行需要匹配的 Windows App Runtime；win-x64 自包含载荷自带运行时。
 
 ### 技术栈（桌面端）
 
-| 组件 | 说明 |
+| 组件 | 用途 |
 | --- | --- |
-| [Avalonia](https://avaloniaui.net/) 11.2.x | 跨平台 UI 框架 |
-| [FluentAvaloniaUI](https://github.com/amwx/FluentAvalonia) 2.4.0 | FluentUI / WinUI 风格的 Avalonia 主题库 |
-| [YamlDotNet](https://github.com/aaubry/YamlDotNet) 16.x | CSES YAML 解析与序列化 |
-| .NET 8 | 运行时 / SDK |
+| .NET 10、Windows App SDK 1.8 / WinUI 3 | Windows 客户端、应用设置、桌面课表和提醒 |
+| Avalonia 11.3 / AvaloniaFluentUI | 保留的档案编辑器、OOBE、账户授权入口和托盘等辅助界面 |
+| YamlDotNet | CSES 课表读写 |
 
 ### 目录结构（当前）
 
-```text
-ClassNex.sln
-src/ClassNex/
-├── Program.cs                      # 入口（先加载设置与课表）
-├── App.axaml(.cs)                  # 主题、托盘、窗口管理、应用生命周期
-├── Models/                         # 领域模型（命名对照白皮书 4.1）
-│   ├── Subject.cs                  # 科目
-│   ├── Course.cs                   # 一节课
-│   ├── Schedule.cs                 # 一天的课表
-│   ├── ScheduleProfile.cs          # 课表档案（= CSES 文档）
-│   ├── ClassTime.cs                # 作息时间 / 节次
-│   ├── TimeLayout.cs               # 时间表（节次集合）
-│   ├── CourseSlot.cs               # 运行时课节视图
-│   ├── CourseRef.cs                # 课程引用 / 空格目标
-│   ├── WidgetConfig.cs             # 组件配置
-│   └── AppSettings.cs              # 应用设置
-├── Services/                       # 服务层（命名对照白皮书 4.1）
-│   ├── IScheduleService.cs         # 课表增删改查 + CSES 导入导出
-│   ├── ITimeService.cs             # 当前节次 / 倒计时 / 今日课程
-│   ├── ITimeLayoutService.cs       # 时间表管理（改时间同步课表）
-│   ├── IWidgetService.cs           # 组件增删 / 排序 / 配置
-│   ├── WidgetRegistry.cs           # 可用组件类型注册表
-│   ├── CsesCodec.cs                # CSES YAML 编解码
-│   ├── SettingsService.cs          # 设置持久化（data/Settings.json）
-│   ├── FilePickerHelper.cs         # 文件选择
-│   └── AppServices.cs              # 组合根
-├── Widgets/                        # 桌面组件（对照白皮书 第七章）
-│   ├── WidgetBase.cs               # 组件基类 + 上下文
-│   ├── DateWidget.cs               # 日期
-│   ├── ClockWidget.cs              # 时钟
-│   ├── ScheduleWidget.cs           # 今日课表
-│   ├── NextClassWidget.cs          # 当前 / 下节课
-│   ├── CountdownWidget.cs          # 倒计时
-│   ├── TextWidget.cs               # 自定义文本
-│   └── WidgetFactory.cs            # 组件工厂
-├── Controls/
-│   └── TimetableGridBuilder.cs     # 可交互周课表网格
-├── ViewModels/                     # MVVM
-├── Views/
-│   ├── MainWindow.axaml            # 主界面（悬浮组件容器）
-│   ├── SettingsWindow.axaml        # 应用设置
-│   └── ProfileEditorWindow.axaml   # 档案编辑器
-└── Assets/
-    ├── timetable.yaml              # 内置示例课表（CSES）
-    └── icon.ico                    # 应用 / 托盘图标
-```
+| `src/` 下的项目 | 职责 |
+| --- | --- |
+| `ClassNex.Core` | 数据模型、课表、设置、组件和插件接口，不依赖 UI |
+| `ClassNex.Notification.Service` | 提醒的时机、顺序和时长 |
+| `ClassNex.Plugin` | 插件发现、加载和卸载 |
+| `ClassNex.AI` | NEX 会话、模型目录和工具调用 |
+| `ClassNex.WinUI` | 原生设置窗口与桌面课表浮窗 |
+| `ClassNex` | 客户端入口、服务组装、平台和辅助窗口 |
+| `ClassNex.Central` / `ClassNex.Launcher` | 独立集控服务 / 便携版启动器 |
 
 ### 数据存储
 
 | 文件 | 内容 |
 | --- | --- |
 | `data/Settings.json` | 应用设置（与程序同级，便携） |
-| `data/timetable.yaml` | 当前课表（首次运行从内置示例复制） |
+| `data/timetable.yaml` | 本机课表；也可在档案编辑器中导入自己的 CSES 文件 |
 
 ### 课表格式（CSES）
 
@@ -174,30 +110,14 @@ schedules:
 
 ## 开发
 
-ClassNEX 使用 C# / .NET 开发。
+在 Windows 上使用 .NET 10 SDK。源码调试需要对应架构的 Windows App Runtime 1.8；便携发布由构建流程携带运行时。
 
-主要技术：
-
-* .NET
-* Avalonia
-* ASP.NET Core
-* Blazor
-* SignalR
-* PostgreSQL
-* Redis
-
-### 项目结构
-
-```text
-ClassNEX/
-├── ClassNEX.Core/
-├── ClassNEX.Desktop/
-├── ClassNEX.Server/
-├── ClassNEX.Widgets/
-├── ClassNEX.Intelligence.core/
-├── docs/
-└── tests/
+```powershell
+dotnet build src\ClassNex\ClassNex.csproj -c Debug -t:Rebuild
+.\tools\verify_settings.ps1
 ```
+
+验证脚本在独立目录生成匿名数据，不使用日常账户。模块依赖见 [架构说明](docs/ARCHITECTURE.md)，插件契约见 [插件 SDK](docs/PLUGIN_SDK.md)。
 
 ## 致谢
 

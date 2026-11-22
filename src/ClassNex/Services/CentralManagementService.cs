@@ -301,10 +301,7 @@ public sealed class CentralManagementService : IDisposable
                 AppServices.Settings.CentralManagement.LastStatus,
                 status,
                 StringComparison.Ordinal))
-        {
-            StatusChanged?.Invoke(status);
             return;
-        }
 
         AppServices.Settings.CentralManagement.LastStatus = status;
         SaveManagement();

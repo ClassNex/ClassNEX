@@ -1,7 +1,8 @@
 # ClassNEX 插件 SDK
 
 插件项目引用 `src/ClassNex.Core/ClassNex.Core.csproj`，入口类型实现
-`ClassNex.Core.Abstractions.IClassNexPlugin`。
+`ClassNex.Core.Abstractions.IClassNexPlugin`。`ClassNex.Plugin` 是主程序的加载器，不是插件的 SDK 引用。
+已按此契约编译的插件不需要重新编译，也不需要更改目录、清单、入口类型或 `PluginContext`。
 
 插件部署在应用目录的 `plugins/<插件 ID>/`。目录中需要 `plugin.json`：
 

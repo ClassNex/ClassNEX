@@ -34,6 +34,15 @@ jobs:
         run: |
           $ver = $env:GITHUB_REF_NAME -replace '_.*$', ''
           dotnet publish src\ClassNex\ClassNex.csproj -c Release -r win-x64 --self-contained true -p:DebugType=none -o build\release\app-$ver-0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($module in 'ClassNex.Core', 'ClassNex.Notification.Service', 'ClassNex.Plugin', 'ClassNex.AI', 'ClassNex.WinUI') {
+            if (!(Test-Path -LiteralPath "build\release\app-$ver-0\$module.dll" -PathType Leaf)) {
+              throw "Missing desktop module: $module.dll"
+            }
+          }
+          foreach ($asset in 'ClassNex.pri', 'Microsoft.UI.Xaml.dll', 'Assets\icon.ico', 'Assets\Fonts\HarmonyOS_Sans_SC_Regular.ttf') {
+            if (!(Test-Path -LiteralPath "build\release\app-$ver-0\$asset" -PathType Leaf)) { throw "Missing WinUI runtime asset: $asset" }
+          }
           Remove-Item build\release\app-$ver-0\data -Recurse -Force -ErrorAction SilentlyContinue
           Remove-Item build\release\app-$ver-0\Assets\timetable.yaml -Force -ErrorAction SilentlyContinue
           dotnet publish src\ClassNex.Launcher\ClassNex.Launcher.csproj -c Release -r win-x64 -p:PublishSingleFile=true -p:PublishTrimmed=true -p:DebugType=none -o build\launcher

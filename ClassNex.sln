@@ -11,13 +11,15 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClassNex.Launcher", "src\Cl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClassNex.Core", "src\ClassNex.Core\ClassNex.Core.csproj", "{CD4FEBC4-72A1-4DEC-9C78-455013EFF324}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClassNex.Notification", "src\ClassNex.Notification\ClassNex.Notification.csproj", "{A382F48D-3F1D-44A7-9413-EB2D979D9F23}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClassNex.Notification.Service", "src\ClassNex.Notification.Service\ClassNex.Notification.Service.csproj", "{A382F48D-3F1D-44A7-9413-EB2D979D9F23}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClassNex.Plugins", "src\ClassNex.Plugins\ClassNex.Plugins.csproj", "{6738E88C-57FA-47A7-A9EB-B37DC8A69E8F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClassNex.Plugin", "src\ClassNex.Plugin\ClassNex.Plugin.csproj", "{6738E88C-57FA-47A7-A9EB-B37DC8A69E8F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClassNex.AI", "src\ClassNex.AI\ClassNex.AI.csproj", "{5E3F9E0E-7F32-4ED7-86E7-2073D6E214AB}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClassNex.Central", "src\ClassNex.Central\ClassNex.Central.csproj", "{DCAB83AA-A1F2-4696-A347-361AE0C61E31}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClassNex.WinUI", "src\ClassNex.WinUI\ClassNex.WinUI.csproj", "{BEBB4969-F1F5-4090-B3A6-D9784409491B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -113,6 +115,18 @@ Global
 		{DCAB83AA-A1F2-4696-A347-361AE0C61E31}.Release|x64.Build.0 = Release|Any CPU
 		{DCAB83AA-A1F2-4696-A347-361AE0C61E31}.Release|x86.ActiveCfg = Release|Any CPU
 		{DCAB83AA-A1F2-4696-A347-361AE0C61E31}.Release|x86.Build.0 = Release|Any CPU
+		{BEBB4969-F1F5-4090-B3A6-D9784409491B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BEBB4969-F1F5-4090-B3A6-D9784409491B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BEBB4969-F1F5-4090-B3A6-D9784409491B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{BEBB4969-F1F5-4090-B3A6-D9784409491B}.Debug|x64.Build.0 = Debug|Any CPU
+		{BEBB4969-F1F5-4090-B3A6-D9784409491B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{BEBB4969-F1F5-4090-B3A6-D9784409491B}.Debug|x86.Build.0 = Debug|Any CPU
+		{BEBB4969-F1F5-4090-B3A6-D9784409491B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BEBB4969-F1F5-4090-B3A6-D9784409491B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BEBB4969-F1F5-4090-B3A6-D9784409491B}.Release|x64.ActiveCfg = Release|Any CPU
+		{BEBB4969-F1F5-4090-B3A6-D9784409491B}.Release|x64.Build.0 = Release|Any CPU
+		{BEBB4969-F1F5-4090-B3A6-D9784409491B}.Release|x86.ActiveCfg = Release|Any CPU
+		{BEBB4969-F1F5-4090-B3A6-D9784409491B}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -125,5 +139,6 @@ Global
 		{6738E88C-57FA-47A7-A9EB-B37DC8A69E8F} = {4901E7B6-2E6A-4973-A16A-E2BB094E1866}
 		{5E3F9E0E-7F32-4ED7-86E7-2073D6E214AB} = {4901E7B6-2E6A-4973-A16A-E2BB094E1866}
 		{DCAB83AA-A1F2-4696-A347-361AE0C61E31} = {4901E7B6-2E6A-4973-A16A-E2BB094E1866}
+		{BEBB4969-F1F5-4090-B3A6-D9784409491B} = {4901E7B6-2E6A-4973-A16A-E2BB094E1866}
 	EndGlobalSection
 EndGlobal
