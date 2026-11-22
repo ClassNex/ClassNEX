@@ -62,7 +62,7 @@ public sealed class NexAgent : INexAgent
         var apiKey = NexConfig.ResolveApiKey(settings);
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            ErrorOccurred?.Invoke("还没有可用的接口密钥，请到「应用设置 → 调试 → NEX Intelligence 接口」里填写。");
+            ErrorOccurred?.Invoke("请先在「设置 → NEX Intelligence」中配置接口密钥。");
             return;
         }
 

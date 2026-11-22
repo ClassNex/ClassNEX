@@ -424,7 +424,6 @@ public sealed class NexVoiceCoordinator : IDisposable
         _glow?.StopGlow();
         AppServices.MainWindow?.HideNexPanel();
         _voice.BackToWakeWord();
-        DispatcherTimer.RunOnce(MemoryTrimmer.Trim, TimeSpan.FromSeconds(1));
         StatusChanged?.Invoke("正在听「嘿 NEX」…");
     }
 
