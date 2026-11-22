@@ -1,0 +1,53 @@
+{
+  "sourceCommit": "5ea3b1150e8af6bea986b2753690e91dbb642f15",
+  "baseCommit": "60d7b575b1b866a0bc388c9b80986c546950a2c7",
+  "archiveFile": "ClassNEX-26w46d-Refactor-Alpha-win-x64.zip",
+  "runnable": "package/ClassNex.exe",
+  "archiveBytes": 137059089,
+  "archiveSha512": "63005de5909e2805f3519bb103c023034e4ac165185b336e22d2c01d4541d749e3aa002454a84286d5506fcd9b9d64144b69ab6e332aa73ca7da7b9b8be3bb34",
+  "payloadDirectory": "app-26w46d-Refactor-0",
+  "payloadFiles": 546,
+  "payloadBytes": 297074507,
+  "filesHashVerified": 547,
+  "runtime": {
+    "Microsoft.NETCore.App": "10.0.12"
+  },
+  "executables": {
+    "ClassNex.exe": {
+      "machine": "x64",
+      "subsystem": "Windows GUI",
+      "iconImages": 10,
+      "executionLevel": "asInvoker"
+    },
+    "app-26w46d-Refactor-0/ClassNex.exe": {
+      "machine": "x64",
+      "subsystem": "Windows GUI",
+      "iconImages": 10,
+      "executionLevel": "asInvoker"
+    }
+  },
+  "pristineStartup": {
+    "passed": true,
+    "startedWithoutData": true,
+    "guidedWindowTitle": "欢迎使用 ClassNEX",
+    "windowObservedMs": 5180,
+    "rootDataCreated": true,
+    "noSeededAccountOrTimetable": true,
+    "rootLauncherExitCode": 0,
+    "normalCloseRequested": true,
+    "payloadExitedWithin20s": true,
+    "payloadExitCode": 0,
+    "postCloseObservations": 13,
+    "postCloseObservedMs": 2039,
+    "residualProcessCount": 0,
+    "forceStoppedCount": 0,
+    "crashLogPresent": false
+  },
+  "portableRegistration": {
+    "isolatedChecks": 20,
+    "passed": true,
+    "productionRegistrationsTouched": false
+  },
+  "productionIdentityTested": false,
+  "published": false
+}

@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory)][ValidatePattern('^[a-zA-Z0-9_-]+$')][string]$Round,
-    [switch]$KeepOpen
+    [switch]$KeepOpen,
+    [switch]$EnabledReminders
 )
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
@@ -21,7 +22,7 @@ New-Item -ItemType Directory -Path $sample | Out-Null
 Copy-Item -LiteralPath (Join-Path $repo 'tests/Fixtures/ClassNex.SamplePlugin/bin/Debug/net10.0/ClassNex.SamplePlugin.dll') -Destination $sample
 [IO.File]::WriteAllText((Join-Path $sample 'plugin.json'),'{"id":"fixture","name":"课堂提醒示例","version":"1.0","assembly":"ClassNex.SamplePlugin.dll","entryType":"ClassNex.SamplePlugin.Entry","enabled":false,"permissions":["notifications"]}',$encoding)
 [IO.File]::WriteAllText((Join-Path $fixture '.classnex-review'),'isolated desktop review',$encoding)
-$settings = [ordered]@{ IsOobeCompleted=$true; IsDebugOptionsEnabled=$true; IsNexVoiceWakeEnabled=$false; IsNexEdgeBarEnabled=$false; IsMainWindowVisible=$true; IsClickThrough=$false; Topmost=$false; ThemeMode='light'; UserName=''; Email=''; MainWindowScale=1.35; AllowNotification=$false; CentralManagement=@{IsEnabled=$false}; SingleWeekStartTime='2026-09-07'; SampleSeedVersion=3 }
+$settings = [ordered]@{ IsOobeCompleted=$true; IsDebugOptionsEnabled=$true; IsNexVoiceWakeEnabled=$false; IsNexEdgeBarEnabled=$false; IsMainWindowVisible=$true; IsClickThrough=$false; Topmost=$false; ThemeMode='light'; UserName=''; Email=''; MainWindowScale=1.35; AllowNotification=[bool]$EnabledReminders; CentralManagement=@{IsEnabled=$false}; SingleWeekStartTime='2026-09-07'; SampleSeedVersion=3 }
 $settings.SampleSeedVersion = 1
 $settings.BackgroundOpacity = 0.55
 [IO.File]::WriteAllText((Join-Path $data 'Settings.json'),($settings | ConvertTo-Json -Depth 8),$encoding)

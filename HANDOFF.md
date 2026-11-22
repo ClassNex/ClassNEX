@@ -42,7 +42,7 @@ dotnet build src\ClassNex\ClassNex.csproj -c Debug -t:Rebuild
 1. **什么都先参照 CI** —— 去翻 CI 的**文件/源码**，不要只看截图猜；
    CI 没有就用类似的，最后才自己想。
 2. **ClassIsland 一律叫 "CI"**。
-3. 设置和桌面课表使用原生 WinUI 3，不用 Avalonia 模拟；其余既有辅助窗口继续使用 AvaloniaFluentUI。
+3. 设置使用原生 WinUI 3；桌面课表使用恢复自 `26w46d_Alpha` 的透明 Avalonia 浮窗。档案、OOBE、登录和托盘继续使用 AvaloniaFluentUI。
 4. 配色/尺寸不要自己发明 —— 优先用 CI 配置文件里的值。
 
 ---
@@ -99,7 +99,7 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 
 ## 3. 历代功能与旧实现记录
 
-以下设置和浮窗的 Avalonia 实现、图片图标和动画记录仅用于理解迁移前的行为；现版使用原生 WinUI 3，入口与项目边界见第 9 节。
+以下是历代窗口、图标和动画的记录，不是现版规范。主线的原生设置与透明课表浮窗分属不同宿主，入口与项目边界见第 9 节。
 
 ### 主界面（悬浮课表）
 - **结构**：`CardHost`(淡入) → `HoverHost`(悬停淡化) → `LayoutTransformControl RootScale`
@@ -412,7 +412,7 @@ git push origin main
 
 检查结果在该 `data/_native_verify.log`。只有逐项 `PASS` 且以 `RESULT PASS` 结束才算通过；`-KeepOpen` 可保留该测试窗口。`CLASSNEX_VERIFY_SETTINGS`、旧的 `_settings_verify.log` 和旧设置窗口的截图流程已经退役。
 
-同目录的 `native-home.png`、`native-overlay.png`、`native-overlay-light.png`、`native-reminder.png` 为实际 WinUI 控件的渲染截图；`_native_navigation_metrics.json` 记录当前机器的一次页面切换，不作为帧率基准。成功后只回收本次测试复制的程序，保留报告、截图和数据；`-KeepFixture` 可保留程序用于诊断。用 `-OutputDirectory` 和 `-IntermediateDirectory` 可复测独立的 win-x64 自包含载荷。匿名验收不会连接线上集控，另需现场联测才能断言网络可用。
+同目录的 `native-home.png`、`native-reminders-collapsed.png` 来自原生设置；`_native_navigation_metrics.json` 记录一次切页，不作为帧率基准。透明课表的截图和拖动、双击、穿透、重启检查由 `tools/review_desktop.ps1` 生成。成功后脚本保留报告、截图和数据；`tools/verify_settings.ps1 -KeepFixture` 可保留独立测试程序。匿名验收不会连接线上集控，另需现场联测才能断言网络可用。
 
 `XamlControlsResources` 要在 `DesktopApplication.OnLaunched` 加载，不能在应用构造函数中加载。自包含发布必须保留 MSBuild 生成的 `ClassNex.pri`；仅有 `Microsoft.UI.Xaml.dll` 或构建成功都不能证明发布包可以启动。发布流程与验收脚本均检查资源清单。
 
@@ -509,8 +509,9 @@ Compress-Archive -Path "$root\*" -DestinationPath "E:\ClassNex\build\ClassNEX-$v
 - 目录结构照 CI：`app-<版本>-<序号>\`（应用载荷）+ `ClassNex.exe`（启动器）+ `PackageType`（内容 "folder"）+ `files.json`（每文件 SHA512 清单，供增量更新）。
 - 首次启动时应用会在**安装根目录**生成 `data\`（SettingsService.DataDirectory = 载荷目录的 `..\data`），不需要随包携带。
 
-### 发布到 GitHub Releases（一条命令）
-`tools\gh_release.py` 会自动：删同名旧 release → 建预发布 → 上传 zip。
+### 正式发布与旧手工流程
+
+当前只在用户明确要求发布时推送一个**新**的 `26w*` 版本标签，由 `.github/workflows/build-release.yml` 生成发行包。普通 `main` 推送不发布；切勿重推旧标签或删除同名 Release。以下是早期 `tools\gh_release.py` 的历史记录，不是现行操作步骤：
 ```powershell
 git tag -f 26w41f_Alpha ; git push -f origin 26w41f_Alpha
 $cred = "protocol=https`nhost=github.com`n" | git credential fill

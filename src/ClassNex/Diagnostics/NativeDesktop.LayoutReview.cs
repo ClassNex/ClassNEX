@@ -1,8 +1,11 @@
 #if DEBUG
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Windows.Foundation;
 using Windows.Graphics;
 
 namespace ClassNex.Services;
@@ -28,6 +31,58 @@ internal sealed partial class NativeDesktop
             var path = Path.Combine(directory, name + ".png");
             await capture.Snapshot(path, () => root, true);
             check(File.Exists(path) && new FileInfo(path).Length > 2000, $"Rendered native settings: {name} ({root.XamlRoot.RasterizationScale:P0})");
+        }
+        static bool Shown(FrameworkElement element)
+        {
+            if (!element.IsLoaded || element.ActualWidth <= 0 || element.ActualHeight <= 0) return false;
+            for (DependencyObject? node = element; node != null; node = VisualTreeHelper.GetParent(node))
+                if (node is UIElement visual && (visual.Visibility != Visibility.Visible || visual.Opacity == 0)) return false;
+            return true;
+        }
+        static async Task<bool> Until(Func<bool> ready)
+        {
+            for (var i = 0; i < 60 && !ready(); i++) await Task.Delay(40);
+            return ready();
+        }
+        async Task ReviewSidebarSearch(int width)
+        {
+            var nav = Tree(root).OfType<NavigationView>().Single();
+            var header = (FrameworkElement)nav.PaneCustomContent;
+            var search = Tree(header).OfType<AutoSuggestBox>().Single(box => AutomationProperties.GetAutomationId(box) == "SettingsSearch");
+            var compact = Tree(header).OfType<Button>().Single(b => AutomationProperties.GetAutomationId(b) == "CompactSettingsSearch");
+            bool Closed() => !nav.IsPaneOpen && Shown(compact) && !Shown(search);
+            if (width >= 840)
+            {
+                check(await Until(() => nav.IsPaneOpen && Shown(search) && !Shown(compact) &&
+                    Tree(header).OfType<AutoSuggestBox>().Count(Shown) == 1 &&
+                    !Tree(nav).OfType<Button>().Any(b => b.Name == "PaneAutoSuggestButton" && Shown(b))), $"Wide sidebar shows only the expanded search entry at {width} DIP");
+                return;
+            }
+
+            check(await Until(Closed), $"Compact sidebar offers the search button at {width} DIP");
+            var icon = Tree(compact).OfType<FontIcon>().Single();
+            var presenter = Tree(compact).OfType<ContentPresenter>().Single(p => ReferenceEquals(p.Content, icon));
+            Rect Bounds(FrameworkElement e) => e.TransformToVisual(compact).TransformBounds(new Rect(0, 0, e.ActualWidth, e.ActualHeight));
+            var glyph = Bounds(icon);
+            var content = Bounds(presenter);
+            var pane = Bounds(header);
+            var left = Math.Max(Math.Max(0, pane.Left), content.Left + presenter.Padding.Left + presenter.BorderThickness.Left);
+            var right = Math.Min(Math.Min(compact.ActualWidth, pane.Right), content.Right - presenter.Padding.Right - presenter.BorderThickness.Right);
+            var center = glyph.X + glyph.Width / 2;
+            var pixel = 1 / root.XamlRoot.RasterizationScale;
+            check(Shown(icon) && glyph.Width >= 16 - pixel / 2 && right - left >= 16 - .01 && center - 8 >= left - pixel / 2 &&
+                center + 8 <= right + pixel / 2 && Math.Abs(center - compact.ActualWidth / 2) <= pixel,
+                $"Compact search fits a centered 16 DIP glyph at {width} DIP (glyph {glyph.Width:0.##}, content {left:0.##}–{right:0.##}, center {center:0.##}/{compact.ActualWidth / 2:0.##})");
+
+            new ButtonAutomationPeer(compact).Invoke();
+            check(await Until(() => nav.IsPaneOpen && Shown(search) && !Shown(compact) &&
+                FocusManager.GetFocusedElement(root.XamlRoot) is DependencyObject focused &&
+                Tree(search).OfType<TextBox>().Any(box => Shown(box) && Tree(box).Any(node => ReferenceEquals(node, focused)))),
+                $"Invoking compact search expands the sidebar and focuses its text editor at {width} DIP");
+            search.Text = "通用";
+            var submit = Tree(search).OfType<Button>().Single(b => b.Name == "QueryButton" && Shown(b));
+            new ButtonAutomationPeer(submit).Invoke();
+            check(await Until(() => window.CurrentPageKey == "basic" && Closed()), $"Submitting the search opens General and restores the compact sidebar at {width} DIP");
         }
         try
         {
@@ -60,6 +115,8 @@ internal sealed partial class NativeDesktop
                 AppServices.Settings.ThemeMode = theme;
                 AppServices.SaveSettings();
                 window.RefreshSettings();
+                window.Activate();
+                await ReviewSidebarSearch(width);
                 double? headingTop = null;
                 foreach (var route in new[] { "home", "basic", "widgets", "notification", "account", "plugins", "central", "nex", "privacy", "update", "about" })
                 {

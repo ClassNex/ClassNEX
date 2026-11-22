@@ -8,6 +8,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Documents;
 using Avalonia.Input;
 using Avalonia.Input.Raw;
+using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.Threading;
@@ -93,17 +94,26 @@ public partial class App
             var initial = window.GetIslandScreenRect()!.Value;
             bool At(PixelPoint target) => window.GetIslandScreenRect() is { } rect && Math.Abs(rect.X - target.X) <= 1 && Math.Abs(rect.Y - target.Y) <= 1;
             check(At(MainWindow.ClampIsland(work, initial.Size, null)), "80/80 starts the visible island at the working area's top center");
-            var source = Text("ClockValue")!;
-            var pointer = new Pointer(Pointer.GetNextFreeId(), PointerType.Mouse, true);
-            var press = source.PointToScreen(new Point(source.Bounds.Width / 2, source.Bounds.Height / 2));
+            PixelPoint ClockCenter()
+            {
+                var current = Text("ClockValue") ?? throw new InvalidOperationException("No visible clock for the classroom pointer review");
+                return current.PointToScreen(new Point(current.Bounds.Width / 2, current.Bounds.Height / 2));
+            }
+            InputElement Hit(PixelPoint point) => window.InputHitTest(window.PointToClient(point)) as InputElement ??
+                throw new InvalidOperationException($"Classroom hit test missed at {point}; island={window.GetIslandScreenRect()}, window={window.Position}");
+            var press = ClockCenter();
+            var source = Hit(press);
+            var pointer = Mouse();
+            static Pointer Mouse() => new(Pointer.GetNextFreeId(), PointerType.Mouse, true);
+            ulong timestamp = 0;
             var intended = new PixelPoint(work.X + work.Width / 6, work.Y + work.Height / 5);
             var target = MainWindow.ClampIsland(work, initial.Size, intended);
             var end = new PixelPoint(press.X + target.X - initial.X, press.Y + target.Y - initial.Y);
-            void Press() => source.RaiseEvent(new PointerPressedEventArgs(source, pointer, window, window.PointToClient(press), 1,
-                new(RawInputModifiers.LeftMouseButton, PointerUpdateKind.LeftButtonPressed), KeyModifiers.None, 1));
-            void Move(PixelPoint point) => source.RaiseEvent(new PointerEventArgs(InputElement.PointerMovedEvent, source, pointer, window, window.PointToClient(point), 2,
+            void Press(int clicks = 1) => source.RaiseEvent(new PointerPressedEventArgs(source, pointer, window, window.PointToClient(press), ++timestamp,
+                new(RawInputModifiers.LeftMouseButton, PointerUpdateKind.LeftButtonPressed), KeyModifiers.None, clicks));
+            void Move(PixelPoint point) => source.RaiseEvent(new PointerEventArgs(InputElement.PointerMovedEvent, source, pointer, window, window.PointToClient(point), ++timestamp,
                 new(RawInputModifiers.LeftMouseButton, PointerUpdateKind.Other), KeyModifiers.None));
-            void Release(PixelPoint point) => source.RaiseEvent(new PointerReleasedEventArgs(source, pointer, window, window.PointToClient(point), 3,
+            void Release(PixelPoint point) => source.RaiseEvent(new PointerReleasedEventArgs(source, pointer, window, window.PointToClient(point), ++timestamp,
                 new(RawInputModifiers.None, PointerUpdateKind.LeftButtonReleased), KeyModifiers.None, MouseButton.Left));
             Press(); Move(new PixelPoint(press.X + 1, press.Y + 1)); Release(press);
             check(AppServices.Settings.MainWindowLeft == 80 && AppServices.Settings.MainWindowTop == 80 && At(initial.Position), "A click with one pixel of jitter does not move the island");
@@ -113,18 +123,52 @@ public partial class App
             check(AppServices.Settings.MainWindowLeft == target.X && AppServices.Settings.MainWindowTop == target.Y && At(target), "Releasing the pointer commits its screen-pixel anchor once");
             CheckIslandRegion(window, check);
             await shot(window, "overlay-dragged", mode, dpi);
-            void DoubleTap() => source.RaiseEvent(new TappedEventArgs(InputElement.DoubleTappedEvent,
-                new PointerReleasedEventArgs(source, pointer, window, window.PointToClient(press), 4,
-                    new(RawInputModifiers.None, PointerUpdateKind.LeftButtonReleased), KeyModifiers.None, MouseButton.Left)));
             var settingsWindow = ((App)Current!)._desktop!.Settings!;
-            settingsWindow.NavigateTo("basic"); DoubleTap(); await Settle();
-            check(settingsWindow.CurrentPageKey == "basic", "Dragging does not trigger a settings shortcut on release");
-            press = source.PointToScreen(new Point(source.Bounds.Width / 2, source.Bounds.Height / 2));
-            Press(); Release(press); DoubleTap(); await Settle();
-            check(settingsWindow.CurrentPageKey == "home", "Double-tapping the classroom routes to the real settings home");
+            async Task<bool> Reached(string key)
+            {
+                var elapsed = Stopwatch.StartNew();
+                while (settingsWindow.CurrentPageKey != key && elapsed.ElapsedMilliseconds < 1500) await Task.Delay(20);
+                return settingsWindow.CurrentPageKey == key;
+            }
+            async Task FromGeneral()
+            {
+                settingsWindow.NavigateTo("basic");
+                if (!await Reached("basic")) throw new InvalidOperationException($"Could not enter general settings before the classroom gesture: {settingsWindow.CurrentPageKey}");
+            }
+            void NewGesture()
+            {
+                press = ClockCenter();
+                source = Hit(press);
+                pointer = Mouse();
+            }
+            (int Seen, bool Handled, bool Captured) DoubleClick()
+            {
+                NewGesture();
+                var count = 0; var handled = false;
+                void Observed(object? _, TappedEventArgs e) { count++; handled = e.Handled; }
+                window.AddHandler(InputElement.DoubleTappedEvent, Observed, RoutingStrategies.Bubble, true);
+                try
+                {
+                    Press(); var captured = ReferenceEquals(pointer.Captured, source); Release(press);
+                    Press(2); Release(press);
+                    return (count, handled, captured);
+                }
+                finally { window.RemoveHandler(InputElement.DoubleTappedEvent, Observed); }
+            }
+            string Details() => $"route={settingsWindow.CurrentPageKey}, source={source.GetType().Name}#{source.Name}, attached={TopLevel.GetTopLevel(source) == window}, at={press}, island={window.GetIslandScreenRect()}, capture={pointer.Captured}, passthrough={AppServices.Settings.IsClickThrough}";
+            await FromGeneral();
+            source = Hit(end);
+            var trailing = new TappedEventArgs(InputElement.DoubleTappedEvent, new PointerReleasedEventArgs(source, pointer, window, window.PointToClient(end), ++timestamp,
+                new(RawInputModifiers.None, PointerUpdateKind.LeftButtonReleased), KeyModifiers.None, MouseButton.Left));
+            source.RaiseEvent(trailing); await Settle();
+            check(!trailing.Handled && settingsWindow.CurrentPageKey == "basic", "Dragging does not trigger a settings shortcut on release");
+            var actual = DoubleClick();
+            var home = await Reached("home");
+            check(actual is (1, true, true) && home, $"Double-tapping the classroom routes to the real settings home: events={actual.Seen}, handled={actual.Handled}, capturedOnPress={actual.Captured}; {Details()}");
             AppServices.Settings.IsClickThrough = true; AppServices.SaveSettings(); await Settle();
-            settingsWindow.NavigateTo("basic"); Press(); Move(new(press.X + 30, press.Y + 30)); Release(press); DoubleTap(); await Settle();
-            check(At(target) && settingsWindow.CurrentPageKey == "basic", "Click-through prevents both dragging and shortcut activation");
+            await FromGeneral(); NewGesture(); Press(); Move(new(press.X + 30, press.Y + 30)); Release(press);
+            var ignored = DoubleClick(); await Settle();
+            check(ignored is (1, false, false) && At(target) && settingsWindow.CurrentPageKey == "basic", $"Click-through prevents both dragging and shortcut activation: events={ignored.Seen}, handled={ignored.Handled}, capturedOnPress={ignored.Captured}; {Details()}");
             AppServices.Settings.IsClickThrough = false; AppServices.SaveSettings(); await Settle();
             var info = new ProcessStartInfo(Path.Combine(AppContext.BaseDirectory, "ClassNex.exe"))
                 { WorkingDirectory = AppContext.BaseDirectory, UseShellExecute = false, CreateNoWindow = true };

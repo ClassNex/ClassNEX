@@ -127,8 +127,11 @@ public partial class App
                 async Task StartSwitch()
                 {
                     location = null;
-                    var button = Need<Native.Button>("SwitchAccount");
-                    new Microsoft.UI.Xaml.Automation.Peers.ButtonAutomationPeer(button).Invoke();
+                    Native.Button? button = null;
+                    await Until(() => (button = Find<Native.Button>(Walk(settingsWindow.Content), "SwitchAccount")) is
+                        { IsLoaded: true, IsEnabled: true, Visibility: Microsoft.UI.Xaml.Visibility.Visible },
+                        "SwitchAccount did not become available", () => button is null ? "missing" : $"loaded={button.IsLoaded}, enabled={button.IsEnabled}, visibility={button.Visibility}");
+                    new Microsoft.UI.Xaml.Automation.Peers.ButtonAutomationPeer(button!).Invoke();
                     await Until(() => AccountService.FlowActive && location != null && login.FindControl<StackPanel>("StateFlow")!.IsVisible, "Switch account did not start the browser flow");
                 }
                 async Task CompleteSwitch(string fixture)
@@ -142,18 +145,29 @@ public partial class App
                 async Task Command(string value) { using var result = await browser.GetAsync(issuer + "/fixture/" + value); result.EnsureSuccessStatusCode(); }
             }
 
-            T Need<T>(string id) where T : Microsoft.UI.Xaml.FrameworkElement => Walk(settingsWindow.Content).OfType<T>().First(x => Automation.GetAutomationId(x) == id);
+            static T? Find<T>(IEnumerable<Microsoft.UI.Xaml.DependencyObject> controls, string id) where T : Microsoft.UI.Xaml.FrameworkElement =>
+                controls.OfType<T>().FirstOrDefault(x => Automation.GetAutomationId(x) == id);
+
             async Task VerifyIdentityAsync(string name, string email, bool photo)
             {
+                var pending = new List<string>(4);
                 await Until(() =>
                 {
-                    var mail = Need<Native.TextBlock>("SidebarAccountEmail");
-                    var picture = Need<Native.PersonPicture>("SidebarAccountPhoto");
-                    return Need<Native.TextBlock>("SidebarAccountName").Text == name && mail.Text == email &&
-                        (mail.Visibility == Microsoft.UI.Xaml.Visibility.Visible) == (email.Length > 0) && (picture.ProfilePicture is not null) == photo &&
-                        (photo || picture.DisplayName == (name == "未登录" ? "" : name)) &&
-                        Need<Native.TextBlock>("AccountEmail").Visibility == (name != "未登录" && email.Length > 0 ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed);
-                }, "Identity, missing email or avatar did not reach the native controls: " + name);
+                    pending.Clear();
+                    var tree = Walk(settingsWindow.Content).ToArray();
+                    Check<Native.TextBlock>("SidebarAccountName", label => label.Text == name);
+                    Check<Native.TextBlock>("SidebarAccountEmail", mail => mail.Text == email && (mail.Visibility == Microsoft.UI.Xaml.Visibility.Visible) == (email.Length > 0));
+                    Check<Native.PersonPicture>("SidebarAccountPhoto", picture => (picture.ProfilePicture is not null) == photo && (photo || picture.DisplayName == (name == "未登录" ? "" : name)));
+                    Check<Native.TextBlock>("AccountEmail", mail => mail.Visibility == (name != "未登录" && email.Length > 0 ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed));
+                    return pending.Count == 0;
+
+                    void Check<T>(string id, Func<T, bool> matches) where T : Microsoft.UI.Xaml.FrameworkElement
+                    {
+                        var element = Find<T>(tree, id);
+                        if (element is null) pending.Add(id + ": missing");
+                        else if (!matches(element)) pending.Add(id + ": value or visibility differs");
+                    }
+                }, "Identity, missing email or avatar did not reach the native controls: " + name, () => $"page={settingsWindow.CurrentPageKey}; {string.Join(", ", pending)}");
             }
             static IEnumerable<Microsoft.UI.Xaml.DependencyObject> Walk(Microsoft.UI.Xaml.DependencyObject root)
             {
@@ -162,14 +176,14 @@ public partial class App
                     foreach (var child in Walk(Dependencies.GetChild(root, i))) yield return child;
             }
             static void Require(bool value, string reason) { if (!value) throw new InvalidOperationException(reason); }
-            static async Task Until(Func<bool> ready, string reason)
+            static async Task Until(Func<bool> ready, string reason, Func<string>? details = null)
             {
                 for (int i = 0; i < 120; i++)
                 {
                     await Task.Delay(50);
                     if (ready()) return;
                 }
-                throw new InvalidOperationException(reason);
+                throw new TimeoutException(details is null ? reason : $"{reason}: {details()}");
             }
         }
         catch (Exception ex) { await File.WriteAllTextAsync(Path.Combine(SettingsService.DataDirectory, "account-review-error.txt"), ex.ToString()); }
