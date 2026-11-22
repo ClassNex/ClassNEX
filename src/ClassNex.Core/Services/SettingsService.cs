@@ -108,7 +108,7 @@ public static class SettingsService
             return true;
         }
 
-        if (endpoint.Host is not ("124.221.140.188" or "124.221.160.188"))
+        if (endpoint.Host is not ("124.221.140.188" or "124.221.160.188" or "206.187.201.60"))
             return false;
 
         settings.CentralManagement.ServerUrl = AppSettings.DefaultCentralEndpoint;

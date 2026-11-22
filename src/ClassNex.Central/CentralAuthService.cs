@@ -44,7 +44,6 @@ public sealed class CentralAuthService
         "&response_type=code" +
         "&scope=openid%20profile%20email" +
         $"&state={Uri.EscapeDataString(state)}" +
-        "&prompt=login" +
         $"&code_challenge={Uri.EscapeDataString(codeChallenge)}" +
         "&code_challenge_method=S256" +
         $"&redirect_uri={Uri.EscapeDataString(redirectUri)}";
@@ -71,7 +70,7 @@ public sealed class CentralAuthService
             form);
         var text = await response.Content.ReadAsStringAsync();
         if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException("Casdoor 授权码换取失败：" + text);
+            throw new InvalidOperationException($"Casdoor 授权码换取失败（HTTP {(int)response.StatusCode}）");
 
         using var document = JsonDocument.Parse(text);
         if (!document.RootElement.TryGetProperty("access_token", out var tokenElement) ||
