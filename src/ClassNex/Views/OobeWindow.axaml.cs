@@ -78,14 +78,15 @@ public partial class OobeWindow : AppWindow
             Dispatcher.UIThread.Post(() => SwitchPage(verifyPage), DispatcherPriority.Background);
 #endif
 
-        Closing += (_, _) =>
-        {
-            StopAssemblyAnimation();
-            StopPageTurn();
+    }
 
-            if (!_preview && !AppServices.Settings.IsOobeCompleted)
-                App.ExitApp();
-        };
+    protected override void OnClosed(EventArgs e)
+    {
+        AccountService.Changed -= RefreshOobeAccount;
+        _greetingTimer?.Stop();
+        StopAssemblyAnimation();
+        StopPageTurn();
+        base.OnClosed(e);
     }
 
     protected override void OnOpened(EventArgs e)
@@ -257,16 +258,14 @@ public partial class OobeWindow : AppWindow
             _isEnglish = LanguageCombo.SelectedIndex == 1;
             AppServices.Settings.Language = _isEnglish ? "en-US" : "zh-CN";
             ApplyLanguage();
-        };
-
-        PrivacyLink.Click += async (_, _) => await ShowPrivacyAsync();        LicenseLink.Click += (_, _) => OpenUrl("https://github.com/ClassNex/ClassNEX/blob/main/LICENSE");
-
-        OobeLoginButton.Click += (_, _) => StartOobeLogin();
-        OobeLogoutButton.Click += (_, _) =>
-        {
-            AccountService.Logout();
             RefreshOobeAccount();
         };
+
+        PrivacyLink.Click += async (_, _) => await ShowPrivacyAsync();
+        LicenseLink.Click += (_, _) => OpenUrl("https://github.com/ClassNex/ClassNEX/blob/main/LICENSE");
+
+        OobeLoginButton.Click += (_, _) => StartOobeLogin();
+        OobeLogoutButton.Click += (_, _) => AccountService.Logout();
 
         AccountService.Changed += RefreshOobeAccount;
 
@@ -300,8 +299,10 @@ public partial class OobeWindow : AppWindow
 
         SemesterPicker.SelectedDate = s.SemesterStartDate ?? DefaultSemesterStart();
         RunAtStartupCheck.IsChecked = s.RunAtStartup;
+        VoiceWakeCheck.IsChecked = s.IsNexVoiceWakeEnabled;
 
         ApplyLanguage();
+        RefreshOobeAccount();
     }
 
     
@@ -331,8 +332,9 @@ public partial class OobeWindow : AppWindow
             AccountBody.Text = "Sign in or create an account securely in your browser. Your avatar, name and email are synced automatically.";
             OobeLoginButton.Content = "Sign in / Sign up in browser";
             OobeLogoutButton.Content = "Sign out";
-            MoreTitle.Text = "More settings";
-            MoreBody.Text = "Reserved: more options will be added in a later version.";
+            MoreTitle.Text = "Voice wake-up";
+            MoreBody.Text = "Let NEX listen for its wake word after setup. You can also open NEX without a microphone.";
+            VoiceWakeLabel.Text = "Listen for the wake word";
             FinishTitle.Text = "You're all set";
             FinishBody.Text = "ClassNEX will restart and show the timetable widget on your desktop.";
             BackButton.Content = "Back";
@@ -359,8 +361,9 @@ public partial class OobeWindow : AppWindow
             AccountBody.Text = "在浏览器中安全登录或注册，头像、用户名与邮箱会自动同步到本机。";
             OobeLoginButton.Content = "使用浏览器登录 / 注册";
             OobeLogoutButton.Content = "退出登录";
-            MoreTitle.Text = "更多设置";
-            MoreBody.Text = "此页面预留：后续版本继续补充。";
+            MoreTitle.Text = "语音唤醒";
+            MoreBody.Text = "开启后，NEX 会在向导完成后使用麦克风监听唤醒词。关闭也可以手动打开 NEX。";
+            VoiceWakeLabel.Text = "监听唤醒词";
             FinishTitle.Text = "一切就绪";
             FinishBody.Text = "点击「完成」后 ClassNEX 会重新启动，并在桌面上显示课表浮窗。";
             BackButton.Content = "上一步";
@@ -453,10 +456,6 @@ public partial class OobeWindow : AppWindow
 
         ApplyLanguage();
 
-        if (_page == PageCount - 1)
-            Fireworks.Start();
-        else
-            Fireworks.Stop();
     }
 
     private void StartPageTurn(Control from, Control to, bool forward)
@@ -600,6 +599,7 @@ public partial class OobeWindow : AppWindow
         {
             GreetingText.Opacity = 0;
             await Task.Delay(240);
+            if (!IsVisible) return;
             _greetingIndex = (_greetingIndex + 1) % Greetings.Length;
             GreetingText.Text = Greetings[_greetingIndex];
             GreetingText.Opacity = 1;
@@ -623,37 +623,25 @@ public partial class OobeWindow : AppWindow
                     TextWrapping = TextWrapping.Wrap,
                     FontSize = 14,
                     Text = _isEnglish
-                        ? "ClassNEX is a local-only classroom timetable display.\n\n"
-                          + "1. Data we read and write: the timetable file you import, app settings, logs, and (optionally) a desktop shortcut. "
-                          + "All of it stays in the app's data folder on this device.\n\n"
-                          + "2. Data we never collect: no account, no telemetry, no analytics, no crash reports sent anywhere. "
-                          + "The app does not connect to the internet except when you click an external link.\n\n"
-                          + "3. Network: nothing is uploaded. Opening a link in this wizard only opens your browser.\n\n"
-                          + "4. Removing data: delete the app's data folder to erase every trace."
-                        : "ClassNEX 是一个完全本地运行的教室课表展示工具。\n\n"
-                          + "1. 读写的数据：你导入的课表文件、应用设置和日志，以及（可选的）桌面快捷方式。"
-                          + "全部保存在本机的应用数据目录里。\n\n"
-                          + "2. 不会收集的数据：没有账号体系、没有遥测、没有统计上报，不会把崩溃日志发到任何地方。"
-                          + "除你主动点击外部链接外，应用不访问网络。\n\n"
-                          + "3. 网络行为：不上传任何内容。向导里的链接只会用系统浏览器打开。\n\n"
-                          + "4. 删除数据：直接删除应用数据目录即可清除全部痕迹。",
+                        ? "You can use the timetable without an account. Timetables, preferences and logs are stored on this device.\n\n"
+                          + "Signing in opens your browser and retrieves your profile from ClassNEX ID. If you connect to Central, the client exchanges supported settings and timetable data with that server.\n\n"
+                          + "When you send a request to NEX, its configured model provider receives the conversation and any classroom context included in the request. Voice wake-up uses your microphone and can be turned off."
+                        : "无需账户也可以使用课表。课表、设置和日志保存在本机。\n\n"
+                          + "登录时会打开浏览器，并从 ClassNEX ID 读取账户资料。连接集控后，客户端会与该服务器同步支持的设置和课表。\n\n"
+                          + "向 NEX 发起请求时，配置的模型服务会收到对话和请求所附的课堂信息。语音唤醒会使用麦克风，可以关闭。",
                 },
             },
-            PrimaryButtonText = _isEnglish ? "View full policy on GitHub" : "在 GitHub 上查看完整政策",
+            CloseButtonText = _isEnglish ? "Close" : "关闭",
             DefaultButton = AvaloniaFluentUI.Controls.ContentDialogButton.Close,
         };
 
-        var result = await dialog.ShowAsync(this);
-        if (result == AvaloniaFluentUI.Controls.ContentDialogResult.Primary)
-            OpenUrl("https://github.com/ClassNex/ClassNEX/blob/main/PRIVACY.md");
+        await dialog.ShowAsync(this);
     }
 
     private void FinishAsync()
     {
         if (_preview)
         {
-            _greetingTimer?.Stop();
-            Fireworks.Stop();
             Close();
             return;
         }
@@ -662,11 +650,9 @@ public partial class OobeWindow : AppWindow
         s.IsOobeCompleted = true;
         s.SemesterStartDate = SemesterPicker.SelectedDate?.Date;
         s.RunAtStartup = RunAtStartupCheck.IsChecked == true;
+        s.IsNexVoiceWakeEnabled = VoiceWakeCheck.IsChecked == true;
         s.IsMainWindowVisible = true;      
         Services.SettingsService.Save(s);
-
-        _greetingTimer?.Stop();
-        Fireworks.Stop();
 
         App.RestartApplication();
     }

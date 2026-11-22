@@ -39,7 +39,9 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             
-            desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            desktop.ShutdownMode = AppServices.Settings.IsOobeCompleted
+                ? ShutdownMode.OnExplicitShutdown
+                : ShutdownMode.OnMainWindowClose;
 
             ApplyCiPalette();
             ApplyTheme(AppServices.Settings.ThemeMode);
@@ -75,7 +77,7 @@ public partial class App : Application
             _runtime = new DesktopRuntime(_mainWindow, AppServices.SettingsStore, AppServices.Schedule, AppServices.Time,
                 AppServices.TimeLayout, AppServices.Widgets, AppServices.Ai, () => AppServices.Settings);
             _runtime.Start();
-            desktop.Exit += (_, _) => _runtime.Dispose();
+            desktop.Exit += (_, _) => DisposeDesktopServices();
 
 #if DEBUG
             if (desktop.Args is ["--review-alpha-plugin"])
@@ -102,18 +104,14 @@ public partial class App : Application
             Dispatcher.UIThread.Post(EnsureTrayMenu, DispatcherPriority.Background);
 
             
-            _nexVoice = new Services.NexVoiceCoordinator();
-            Services.AppServices.NexVoice = _nexVoice;
-
-
-
-            if (AppServices.Settings.IsNexVoiceWakeEnabled)
+            if (AppServices.Settings.IsOobeCompleted)
             {
-                DispatcherTimer.RunOnce(() => _nexVoice?.Start(), TimeSpan.FromSeconds(2));
+                _nexVoice = new Services.NexVoiceCoordinator();
+                Services.AppServices.NexVoice = _nexVoice;
+                if (AppServices.Settings.IsNexVoiceWakeEnabled)
+                    DispatcherTimer.RunOnce(() => _nexVoice?.Start(), TimeSpan.FromSeconds(2));
+                DispatcherTimer.RunOnce(() => _nexVoice?.RefreshEdgeBar(), TimeSpan.FromSeconds(3));
             }
-
-            
-            DispatcherTimer.RunOnce(() => _nexVoice?.RefreshEdgeBar(), TimeSpan.FromSeconds(3));
 
             
             HandleUrlProtocol(Environment.GetCommandLineArgs());
@@ -606,13 +604,19 @@ public partial class App : Application
         app._loginWindow.Show();
     }
 
+    private void DisposeDesktopServices()
+    {
+        _nexVoice?.Dispose();
+        AppServices.NexVoice = _nexVoice = null;
+        _runtime?.Dispose();
+        _runtime = null;
+    }
+
     public static void ExitApp()
     {
         if (Current is App app)
         {
-            app._nexVoice?.Dispose();
-            app._nexVoice = null;
-            app._runtime?.Dispose();
+            app.DisposeDesktopServices();
             app._mainWindow?.Hide();
         }
 

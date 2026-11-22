@@ -1,7 +1,6 @@
 <wd:AppWindow xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="using:AvaloniaFluentUI.Controls"
-        xmlns:views="using:ClassNex.Views"
         xmlns:wd="using:AvaloniaFluentUI.Windowing"
         x:Class="ClassNex.Views.OobeWindow"
         Title="欢迎使用 ClassNEX"
@@ -150,14 +149,17 @@
             
             <StackPanel x:Name="PageMore" IsVisible="False" Margin="56,16,56,0" Spacing="12" MaxWidth="620"
                         HorizontalAlignment="Left" VerticalAlignment="Center">
-                <TextBlock x:Name="MoreTitle" Classes="OobeTitle" Text="更多设置"/>
+                <TextBlock x:Name="MoreTitle" Classes="OobeTitle" Text="语音唤醒"/>
                 <TextBlock x:Name="MoreBody" Classes="OobeBody" Opacity="0.8"
-                           Text="此页面预留：后续版本继续补充。"/>
+                           Text="开启后，NEX 会在向导完成后使用麦克风监听唤醒词。关闭也可以手动打开 NEX。"/>
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="24">
+                    <TextBlock x:Name="VoiceWakeLabel" Text="监听唤醒词" VerticalAlignment="Center"/>
+                    <ToggleSwitch Grid.Column="1" x:Name="VoiceWakeCheck"/>
+                </Grid>
             </StackPanel>
 
             
             <Panel x:Name="PageFinish" IsVisible="False">
-                <views:FireworksView x:Name="Fireworks"/>
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12">
                     <TextBlock x:Name="FinishTitle" Text="一切就绪" FontSize="34" HorizontalAlignment="Center"/>
                     <TextBlock x:Name="FinishBody" Classes="OobeBody" Opacity="0.85"

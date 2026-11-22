@@ -44,6 +44,7 @@ public partial class App
             var settings = _settingsWindow ?? throw new InvalidOperationException("No settings window");
             settings.Width = 990;
             settings.Height = 660;
+            await ReviewOobePreviewAsync(desktop, overlay, settings, Shot, Check);
             OpenProfileEditor();
             var editor = _profileEditor ?? throw new InvalidOperationException("No schedule editor");
             editor.Width = 1020;
