@@ -21,6 +21,16 @@ public static class WinUIPageTransitions
     private const float EntranceOffsetY = 24;
     private const float SlideOffsetX = 200;
 
+    public static void FadeIn(Control page)
+    {
+        if (ElementComposition.GetElementVisual(page) is not { } visual) return;
+        var fade = visual.Compositor.CreateScalarKeyFrameAnimation();
+        fade.Duration = TimeSpan.FromMilliseconds(125);
+        fade.InsertKeyFrame(0, 0.84f);
+        fade.InsertKeyFrame(1, 1);
+        visual.StartAnimation(nameof(visual.Opacity), fade);
+    }
+
     public static void Play(Control page, WinUIPageTransitionKind kind)
     {
         var visual = ElementComposition.GetElementVisual(page);

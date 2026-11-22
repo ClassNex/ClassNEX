@@ -3,39 +3,28 @@ using System.Diagnostics;
 using System.Reflection;
 using Avalonia;
 using Avalonia.Animation;
-using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
-using Avalonia.Platform;
-using Avalonia.Rendering.Composition;
-using Avalonia.Rendering.Composition.Animations;
 using Avalonia.Styling;
 using Avalonia.Threading;
-using Avalonia.VisualTree;
 using ClassNex.Models;
 using ClassNex.Services;
 using ClassNex.Styles;
 using ClassNex.ViewModels;
 using AvaloniaFluentUI.Controls;
 using AvaloniaFluentUI.Windowing;
-using AvaloniaPath = Avalonia.Controls.Shapes.Path;
 
 namespace ClassNex.Views;
-
-
-
-
 
 public partial class SettingsWindow : AppWindow
 {
     private readonly ObservableCollection<WidgetItem> _widgets = new();
     private readonly ObservableCollection<SearchEntry> _searchEntries = new();
 
-    
     private readonly List<int> _pageHistory = new();
     private int _lastPageIndex = -1;
     private Control? _currentPageView;
@@ -44,40 +33,38 @@ public partial class SettingsWindow : AppWindow
     private WidgetItem? _currentWidget;
     private int _lastWidgetTabIndex;
 
-    private bool _entrancePlayed;
-    private EventHandler? _themeChangedHandler;
+    private bool _closed;
+    private bool _suppressHistory;
+    private bool _settingEventsWired;
+    private bool _notificationEventsWired;
+    private bool _pluginsBusy;
+    private bool _widgetSettingsDirty = true;
+    private readonly DispatcherTimer _editSaveTimer = new() { Interval = TimeSpan.FromMilliseconds(120) };
+    private AppSettings? _pendingEdit;
+    private readonly CancellationTokenSource _windowLifetime = new();
 
-    private readonly List<SakuraBlossom> _blossoms = new();
-    private readonly Random _petalRandom = new();
-    private bool _blossomsRunning;
+    internal string CurrentPageKey => _lastPageIndex < 0 ? "home" : Sections[_lastPageIndex].Key;
 
-    private static readonly Color[] PetalColors =
-    {
-        Color.FromArgb(0xDD, 0xF2, 0x93, 0xB2),
-        Color.FromArgb(0xDD, 0xFF, 0xA8, 0xC4),
-        Color.FromArgb(0xD0, 0xE8, 0x86, 0xAB),
-        Color.FromArgb(0xDD, 0xFF, 0xC9, 0xDA),
-        Color.FromArgb(0xDD, 0xF7, 0x9F, 0xBE),
-    };
+    private sealed record Section(string Key, string Title, string Description);
 
-    private sealed class SakuraBlossom
-    {
-        public required AvaloniaPath View { get; init; }
-        public CompositionVisual? Visual;
-        public double Size;
-        public double StartX;
-        public double StartY;
-        public double EndX;
-        public double EndY;
-        public double Phase;
-        public double Sway;
-        public double Duration;
-        public double SpinDuration;
-        public double RotationOffset;
-        public double Opacity;
-    }
+    private static readonly Section[] Sections =
+    [
+        new("home", "总览", ""),
+        new("basic", "系统与启动", "配置开机启动、学期周期、托盘与故障处理。"),
+        new("appearance", "外观与主题", "选择应用主题，调整课堂浮窗的字号、大小与透明度。"),
+        new("window", "悬浮窗口", "调整桌面浮窗的排列方式与鼠标交互。"),
+        new("widgets", "桌面组件", "选择要显示的内容，调整组件顺序或单独配置。"),
+        new("nex", "NEX Intelligence", "管理对话、语音唤醒与模型连接。"),
+        new("notification", "通知提醒", "分别设置课前、上课和下课时的提醒。"),
+        new("about", "关于 ClassNEX", "版本、开放源代码许可与问题反馈。"),
+        new("debug", "开发者选项", "手动触发提醒，检查课堂显示效果。"),
+        new("account", "账户与登录", "通过浏览器登录，管理这台设备的 ClassNEX ID。"),
+        new("schedule", "课表与课程", "查看今天的安排，编辑每周课程、时间段与科目。"),
+        new("profile", "档案管理", "当前课表档案、文件位置与导入。"),
+        new("central", "集控管理", "用同一账户连接集控，在管理端为设备分配班级。"),
+        new("plugins", "插件与扩展", "管理本机安装的扩展。只安装来自可信开发者的插件。"),
+    ];
 
-    
     private sealed class SearchEntry
     {
         public string Title { get; init; } = "";
@@ -87,24 +74,6 @@ public partial class SettingsWindow : AppWindow
         public int PageIndex { get; init; }
     }
 
-    
-    private static readonly string[] PageNames = { "主页", "基本", "外观", "窗口", "组件", "NEX Intelligence", "提醒", "关于 ClassNEX", "调试", "账户" };
-
-    private static readonly string[] PageSubtitles =
-    {
-        "查看今天的状态与常用入口",
-        "设置启动行为、课表周期和托盘交互",
-        "调整主题、透明度与界面缩放",
-        "控制悬浮窗口的布局与交互方式",
-        "选择主界面组件并调整显示顺序",
-        "配置 AI 助手、权限与语音唤醒",
-        "设置课前、上课和下课提醒",
-        "查看版本、许可与项目信息",
-        "开发与调试工具",
-        "查看账户状态与同步方式",
-    };
-
-    
     private static readonly (string Title, int PageIndex)[] SearchIndex =
     {
         ("开机自启", 1),
@@ -131,331 +100,100 @@ public partial class SettingsWindow : AppWindow
         ("课前提醒", 6),
         ("版本信息", 7),
         ("账户与浏览器授权", 9),
+        ("编辑课程、时间表与科目", 10),
+        ("档案管理与导入课表", 11),
+        ("集控服务地址与连接状态", 12),
+        ("启用或停用插件", 13),
     };
 
     public SettingsWindow()
     {
         InitializeComponent();
-        ApplySakuraChrome();
-        SettingsRoot.Opacity = 0;
-
-        foreach (var item in NavView.MenuItems.OfType<Control>())
-            MetroTilt.Attach(item);
-
-        Opened += (_, _) =>
-        {
-            PlayEntrance();
-            HomePetals.IsVisible = false;
-            StopSakuraBlossoms();
-            MetroTransitions.PrewarmPagesAtIdle(
-                new Control[]
-                {
-                    PageHome, PageGeneral, PageInterface, PageWindow, PageWidgets,
-                    PageNex, PageNotification, PageAbout, PageDebug, PageAccount,
-                },
-                _currentPageView ?? PageHome);
-        };
-
-        if (Application.Current is { } app)
-        {
-            _themeChangedHandler = (_, _) => Dispatcher.UIThread.Post(ApplySakuraChrome);
-            app.ActualThemeVariantChanged += _themeChangedHandler;
-            Closed += (_, _) => app.ActualThemeVariantChanged -= _themeChangedHandler;
-        }
-
-        Closed += (_, _) => StopSakuraBlossoms();
-
         WidgetList.ItemsSource = _widgets;
-
+        _editSaveTimer.Tick += (_, _) => FlushContinuousInput();
         InitShell();
         WireEvents();
         LoadFromSettings();
-
-        AccountService.Changed += () =>
-            Dispatcher.UIThread.Post(() =>
-            {
-                RefreshAccountName();
-                RefreshCentralAccountUi();
-            }, DispatcherPriority.Background);
-        AppServices.Management?.StatusChanged += OnCentralManagementStatusChanged;
+        NavigateTo("home");
+        AccountService.Changed += AccountChanged;
+        AppServices.Schedule.ProfileChanged += ScheduleChanged;
+        AppServices.ManagedSettingsApplied += ManagedSettingsChanged;
+        if (AppServices.Management is { } management) management.StatusChanged += OnCentralManagementStatusChanged;
+        if (AppServices.Plugins is { } plugins) plugins.Changed += PluginsChanged;
         Closed += (_, _) =>
         {
-            AppServices.Management?.StatusChanged -= OnCentralManagementStatusChanged;
-        };
-
-        
-        
-        
-        
-        AccountPanel.SizeChanged += (_, e) => ApplyAccountCompact(e.NewSize.Width < 150);
-    }
-
-    private void ApplySakuraChrome()
-    {
-        var brush = CiPalette.SettingsSurfaceBrush();
-        Background = brush;
-        SettingsRoot.Background = brush;
-        TopBarCapsule.Background = CiPalette.ChipSurfaceBrush();
-        TopBarCapsule.BorderBrush = CiPalette.ChipBorderBrush();
-        HomeBrandTile.Background = CiPalette.SakuraAccentTint(0.16);
-        HomeBrandTile.BorderBrush = CiPalette.SakuraAccentTint(0.30);
-        HomeThemePreviewSystem.Background = CiPalette.SettingsSurfaceBrush();
-        HomeThemePreviewLight.Background = CiPalette.SakuraAccentTint(0.18);
-        HomeThemePreviewDark.Background = CiPalette.CardBrush;
-    }
-
-    private void PlayEntrance()
-    {
-        if (_entrancePlayed)
-            return;
-
-        _entrancePlayed = true;
-        SettingsRoot.Opacity = 1;
-
-        var visual = ElementComposition.GetElementVisual(SettingsRoot);
-        if (visual is null)
-            return;
-
-        var bounds = SettingsRoot.Bounds;
-        visual.CenterPoint = new Vector3D(
-            (float)(bounds.Width / 2),
-            (float)(bounds.Height / 2),
-            0);
-        visual.Opacity = 0f;
-        visual.Scale = new Vector3D(0.965f, 0.965f, 1f);
-        visual.Offset = new Vector3D(0f, 16f, 0f);
-
-        var compositor = visual.Compositor;
-
-        var fade = compositor.CreateScalarKeyFrameAnimation();
-        fade.InsertKeyFrame(0f, 0f);
-        fade.InsertKeyFrame(1f, 1f, Easing.Parse("0.16, 1, 0.3, 1"));
-        fade.Duration = TimeSpan.FromMilliseconds(430);
-        visual.StartAnimation(nameof(visual.Opacity), fade);
-
-        var scale = compositor.CreateVector3KeyFrameAnimation();
-        scale.InsertKeyFrame(0f, new System.Numerics.Vector3(0.965f, 0.965f, 1f));
-        scale.InsertKeyFrame(0.62f, new System.Numerics.Vector3(1.006f, 1.006f, 1f), Easing.Parse("0.22, 1, 0.36, 1"));
-        scale.InsertKeyFrame(1f, new System.Numerics.Vector3(1f, 1f, 1f));
-        scale.Duration = TimeSpan.FromMilliseconds(620);
-        visual.StartAnimation(nameof(visual.Scale), scale);
-
-        var slide = compositor.CreateVector3KeyFrameAnimation();
-        slide.InsertKeyFrame(0f, new System.Numerics.Vector3(0f, 16f, 0f));
-        slide.InsertKeyFrame(1f, new System.Numerics.Vector3(0f, 0f, 0f), Easing.Parse("0.16, 1, 0.3, 1"));
-        slide.Duration = TimeSpan.FromMilliseconds(520);
-        visual.StartAnimation(nameof(visual.Offset), slide);
-    }
-
-    private void StartSakuraBlossoms()
-    {
-        if (!HomePetals.IsVisible || _blossomsRunning)
-            return;
-
-        var width = HomePetals.Bounds.Width;
-        var height = HomePetals.Bounds.Height;
-        if (width <= 0 || height <= 0)
-            return;
-
-        if (_blossoms.Count == 0)
-        {
-            CreateSakuraBlossoms(width, height);
-            Dispatcher.UIThread.Post(StartSakuraBlossoms, DispatcherPriority.Loaded);
-            return;
-        }
-
-        _blossomsRunning = true;
-        var allStarted = true;
-        foreach (var blossom in _blossoms)
-        {
-            if (!StartBlossomAnimation(blossom))
-                allStarted = false;
-        }
-
-        if (!allStarted)
-        {
-            _blossomsRunning = false;
-            Dispatcher.UIThread.Post(StartSakuraBlossoms, DispatcherPriority.Loaded);
-        }
-    }
-
-    private void StopSakuraBlossoms()
-    {
-        _blossomsRunning = false;
-
-        foreach (var blossom in _blossoms)
-        {
-            var visual = blossom.Visual;
-            if (visual is null)
-                continue;
-
-            visual.StopAnimation(nameof(visual.Offset));
-            visual.StopAnimation(nameof(visual.RotationAngle));
-            visual.Opacity = 0;
-        }
-
-        HomePetals.Children.Clear();
-        _blossoms.Clear();
-    }
-
-    private void CreateSakuraBlossoms(double width, double height)
-    {
-        for (var i = 0; i < 8; i++)
-        {
-            var size = 26 + _petalRandom.NextDouble() * 22;
-            var group = new GeometryGroup();
-
-            for (var petalIndex = 0; petalIndex < 5; petalIndex++)
+            _closed = true;
+            FlushContinuousInput();
+            _editSaveTimer.Stop();
+            _windowLifetime.Cancel();
+            _windowLifetime.Dispose();
+            _homeGreetingTimer?.Stop();
+            if (_nexGlowPreviewTimer is not null)
             {
-                var petal = Geometry.Parse(
-                    "M 24,24 C 18,19 11,8 17,-1 C 21,-7 27,-7 31,-1 C 37,8 30,19 24,24 Z");
-                petal.Transform = new RotateTransform(petalIndex * 72, 24, 24);
-                group.Children.Add(petal);
+                _nexGlowPreviewTimer.Stop();
+                AppServices.NexVoice?.GlowWindow?.StopGlow();
+                AppServices.MainWindow?.HideNexPanel();
             }
-
-            var opacity = 0.34 + _petalRandom.NextDouble() * 0.30;
-            var startX = -40 + (i + 0.5) * (width + 80) / 8
-                         + (_petalRandom.NextDouble() - 0.5) * 36;
-            var startY = -20 - _petalRandom.NextDouble() * 220;
-            var drift = 20 + _petalRandom.NextDouble() * 170;
-            var rotation = _petalRandom.NextDouble() * Math.PI * 2;
-
-            var view = new AvaloniaPath
+            AccountService.Changed -= AccountChanged;
+            AppServices.Schedule.ProfileChanged -= ScheduleChanged;
+            AppServices.ManagedSettingsApplied -= ManagedSettingsChanged;
+            if (AppServices.Management is { } service) service.StatusChanged -= OnCentralManagementStatusChanged;
+            if (AppServices.Plugins is { } extensions) extensions.Changed -= PluginsChanged;
+            if (AppServices.NexVoice is { } voice) voice.StatusChanged -= VoiceStatusChanged;
+        };
+        KeyDown += (_, args) =>
+        {
+            if (args.Key == Key.F && args.KeyModifiers == KeyModifiers.Control)
             {
-                Data = group,
-                Width = size,
-                Height = size,
-                Stretch = Stretch.Uniform,
-                Fill = new SolidColorBrush(PetalColors[i % PetalColors.Length]),
-                Opacity = opacity,
-            };
-
-            var blossom = new SakuraBlossom
+                SearchBox.Focus();
+                SearchBox.SelectAll();
+                args.Handled = true;
+            }
+            else if (args.Key == Key.Escape && SearchResultsPanel.IsVisible)
             {
-                View = view,
-                Size = size,
-                StartX = startX,
-                StartY = startY,
-                EndX = startX + drift,
-                EndY = height + 100 + _petalRandom.NextDouble() * 80,
-                Phase = _petalRandom.NextDouble() * Math.PI * 2,
-                Sway = 20 + _petalRandom.NextDouble() * 36,
-                Duration = 5.5 + _petalRandom.NextDouble() * 9 + i * 0.1,
-                SpinDuration = 8 + _petalRandom.NextDouble() * 7,
-                RotationOffset = rotation,
-                Opacity = opacity,
-            };
-
-            Canvas.SetLeft(view, 0);
-            Canvas.SetTop(view, 0);
-            HomePetals.Children.Add(view);
-            _blossoms.Add(blossom);
-        }
+                SearchBox.Text = "";
+                args.Handled = true;
+            }
+        };
     }
 
-    private static bool StartBlossomAnimation(SakuraBlossom blossom)
+    private void DispatchWhileOpen(Action action)
     {
-        var visual = blossom.Visual ??= ElementComposition.GetElementVisual(blossom.View);
-        if (visual is null)
-            return false;
-
-        visual.CenterPoint = new Vector3D((float)(blossom.Size / 2), (float)(blossom.Size / 2), 0);
-        visual.Offset = new Vector3D((float)blossom.StartX, (float)blossom.StartY, 0);
-        visual.Opacity = (float)blossom.Opacity;
-
-        var compositor = visual.Compositor;
-
-        var move = compositor.CreateVector3KeyFrameAnimation();
-        for (var step = 0; step <= 6; step++)
-        {
-            var progress = step / 6.0;
-            var sway = Math.Sin(blossom.Phase + progress * Math.PI * 2.6)
-                       * blossom.Sway * (0.45 + progress * 0.55);
-            var x = blossom.StartX + (blossom.EndX - blossom.StartX) * progress + sway;
-            var y = blossom.StartY + (blossom.EndY - blossom.StartY) * progress;
-            move.InsertKeyFrame(
-                (float)progress,
-                new System.Numerics.Vector3((float)x, (float)y, 0),
-                new LinearEasing());
-        }
-
-        move.Duration = TimeSpan.FromSeconds(blossom.Duration);
-        move.IterationBehavior = AnimationIterationBehavior.Forever;
-        visual.StartAnimation(nameof(visual.Offset), move);
-
-        var spin = compositor.CreateScalarKeyFrameAnimation();
-        spin.InsertKeyFrame(0f, (float)blossom.RotationOffset, new LinearEasing());
-        spin.InsertKeyFrame(1f, (float)(blossom.RotationOffset + Math.PI * 2), new LinearEasing());
-        spin.Duration = TimeSpan.FromSeconds(blossom.SpinDuration);
-        spin.IterationBehavior = AnimationIterationBehavior.Forever;
-        visual.StartAnimation(nameof(visual.RotationAngle), spin);
-
-        return true;
+        if (_closed) return;
+        if (Dispatcher.UIThread.CheckAccess()) action();
+        else Dispatcher.UIThread.Post(() => { if (!_closed) action(); });
     }
 
-    
-
-    private bool _accountCompact;
-
-    
-    
-    
-    
-    
-    
-    private void ApplyAccountCompact(bool compact)
+    private void AccountChanged() => DispatchWhileOpen(() =>
     {
-        if (_accountCompact == compact)
-            return;
+        RefreshAccountName();
+        RefreshCentralAccountUi();
+        if (CurrentPageKey == "home") RefreshHomeGreeting();
+    });
 
-        _accountCompact = compact;
+    private void ScheduleChanged() => DispatchWhileOpen(() =>
+    {
+        if (CurrentPageKey is "home" or "schedule" or "profile") RefreshClassroom();
+    });
 
-        if (compact)
-        {
-            
-            
-            
-            
-            
-            AccountPanel.Margin = new Thickness(7, 6, 2, 10);
-            AccountShift.X = 0;
-            AccountAvatarRing.Width = 32;
-            AccountAvatarRing.Height = 32;
-            AccountAvatarRing.CornerRadius = new CornerRadius(16);
-            AccountAvatarRing.BorderThickness = new Thickness(2);
-            AccountTextHost.Opacity = 0;
-            AccountTextHost.IsHitTestVisible = false;
-        }
-        else
-        {
-            AccountPanel.Margin = new Thickness(14, 6, 6, 10);
-            AccountShift.X = 0;
-            AccountAvatarRing.Width = 52;
-            AccountAvatarRing.Height = 52;
-            AccountAvatarRing.CornerRadius = new CornerRadius(26);
-            AccountAvatarRing.BorderThickness = new Thickness(3);
-            AccountTextHost.Opacity = 1;
-            AccountTextHost.IsHitTestVisible = true;
-        }
-    }
+    private void ManagedSettingsChanged() => DispatchWhileOpen(() =>
+    {
+        LoadFromSettings();
+        if (CurrentPageKey == "nex") { RefreshNexPage(); RefreshNexApiFields(); }
+        if (CurrentPageKey is "home" or "schedule" or "profile") RefreshClassroom();
+    });
 
-    
-    private TranslateTransform AccountShift => (TranslateTransform)AccountPanel.RenderTransform!;
+    private void PluginsChanged() => DispatchWhileOpen(() =>
+    {
+        if (CurrentPageKey == "plugins") RefreshPlugins();
+    });
 
-    
-    
-    
-    
-    
-    
+    private void VoiceStatusChanged(string status) => DispatchWhileOpen(() => NexVoiceStatusText.Text = status);
+
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
 
-        
-        
-        
-        
         try
         {
             if (TitleBar is { } bar)
@@ -465,7 +203,7 @@ public partial class SettingsWindow : AppWindow
         }
         catch
         {
-            
+
         }
 
         try
@@ -485,11 +223,10 @@ public partial class SettingsWindow : AppWindow
         }
         catch
         {
-            
+
         }
     }
 
-    
     private void InitShell()
     {
         var version = typeof(SettingsWindow).Assembly
@@ -505,7 +242,7 @@ public partial class SettingsWindow : AppWindow
         SearchResults.ItemsSource = _searchEntries;
 
 #if DEBUG
-        
+
         if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_SEARCH") == "1")
         {
             Dispatcher.UIThread.Post(() =>
@@ -542,7 +279,6 @@ public partial class SettingsWindow : AppWindow
 #endif
     }
 
-    
     private void RefreshAccountName()
     {
         var profile = AccountService.Current;
@@ -554,30 +290,12 @@ public partial class SettingsWindow : AppWindow
         if (string.IsNullOrWhiteSpace(displayEmail))
             displayEmail = loggedIn ? "未提供邮箱" : "登录后自动同步账户资料";
 
-        AccountNameText.Text = displayName;
-        AccountEmailText.Text = displayEmail;
-        HomeAccountNameText.Text = displayName;
-        HomeAccountEmailText.Text = displayEmail;
-        HomeAccountStatusText.Text = loggedIn ? "已连接，资料已同步" : "未登录";
-        HomeLoginButton.Content = loggedIn ? "切换账户" : "登录账户";
         AccountPageNameText.Text = displayName;
-        AccountPageEmailText.Text = displayEmail;
-        AccountPageStatusText.Text = loggedIn ? "已连接" : "未登录";
-        AccountPageSyncText.Text = loggedIn
-            ? "账户资料已通过浏览器授权同步到本机"
-            : "使用浏览器完成登录或注册，头像、用户名和邮箱会自动同步";
+        AccountPageEmailText.Text = loggedIn ? displayEmail : "使用 ClassNEX ID 同步资料与连接集控。";
+        AccountPageStatusText.Text = loggedIn ? "已登录" : "ClassNEX ID";
         AccountLoginButton.Content = loggedIn ? "切换账户" : "浏览器登录";
         AccountLogoutButton.IsVisible = loggedIn;
-
-        var accent = CiPalette.SakuraAccentBrush();
-        AccountAvatarRing.BorderBrush = accent;
-        HomeAccountAvatarRing.BorderBrush = accent;
-        AccountPageAvatarRing.BorderBrush = accent;
-        AccountPageStatusBadge.Background = CiPalette.SakuraAccentTint(0.14);
-        AccountPageStatusBadge.BorderBrush = CiPalette.SakuraAccentTint(0.32);
-        AccountPageStatusText.Foreground = accent;
-
-        RefreshAvatarImages();
+        AccountAvatar.Apply(AccountPageAvatarRing, profile?.DisplayName ?? "", AccountService.AvatarImagePath);
     }
 
     private void OnAccountLogin(object? sender, RoutedEventArgs e)
@@ -591,164 +309,56 @@ public partial class SettingsWindow : AppWindow
         RefreshAccountName();
     }
 
-    
-    private static Color Mix(Color c, Color target, double t)
-    {
-        t = Math.Clamp(t, 0, 1);
-        return Color.FromRgb(
-            (byte)Math.Clamp(c.R + (target.R - c.R) * t, 0, 255),
-            (byte)Math.Clamp(c.G + (target.G - c.G) * t, 0, 255),
-            (byte)Math.Clamp(c.B + (target.B - c.B) * t, 0, 255));
-    }
-
-    
-    private static Color RotateHue(Color c, double degrees, double satScale)
-    {
-        var r = c.R / 255.0;
-        var g = c.G / 255.0;
-        var b = c.B / 255.0;
-        var max = Math.Max(r, Math.Max(g, b));
-        var min = Math.Min(r, Math.Min(g, b));
-        var l = (max + min) / 2;
-        double h = 0, s = 0;
-
-        if (Math.Abs(max - min) > 1e-6)
-        {
-            var d = max - min;
-            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-            if (Math.Abs(max - r) < 1e-6)
-                h = (g - b) / d + (g < b ? 6 : 0);
-            else if (Math.Abs(max - g) < 1e-6)
-                h = (b - r) / d + 2;
-            else
-                h = (r - g) / d + 4;
-            h /= 6;
-        }
-
-        h = (h + degrees / 360.0) % 1.0;
-        if (h < 0)
-            h += 1.0;
-        s = Math.Clamp(s * satScale, 0, 1);
-
-        double R = l, G = l, B = l;   
-        if (s > 1e-6)
-        {
-            var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-            var p = 2 * l - q;
-            R = HueToRgb(p, q, h + 1.0 / 3);
-            G = HueToRgb(p, q, h);
-            B = HueToRgb(p, q, h - 1.0 / 3);
-        }
-
-        return Color.FromRgb(
-            (byte)Math.Clamp(R * 255, 0, 255),
-            (byte)Math.Clamp(G * 255, 0, 255),
-            (byte)Math.Clamp(B * 255, 0, 255));
-    }
-
-    private static double HueToRgb(double p, double q, double t)
-    {
-        if (t < 0)
-            t += 1;
-        if (t > 1)
-            t -= 1;
-        if (t < 1.0 / 6)
-            return p + (q - p) * 6 * t;
-        if (t < 1.0 / 2)
-            return q;
-        if (t < 2.0 / 3)
-            return p + (q - p) * (2.0 / 3 - t) * 6;
-        return p;
-    }
-
-    private void OnAccountClick(object? sender, RoutedEventArgs e)
-    {
-        NavigateTo("account");
-    }
-
-    private void RefreshAvatarImages()
-    {
-        var name = AccountService.Current?.DisplayName ?? "";
-        var imagePath = AccountService.AvatarImagePath;
-
-        AccountAvatar.Apply(AccountAvatarRing, name, imagePath);
-        AccountAvatar.Apply(HomeAccountAvatarRing, name, imagePath);
-        AccountAvatar.Apply(AccountPageAvatarRing, name, imagePath);
-    }
-
-    
     private void OnNavigateBack(object? sender, RoutedEventArgs e)
     {
-        if (_pageHistory.Count == 0)
-            return;
-
+        if (_pageHistory.Count == 0) return;
         var index = _pageHistory[^1];
         _pageHistory.RemoveAt(_pageHistory.Count - 1);
-        if (index >= 0 && index < NavView.MenuItems.Count)
-        {
-            _lastPageIndex = index;
-            NavView.SelectedItem = NavView.MenuItems[index];
-        }
+        _suppressHistory = true;
+        try { NavigateTo(Sections[index].Key); }
+        finally { _suppressHistory = false; }
+        BackButton.IsEnabled = _pageHistory.Count > 0;
     }
 
-    
     public void NavigateTo(string page)
     {
-        var index = page switch
-        {
-            "home" => 0,
-            "general" or "basic" => 1,
-            "appearance" or "interface" => 2,
-            "window" => 3,
-            "widgets" => 4,
-            "nex" => 5,
-            "notification" => 6,
-            "about" => 7,
-            "debug" => 8,
-            _ => 0,
-        };
+        var key = page switch { "overview" or "settings" => "home", "general" => "basic", "interface" => "appearance", _ => page };
+        var item = NavView.MenuItems.OfType<NavigationViewItem>().FirstOrDefault(x => Equals(x.Tag, key) && x.IsVisible);
+        if (item is null) return;
+        if (ReferenceEquals(NavView.SelectedItem, item)) SwitchPage();
+        else NavView.SelectedItem = item;
+    }
 
-        
-        if (page == "account")
-        {
-            var previousAccountPage = _currentPageView;
-            KeepOnlyPages(previousAccountPage, PageAccount);
-            PageAccount.IsVisible = true;
-            _currentPageView = PageAccount;
-            HomePetals.IsVisible = false;
-            StopSakuraBlossoms();
-            PageTitleText.Text = "账户";
-            PageSubtitleText.Text = PageSubtitles[9];
-            PageSubtitleText.IsVisible = true;
-            PageTitleText.Opacity = 1;
-            MetroTransitions.Play(previousAccountPage, PageAccount, true, null, PageTitleText);
-            AttachTiltToPage(PageAccount);
-            return;
-        }
+    private void OnPageLink(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: string page }) NavigateTo(page);
+    }
 
-        
-        
-        var targetName = PageNames[Math.Clamp(index, 0, PageNames.Length - 1)];
-        foreach (var item in NavView.MenuItems)
-        {
-            if (item is NavigationViewItem navItem &&
-                string.Equals(navItem.Content as string, targetName, StringComparison.Ordinal))
-            {
-                NavView.SelectedItem = navItem;
-                return;
-            }
-        }
+    private void OnEditorLink(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: string tab } && int.TryParse(tab, out var index)) App.OpenProfileEditor(index);
     }
 
     private void WireEvents()
     {
-        
+
         SearchBox.TextChanged += (_, _) => UpdateSearchResults();
         SearchResults.SelectionChanged += (_, _) => NavigateFromSearch();
 
         NavView.SelectionChanged += (_, _) => SwitchPage();
+        NavView.ItemInvoked += (_, args) =>
+        {
+            if (args.InvokedItemContainer is NavigationViewItem { Tag: string key } && key == CurrentPageKey) PageScroll.Offset = Vector.Zero;
+        };
+        SearchBox.KeyDown += (_, args) =>
+        {
+            if (args.Key == Key.Enter && _searchEntries.Count > 0)
+            {
+                SearchResults.SelectedItem = _searchEntries[0];
+                args.Handled = true;
+            }
+        };
 
-        
         SingleWeekStartPicker.PropertyChanged += (_, e) =>
         {
             if (!_loading && e.Property.Name == "SelectedDate")
@@ -756,8 +366,6 @@ public partial class SettingsWindow : AppWindow
         };
         TrayBehaviorCombo.SelectionChanged += (_, _) => ApplyGeneral();
 
-        
-        
         ThemeCombo.SelectionChanged += (_, _) =>
         {
             if (!_loading)
@@ -767,17 +375,17 @@ public partial class SettingsWindow : AppWindow
         OpacitySlider.PropertyChanged += (_, e) =>
         {
             if (!_loading && e.Property.Name == "Value")
-                ApplyInterface();
+                ApplyInterface(true);
         };
         FontScaleSlider.PropertyChanged += (_, e) =>
         {
             if (!_loading && e.Property.Name == "Value")
-                ApplyInterface();
+                ApplyInterface(true);
         };
         MainWindowScaleSlider.PropertyChanged += (_, e) =>
         {
             if (!_loading && e.Property.Name == "Value")
-                ApplyInterface();
+                ApplyInterface(true);
         };
         OrientationCombo.SelectionChanged += (_, _) => ApplyInterface();
         ClickThroughSwitch.PropertyChanged += (_, e) =>
@@ -786,7 +394,6 @@ public partial class SettingsWindow : AppWindow
                 ApplyInterface();
         };
 
-        
         ResetWidgetButton.Click += (_, _) => ResetWidgets();
         WidgetList.SelectionChanged += (_, _) => SelectWidget();
         _lastWidgetTabIndex = WidgetTabs.SelectedIndex;
@@ -797,11 +404,8 @@ public partial class SettingsWindow : AppWindow
                 return;
 
             var page = index == 0 ? (Control)WidgetLibraryPage : WidgetEditor;
-            var kind = index > _lastWidgetTabIndex
-                ? WinUIPageTransitionKind.SlideFromRight
-                : WinUIPageTransitionKind.SlideFromLeft;
             _lastWidgetTabIndex = index;
-            WinUIPageTransitions.Play(page, kind);
+            WinUIPageTransitions.FadeIn(page);
         };
 
         CentralManagementToggle.IsCheckedChanged += (_, _) =>
@@ -832,18 +436,14 @@ public partial class SettingsWindow : AppWindow
                 ApplyWidgetEdit();
         };
 
-        
-
-        
         WireDebugPageEvents();
 
-        
 #if DEBUG
         VerifyDialogHook();
 #endif
 
 #if DEBUG
-        
+
         if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ICONS") == "1")
 {
     DispatcherTimer.RunOnce(() => SaveShot("_icons.png"), TimeSpan.FromSeconds(5));
@@ -860,21 +460,9 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         }
 #endif
 
-        
-        RefreshHomeGreeting();
         _homeGreetingTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
-        _homeGreetingTimer.Tick += (_, _) =>
-        {
-            if (PageHome.IsVisible)
-                RefreshHomeGreeting();
-        };
-        _homeGreetingTimer.Start();
+        _homeGreetingTimer.Tick += (_, _) => RefreshClassroom();
     }
-
-    
-
-
-    
 
     private void LoadFromSettings()
     {
@@ -900,80 +488,95 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         OrientationCombo.SelectedIndex = s.Orientation == LayoutOrientation.Vertical ? 1 : 0;
         ClickThroughSwitch.IsChecked = s.IsClickThrough;
 
-        
         LoadNotificationSettings();
 
-        
         LoadBehaviorSettings();
         LoadCentralManagementSettings();
 
-        RefreshWidgetLibrary();
-        RefreshWidgetList();
-
-        if (_widgets.Count > 0)
-            WidgetList.SelectedIndex = 0;
+        _widgetSettingsDirty = true;
+        if (CurrentPageKey == "widgets") EnsureWidgetSettings();
 
         RefreshDebugVisibility();
 
         _loading = false;
 
-        NavView.SelectedItem = NavView.MenuItems[0];
-        SwitchPage();
     }
 
     private void SwitchPage()
     {
-        
-        
-        var name = (NavView.SelectedItem as NavigationViewItem)?.Content as string ?? "";
-        var index = Array.IndexOf(PageNames, name);
-        if (index < 0)
-            index = 0;
-
-        var previousPage = _currentPageView;
-        var previousIndex = _lastPageIndex;
-
-        
-        if (_lastPageIndex >= 0 && _lastPageIndex != index)
+        if (NavView.SelectedItem is not NavigationViewItem { Tag: string key }) return;
+        var index = Array.FindIndex(Sections, section => section.Key == key);
+        if (index < 0) return;
+        PageScroll.Offset = Vector.Zero;
+        if (index == _lastPageIndex) return;
+        var previous = _currentPageView;
+        if (!_suppressHistory && _lastPageIndex >= 0)
+        {
+            if (_pageHistory.Count == 64) _pageHistory.RemoveAt(0);
             _pageHistory.Add(_lastPageIndex);
+        }
         _lastPageIndex = index;
-
-        var page = PageFor(index);
-        _currentPageView = page;
-
-        KeepOnlyPages(previousPage, page);
-        page.IsVisible = true;
-
-        HomePetals.IsVisible = false;
-        StopSakuraBlossoms();
-
-        var title = PageNames[Math.Clamp(index, 0, PageNames.Length - 1)];
-        PageTitleText.Text = title;
-        PageSubtitleText.Text = PageSubtitles[Math.Clamp(index, 0, PageSubtitles.Length - 1)];
-        PageSubtitleText.IsVisible = index != 0;
-        PageTitleText.Opacity = 1;
-        MetroTransitions.Play(previousPage, page, index >= previousIndex, null, PageTitleText);
-
-        AttachTiltToPage(page);
-
-        if (index == 0)
-            RefreshHomeGreeting();
-
-        if (index == 5)
-            RefreshNexPage();
-
-        
-        if (index == 8)
-            RefreshNexApiFields();
+        BackButton.IsEnabled = _pageHistory.Count != 0;
+        if (previous is not null) previous.IsVisible = false;
+        _currentPageView = PageFor(index);
+        _currentPageView.IsVisible = true;
+        PageTitleText.Text = Sections[index].Title;
+        PageSubtitleText.Text = Sections[index].Description;
+        PageSubtitleText.IsVisible = PageSubtitleText.Text?.Length > 0;
+        if (previous is not null) WinUIPageTransitions.FadeIn(_currentPageView);
+        if (SearchResultsPanel.IsVisible) SearchBox.Text = "";
+        if (key is "home" or "schedule" or "profile") RefreshClassroom();
+        if (key is "home" or "schedule") _homeGreetingTimer?.Start();
+        else _homeGreetingTimer?.Stop();
+        if (key == "nex") { RefreshNexPage(); RefreshNexApiFields(); }
+        if (key == "widgets") EnsureWidgetSettings();
+        if (key == "plugins") RefreshPlugins();
+        if (key == "central") LoadCentralWithoutSaving();
     }
 
-    
+    private void EnsureWidgetSettings()
+    {
+        if (!_widgetSettingsDirty) return;
+        var loading = _loading;
+        var selected = WidgetList.SelectedIndex;
+        _loading = true;
+        try
+        {
+            if (WidgetLibraryPanel.Children.Count == 0) RefreshWidgetLibrary();
+            RefreshWidgetList();
+            if (_widgets.Count > 0) WidgetList.SelectedIndex = Math.Clamp(selected, 0, _widgets.Count - 1);
+            _widgetSettingsDirty = false;
+        }
+        finally { _loading = loading; }
+    }
+
+    private void SaveContinuousInput()
+    {
+        if (_editSaveTimer.IsEnabled) { _pendingEdit = AppServices.Settings; return; }
+        AppServices.SaveSettings();
+        _editSaveTimer.Start();
+    }
+
+    private void FlushContinuousInput()
+    {
+        var pending = _pendingEdit;
+        _pendingEdit = null;
+        if (pending is not null && ReferenceEquals(pending, AppServices.Settings)) AppServices.SaveSettings();
+        else _editSaveTimer.Stop();
+    }
+
+    private void LoadCentralWithoutSaving()
+    {
+        var loading = _loading;
+        _loading = true;
+        try { LoadCentralManagementSettings(); }
+        finally { _loading = loading; }
+    }
 
     private bool _nexEventsWired;
     private bool _nexLoading;
     private DispatcherTimer? _nexGlowPreviewTimer;
 
-    
     private void PlayNexGlowPreview()
     {
         _nexGlowPreviewTimer?.Stop();
@@ -1008,7 +611,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
                 var on = NexVoiceWakeCheck.IsChecked == true;
                 AppServices.Settings.IsNexVoiceWakeEnabled = on;
-                SettingsService.Save(AppServices.Settings);
+                AppServices.SaveSettings();
 
                 if (on)
                     AppServices.NexVoice?.Start();
@@ -1025,7 +628,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
                     return;
 
                 AppServices.Settings.IsNexEdgeBarEnabled = NexEdgeBarCheck.IsChecked == true;
-                SettingsService.Save(AppServices.Settings);
+                AppServices.SaveSettings();
                 AppServices.NexVoice?.RefreshEdgeBar();
             };
 
@@ -1035,14 +638,12 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
                     return;
 
                 AppServices.Settings.NexEdgeBarSide = NexEdgeBarSideCombo.SelectedIndex == 1 ? "left" : "right";
-                SettingsService.Save(AppServices.Settings);
+                AppServices.SaveSettings();
                 AppServices.NexVoice?.RefreshEdgeBar();
             };
 
-            
             NexSpeechSettingsButton.Click += (_, _) => App.OpenWindowsSpeechSettings();
 
-            
             NexSoundSettingsButton.Click += (_, _) =>
             {
                 try
@@ -1067,13 +668,11 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
                 NexVoiceStatusText.Text = result;
             };
 
-            AppServices.NexVoice?.StatusChanged += status =>
-                Dispatcher.UIThread.Post(() => NexVoiceStatusText.Text = status);
+            if (AppServices.NexVoice is { } voice) voice.StatusChanged += VoiceStatusChanged;
 
             NexSystemPromptBox.TextChanged += (_, _) => SaveNexSettings();
             NexPermissionCombo.SelectionChanged += (_, _) => SaveNexSettings();
 
-            
             NexBaseUrlBox.TextChanged += (_, _) => SaveNexApiFields();
             NexApiKeyBox.TextChanged += (_, _) => SaveNexApiFields();
             NexModelCombo.SelectionChanged += (_, _) => SaveNexApiFields();
@@ -1085,9 +684,9 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
                 AppServices.Settings.NexApiBaseUrl = "";
                 AppServices.Settings.NexApiKey = "";
                 AppServices.Settings.NexModel = "";
-                SettingsService.Save(AppServices.Settings);
+                AppServices.SaveSettings();
                 RefreshNexApiFields();
-                NexStatusText.Text = "已恢复内置接口。";
+                NexStatusText.Text = "已恢复默认配置。";
             };
         }
 
@@ -1108,21 +707,16 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         }
     }
 
-    
     private void UpdateNexApiStateText()
     {
         var s = AppServices.Settings;
-        var usingBuiltIn = Services.NexIntelligence.NexConfig.IsUsingBuiltInKey(s);
         var model = Services.NexIntelligence.NexConfig.ResolveModel(s);
-        NexApiStateText.Text = usingBuiltIn
-            ? $"内置接口 · {model}"
-            : $"自定义接口 · {model}";
-        NexApiStateItem.Description = usingBuiltIn
-            ? "正在使用内置接口（密钥不出现在界面上）"
-            : "正在使用你自己填写的接口配置";
+        var hasKey = !string.IsNullOrWhiteSpace(Services.NexIntelligence.NexConfig.ResolveApiKey(s));
+        NexApiStateText.Text = hasKey ? model : "尚未配置";
+        NexApiStateItem.Description = !hasKey ? "请在模型服务配置中填写密钥。" :
+            Services.NexIntelligence.NexConfig.IsUsingBuiltInKey(s) ? "使用本机环境凭据" : "使用自定义凭据";
     }
 
-    
     private void RefreshNexApiFields()
     {
         var s = AppServices.Settings;
@@ -1157,7 +751,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         else
             s.NexModel = model;
 
-        SettingsService.Save(s);
+        SaveContinuousInput();
         UpdateNexApiStateText();
     }
 
@@ -1175,13 +769,17 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             _ => "readonly",
         });
 
-        SettingsService.Save(s);
+        AppServices.SaveSettings();
     }
 
-    
     private async Task FetchModelsAsync()
     {
         SaveNexApiFields();
+        if (string.IsNullOrWhiteSpace(Services.NexIntelligence.NexConfig.ResolveApiKey(AppServices.Settings)))
+        {
+            NexStatusText.Text = "请先配置接口密钥。";
+            return;
+        }
         NexStatusText.Text = "正在拉取模型列表…";
 
         try
@@ -1189,8 +787,9 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             var s = AppServices.Settings;
             var models = await Services.NexIntelligence.NexModelCatalog.FetchAsync(
                 Services.NexIntelligence.NexConfig.ResolveBaseUrl(s),
-                Services.NexIntelligence.NexConfig.ResolveApiKey(s));
+                Services.NexIntelligence.NexConfig.ResolveApiKey(s), _windowLifetime.Token);
 
+            if (_closed) return;
             NexModelCombo.ItemsSource = models;
             var current = Services.NexIntelligence.NexConfig.ResolveModel(s);
             NexModelCombo.SelectedItem = models.Contains(current) ? current : models.FirstOrDefault();
@@ -1198,11 +797,10 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         }
         catch (Exception ex)
         {
-            NexStatusText.Text = "拉取失败：" + ex.Message;
+            if (!_closed) NexStatusText.Text = "拉取失败：" + ex.Message;
         }
     }
 
-    
     private async Task TestNexConnectionAsync()
     {
         SaveNexApiFields();
@@ -1214,78 +812,122 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             var reply = await Services.NexIntelligence.NexModelCatalog.TestAsync(
                 Services.NexIntelligence.NexConfig.ResolveBaseUrl(s),
                 Services.NexIntelligence.NexConfig.ResolveApiKey(s),
-                Services.NexIntelligence.NexConfig.ResolveModel(s));
+                Services.NexIntelligence.NexConfig.ResolveModel(s), _windowLifetime.Token);
 
+            if (_closed) return;
             NexStatusText.Text = "连接正常，模型回复：" + reply;
         }
         catch (Exception ex)
         {
-            NexStatusText.Text = "测试失败：" + ex.Message;
+            if (!_closed) NexStatusText.Text = "测试失败：" + ex.Message;
         }
     }
-
-    
 
     private DispatcherTimer? _homeGreetingTimer;
 
-    
-    
-    private void RefreshHomeGreeting()
+    private void RefreshClassroom()
     {
-        var name = string.IsNullOrWhiteSpace(AppServices.Settings.UserName)
-            ? "同学"
-            : AppServices.Settings.UserName.Trim();
-
-        var now = DateTime.Now;
-        var greeting = now.Hour switch
+        var profile = AppServices.Schedule.Profile;
+        if (CurrentPageKey == "profile")
         {
-            >= 5 and < 11 => "早上好",
-            >= 11 and < 17 => "中午好",
-            _ => "晚上好",
-        };
-
-        
-        HomeGreetingText.Text = $"{greeting}，{name}";
-        HomeSubText.Text = $"{now:yyyy年M月d日 dddd}";
-
-        var summary = AppServices.Time.GetTodaySummary(AppServices.Schedule.Profile, now);
-        var slots = summary.Slots;
-        var completed = slots.Count(slot => slot.End <= now.TimeOfDay);
-
-        HomeScheduleStatusText.Text = summary.Current is { } current
-            ? $"正在上 {current.DisplayName}"
-            : summary.Next is { } next
-                ? $"下一节 {next.StartText}"
-                : summary.IsEmpty
-                    ? "今天没有课程"
-                    : "今日课程已结束";
-        HomeTodaySummaryText.Text = summary.IsEmpty
-            ? "今天没有安排课程"
-            : $"今日 {slots.Count} 节课 · 已完成 {completed} 节";
-
-        var focus = summary.Current ?? summary.Next ?? slots.LastOrDefault();
-        if (focus is null)
-        {
-            HomeCourseTimeText.Text = "--:--";
-            HomeCourseNameText.Text = "今天没有课程";
-            HomeCourseDetailText.Text = "可以在档案编辑器中添加课程";
-            HomeCourseStatusText.Text = "暂无安排";
+            ProfileNameText.Text = AppServices.Schedule.FileName;
+            ProfilePathText.Text = AppServices.Schedule.FilePath;
+            ProfileStatsText.Text = $"{profile.Subjects.Count} 门科目 · {profile.Schedules.Count} 个课表方案";
             return;
         }
-
-        HomeCourseTimeText.Text = focus.TimeRange;
-        HomeCourseNameText.Text = focus.DisplayName;
-        HomeCourseDetailText.Text = string.IsNullOrWhiteSpace(focus.Detail)
-            ? "课程信息"
-            : focus.Detail;
-        HomeCourseStatusText.Text = summary.Current is not null
-            ? "正在进行"
-            : summary.Next is not null
-                ? "即将开始"
-                : "今日已完成";
+        if (CurrentPageKey == "schedule")
+        {
+            var summary = AppServices.Time.GetTodaySummary(profile, DateTime.Now);
+            ScheduleSummaryText.Text = $"{summary.DayText} · {summary.ParityText} · {summary.Slots.Count} 节课";
+            ScheduleEmptyText.IsVisible = summary.IsEmpty;
+            ScheduleDayList.IsVisible = !summary.IsEmpty;
+            ScheduleDayList.ItemsSource = summary.Slots;
+            return;
+        }
+        RefreshHomeGreeting();
     }
 
-    
+    private void RefreshHomeGreeting()
+    {
+        var now = DateTime.Now;
+        var account = AccountService.Current;
+        var greeting = now.Hour switch { >= 5 and < 11 => "早上好", >= 11 and < 14 => "中午好", >= 14 and < 18 => "下午好", _ => "晚上好" };
+        HomeGreetingText.Text = account is null ? "Hello，请先登录" : $"{greeting}，{account.DisplayName}";
+        var summary = AppServices.Time.GetTodaySummary(AppServices.Schedule.Profile, now);
+        HomeSubText.Text = $"{now:M月d日} · {summary.DayText} · {summary.ParityText}";
+        var current = summary.Current;
+        var next = summary.Next;
+        var focus = current ?? next;
+        HomeCourseStatusText.Text = current is not null ? "上课中" : next is not null ? "课前" : summary.IsEmpty ? "无课程" : "已结束";
+        HomeCourseNameText.Text = focus?.Subject ?? (summary.IsEmpty ? "今天没有课程" : "今天的课程已结束");
+        var remaining = current is null ? "" : $" · 剩余 {Math.Max(1, Math.Ceiling((current.End - now.TimeOfDay).TotalMinutes))} 分钟";
+        HomeCourseTimeText.Text = focus is null ? AppServices.Schedule.FileName : $"{focus.TimeRange}{remaining}  {focus.Detail}".TrimEnd();
+        var following = current is null && next is not null ? summary.Slots.FirstOrDefault(s => s.Start > next.Start) : next;
+        HomeNextText.Text = following is null ? "没有后续课程" : $"{following.Subject} · {following.StartText}";
+        var completed = summary.Slots.Count(s => s.End <= now.TimeOfDay);
+        HomeStatusDot.IsVisible = current is not null || next is not null;
+        HomeDayProgress.Maximum = Math.Max(1, summary.Slots.Count);
+        HomeDayProgress.Value = completed;
+        HomeTodaySummaryText.Text = $"{completed} / {summary.Slots.Count} 节";
+    }
+
+    private void RefreshPlugins()
+    {
+        var host = AppServices.Plugins;
+        PluginRows.Children.Clear();
+        PluginRefreshButton.IsEnabled = host is not null && !_pluginsBusy;
+        if (host is null) { PluginStatusText.Text = "插件服务尚未就绪。"; return; }
+        var plugins = host.LoadedPlugins;
+        PluginStatusText.Text = plugins.Count == 0 ? "暂无已安装插件。将可信插件放入插件目录后，选择「重新扫描」。" : $"本机发现 {plugins.Count} 个插件";
+        foreach (var plugin in plugins)
+        {
+            var expander = new SettingsExpander { Header = $"{plugin.Name}  {plugin.Version}", Description = plugin.Status };
+            var toggle = new ToggleSwitch { IsChecked = plugin.Enabled, IsEnabled = !_pluginsBusy && plugin.CanToggle && host is ClassNex.Core.Abstractions.IPluginManager };
+            Avalonia.Automation.AutomationProperties.SetName(toggle, $"启用 {plugin.Name}");
+            toggle.IsCheckedChanged += async (_, _) =>
+            {
+                if (host is ClassNex.Core.Abstractions.IPluginManager manager)
+                    await RunPluginAction(token => manager.SetEnabledAsync(plugin.Id, toggle.IsChecked == true, token));
+            };
+            expander.Footer = toggle;
+            expander.Items.Add(new SettingsExpanderItem { Content = "插件标识", Description = plugin.Id });
+            expander.Items.Add(new SettingsExpanderItem { Content = "权限声明", Description = plugin.Permissions.Count > 0 ? string.Join("、", plugin.Permissions) : "未声明" });
+            PluginRows.Children.Add(expander);
+        }
+    }
+
+    private async void OnReloadPlugins(object? sender, RoutedEventArgs e)
+    {
+        if (AppServices.Plugins is { } host) await RunPluginAction(host.LoadAllAsync);
+    }
+
+    private async Task RunPluginAction(Func<CancellationToken, Task> action)
+    {
+        if (_pluginsBusy || _closed) return;
+        _pluginsBusy = true;
+        PluginRows.IsEnabled = PluginRefreshButton.IsEnabled = false;
+        PluginStatusText.Text = "正在更新插件…";
+        string? error = null;
+        try { await action(_windowLifetime.Token); }
+        catch (OperationCanceledException) when (_closed) { }
+        catch (Exception ex) { error = $"无法更新插件：{ex.Message}"; }
+        finally
+        {
+            _pluginsBusy = false;
+            if (!_closed)
+            {
+                PluginRows.IsEnabled = true;
+                RefreshPlugins();
+                if (error is not null) PluginStatusText.Text = error;
+            }
+        }
+    }
+
+    private void OnOpenPluginsFolder(object? sender, RoutedEventArgs e)
+    {
+        try { OpenInExplorer(Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "plugins")).FullName); }
+        catch (Exception ex) { PluginStatusText.Text = $"无法打开插件目录：{ex.Message}"; }
+    }
 
     private void UpdateSearchResults()
     {
@@ -1297,12 +939,12 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             foreach (var (title, pageIndex) in SearchIndex)
             {
                 if (title.Contains(query, StringComparison.OrdinalIgnoreCase)
-                    || PageNames[pageIndex].Contains(query, StringComparison.OrdinalIgnoreCase))
+                    || Sections[pageIndex].Title.Contains(query, StringComparison.OrdinalIgnoreCase))
                 {
                     _searchEntries.Add(new SearchEntry
                     {
                         Title = title,
-                        PageName = PageNames[pageIndex],
+                        PageName = Sections[pageIndex].Title,
                         PageIndex = pageIndex,
                     });
                 }
@@ -1317,45 +959,18 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         if (SearchResults.SelectedItem is not SearchEntry entry)
             return;
 
-        var pageIndex = entry.PageIndex;
-
-        
-        
-        
+        var key = Sections[entry.PageIndex].Key;
         Dispatcher.UIThread.Post(() =>
         {
-            try
-            {
-                if (pageIndex >= 0 && pageIndex < NavView.MenuItems.Count)
-                    NavView.SelectedItem = NavView.MenuItems[pageIndex];
-            }
-            catch
-            {
-                
-            }
-
-            SearchResultsPanel.IsVisible = false;
-            _searchEntries.Clear();
+            if (_closed) return;
             SearchBox.Text = "";
-        }, DispatcherPriority.Background);
+            NavigateTo(key);
+        });
     }
-
-    
 
     private void OnOpenDataFolder(object? sender, RoutedEventArgs e)
         => OpenInExplorer(SettingsService.DataDirectory);
 
-    
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
     private Control PageFor(int index) => index switch
     {
         0 => PageHome,
@@ -1367,39 +982,14 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         6 => PageNotification,
         7 => PageAbout,
         8 => PageDebug,
-        _ => (Control)PageHome,
+        9 => PageAccount,
+        10 => PageSchedule,
+        11 => PageProfile,
+        12 => PageCentral,
+        13 => PagePlugins,
+        _ => throw new ArgumentOutOfRangeException(nameof(index)),
     };
 
-    private void KeepOnlyPages(Control? keepA, Control? keepB)
-    {
-        if (keepA is not null && !ReferenceEquals(keepA, keepB))
-        {
-            keepA.Opacity = 0;
-            keepA.IsHitTestVisible = false;
-        }
-
-        if (keepB is not null)
-        {
-            keepB.IsVisible = true;
-            keepB.Opacity = 1;
-            keepB.IsHitTestVisible = true;
-        }
-    }
-
-    private static void AttachTiltToPage(Control page)
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            foreach (var control in page.GetVisualDescendants().OfType<Control>())
-            {
-                var name = control.GetType().Name;
-                if (name is "SettingsCard" or "SettingsExpanderItem")
-                    MetroTilt.Attach(control);
-            }
-        }, DispatcherPriority.Background);
-    }
-
-    
     private void SaveShot(string fileName)
     {
         try
@@ -1432,11 +1022,10 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         }
         catch
         {
-            
+
         }
     }
 
-    
     private void OnOpenNexChat(object? sender, RoutedEventArgs e) => App.OpenNexChat();
 
     private void OnOpenLogsFolder(object? sender, RoutedEventArgs e)
@@ -1447,8 +1036,6 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
     private void OnOpenAppFolder(object? sender, RoutedEventArgs e)
         => OpenInExplorer(AppContext.BaseDirectory);
-
-    
 
     private void OnCreateDesktopShortcut(object? sender, RoutedEventArgs e)
         => CreateShortcut(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory));
@@ -1466,7 +1053,6 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
             Directory.CreateDirectory(dir);
 
-            
             if (!OperatingSystem.IsWindows())
                 return;
 
@@ -1482,11 +1068,10 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         }
         catch
         {
-            
+
         }
     }
 
-    
     private void OnExportDiagnostics(object? sender, RoutedEventArgs e)
     {
         try
@@ -1521,7 +1106,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         }
         catch
         {
-            
+
         }
     }
 
@@ -1533,16 +1118,10 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             : SettingsService.LogsDirectory);
     }
 
-    private void OnShowAbout(object? sender, RoutedEventArgs e) => NavigateTo("about");
-
-    
-
-    
     private const string DebugUnlockPhrase = "我知晓我所做的行为开发者不对此负责";
 
     private int _versionClickCount;
 
-    
     private async void OnVersionPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         var s = AppServices.Settings;
@@ -1555,7 +1134,6 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
         _versionClickCount = 0;
 
-        
         if (!await ConfirmDebugUnlockAsync())
             return;
 
@@ -1565,7 +1143,6 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         NavigateTo("debug");
     }
 
-    
     private async Task<bool> ConfirmDebugUnlockAsync()
     {
         var input = new TextBox
@@ -1611,7 +1188,6 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         if (string.Equals(input.Text?.Trim(), DebugUnlockPhrase, StringComparison.Ordinal))
             return true;
 
-        
         await new ContentDialog
         {
             Title = "验证结果不正确",
@@ -1627,7 +1203,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
     }
 
 #if DEBUG
-    
+
     private void VerifyDialogHook()
     {
         if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_DIALOG") != "1")
@@ -1651,7 +1227,6 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
     private void OnDebugTriggerClassOff() => AppServices.NotificationService?.DebugTriggerClassOff();
 
-    
     private void WireDebugPageEvents()
     {
         DebugTriggerTestNotificationItem.Click += (_, _) => AppServices.NotificationService?.DebugTriggerTestNotification();
@@ -1683,16 +1258,6 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
 
     private void OnOpenHomePage(object? sender, RoutedEventArgs e) => OpenUrl(RepoUrl);
 
-    private void OnHomeOpenAppearance(object? sender, RoutedEventArgs e) => NavigateTo("appearance");
-
-    private void OnHomeOpenWindow(object? sender, RoutedEventArgs e) => NavigateTo("window");
-
-    private void OnHomeOpenNotification(object? sender, RoutedEventArgs e) => NavigateTo("notification");
-
-    private void OnHomeOpenWidgets(object? sender, RoutedEventArgs e) => NavigateTo("widgets");
-
-    private void OnHomeEditProfile(object? sender, RoutedEventArgs e) => App.OpenProfileEditor(0);
-
     private void OnPreviewOobe(object? sender, RoutedEventArgs e) => App.ShowOobePreview();
 
     private void OnOpenIssues(object? sender, RoutedEventArgs e) => OpenUrl($"{RepoUrl}/issues");
@@ -1708,11 +1273,9 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         }
         catch
         {
-            
+
         }
     }
-
-    private void OnOpenProfileEditor(object? sender, RoutedEventArgs e) => App.OpenProfileEditor(0);
 
     private void OnRestartApp(object? sender, RoutedEventArgs e)
     {
@@ -1723,7 +1286,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         }
         catch
         {
-            
+
         }
 
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
@@ -1741,18 +1304,8 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         }
         catch
         {
-            
+
         }
-    }
-
-    
-
-    private void ThemeChanged(string propertyName, bool? isChecked)
-    {
-        if (_loading || !isChecked.HasValue || propertyName != "IsChecked")
-            return;
-
-        ApplyTheme();
     }
 
     private void ApplyGeneral()
@@ -1773,7 +1326,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             return;
 
         var s = AppServices.Settings;
-        
+
         s.ThemeMode = ThemeCombo.SelectedIndex switch
         {
             1 => "light",
@@ -1785,7 +1338,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         AppServices.SaveSettings();
     }
 
-    private void ApplyInterface()
+    private void ApplyInterface(bool continuous = false)
     {
         if (_loading)
             return;
@@ -1803,7 +1356,8 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         FontScaleValueText.Text = $"{s.FontScale:0.00}x";
         MainWindowScaleValueText.Text = $"{s.MainWindowScale:0.00}x";
 
-        AppServices.SaveSettings();
+        if (continuous) SaveContinuousInput();
+        else AppServices.SaveSettings();
     }
 
     private void OnOpacityDecrease(object? sender, RoutedEventArgs e) =>
@@ -1839,29 +1393,6 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         ApplyInterface();
     }
 
-    
-
-    
-    private static bool IsDarkTheme()
-    {
-        var variant = Application.Current?.ActualThemeVariant;
-        if (variant == ThemeVariant.Dark)
-            return true;
-        if (variant == ThemeVariant.Light)
-            return false;
-
-        try
-        {
-            return Application.Current?.PlatformSettings?.GetColorValues().ThemeVariant
-                   == PlatformThemeVariant.Dark;
-        }
-        catch
-        {
-            return true;
-        }
-    }
-
-    
     private sealed record WidgetTypeItem(string DisplayName, string Description, string Glyph, string Type);
 
     private void RefreshWidgetLibrary()
@@ -1909,7 +1440,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             var addIcon = new AvaloniaFluentUI.Controls.FontIcon
             {
                 FontFamily = new Avalonia.Media.FontFamily("avares://ClassNex/Assets/Fonts/#lucide"),
-                Glyph = "\uE710",
+                Glyph = "\uE13D",
                 FontSize = 16,
                 VerticalAlignment = VerticalAlignment.Center,
                 Opacity = 0.72,
@@ -1930,8 +1461,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
                 Margin = new Thickness(0, 0, 8, 8),
                 Padding = new Thickness(8, 6),
                 HorizontalContentAlignment = HorizontalAlignment.Stretch,
-                Background = CiPalette.ChipSurfaceBrush(),
-                BorderBrush = CiPalette.ChipBorderBrush(),
+                Classes = { "widgetChoice" },
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(8),
                 Content = grid,
@@ -1952,6 +1482,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
     private void SelectWidget()
     {
         _currentWidget = WidgetList.SelectedItem as WidgetItem;
+        var loading = _loading;
         _loading = true;
 
         WidgetEditor.IsEnabled = _currentWidget is not null;
@@ -1964,7 +1495,6 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             WidgetFontSlider.Value = Math.Clamp(config.FontScale, 0.6, 2.0);
             WidgetFontValueText.Text = $"{config.FontScale:0.00}x";
 
-            
             WidgetSettingsPanel.Children.Clear();
             foreach (var row in WidgetSettingsBuilder.Build(config, OnWidgetSettingChanged))
                 WidgetSettingsPanel.Children.Add(row);
@@ -1972,10 +1502,9 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             WidgetNoSettingsText.IsVisible = !WidgetSettingsBuilder.HasSettings(config.Type);
         }
 
-        _loading = false;
+        _loading = loading;
     }
 
-    
     private ToggleSwitch StartupToggle =>
         (ToggleSwitch)StartupToggleHost.Child!;
 
@@ -1996,6 +1525,9 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         UrlProtocolToggle.IsChecked = s.RegisterUrlProtocol;
         SafeModeToggle.IsChecked = s.TeachingSafeMode;
         SafeModeCombo.SelectedIndex = Math.Clamp(s.CrashHandlingMode, 0, 2);
+
+        if (_settingEventsWired) return;
+        _settingEventsWired = true;
 
         void WireStartup()
         {
@@ -2047,7 +1579,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
             ? "未登录"
             : AccountService.Current.DisplayName;
         CentralDeviceText.Text = string.IsNullOrWhiteSpace(value.ClientId)
-            ? Environment.MachineName + " · 尚未登记"
+            ? "尚未登记"
             : Environment.MachineName + " · " + value.ClientId[..Math.Min(8, value.ClientId.Length)];
         CentralStatusText.Text = string.IsNullOrWhiteSpace(value.LastStatus)
             ? "未配置"
@@ -2093,9 +1625,7 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         CentralAccountText.Text = AccountService.Current is null
             ? "未登录"
             : AccountService.Current.DisplayName;
-        if (AccountService.Current is not null &&
-            AppServices.Settings.CentralManagement.IsEnabled)
-            _ = ConnectCentralManagementAsync();
+        CentralAccountLoginButton.Content = AccountService.Current is null ? "登录 ClassNEX ID" : "切换账户";
     }
 
     private void OnCentralManagementStatusChanged(string status)
@@ -2109,7 +1639,6 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         });
     }
 
-    
     private void LoadNotificationSettings()
     {
         var n = AppServices.Settings.Notification;
@@ -2126,6 +1655,9 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         ClassOnMaskBox.Text = n.ClassOnMaskText;
         ClassOffOverlayBox.Text = n.ClassOffOverlayText;
 
+        if (_notificationEventsWired) return;
+        _notificationEventsWired = true;
+
         PreparingEnabledCheck.IsCheckedChanged += (_, _) => SaveNotificationSettings();
         ClassOnEnabledCheck.IsCheckedChanged += (_, _) => SaveNotificationSettings();
         ClassOffEnabledCheck.IsCheckedChanged += (_, _) => SaveNotificationSettings();
@@ -2140,7 +1672,6 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         ClassOffOverlayBox.TextChanged += (_, _) => SaveNotificationSettings();
     }
 
-    
     private void SaveNotificationSettings()
     {
         if (_loading)
@@ -2179,10 +1710,6 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         AppServices.Widgets.Save();
     }
 
-    
-    
-    
-    
     private void OnWidgetSettingChanged()
     {
         if (_loading || _currentWidget is null)
@@ -2221,10 +1748,9 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         WidgetList.SelectedItem = _widgets.FirstOrDefault(w => ReferenceEquals(w.Config, config));
     }
 
-    
     private void OnWidgetItemMore(object? sender, RoutedEventArgs e)
     {
-        
+
         if (sender is Control { DataContext: WidgetItem item })
             WidgetList.SelectedItem = item;
     }
@@ -2242,8 +1768,6 @@ if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_ANIM") == "1")
         RefreshWidgetList();
         SelectWidget();
     }
-
-    
 
     private async void OnOpenTimetable(object? sender, RoutedEventArgs e)
     {

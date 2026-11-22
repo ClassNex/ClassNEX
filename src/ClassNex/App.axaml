@@ -8,12 +8,28 @@
     
     <Application.Resources>
         <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="ClassNexCanvasBrush" Color="#F5F6F7"/>
+                    <SolidColorBrush x:Key="ClassNexSurfaceBrush" Color="#FDFDFE"/>
+                    <SolidColorBrush x:Key="ClassNexOutlineBrush" Color="#DCE0E3"/>
+                    <SolidColorBrush x:Key="ClassNexOverlayBrush" Color="#242831"/>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="ClassNexCanvasBrush" Color="#202226"/>
+                    <SolidColorBrush x:Key="ClassNexSurfaceBrush" Color="#2A2D32"/>
+                    <SolidColorBrush x:Key="ClassNexOutlineBrush" Color="#404449"/>
+                    <SolidColorBrush x:Key="ClassNexOverlayBrush" Color="#242831"/>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+            <CornerRadius x:Key="ClassNexCardRadius">10</CornerRadius>
             <FontFamily x:Key="AppFontFamily">avares://ClassNex/Assets/Fonts/#MiSans</FontFamily>
         </ResourceDictionary>
     </Application.Resources>
 
     <Application.Styles>
         <sty:FluentAvaloniaTheme PreferSystemTheme="True" />
+        <StyleInclude Source="avares://ClassNex/Styles/ShellStyles.axaml"/>
 
         
         <Style Selector="Window">
