@@ -1,0 +1,13 @@
+--- AuthCallbackHandler.js
++++ AuthCallbackHandler.js
+@@
+       }
+ 
+       var realRedirectUrl = new URL(realRedirectUri);
++      var requestedResponseType = innerParams.get("response_type");
++      if (requestedResponseType) {
++        return requestedResponseType;
++      }
+       if (window.location.origin === realRedirectUrl.origin && (basePath === "" || realRedirectUrl.pathname === basePath || realRedirectUrl.pathname.indexOf(basePath + "/") === 0)) {
+         return "login";
+       }
