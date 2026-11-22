@@ -2,78 +2,80 @@ using ClassNex.Models;
 
 namespace ClassNex.Services;
 
-
-
-
-
+/// <summary>维护一个活动档案并保存课程、科目编辑，供桌面和插件共用。</summary>
 public interface IScheduleService
 {
-    
+    /// <summary>当前可编辑的档案实例；直接编辑后须调用 Save 通知其他消费者。</summary>
     ScheduleProfile Profile { get; }
 
-    
+    /// <summary>当前档案的保存位置；内存档案可为空。</summary>
     string FilePath { get; }
 
-    
+    /// <summary>不含目录的档案名，供选择器和标题使用。</summary>
     string FileName { get; }
 
-    
+    /// <summary>活动档案被替换或编辑后触发，未必表示已成功写盘。</summary>
     event Action? ProfileChanged;
 
+    /// <summary>仅在当前档案已成功写入文件时触发。</summary>
     event Action? Saved;
 
-    
+    /// <summary>切换活动路径并读取档案；文件丢失或不能解析时使用空档案。</summary>
     void Load(string path);
 
-    
+    /// <summary>从当前路径重新读取，替换内存中的档案。</summary>
     void Reload();
 
-    
+    /// <summary>让课表缓存失效，并将有文件路径的当前档案写回磁盘。</summary>
     void Save();
 
-    
-
-    
+    /// <summary>将课程添加到指定星期和周次计划并保存；缺少该计划时创建。</summary>
     void AddCourse(int enableDay, string weeks, Course course);
 
-    
+    /// <summary>从匹配的计划中移除该课程实例。</summary>
     void RemoveCourse(int enableDay, string weeks, Course course);
 
-    
+    /// <summary>在同一计划中用新记录替换原课程；找不到原实例时不更改。</summary>
     void UpdateCourse(int enableDay, string weeks, Course original, Course updated);
 
-    
-
+    /// <summary>建立科目、保存档案并返回新科目实例。</summary>
     Subject AddSubject(string name);
 
+    /// <summary>删除档案中的科目定义；操作不隐式删除引用其名称的课程。</summary>
     void RemoveSubject(Subject subject);
 
-    
-
-    
+    /// <summary>选择指定文件作为活动课表，同时更新本机档案路径。</summary>
     void ImportFrom(string path);
 
-    
+    /// <summary>将当前档案写到另一个位置，不切换活动档案。</summary>
     void ExportTo(string path);
 }
 
+/// <summary>以 CSES 文件为后端的单档案编辑服务；没有文件路径时也支持内存编辑。</summary>
 public sealed class ScheduleService : IScheduleService
 {
     private readonly Func<AppSettings> _settings;
     private ScheduleProfile _profile = new();
 
+    /// <summary>从访问器取得当前本机设置，以保持档案切换与上层配置一致。</summary>
     public ScheduleService(Func<AppSettings> settingsAccessor) => _settings = settingsAccessor;
 
+    /// <inheritdoc />
     public ScheduleProfile Profile => _profile;
 
+    /// <inheritdoc />
     public string FilePath { get; private set; } = "";
 
+    /// <inheritdoc />
     public string FileName => string.IsNullOrEmpty(FilePath) ? "（无）" : Path.GetFileName(FilePath);
 
+    /// <inheritdoc />
     public event Action? ProfileChanged;
 
+    /// <inheritdoc />
     public event Action? Saved;
 
+    /// <inheritdoc />
     public void Load(string path)
     {
         FilePath = path;
@@ -89,12 +91,18 @@ public sealed class ScheduleService : IScheduleService
         Raise();
     }
 
+    /// <inheritdoc />
     public void Reload() => Load(FilePath);
 
+    /// <inheritdoc />
     public void Save()
     {
+        _profile.Invalidate();
         if (string.IsNullOrWhiteSpace(FilePath))
+        {
+            Raise();
             return;
+        }
 
         var saved = false;
         try
@@ -112,18 +120,21 @@ public sealed class ScheduleService : IScheduleService
         Raise();
     }
 
+    /// <inheritdoc />
     public void AddCourse(int enableDay, string weeks, Course course)
     {
         _profile.GetOrCreateSchedule(enableDay, weeks).Classes.Add(course);
         Save();
     }
 
+    /// <inheritdoc />
     public void RemoveCourse(int enableDay, string weeks, Course course)
     {
         Find(enableDay, weeks)?.Classes.Remove(course);
         Save();
     }
 
+    /// <inheritdoc />
     public void UpdateCourse(int enableDay, string weeks, Course original, Course updated)
     {
         var schedule = Find(enableDay, weeks);
@@ -138,6 +149,7 @@ public sealed class ScheduleService : IScheduleService
         Save();
     }
 
+    /// <inheritdoc />
     public Subject AddSubject(string name)
     {
         var subject = new Subject { Name = name };
@@ -146,18 +158,21 @@ public sealed class ScheduleService : IScheduleService
         return subject;
     }
 
+    /// <inheritdoc />
     public void RemoveSubject(Subject subject)
     {
         _profile.Subjects.Remove(subject);
         Save();
     }
 
+    /// <inheritdoc />
     public void ImportFrom(string path)
     {
         _settings().TimetablePath = path;
         Load(path);
     }
 
+    /// <inheritdoc />
     public void ExportTo(string path)
     {
         CsesCodec.Save(_profile, path);
