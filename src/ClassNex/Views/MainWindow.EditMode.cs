@@ -86,7 +86,7 @@ public partial class MainWindow
         };
         row.Children.Add(handle);
 
-        row.Children.Add(ToolButton("\uE154", "该组件的设置", () => App.OpenSettings("widgets")));
+        row.Children.Add(ToolButton("\uE154", "该组件的设置", () => App.OpenSettings("widget-layout")));
 
         row.Children.Add(ToolButton("\uE18E", "删除该组件", () => AppServices.Widgets.Remove(config)));
 
@@ -195,7 +195,7 @@ public partial class MainWindow
             CornerRadius = new CornerRadius(8),
             Padding = new Thickness(10, 6),
         };
-        settings.Click += (_, _) => App.OpenSettings("widgets");
+        settings.Click += (_, _) => App.OpenSettings("widget-layout");
         row.Children.Add(settings);
 
         var done = new Button

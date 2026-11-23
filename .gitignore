@@ -35,6 +35,7 @@ _verify.log
 build/
 
 artifacts/ui-review/*/
+artifacts/tray-review/*/
 
 _tmp_*.png
 _b*.log

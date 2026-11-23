@@ -1,7 +1,9 @@
 using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Animation.Easings;
+using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -17,10 +19,12 @@ public partial class TrayMenuWindow : Window
     private bool _prewarmed;
     private bool _prewarming;
     private int _closeVersion;
+    internal event EventHandler? KeyboardDismissed;
 
     public TrayMenuWindow()
     {
         InitializeComponent();
+        AddHandler(KeyDownEvent, NavigateMenu, RoutingStrategies.Tunnel);
         Deactivated += (_, _) =>
         {
             if (!_prewarming)
@@ -51,7 +55,60 @@ public partial class TrayMenuWindow : Window
         }
     }
 
-    public void PrepareForOpen()
+    internal void OpenAt(PixelRect? anchor, bool keyboard)
+    {
+        if (IsVisible && !_closing)
+        {
+            if (keyboard) ItemsPanel.Children.OfType<Button>().FirstOrDefault()?.Focus(NavigationMethod.Directional);
+            return;
+        }
+        PrepareForOpen();
+        var opening = _closeVersion;
+        void Place()
+        {
+            var screen = (anchor is { } region ? Screens.ScreenFromPoint(region.Center) : null) ?? Screens.Primary;
+            if (screen is null) return;
+            var work = screen.WorkingArea;
+            var origin = anchor ?? new PixelRect(work.Right - 1, work.Bottom - 1, 1, 1);
+            var bounds = Bounds.Size;
+            if (bounds.Width <= 0 || bounds.Height <= 0) return;
+            var scale = screen.Scaling;
+            Position = PositionAt(origin, work, PixelSize.FromSize(bounds, scale),
+                (int)Math.Round(MenuRoot.Margin.Left * scale), (int)Math.Ceiling(4 * scale));
+        }
+        Place();
+        if (!IsVisible) Show();
+        Activate();
+        if (keyboard) ItemsPanel.Children.OfType<Button>().FirstOrDefault()?.Focus(NavigationMethod.Directional);
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (opening != _closeVersion || !IsVisible) return;
+            Place(); PlayOpenAnimation();
+        }, DispatcherPriority.Render);
+    }
+
+    internal static PixelPoint PositionAt(PixelRect icon, PixelRect work, PixelSize window, int margin, int gap)
+    {
+        var w = Math.Max(1, window.Width - 2 * margin); var h = Math.Max(1, window.Height - 2 * margin);
+        var left = Math.Clamp(icon.Center.X - w / 2, work.X, Math.Max(work.X, work.Right - w));
+        var roomAbove = icon.Y - work.Y; var roomBelow = work.Bottom - icon.Bottom;
+        var top = roomAbove >= h + gap || roomAbove >= roomBelow ? icon.Y - gap - h : icon.Bottom + gap;
+        return new(left - margin, Math.Clamp(top, work.Y, Math.Max(work.Y, work.Bottom - h)) - margin);
+    }
+
+    private void NavigateMenu(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape) { e.Handled = true; CloseAnimated(true); return; }
+        if (e.Key is not (Key.Up or Key.Down or Key.Home or Key.End)) return;
+        var items = ItemsPanel.Children.OfType<Button>().ToArray();
+        if (items.Length == 0) return;
+        var current = Array.FindIndex(items, b => b.IsKeyboardFocusWithin);
+        var next = e.Key switch { Key.Home => 0, Key.End => items.Length - 1,
+            Key.Up => current < 0 ? items.Length - 1 : (current + items.Length - 1) % items.Length, _ => (current + 1) % items.Length };
+        e.Handled = items[next].Focus(NavigationMethod.Directional);
+    }
+
+    private void PrepareForOpen()
     {
         _closeVersion++;
         _closing = false;
@@ -83,7 +140,7 @@ public partial class TrayMenuWindow : Window
             UpdateLayout();
     }
 
-    public void PlayOpenAnimation()
+    private void PlayOpenAnimation()
     {
         if (!IsVisible || _closing)
             return;
@@ -106,7 +163,7 @@ public partial class TrayMenuWindow : Window
         ClassNex.Styles.MetroTransitions.PlayTrayMenuTransition(ItemsPanel);
     }
 
-    public void CloseAnimated()
+    public void CloseAnimated(bool returnFocus = false)
     {
         if (_closing || !IsVisible)
             return;
@@ -119,6 +176,7 @@ public partial class TrayMenuWindow : Window
         {
             Hide();
             _closing = false;
+            if (returnFocus) KeyboardDismissed?.Invoke(this, EventArgs.Empty);
             return;
         }
 
@@ -137,6 +195,7 @@ public partial class TrayMenuWindow : Window
             if (IsVisible)
                 Hide();
             _closing = false;
+            if (returnFocus) KeyboardDismissed?.Invoke(this, EventArgs.Empty);
         }, TimeSpan.FromMilliseconds(140));
     }
 
@@ -195,10 +254,12 @@ public partial class TrayMenuWindow : Window
                 BorderThickness = new Avalonia.Thickness(0),
                 CornerRadius = new Avalonia.CornerRadius(4),
             };
+            AutomationProperties.SetName(button, item.Header);
             button.Classes.Add("TrayMenuItem");
             ClassNex.Styles.MetroTilt.Attach(button);
             button.Click += (_, _) =>
             {
+                if (_closing) return;
                 CloseAnimated();
                 item.Action();
             };

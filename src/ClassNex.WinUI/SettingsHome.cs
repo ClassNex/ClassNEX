@@ -18,7 +18,7 @@ public sealed partial class NativeSettingsWindow
         new("notification", "课堂提醒", "设置课前、上课与下课提醒。", "课表与桌面"),
         new("appearance", "外观", "调整主题、字号和桌面课表大小。", "课表与桌面"),
         new("window", "窗口", "设置排列方向、窗口置顶与鼠标穿透。", "课表与桌面"),
-        new("widgets", "主界面组件", "添加、启用或调整桌面组件的顺序。", "课表与桌面"),
+        new("widgets", "组件与主界面", "组件布局、外观主题与窗口行为。", "课表与桌面"),
         new("account", "账户", "管理 ClassNEX ID 登录。", "账户与应用"),
         new("basic", "通用", "管理启动、托盘和课堂偏好。", "账户与应用"),
         new("nex", "NEX Intelligence与NEX AI", "打开对话、配置助手权限和唤醒方式。", "账户与应用"),
@@ -192,7 +192,8 @@ public sealed partial class NativeSettingsWindow
         var toggles = new List<ToggleSwitch>();
         foreach (var link in Links)
         {
-            var toggle = new ToggleSwitch { Header = link.Title, OnContent = "开", OffContent = "关", IsOn = _features.Contains(link.Key) };
+            var toggle = new ToggleSwitch { OnContent = "开", OffContent = "关", IsOn = _features.Contains(link.Key) };
+            Identify(toggle, "ShowFeature_" + link.Key, link.Title);
             toggles.Add(toggle);
             toggle.IsEnabled = !toggle.IsOn || _features.Count > 1;
             toggle.Toggled += (_, _) =>
@@ -202,9 +203,12 @@ public sealed partial class NativeSettingsWindow
                 foreach (var item in toggles) item.IsEnabled = !item.IsOn || _features.Count > 1;
                 SaveHomePreferences(); refresh();
             };
-            panel.Children.Add(toggle);
+            panel.Children.Add(MakeSettingRow(link.Title, "", toggle, false));
         }
-        new Flyout { Content = new ScrollViewer { Content = panel, MaxHeight = 320 } }.ShowAt(owner);
+        var available = owner.XamlRoot.Size;
+        var scroll = new ScrollViewer { Content = panel, Width = Math.Clamp(available.Width - 64, 140, 316), MaxHeight = Math.Clamp(available.Height - 80, 100, 380),
+            HorizontalScrollMode = ScrollMode.Disabled, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+        new Flyout { Content = scroll }.ShowAt(owner);
     }
 
     private static string HomePrefsPath => Path.Combine(SettingsService.DataDirectory, "SettingsHome.json");

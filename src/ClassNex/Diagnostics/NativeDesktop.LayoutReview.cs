@@ -44,6 +44,57 @@ internal sealed partial class NativeDesktop
             for (var i = 0; i < 60 && !ready(); i++) await Task.Delay(40);
             return ready();
         }
+        T Element<T>(DependencyObject parent, string id) where T : FrameworkElement =>
+            Tree(parent).OfType<T>().Single(el => AutomationProperties.GetAutomationId(el) == id);
+        static Rect Box(FrameworkElement element, UIElement relativeTo) =>
+            element.TransformToVisual(relativeTo).TransformBounds(new Rect(0, 0, element.ActualWidth, element.ActualHeight));
+        void ReviewCategories(ScrollViewer page, string key, int expected, int width)
+        {
+            var list = Element<StackPanel>(page, "Categories_" + key);
+            var cards = list.Children.OfType<Button>().ToArray();
+            check(cards.Length == expected && !Tree(list).OfType<ToggleSwitch>().Any(), $"{key}: {expected} category links, no controls duplicated on the index ({width} DIP)");
+            double previousBottom = -4;
+            foreach (var card in cards)
+            {
+                var id = AutomationProperties.GetAutomationId(card)["Category_".Length..];
+                var chevron = Element<FontIcon>(card, "CategoryChevron_" + id);
+                var frame = Box(card, list);
+                var arrow = Box(chevron, card);
+                var inset = frame.Width - arrow.Right;
+                check(Shown(card) && card.IsTabStop && frame.Height >= 63 && Math.Abs(frame.Width - list.ActualWidth) <= 1 &&
+                    Math.Abs(frame.Top - previousBottom - 4) <= 1.1 && inset is >= 14 and <= 20 && !string.IsNullOrWhiteSpace(AutomationProperties.GetHelpText(card)),
+                    $"{id}: full-width keyboard link; height {frame.Height:0.#}, chevron inset {inset:0.#} DIP ({width} DIP)");
+                previousBottom = frame.Bottom;
+            }
+        }
+        void ReviewTrailingEdges(ScrollViewer page, int width, params string[] ids)
+        {
+            double? rightEdge = null;
+            foreach (var id in ids)
+            {
+                var row = Element<Grid>(page, "Row_" + id);
+                var editor = Element<FrameworkElement>(row, id);
+                var visibleAction = editor;
+                if (editor is ToggleSwitch toggle)
+                {
+                    var track = Tree(toggle).OfType<FrameworkElement>().Single(el => el.Name == (toggle.IsOn ? "SwitchKnobBounds" : "OuterBorder"));
+                    var thumb = Tree(toggle).OfType<FrameworkElement>().Single(el => el.Name == "SwitchKnob");
+                    var state = Element<TextBlock>(row, id + "_State");
+                    var (text, rail, knob) = (Box(state, row), Box(track, row), Box(thumb, row));
+                    var gap = rail.Left - text.Right;
+                    var center = knob.X + knob.Width / 2 - (rail.X + rail.Width / 2);
+                    check(Shown(track) && Shown(state) && state.Text == (toggle.IsOn ? "开" : "关") && gap is >= 8 and <= 12 &&
+                        Math.Abs(rail.Width - 40) <= 1 && (toggle.IsOn ? center > 4 : center < -4),
+                        $"{id}: visible {state.Text} left of native {rail.Width:0.#} DIP track; thumb offset {center:0.#} ({width} DIP)");
+                    visibleAction = track;
+                }
+                var inset = row.ActualWidth - Box(visibleAction, row).Right;
+                var right = Box(visibleAction, page).Right;
+                rightEdge ??= right;
+                check(inset is >= 15 and <= 19 && Math.Abs(rightEdge.Value - right) <= 1.1,
+                    $"{id}: actual control ends at {right:0.#}, {inset:0.#} DIP from its card edge ({width} DIP)");
+            }
+        }
         async Task ReviewSidebarSearch(int width)
         {
             var nav = Tree(root).OfType<NavigationView>().Single();
@@ -83,6 +134,15 @@ internal sealed partial class NativeDesktop
             var submit = Tree(search).OfType<Button>().Single(b => b.Name == "QueryButton" && Shown(b));
             new ButtonAutomationPeer(submit).Invoke();
             check(await Until(() => window.CurrentPageKey == "basic" && Closed()), $"Submitting the search opens General and restores the compact sidebar at {width} DIP");
+            if (width != 620) return;
+            new ButtonAutomationPeer(compact).Invoke();
+            check(await Until(() => nav.IsPaneOpen && Shown(search)), "Compact search reopens for an individual setting");
+            search.Text = "课前准备提醒";
+            new ButtonAutomationPeer(Tree(search).OfType<Button>().Single(b => b.Name == "QueryButton" && Shown(b))).Invoke();
+            check(await Until(() => window.CurrentPageKey == "reminder-rules" && Closed() && nav.SelectedItem is NavigationViewItem { Tag: "notification" } &&
+                Tree(root).OfType<Expander>().Any(el => AutomationProperties.GetAutomationId(el) == "PrepareDetails" && el.IsExpanded) &&
+                FocusManager.GetFocusedElement(root.XamlRoot) is ToggleSwitch focusedToggle && AutomationProperties.GetAutomationId(focusedToggle) == "ClassPrepare"),
+                "Searching for a reminder opens its detail page, expands the correct group and focuses its actual switch");
         }
         try
         {
@@ -118,13 +178,33 @@ internal sealed partial class NativeDesktop
                 window.Activate();
                 await ReviewSidebarSearch(width);
                 double? headingTop = null;
-                foreach (var route in new[] { "home", "basic", "widgets", "notification", "account", "plugins", "central", "nex", "privacy", "update", "about" })
+                foreach (var route in new[] { "home", "basic", "startup", "schedule", "runtime", "widgets", "widget-layout", "appearance", "window",
+                    "notification", "reminder-display", "reminder-rules", "account", "plugins", "central", "nex", "nex-assistant", "nex-wake",
+                    "privacy", "privacy-storage", "privacy-services", "update", "about", "debug" })
                 {
                     window.NavigateTo(route);
                     await Task.Delay(280);
                     var page = Tree(root).OfType<ScrollViewer>().Single(x => AutomationProperties.GetAutomationId(x) == "Page_" + route && x.IsLoaded);
                     check(window.CurrentPageKey == route && page.ActualWidth > 150 && page.ScrollableWidth <= 1 &&
                         root.ActualTheme == (theme == "dark" ? ElementTheme.Dark : ElementTheme.Light), $"{route}: no horizontal clipping at {width} DIP, {theme}");
+                    switch (route)
+                    {
+                        case "basic": case "widgets": ReviewCategories(page, route, 3, width); break;
+                        case "nex": case "notification": case "privacy": ReviewCategories(page, route, 2, width); break;
+                        case "startup": ReviewTrailingEdges(page, width, "RunAtStartup", "StartupSplash", "UrlProtocol"); break;
+                        case "runtime": ReviewTrailingEdges(page, width, "TeachingSafeMode", "CrashHandling"); break;
+                        case "schedule": ReviewTrailingEdges(page, width, "SemesterStart", "ProfileWeek"); break;
+                        case "window": ReviewTrailingEdges(page, width, "Orientation", "Topmost"); break;
+                        case "central": ReviewTrailingEdges(page, width, "CentralEnabled", "CentralUrl", "CentralAccount"); break;
+                    }
+                    if (route is "startup" or "runtime")
+                    {
+                        await Task.Delay(450);
+                        var path = Element<BreadcrumbBar>(page, "SettingsBreadcrumb");
+                        check(Shown(path) && !Tree(page).OfType<TextBlock>().Any(t => AutomationProperties.GetAutomationId(t) == "SettingsPageTitle"),
+                            $"{route}: breadcrumb replaces duplicate page heading ({width} DIP, {theme})");
+                        await Shot($"settings-{route}-{width}-{theme}");
+                    }
                     if (route is "home" or "basic" || route is "notification" && width == 1080)
                     {
                         await Task.Delay(450);
@@ -136,8 +216,29 @@ internal sealed partial class NativeDesktop
                     }
                 }
             }
+            foreach (var (percent, clientWidth, clientHeight) in new[] { (125, 864, 720), (150, 720, 600) })
+            {
+                var scale = root.XamlRoot.RasterizationScale;
+                bool HasViewport() => Math.Abs(root.ActualWidth - clientWidth) <= 1 && Math.Abs(root.ActualHeight - clientHeight) <= 1 &&
+                    Math.Abs(root.XamlRoot.Size.Width - clientWidth) <= 1 && Math.Abs(root.XamlRoot.Size.Height - clientHeight) <= 1;
+                // AppWindow's client area can include non-client title bar insets that the XAML tree does not occupy.
+                // Measure the live window frame rather than assuming a decoration size at a particular Windows DPI.
+                var outer = window.AppWindow.Size;
+                window.AppWindow.Resize(new SizeInt32(outer.Width + (int)Math.Round((clientWidth - root.ActualWidth) * scale),
+                    outer.Height + (int)Math.Round((clientHeight - root.ActualHeight) * scale)));
+                var fits = await Until(HasViewport);
+                var actual = root.XamlRoot.Size;
+                check(fits, $"{percent}% equivalent viewport for a 1080×900 client: requested {clientWidth}×{clientHeight} DIP, " +
+                    $"XamlRoot {actual.Width:0.#}×{actual.Height:0.#}, content {root.ActualWidth:0.#}×{root.ActualHeight:0.#}; actual rasterization remains {scale:P0}");
+                window.NavigateTo("basic");
+                await Task.Delay(420);
+                ReviewCategories(Element<ScrollViewer>(root, "Page_basic"), "basic", 3, clientWidth);
+                window.NavigateTo("runtime");
+                await Task.Delay(420);
+                ReviewTrailingEdges(Element<ScrollViewer>(root, "Page_runtime"), clientWidth, "TeachingSafeMode", "CrashHandling");
+            }
             window.NavigateTo("overview"); check(window.CurrentPageKey == "home", "Previous overview route opens home");
-            window.NavigateTo("系统与启动"); check(window.CurrentPageKey == "basic", "Previous startup route opens general");
+            window.NavigateTo("系统与启动"); check(window.CurrentPageKey == "startup", "Previous startup route opens the actual startup controls");
         }
         finally
         {

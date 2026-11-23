@@ -8,6 +8,26 @@ namespace ClassNex.Core.Tests;
 public sealed class ManagementPayloadTests
 {
     [TestMethod]
+    [DataRow(0)]
+    [DataRow(1)]
+    [DataRow(2)]
+    [DataRow(3)]
+    [DataRow(99)]
+    public void OldTrayActionsCannotOverrideOrBeSentToOtherClients(int previous)
+    {
+        var local = JsonSerializer.Deserialize<AppSettings>($$"""{"TrayClickBehavior":{{previous}},"IsMainWindowVisible":false}""")!;
+        var remote = JsonSerializer.Deserialize<AppSettings>($$"""{"trayClickBehavior":{{previous}}}""", new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+        local.TrayClickBehavior = previous;
+        Assert.AreEqual(3, local.TrayClickBehavior);
+        Assert.AreEqual(3, remote.TrayClickBehavior);
+        Assert.IsFalse(local.IsMainWindowVisible);
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(local));
+        using var wire = JsonDocument.Parse(CentralSettingsPayload.Serialize(local));
+        Assert.IsFalse(json.RootElement.TryGetProperty("TrayClickBehavior", out _));
+        Assert.IsFalse(wire.RootElement.TryGetProperty("trayClickBehavior", out _));
+    }
+
+    [TestMethod]
     public void UploadIncludesClassroomPreferencesButNotDeviceCredentials()
     {
         var data = new AppSettings { ThemeMode = "dark", NexApiKey = "fixture-local-only", TimetablePath = "private-path" };

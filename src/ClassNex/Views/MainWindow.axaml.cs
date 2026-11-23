@@ -249,7 +249,7 @@ public partial class MainWindow : Window
                 VerticalAlignment = VerticalAlignment.Center,
                 Child = new TextBlock
                 {
-                    Text = "未启用组件，请在「组件与主界面」中添加",
+                    Text = "未启用组件 · 打开组件布局",
                     Foreground = CiPalette.WithOpacity(CiPalette.PrimaryTextBrush(), 0.66),
                     FontSize = 14,
                     VerticalAlignment = VerticalAlignment.Center,
@@ -547,7 +547,7 @@ public partial class MainWindow : Window
 
     private void OnMenuToggleVisible(object? sender, RoutedEventArgs e) => App.ToggleMainWindow();
 
-    private void OnMenuEditWidgets(object? sender, RoutedEventArgs e) => App.OpenSettings("widgets");
+    private void OnMenuEditWidgets(object? sender, RoutedEventArgs e) => App.OpenSettings("widget-layout");
 
     private void OnMenuEditProfile(object? sender, RoutedEventArgs e) => App.OpenProfileEditor();
 

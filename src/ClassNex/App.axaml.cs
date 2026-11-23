@@ -57,6 +57,11 @@ public partial class App : Application
                 _oobeWindow = new Views.OobeWindow();
                 desktop.MainWindow = _oobeWindow;
                 _oobeWindow.Show();
+#if DEBUG
+                if (desktop.Args is ["--review-tray"]) Dispatcher.UIThread.Post(() => _ = ReviewTrayAsync(desktop));
+                else
+#endif
+                    InstallTray(_oobeWindow);
                 base.OnFrameworkInitializationCompleted();
                 return;
             }
@@ -69,6 +74,12 @@ public partial class App : Application
             _runtime.Start();
 
 #if DEBUG
+            if (desktop.Args is ["--review-tray"])
+            {
+                Dispatcher.UIThread.Post(() => _ = ReviewTrayAsync(desktop));
+                base.OnFrameworkInitializationCompleted();
+                return;
+            }
             if (desktop.Args is ["--review-alpha-plugin"])
             {
                 Dispatcher.UIThread.Post(() => _ = VerifyLegacyPluginAsync(desktop));
@@ -92,6 +103,7 @@ public partial class App : Application
             }
 #endif
 
+            InstallTray(_mainWindow);
             Dispatcher.UIThread.Post(EnsureTrayMenu, DispatcherPriority.Background);
 
             
@@ -203,7 +215,7 @@ public partial class App : Application
 
                 if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_TRAY") == "1")
                 {
-                    DispatcherTimer.RunOnce(OpenTrayMenuOnce, TimeSpan.FromSeconds(3));
+                    DispatcherTimer.RunOnce(() => ShowTrayMenu(_trayIcon?.IconBounds(), false), TimeSpan.FromSeconds(3));
                 }
 
                 if (Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_LOGIN") == "1")
@@ -580,6 +592,8 @@ public partial class App : Application
 
     private void DisposeDesktopServices()
     {
+        _trayIcon?.Dispose();
+        _trayIcon = null;
         _desktop?.Dispose();
         _desktop = null;
         _nexVoice?.Dispose();
@@ -687,64 +701,16 @@ public partial class App : Application
 
     
 
-    private Views.TrayMenuWindow? _trayMenu;
+    private TrayMenuWindow? _trayMenu;
+    private WindowsTrayIcon? _trayIcon;
 
-    private void OnTrayIconClick(object? sender, EventArgs e)
-    {
-        if (!AppServices.Settings.IsOobeCompleted) { _oobeWindow?.Activate(); return; }
-        switch (AppServices.Settings.TrayClickBehavior)
-        {
-            case 0: ToggleMainWindow(); break;
-            case 1: OpenSettings(); break;
-            case 2: OpenProfileEditor(); break;
-            default: OpenTrayMenuOnce(); break;
-        }
-    }
+    private void InstallTray(Window owner, Func<PixelPoint?>? cursor = null, WindowsTrayIcon.RegisterIcon? register = null) =>
+        _trayIcon ??= new WindowsTrayIcon(owner, ShowTrayMenu, cursor, register);
 
-    private void OpenTrayMenuOnce()
+    private void ShowTrayMenu(PixelRect? anchor, bool keyboard)
     {
         EnsureTrayMenu();
-
-        if (_trayMenu is not { } menu)
-            return;
-
-        if (menu.IsVisible)
-        {
-            menu.CloseAnimated();
-            return;
-        }
-
-        menu.PrepareForOpen();
-
-        var cursor = TryGetCursorPos(out var pt) ? pt : default;
-        var hasCursor = cursor != default;
-
-        if (hasCursor)
-        {
-            menu.Position = new PixelPoint(
-                Math.Max(0, cursor.X - 120),
-                Math.Max(0, cursor.Y - 320));
-        }
-
-        menu.Show();
-        menu.Activate();
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            if (!menu.IsVisible)
-                return;
-
-            if (hasCursor)
-            {
-                var w = menu.Bounds.Width > 0 ? menu.Bounds.Width : 280;
-                var h = menu.Bounds.Height > 0 ? menu.Bounds.Height : 320;
-                menu.Position = new PixelPoint(
-                    Math.Max(0, (int)(cursor.X - w / 2)),
-                    Math.Max(0, (int)(cursor.Y - h + 20)));
-            }
-
-            menu.PlayOpenAnimation();
-        }, DispatcherPriority.Render);
+        _trayMenu?.OpenAt(anchor, keyboard);
     }
 
     private void EnsureTrayMenu()
@@ -753,7 +719,17 @@ public partial class App : Application
             return;
 
         var menu = new Views.TrayMenuWindow();
-        Views.TrayMenuWindow.Item[] actions =
+        Views.TrayMenuWindow.Item[] actions = _mainWindow is null ?
+        [
+            new("\uE154", "继续首次设置", () =>
+            {
+                if (_oobeWindow is not { } setup) return;
+                if (setup.WindowState == WindowState.Minimized) setup.WindowState = WindowState.Normal;
+                if (!setup.IsVisible) setup.Show();
+                setup.Activate();
+            }),
+            new("\uE140", "退出", ExitApp)
+        ] :
         [
             new Views.TrayMenuWindow.Item("\uE0BA", "显示 / 隐藏主界面", ToggleMainWindow),
             Views.TrayMenuWindow.Separator,
@@ -761,7 +737,7 @@ public partial class App : Application
             new Views.TrayMenuWindow.Item("\uE19E", "加载课表…", () => _ = LoadTimetableFromMenuAsync()),
             new Views.TrayMenuWindow.Item("\uE24A", "换课…", () => OpenProfileEditor(3)),
             Views.TrayMenuWindow.Separator,
-            new Views.TrayMenuWindow.Item("\uE12C", "编辑主界面…", () => OpenSettings("widgets")),
+            new Views.TrayMenuWindow.Item("\uE12C", "编辑主界面…", () => OpenSettings("widget-layout")),
             new Views.TrayMenuWindow.Item("\uE154", "应用设置…", () => OpenSettings()),
             Views.TrayMenuWindow.Separator,
             new Views.TrayMenuWindow.Item("\uE412", "NEX Intelligence…", OpenNexChat,
@@ -771,21 +747,7 @@ public partial class App : Application
             new Views.TrayMenuWindow.Item("\uE140", "退出", ExitApp),
         ];
         menu.Build(actions);
-        if (TrayIcon.GetIcons(this)?.FirstOrDefault() is { Menu: null } icon)
-        {
-            var context = new NativeMenu();
-            foreach (var item in actions)
-            {
-                if (ReferenceEquals(item, Views.TrayMenuWindow.Separator)) context.Items.Add(new NativeMenuItemSeparator());
-                else
-                {
-                    var entry = new NativeMenuItem(item.Header);
-                    entry.Click += (_, _) => item.Action();
-                    context.Items.Add(entry);
-                }
-            }
-            icon.Menu = context;
-        }
+        menu.KeyboardDismissed += (_, _) => _trayIcon?.RestoreKeyboardFocus();
 
         menu.Closed += (_, _) =>
         {
@@ -795,33 +757,6 @@ public partial class App : Application
 
         _trayMenu = menu;
         menu.Prewarm();
-    }
-
-    [System.Runtime.InteropServices.DllImport("user32.dll")]
-    private static extern bool GetCursorPos(out CursorPoint point);
-
-    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
-    private struct CursorPoint
-    {
-        public int X;
-        public int Y;
-    }
-
-    private static bool TryGetCursorPos(out PixelPoint point)
-    {
-        point = default;
-        try
-        {
-            if (!OperatingSystem.IsWindows() || !GetCursorPos(out var p))
-                return false;
-
-            point = new PixelPoint(p.X, p.Y);
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
     }
 
     

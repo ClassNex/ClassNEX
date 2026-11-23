@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Text.Json;
 using Avalonia.Threading;
 using ClassNex.Models;
@@ -277,7 +276,7 @@ public sealed class CentralManagementService : IDisposable
                 management.ClientId,
                 Environment.MachineName,
                 Environment.MachineName,
-                AppVersion),
+                AppServices.ProductVersion),
             cancellationToken);
         _registeredForSession = true;
         SaveManagement();
@@ -301,7 +300,7 @@ public sealed class CentralManagementService : IDisposable
             accessToken,
             new CentralReportRequest(
                 management.ClientId,
-                AppVersion,
+                AppServices.ProductVersion,
                 Environment.MachineName,
                 await Dispatcher.UIThread.InvokeAsync(() => CentralSettingsPayload.Serialize(AppServices.Settings)),
                 timetable,
@@ -331,11 +330,6 @@ public sealed class CentralManagementService : IDisposable
             throw new InvalidOperationException("集控服务地址必须是有效的 HTTP/HTTPS 地址");
         management.ServerUrl = value;
     }
-
-    private static string AppVersion =>
-        typeof(AppServices).Assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
-            .InformationalVersion ?? "26w46d";
 
     private void SetStatus(string status)
     {

@@ -84,8 +84,9 @@ public sealed class AppSettings : IJsonOnDeserializing, IJsonOnDeserialized
     /// <summary>保存的主题选择：system、light 或 dark。</summary>
     public string ThemeMode { get; set; } = "system";
 
-    /// <summary>托盘点击动作的持久化选项索引。</summary>
-    public int TrayClickBehavior { get; set; }
+    /// <summary>旧扩展兼容入口。托盘始终打开菜单（3），不再保存或同步点击动作。</summary>
+    [JsonIgnore]
+    public int TrayClickBehavior { get => 3; set { } }
 
     /// <summary>本机的集控绑定与最近同步状态，不随班级配置下发。</summary>
     public CentralManagementSettings CentralManagement { get; set; } = new();

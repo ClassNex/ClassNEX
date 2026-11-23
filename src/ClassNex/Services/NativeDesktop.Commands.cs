@@ -1,4 +1,3 @@
-using System.Reflection;
 using ClassNex.WinUI;
 using ClassNex.Services.NexIntelligence;
 using static ClassNex.WinUI.NativeSettingsKeys;
@@ -15,7 +14,7 @@ internal sealed partial class NativeDesktop
             AccountName => account is null ? "" : string.IsNullOrWhiteSpace(account.DisplayName) ? account.Name : account.DisplayName,
             AccountEmail => account?.Email ?? "", AccountAvatar => account is null ? "" : AccountService.AvatarImagePath ?? "",
             Schedule => AppServices.TimetableFileName,
-            NativeSettingsKeys.Version => typeof(App).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "",
+            NativeSettingsKeys.Version => AppServices.ProductVersion,
             Voice => AppServices.NexVoice is { IsRunning: true } voice ? voice.EngineName : "未启用", _ => ""
         };
     }
@@ -31,7 +30,7 @@ internal sealed partial class NativeDesktop
             case string route when route.StartsWith("profile:", StringComparison.Ordinal) && int.TryParse(route.AsSpan(8), out var index) && index is >= -1 and <= 3:
                 App.OpenProfileEditor(index); break;
             case "settings": OpenSettings(); break;
-            case "widgets": OpenSettings("widgets"); break;
+            case "widgets": OpenSettings("widget-layout"); break;
             case NativeSettingsKeys.Profile: case "profile": App.OpenProfileEditor(); break;
             case "toggle-overlay": App.ToggleMainWindow(); break;
             case "exit": App.ExitApp(); break;

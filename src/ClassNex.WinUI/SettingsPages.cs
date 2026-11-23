@@ -11,30 +11,22 @@ public sealed partial class NativeSettingsWindow
 {
     private static string Or(string? value, string fallback) => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
 
-    private void BasicPage()
+    private void StartupPage()
     {
-        var layout = new Grid();
-        Identify(layout, "GeneralCards", "通用设置分组");
-        SetCards(layout, [
-            GroupCard("启动", "\uE945", () =>
-            {
-                Switch("RunAtStartup", "开机自启", s => s.RunAtStartup, (s, v) => s.RunAtStartup = v, "登录 Windows 后启动。");
-                Switch("StartupSplash", "显示启动画面", s => s.ShowStartupSplash, (s, v) => s.ShowStartupSplash = v);
-                Switch("UrlProtocol", "注册 URL 协议", s => s.RegisterUrlProtocol, (s, v) => s.RegisterUrlProtocol = v);
-            }),
-            GroupCard("课表与档案", "\uE787", () =>
-            {
-                Date("SemesterStart", "单周起始日期", s => new DateTimeOffset(s.SingleWeekStartTime.Date), (s, v) => { if (v.HasValue) s.SingleWeekStartTime = v.Value.Date; });
-                ActionRow("GoToSchedule", "课表与当前档案", "管理档案", () => NavigateTo("schedule"));
-            }),
-            GroupCard("托盘", "\uE7F8", () => Choice("TrayBehavior", "单击托盘图标", ["显示 / 隐藏主界面", "打开应用设置", "打开档案编辑器", "打开托盘菜单"], s => s.TrayClickBehavior, (s, v) => s.TrayClickBehavior = v)),
-            GroupCard("运行与恢复", "\uE9D9", () =>
-            {
-                Switch("TeachingSafeMode", "教学安全模式", s => s.TeachingSafeMode, (s, v) => s.TeachingSafeMode = v);
-                Choice("CrashHandling", "异常处理", ["显示崩溃报告", "忽略并继续", "重新启动应用"], s => s.CrashHandlingMode, (s, v) => s.CrashHandlingMode = v);
-            })
-        ]);
-        _body.Children.Add(layout);
+        Switch("RunAtStartup", "开机自启", s => s.RunAtStartup, (s, v) => s.RunAtStartup = v, "登录 Windows 后启动 ClassNEX。");
+        Switch("StartupSplash", "显示启动画面", s => s.ShowStartupSplash, (s, v) => s.ShowStartupSplash = v, "桌面课表打开时显示加载画面。");
+        Switch("UrlProtocol", "注册 URL 协议", s => s.RegisterUrlProtocol, (s, v) => s.RegisterUrlProtocol = v, "允许通过 classnex:// 链接打开本机应用。");
+        Section("托盘菜单");
+        const string trayHelp = "单击或长按通知区域里的 ClassNEX 图标即可打开菜单。要收起或恢复桌面课表，请选择「显示 / 隐藏主界面」。";
+        var gesture = Target("TrayMenu", trayHelp, SettingCaption(trayHelp));
+        gesture.IsTabStop = true;
+        _body.Children.Add(gesture);
+    }
+
+    private void RuntimePage()
+    {
+        Switch("TeachingSafeMode", "教学安全模式", s => s.TeachingSafeMode, (s, v) => s.TeachingSafeMode = v, "发生异常时使用下方的处理方式。");
+        Choice("CrashHandling", "异常处理", ["显示崩溃报告", "忽略并继续", "重新启动应用"], s => s.CrashHandlingMode, (s, v) => s.CrashHandlingMode = v);
     }
 
     private void CentralPage()
@@ -72,10 +64,8 @@ public sealed partial class NativeSettingsWindow
         Scale("HoverOpacity", "鼠标移入时不透明度", .0, 1, .05, s => s.HoverOpacity, (s, v) => s.HoverOpacity = v, v => $"{v:P0}");
     }
 
-    private void NotificationPage()
+    private void ReminderRulesPage()
     {
-        Section("提醒通知");
-        Switch("Notifications", "允许课堂提醒", s => s.AllowNotification, (s, v) => s.AllowNotification = v);
         Detail("PrepareDetails", "课前准备", () =>
         {
             Switch("ClassPrepare", "发出课前准备提醒", s => s.Notification.IsClassOnPreparingNotificationEnabled, (s, v) => s.Notification.IsClassOnPreparingNotificationEnabled = v);
@@ -101,7 +91,12 @@ public sealed partial class NativeSettingsWindow
             Field("ClassOffMask", "下课遮罩文字", s => s.Notification.ClassOffMaskText, (s, v) => s.Notification.ClassOffMaskText = v);
             Field("ClassOffText", "下课提醒文字", s => s.Notification.ClassOffOverlayText, (s, v) => s.Notification.ClassOffOverlayText = v);
         });
-        Detail("DisplayDetails", "提醒显示", () =>
+    }
+
+    private void ReminderDisplayPage()
+    {
+        Switch("Notifications", "允许课堂提醒", s => s.AllowNotification, (s, v) => s.AllowNotification = v);
+        Detail("DisplayDetails", "效果与课程信息", () =>
         {
             Switch("NotificationEffects", "提醒效果", s => s.AllowNotificationEffect, (s, v) => s.AllowNotificationEffect = v);
             Switch("MinorNotifications", "允许次要提醒", s => s.AllowMinorNotification, (s, v) => s.AllowMinorNotification = v);
@@ -120,7 +115,7 @@ public sealed partial class NativeSettingsWindow
         parent.Children.Add(expander);
     }
 
-    private void NexPage()
+    private void AssistantPage()
     {
         Switch("NexEnabled", "启用 NEX Intelligence", s => s.IsNexIntelligenceEnabled, (s, v) => s.IsNexIntelligenceEnabled = v);
         CommandRow("NexChat", "课堂助手", "打开对话", Chat);
@@ -128,7 +123,10 @@ public sealed partial class NativeSettingsWindow
         string[] permissions = ["readonly", "workspace", "full"];
         Choice("NexPermission", "默认权限", ["仅可查看", "工作区内修改", "完全权限"], s => Array.IndexOf(permissions, s.NexPermission), (s, i) => s.NexPermission = permissions[i], "新的对话使用此权限。完全权限允许修改其他文件和执行命令。");
         Field("SystemPrompt", "自定义系统提示词", s => s.NexSystemPrompt, (s, v) => s.NexSystemPrompt = v, true, "留空使用内置提示词。");
-        Section("唤醒方式");
+    }
+
+    private void WakePage()
+    {
         Switch("VoiceWake", "语音唤醒", s => s.IsNexVoiceWakeEnabled, (s, v) => s.IsNexVoiceWakeEnabled = v);
         Switch("EdgeBar", "侧边唤醒条", s => s.IsNexEdgeBarEnabled, (s, v) => s.IsNexEdgeBarEnabled = v);
         Choice("EdgeBarSide", "唤醒条位置", ["右侧", "左侧"], s => s.NexEdgeBarSide == "left" ? 1 : 0, (s, i) => s.NexEdgeBarSide = i == 1 ? "left" : "right");
@@ -203,12 +201,14 @@ public sealed partial class NativeSettingsWindow
         if (_bridge.ReadSettings().IsDebugOptionsEnabled) ActionRow("AboutDebug", "开发者选项", "打开", () => NavigateTo("debug"));
     }
 
-    private void PrivacyPage()
+    private void StoragePage()
     {
-        Section("本机数据");
         ActionRow("PrivacyData", "课表与设置", "打开数据目录", () => RunUserAction(() => OpenFolder(SettingsService.DataDirectory)), "课表、设置和本机账户资料保存在应用的数据目录。");
         ActionRow("PrivacyLogs", "运行日志", "打开日志目录", () => RunUserAction(() => OpenFolder(SettingsService.LogsDirectory)), "发生异常时可查看本地日志。发送给他人前请检查内容。");
-        Section("联网与权限");
+    }
+
+    private void PermissionsPage()
+    {
         ActionRow("PrivacyAccount", "ClassNEX ID", "管理账户", () => NavigateTo("account"), "通过浏览器登录后，从账户服务读取昵称、邮箱和头像。");
         ActionRow("PrivacyCentral", "设备集控", "查看集控", () => NavigateTo("central"), "连接集控后，会与配置的服务器交换设备状态、课表和可同步的设置。");
         ActionRow("PrivacyNex", "课堂助手与语音", "管理助手", () => NavigateTo("nex"), "使用助手时，对话会发送到配置的模型服务。启用语音唤醒会使用麦克风。");
@@ -243,7 +243,7 @@ public sealed partial class NativeSettingsWindow
         CommandRow("NotifyOff", "下课提醒", "触发下课提醒", ClassOff);
         Section("NEX Intelligence 接口");
         Field("NexUrl", "服务地址", s => s.NexApiBaseUrl, (s, v) => s.NexApiBaseUrl = v.Trim(), detail: "留空使用内置服务。");
-        var key = Target("NexKey", "接口密钥", new PasswordBox { Header = "接口密钥", PasswordRevealMode = PasswordRevealMode.Hidden });
+        var key = Target("NexKey", "接口密钥", new PasswordBox { PasswordRevealMode = PasswordRevealMode.Hidden });
         _bindings.Add(s => key.PlaceholderText = string.IsNullOrEmpty(s.NexApiKey) ? "输入接口密钥" : "已保存自定义密钥；输入以替换");
         void CommitKey()
         {
@@ -254,18 +254,20 @@ public sealed partial class NativeSettingsWindow
         }
         key.LostFocus += (_, _) => CommitKey();
         _fieldCommits.Add(CommitKey);
-        _body.Children.Add(key);
+        Row("接口密钥", "", key);
         Field("NexModel", "模型", s => s.NexModel, (s, v) => s.NexModel = v.Trim());
-        var models = Target("ModelChoices", "可用模型", new ComboBox { Header = "可用模型", Visibility = Visibility.Collapsed, HorizontalAlignment = HorizontalAlignment.Stretch });
+        var models = Target("ModelChoices", "可用模型", new ComboBox { MinWidth = 154, MaxWidth = 240 });
+        var choicesRow = MakeSettingRow("可用模型", "", models);
+        choicesRow.Visibility = Visibility.Collapsed;
         models.SelectionChanged += (_, _) => { if (models.SelectedItem is string selected) Edit(s => s.NexModel = selected); };
         static string[] ModelNames(string result) => result.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         AsyncRow("FetchModels", "模型列表", "拉取模型", NativeSettingsKeys.Models, complete: result =>
         {
             var names = ModelNames(result);
             models.ItemsSource = names;
-            models.Visibility = names.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+            choicesRow.Visibility = names.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
         }, summary: result => $"找到 {ModelNames(result).Length} 个模型");
-        _body.Children.Add(models);
+        _body.Children.Add(choicesRow);
         AsyncRow("TestNex", "连接诊断", "测试连接", TestNex);
         ActionRow("ResetNex", "恢复内置配置", "恢复内置接口", () => Edit(s => { s.NexApiBaseUrl = ""; s.NexApiKey = ""; s.NexModel = ""; }));
         ActionRow("HideDebug", "调试菜单", "隐藏调试菜单", () => Edit(s => s.IsDebugOptionsEnabled = false));

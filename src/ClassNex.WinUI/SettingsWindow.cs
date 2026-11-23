@@ -23,8 +23,19 @@ public sealed partial class NativeSettingsWindow : Window
         new("plugins", "插件市场", "\uE74C", "管理安装在这台电脑上的插件。"), new("central", "集控与自动化", "\uE968", "连接设备，查看课表与设置的同步状态。"),
         new("nex", "NEX Intelligence与NEX AI", "\uE945", "配置课堂助手、权限和唤醒方式。"),
         new("privacy", "隐私与安全性", "\uE72E", "查看本地数据和联网功能的使用方式。"), new("update", "更新", "\uE895", "查看已安装版本及公开发布记录。"),
-        new("about", "关于", "\uE946", ""), new("appearance", "外观与主题", "\uE790", "主题、透明度与桌面课表缩放。", "widgets"),
-        new("window", "窗口行为", "\uE737", "排列、置顶和鼠标穿透。", "widgets"), new("schedule", "课表与档案", "\uE787", "查看、编辑或导入课程档案。", "basic"),
+        new("about", "关于", "\uE946", ""),
+        new("startup", "启动与托盘", "\uE7E8", "开机自启、启动画面、URL 协议和托盘菜单。", "basic"),
+        new("schedule", "课表与档案", "\uE787", "单周起始日、今日课表和本机课程档案。", "basic"),
+        new("runtime", "运行与恢复", "\uE9D9", "教学安全模式和发生异常时的处理方式。", "basic"),
+        new("widget-layout", "组件布局", "\uECA5", "编辑桌面布局，添加、移除和排列组件。", "widgets"),
+        new("appearance", "外观与主题", "\uE790", "主题、透明度、字号和桌面课表缩放。", "widgets"),
+        new("window", "窗口行为", "\uE737", "排列方向、窗口置顶、鼠标穿透和移入淡化。", "widgets"),
+        new("reminder-rules", "课堂提醒规则", "\uE823", "设置课前准备、上课和下课的提醒时间与文字。", "notification"),
+        new("reminder-display", "提醒显示", "\uEA8F", "允许课堂提醒、显示效果、次要提醒和教师姓名。", "notification"),
+        new("nex-assistant", "课堂助手", "\uE8BD", "打开对话、设置默认权限和自定义提示词。", "nex"),
+        new("nex-wake", "唤醒方式", "\uE720", "语音唤醒、侧边唤醒条和麦克风诊断。", "nex"),
+        new("privacy-storage", "本机数据", "\uE8B7", "打开课表、应用设置和运行日志所在目录。", "privacy"),
+        new("privacy-services", "联网与权限", "\uE774", "管理账户、集控、语音和插件使用的服务。", "privacy"),
         new("debug", "开发者选项", "\uEBE8", "测试课堂提醒和自定义助手接口。", "about")
     ];
 
@@ -49,7 +60,7 @@ public sealed partial class NativeSettingsWindow : Window
     private readonly Button _searchCompact = new();
     private Action? _refreshIdentity;
     private Expander? _currentExpander;
-    private TextBlock? _pageHeading;
+    private UIElement? _pageHeading;
     private string? _requestedTarget;
     private long _navigationTicket;
     private bool _refreshing, _closed;
@@ -104,7 +115,7 @@ public sealed partial class NativeSettingsWindow : Window
         _frame.Navigating += (_, _) =>
         {
             CommitInputs();
-            if (_page?.Content is ScrollViewer scroll && CurrentPageKey != "notification") _scrollPositions[CurrentPageKey] = scroll.VerticalOffset;
+            if (_page?.Content is ScrollViewer scroll && CurrentPageKey is not ("reminder-rules" or "reminder-display")) _scrollPositions[CurrentPageKey] = scroll.VerticalOffset;
         };
         _frame.Navigated += OnNavigated;
         _search.TextChanged += (_, args) =>
@@ -150,7 +161,8 @@ public sealed partial class NativeSettingsWindow : Window
 
     private static string ResolveKey(string key) => key.Trim().ToLowerInvariant() switch
     {
-        "overview" or "总览" or "设置主页" or "settings" => "home", "general" or "system" or "startup" or "system-startup" or "系统与启动" or "基本" => "basic",
+        "overview" or "总览" or "设置主页" or "settings" => "home", "general" or "system" or "基本" => "basic",
+        "system-startup" or "系统与启动" => "startup", "widget-settings" or "编辑主界面" => "widget-layout",
         "interface" => "appearance", "theme" => "appearance", "components" => "widgets", "plugin" => "plugins", "notifications" or "reminders" or "提醒通知" => "notification",
         "ai" => "nex", "management" => "central", "profiles" or "profile" or "timetable" or "档案管理" or "课表与课程" => "schedule", "developer" or "调试" => "debug", "updates" => "update",
         var value => Destinations.FirstOrDefault(d => d.Key == value || d.Title.Equals(value, StringComparison.OrdinalIgnoreCase))?.Key ?? "home"
@@ -162,7 +174,11 @@ public sealed partial class NativeSettingsWindow : Window
         key = ResolveKey(key);
         if (key == "debug" && !_bridge.ReadSettings().IsDebugOptionsEnabled) key = "about";
         _requestedTarget = target;
-        if (CurrentPageKey == key) { FocusDestination(target); _requestedTarget = null; return; }
+        if (CurrentPageKey == key)
+        {
+            if (_navigation.PaneDisplayMode == NavigationViewPaneDisplayMode.LeftCompact) _navigation.IsPaneOpen = false;
+            FocusDestination(target); _requestedTarget = null; return;
+        }
         NavigationTransitionInfo transition = _page is null || !AnimationsEnabled ? new SuppressNavigationTransitionInfo()
             : Destinations.First(d => d.Key == key).Parent != null ? new DrillInNavigationTransitionInfo() : new EntranceNavigationTransitionInfo();
         _frame.Navigate(typeof(Page), key, transition);
@@ -189,6 +205,7 @@ public sealed partial class NativeSettingsWindow : Window
     private void OnNavigated(object sender, NavigationEventArgs args)
     {
         if (args.Parameter is not string key || args.Content is not Page page) return;
+        var previous = CurrentPageKey;
         _page = page;
         CurrentPageKey = key;
         _navigation.SelectedItem = _items[Destinations.Single(d => d.Key == key).Parent ?? key];
@@ -197,7 +214,9 @@ public sealed partial class NativeSettingsWindow : Window
         RenderPage();
         SetHomeClock(key == "home");
         var restore = args.NavigationMode is NavigationMode.Back or NavigationMode.Forward && _scrollPositions.TryGetValue(key, out var offset) ? offset : 0;
-        FocusDestination(_requestedTarget, restore);
+        var target = _requestedTarget;
+        if (target == null && args.NavigationMode == NavigationMode.Back && _targets.ContainsKey("Category_" + previous)) target = "Category_" + previous;
+        FocusDestination(target, restore);
         _requestedTarget = null;
     }
 
@@ -211,7 +230,7 @@ public sealed partial class NativeSettingsWindow : Window
             if (target != null && _targets.TryGetValue(target, out var element))
             {
                 element.StartBringIntoView(new BringIntoViewOptions { AnimationDesired = false });
-                if (element is Control control) control.Focus(FocusState.Programmatic);
+                if (element.IsTabStop) element.Focus(FocusState.Programmatic);
             }
             else if (restore > 0 && _page?.Content is ScrollViewer scroll)
             {
@@ -232,7 +251,7 @@ public sealed partial class NativeSettingsWindow : Window
         _fieldCommits.Clear();
         var page = _page;
         var key = CurrentPageKey;
-        _body = new StackPanel { Spacing = 12, Padding = new Thickness(28, 18, 28, 36), MaxWidth = 1080, HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Top };
+        _body = new StackPanel { Spacing = key == "home" ? 12 : 4, Padding = new Thickness(28, 18, 28, 36), MaxWidth = 1080, HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Top };
         var scroll = new ScrollViewer { Content = _body, HorizontalScrollMode = ScrollMode.Disabled, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Top };
         var body = _body;
         bool? compact = null;
@@ -246,26 +265,26 @@ public sealed partial class NativeSettingsWindow : Window
         var info = Destinations.Single(d => d.Key == key);
         Identify(scroll, "Page_" + key, info.Title);
         page.Content = scroll;
-        _pageHeading = Text(info.Title, "TitleTextBlockStyle");
-        _pageHeading.AllowFocusOnInteraction = false;
-        _pageHeading.IsTabStop = true;
-        Identify(_pageHeading, "SettingsPageTitle", info.Title);
-        _body.Children.Add(_pageHeading);
-        if (info.Description.Length != 0) _body.Children.Add(Text(info.Description));
+        AddPageHeading(info);
         switch (key)
         {
             case "home": HomePage(); break;
-            case "basic": BasicPage(); break;
+            case "basic": case "widgets": case "notification": case "nex": case "privacy": CategoryList(info); break;
+            case "startup": StartupPage(); break;
+            case "runtime": RuntimePage(); break;
             case "appearance": AppearancePage(); break;
             case "window": WindowPage(); break;
-            case "widgets": WidgetsPage(); break;
+            case "widget-layout": WidgetLayoutPage(); break;
             case "plugins": PluginsPage(); break;
             case "schedule": SchedulePage(); break;
             case "central": CentralPage(); break;
-            case "privacy": PrivacyPage(); break;
+            case "privacy-storage": StoragePage(); break;
+            case "privacy-services": PermissionsPage(); break;
             case "update": UpdatePage(); break;
-            case "nex": NexPage(); break;
-            case "notification": NotificationPage(); break;
+            case "nex-assistant": AssistantPage(); break;
+            case "nex-wake": WakePage(); break;
+            case "reminder-rules": ReminderRulesPage(); break;
+            case "reminder-display": ReminderDisplayPage(); break;
             case "account": AccountPage(); break;
             case "about": AboutPage(); break;
             case "debug": DebugPage(); break;
@@ -277,7 +296,7 @@ public sealed partial class NativeSettingsWindow : Window
     {
         if (_closed || _refreshing) return;
         var settings = _bridge.ReadSettings();
-        if (CurrentPageKey == "widgets" && _widgetShape != WidgetShape(settings))
+        if (CurrentPageKey == "widget-layout" && _widgetShape != WidgetShape(settings))
         {
             _pendingSlider = null;
             _sliderTimer?.Stop();
@@ -317,15 +336,15 @@ public sealed partial class NativeSettingsWindow : Window
 
     private static readonly SearchHit[] SearchDetails =
     [
-        new("系统与启动", "basic", "RunAtStartup"), new("基本设置", "basic"), new("总览", "home"), new("开机自启", "basic", "RunAtStartup"), new("托盘图标", "basic", "TrayBehavior"), new("集控服务地址", "central", "CentralUrl"),
+        new("系统与启动", "startup", "RunAtStartup"), new("基本设置", "basic"), new("总览", "home"), new("开机自启", "startup", "RunAtStartup"), new("显示启动画面", "startup", "StartupSplash"), new("注册 URL 协议", "startup", "UrlProtocol"), new("托盘图标", "startup", "TrayMenu"), new("集控服务地址", "central", "CentralUrl"),
         new("周课表", "schedule", "ProfileWeek"), new("时间表与课间", "schedule", "ProfileTimes"), new("档案管理", "schedule", "ProfileInfo"), new("临时调课", "schedule", "ProfileSwap"),
-        new("学期开始日期", "basic", "SemesterStart"), new("教学安全模式", "basic", "TeachingSafeMode"), new("主题（深色 / 浅色 / 系统）", "appearance", "Theme"),
+        new("学期开始日期", "schedule", "SemesterStart"), new("单周起始日期", "schedule", "SemesterStart"), new("教学安全模式", "runtime", "TeachingSafeMode"), new("异常处理", "runtime", "CrashHandling"), new("主题（深色 / 浅色 / 系统）", "appearance", "Theme"),
         new("主界面背景不透明度", "appearance", "Opacity"), new("全局字号缩放", "appearance", "FontScale"), new("主界面缩放", "appearance", "MainScale"),
-        new("窗口置顶", "window", "Topmost"), new("鼠标穿透", "window", "ClickThrough"), new("组件库", "widgets", "WidgetLibrary"),
-        new("课前准备提醒", "notification", "ClassPrepare"), new("下课前剩余分钟", "notification", "PrepareMinutes"),
-        new("上课提醒", "notification", "ClassOn"), new("下课提醒", "notification", "ClassOff"), new("科任老师", "notification", "Teacher"),
-        new("默认权限", "nex", "NexPermission"), new("语音唤醒", "nex", "VoiceWake"), new("侧边唤醒条", "nex", "EdgeBar"),
-        new("浏览器登录", "account", "AccountAction"), new("版本", "about", "Version"), new("拉起测试提醒", "debug", "NotifyTest")
+        new("窗口置顶", "window", "Topmost"), new("鼠标穿透", "window", "ClickThrough"), new("组件库", "widget-layout", "WidgetLibrary"),
+        new("允许课堂提醒", "reminder-display", "Notifications"), new("课前准备提醒", "reminder-rules", "ClassPrepare"), new("下课前剩余分钟", "reminder-rules", "PrepareMinutes"),
+        new("上课提醒", "reminder-rules", "ClassOn"), new("下课提醒", "reminder-rules", "ClassOff"), new("科任老师", "reminder-display", "Teacher"),
+        new("默认权限", "nex-assistant", "NexPermission"), new("语音唤醒", "nex-wake", "VoiceWake"), new("侧边唤醒条", "nex-wake", "EdgeBar"),
+        new("运行日志", "privacy-storage", "PrivacyLogs"), new("浏览器登录", "account", "AccountAction"), new("版本", "about", "Version"), new("拉起测试提醒", "debug", "NotifyTest")
     ];
 
     private IEnumerable<SearchHit> AllSearchHits() => Destinations.Select(d => new SearchHit(d.Title, d.Key)).Concat(SearchDetails)

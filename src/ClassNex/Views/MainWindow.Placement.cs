@@ -38,7 +38,7 @@ public partial class MainWindow
             switch (TapTarget(e.Source))
             {
                 case "OverlayImportHint": App.OpenProfileEditor(0); break;
-                case "OverlayWidgetsHint": App.OpenSettings("widgets"); break;
+                case "OverlayWidgetsHint": App.OpenSettings("widget-layout"); break;
                 case "NexPanel": App.OpenNexChat(); break;
                 default: return;
             }

@@ -54,12 +54,4 @@
     
 
     
-    <TrayIcon.Icons>
-        <TrayIcons>
-            <TrayIcon Icon="/Assets/icon.ico"
-                      ToolTipText="ClassNex 课表"
-                      Clicked="OnTrayIconClick"/>
-        </TrayIcons>
-    </TrayIcon.Icons>
-
 </Application>

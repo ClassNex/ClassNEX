@@ -1,5 +1,6 @@
 using ClassNex.Models;
 using ClassNex.Core.Abstractions;
+using System.Reflection;
 using System.Text;
 
 namespace ClassNex.Services;
@@ -10,6 +11,8 @@ namespace ClassNex.Services;
 
 public static class AppServices
 {
+    internal static string ProductVersion { get; } = typeof(AppServices).Assembly
+        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "";
     public static ISettingsService SettingsStore => SettingsService.Store;
     internal static Views.MainWindow? MainWindow { get; set; }
     private static bool _applyingRevision;

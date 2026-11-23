@@ -20,8 +20,5 @@ internal sealed class AppServicesAiContext(Func<AppSettings> settings, ISchedule
 
     public string WorkspaceRoot => workspaceRoot;
 
-    public string Version => typeof(AppServicesAiContext).Assembly
-        .GetName()
-        .Version?
-        .ToString() ?? "26w46d";
+    public string Version => AppServices.ProductVersion;
 }

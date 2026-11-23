@@ -12,14 +12,12 @@ public sealed partial class NativeSettingsWindow
     private static string WidgetShape(AppSettings s) => string.Join(';', s.Widgets.Select(w => $"{w.Order}:{w.Type}"));
     private static void Reindex(List<WidgetConfig> list) { for (var i = 0; i < list.Count; ++i) list[i].Order = i; }
 
-    private void WidgetsPage()
+    private void WidgetLayoutPage()
     {
         var settings = _bridge.ReadSettings();
         _widgetShape = WidgetShape(settings);
         _widgetIndex = Math.Clamp(_widgetIndex, 0, Math.Max(0, settings.Widgets.Count - 1));
         CommandRow("EditDesktop", "桌面布局", "编辑组件", NativeSettingsKeys.EditOverlay);
-        ActionRow("WidgetsAppearance", "外观与主题", "调整外观", () => NavigateTo("appearance"));
-        ActionRow("WidgetsWindow", "窗口行为", "设置窗口", () => NavigateTo("window"));
         Section("桌面课表布局");
         if (settings.Widgets.Count != 0)
         {
@@ -28,7 +26,7 @@ public sealed partial class NativeSettingsWindow
             var choice = Target("WidgetSelection", "要编辑的组件", new ComboBox
             {
                 ItemsSource = display.Select((slot, i) => $"{i + 1}. {WidgetRegistry.DisplayNameOf(settings.Widgets[slot].Type)}").ToArray(),
-                SelectedIndex = index, HorizontalAlignment = HorizontalAlignment.Stretch
+                SelectedIndex = index, MinWidth = 154, MaxWidth = 240
             });
             choice.SelectionChanged += (_, _) =>
             {
@@ -37,8 +35,8 @@ public sealed partial class NativeSettingsWindow
                 _widgetIndex = choice.SelectedIndex;
                 RenderPage();
             };
-            _body.Children.Add(choice);
-            var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            Row("要编辑的组件", "", choice);
+            var actions = Target("WidgetActions", "排列和移除当前组件", new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 });
             Button MoveButton(int delta)
             {
                 var button = ActionButton(delta < 0 ? "WidgetUp" : "WidgetDown", delta < 0 ? "上移" : "下移", () =>
@@ -65,7 +63,7 @@ public sealed partial class NativeSettingsWindow
                 FlushSlider();
                 Edit(s => { if (index < s.Widgets.Count) { s.Widgets = s.Widgets.OrderBy(w => w.Order).ToList(); s.Widgets.RemoveAt(index); Reindex(s.Widgets); } });
             }));
-            _body.Children.Add(actions);
+            Row("排列与移除", "", actions);
             var type = settings.Widgets[display[index]].Type;
             WidgetConfig Get(AppSettings s) => s.Widgets[display[index]];
             Switch("WidgetEnabled", "启用该组件", s => Get(s).IsEnabled, (s, v) => Get(s).IsEnabled = v);

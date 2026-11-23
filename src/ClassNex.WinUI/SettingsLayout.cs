@@ -127,19 +127,6 @@ public sealed partial class NativeSettingsWindow
         return border;
     }
 
-    private Border GroupCard(string title, string glyph, Action add)
-    {
-        var group = new StackPanel { Spacing = 8 };
-        var heading = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
-        heading.Children.Add(new FontIcon { Glyph = glyph, FontSize = 18 });
-        heading.Children.Add(Text(title));
-        group.Children.Add(heading);
-        var parent = _body;
-        _body = group;
-        try { add(); } finally { _body = parent; }
-        return Card(group);
-    }
-
     private static void SetCards(Grid grid, IReadOnlyList<FrameworkElement> cards, double columnMinimum = 300)
     {
         var left = new StackPanel { Spacing = 12 };

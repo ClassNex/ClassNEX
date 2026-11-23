@@ -32,8 +32,14 @@ jobs:
       - name: Publish
         shell: pwsh
         run: |
-          $ver = $env:GITHUB_REF_NAME -replace '_.*$', ''
-          dotnet publish src\ClassNex\ClassNex.csproj -c Release -r win-x64 --self-contained true -p:DebugType=none -o build\release\app-$ver-0
+          $ver = if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            $env:GITHUB_REF_NAME -replace '_.*$', ''
+          } else {
+            dotnet msbuild src\ClassNex\ClassNex.csproj -nologo -getProperty:ClassNexDesktopVersion
+          }
+          if ($ver -isnot [string] -or $ver -cnotmatch '^[A-Za-z0-9][A-Za-z0-9.-]*$') { throw 'Invalid desktop version.' }
+          "DESKTOP_VERSION=$ver" >> $env:GITHUB_ENV
+          dotnet publish src\ClassNex\ClassNex.csproj -c Release -r win-x64 --self-contained true -p:DebugType=none "-p:ClassNexDesktopVersion=$ver" -o build\release\app-$ver-0
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           foreach ($module in 'ClassNex.Core', 'ClassNex.Notification.Service', 'ClassNex.Plugin', 'ClassNex.AI', 'ClassNex.WinUI') {
             if (!(Test-Path -LiteralPath "build\release\app-$ver-0\$module.dll" -PathType Leaf)) {
@@ -45,15 +51,17 @@ jobs:
           }
           Remove-Item build\release\app-$ver-0\data -Recurse -Force -ErrorAction SilentlyContinue
           Remove-Item build\release\app-$ver-0\Assets\timetable.yaml -Force -ErrorAction SilentlyContinue
-          dotnet publish src\ClassNex.Launcher\ClassNex.Launcher.csproj -c Release -r win-x64 -p:PublishSingleFile=true -p:PublishTrimmed=true -p:DebugType=none -o build\launcher
+          dotnet publish src\ClassNex.Launcher\ClassNex.Launcher.csproj -c Release -r win-x64 -p:PublishSingleFile=true -p:PublishTrimmed=true -p:DebugType=none "-p:ClassNexDesktopVersion=$ver" -o build\launcher
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Copy-Item build\launcher\ClassNex.exe build\release\ClassNex.exe
+          ./tools/verify_desktop_version.ps1 -ExpectedVersion $ver -DesktopDirectory "build\release\app-$ver-0" -Launcher build\release\ClassNex.exe
           [System.IO.File]::WriteAllText("$PWD\build\release\PackageType", "folder", (New-Object System.Text.UTF8Encoding($false)))
           python tools\make_files_json.py build\release $ver 0
 
       - name: Zip
         shell: pwsh
         run: |
-          $ver = $env:GITHUB_REF_NAME -replace '_.*$', ''
+          $ver = $env:DESKTOP_VERSION
           $out = "build\ClassNEX-$ver-Alpha-win-x64.zip"
           Compress-Archive -Path build\release\* -DestinationPath $out -CompressionLevel Optimal
           "ZIP_PATH=$out" >> $env:GITHUB_ENV

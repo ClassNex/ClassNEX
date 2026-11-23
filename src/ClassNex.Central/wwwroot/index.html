@@ -473,7 +473,6 @@ const settingsGroups=[
       {key:"IsMainWindowVisible",label:"显示主界面",description:"启动后显示悬浮课表。",kind:"toggle",fallback:true},
       {key:"TeachingSafeMode",label:"教学安全模式",description:"应用出现未处理异常时优先保护课堂显示。",kind:"toggle",fallback:false},
       {key:"CrashHandlingMode",label:"崩溃处理",description:"选择应用异常时的处理方式。",kind:"select",fallback:0,options:[{value:0,label:"显示崩溃报告"},{value:1,label:"忽略并继续"},{value:2,label:"重新启动应用"}]},
-      {key:"TrayClickBehavior",label:"托盘单击行为",description:"单击系统托盘图标时执行的操作。",kind:"select",fallback:0,options:[{value:0,label:"显示 / 隐藏主界面"},{value:1,label:"打开应用设置"},{value:2,label:"打开档案编辑器"}]},
       {key:"WeekRotationOffset",label:"周次偏移",description:"调整单双周计算中当前周的偏移。",kind:"range",min:-20,max:20,step:1,fallback:0,format:value=>String(value)},
       {key:"SingleWeekStartTime",label:"单周开始日期",description:"用于计算单双周和学期周次。",kind:"date",fallback:""},
       {key:"SemesterStartDate",label:"学期开始日期",description:"设置当前学期的第一天。",kind:"date",fallback:""},

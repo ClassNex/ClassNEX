@@ -16,6 +16,7 @@ public sealed partial class NativeSettingsWindow
 
     private void SchedulePage()
     {
+        Date("SemesterStart", "单周起始日期", s => new DateTimeOffset(s.SingleWeekStartTime.Date), (s, v) => { if (v.HasValue) s.SingleWeekStartTime = v.Value.Date; });
         StatusRow("ScheduleFile", "当前档案", _ => Or(_bridge.Status(NativeSettingsKeys.Schedule), "尚未选择档案"));
         StatusRow("SchedulePath", "文件位置", s => Or(s.TimetablePath, SettingsService.TimetableStoragePath));
         var today = Target("TodayCourses", "今日课程", Text(""));
@@ -56,10 +57,10 @@ public sealed partial class NativeSettingsWindow
             foreach (var plugin in plugins)
             {
                 var group = new StackPanel { Spacing = 8 };
-                var toggle = new ToggleSwitch { Header = "启用插件", IsOn = plugin.Enabled, IsEnabled = plugin.CanToggle, OnContent = "开", OffContent = "关" };
+                var toggle = new ToggleSwitch { IsOn = plugin.Enabled, IsEnabled = plugin.CanToggle, OnContent = "开", OffContent = "关" };
                 Identify(toggle, "PluginEnabled_" + plugin.Id, "启用 " + plugin.Name);
                 toggle.Toggled += async (_, _) => { if (host != null && plugin.CanToggle && plugin.Enabled != toggle.IsOn) await Change(() => host.SetEnabledAsync(plugin.Id, toggle.IsOn)); };
-                group.Children.Add(toggle);
+                group.Children.Add(MakeSettingRow("启用插件", "", toggle, false));
                 group.Children.Add(Text("标识：" + plugin.Id));
                 group.Children.Add(Text("权限：" + (plugin.Permissions.Count == 0 ? "未声明" : string.Join("、", plugin.Permissions))));
                 var title = new StackPanel { Spacing = 2 };
@@ -118,16 +119,15 @@ public sealed partial class NativeSettingsWindow
             try
             {
                 using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/repos/ClassNex/ClassNEX/releases?per_page=1");
-                request.Headers.UserAgent.ParseAdd("ClassNEX-Desktop/1.0");
+                var installed = _bridge.Status(NativeSettingsKeys.Version);
+                request.Headers.UserAgent.ParseAdd(string.IsNullOrEmpty(installed) ? "ClassNEX-Desktop" : $"ClassNEX-Desktop/{installed}");
                 using var response = await Releases.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token);
                 response.EnsureSuccessStatusCode();
                 using var json = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(cts.Token), cancellationToken: cts.Token);
                 if (_closed || _page != page) return;
                 var entries = json.RootElement;
                 var tag = entries.ValueKind == JsonValueKind.Array && entries.GetArrayLength() > 0 && entries[0].TryGetProperty("tag_name", out var value) ? value.GetString() : null;
-                var installed = _bridge.Status(NativeSettingsKeys.Version);
-                var same = tag != null && (tag.Equals(installed, StringComparison.OrdinalIgnoreCase) || tag.Equals(installed + "_Alpha", StringComparison.OrdinalIgnoreCase));
-                result.Text = tag == null ? "仓库还没有发布记录。" : same ? $"当前版本已与发布页一致（{tag}）。" : $"发布页版本：{tag}。可在发布页查看说明并下载。";
+                result.Text = DesktopRelease.Describe(installed, tag);
             }
             catch (Exception ex) when (ex is HttpRequestException or IOException or OperationCanceledException or JsonException or InvalidOperationException)
             {

@@ -36,8 +36,7 @@ ClassNEX，ClassIsland 风格的桌面课表应用。Windows 客户端使用 .NE
 ## 当前状态
 
 持有者：无
-工作分支：`main`。按功能合并主线 `2949eff` 与 `refactor/26w46d-flclash-ui-core` 的 `aaba73d`，共同祖先 `26w46d_Alpha`（`60d7b57`）。不重置分支，不删除原分支或推送发布标签。
-本次内容：原生设置的 11 个入口、账户侧栏、Mica 与右侧 Frame；恢复 Alpha 浮窗、日期与时间独立迁移、可拖动与重启定位；OOBE 首屏、导航与退出；保留独立 Core、提醒、插件、NEX 和自动集控。落点见 `src/ClassNex.WinUI`、`src/ClassNex/Views` 及 `src/ClassNex.Core/Models/AppSettings.cs`。
-交付：合并提交 `b17768d`，便携包产品提交 `5ea3b11`。完整重建 0 警告 / 0 错误，29 项单测、45 项原生交互、154 项实窗检查通过。620/720 DIP 侧栏搜索已验证完整显示、实际点击和输入焦点；启动迁移、账户切换和头像归属都有隔离回归。
-验证：`docs/mainline-desktop-acceptance.md` 链接本轮截图、录屏和便携包指纹；`docs/26.0-acceptance.md` 只记录此前重构分支。不以真实账户、系统注册项或生产服务器跑夹具。
-后续：教室里的真实身份提供商、物理多屏与麦克风仍需现场验证；正式发布另行决定。
+工作分支：`main`；本轮基线 `943e47a`。此前的主线合并 `b17768d`、便携包 `5ea3b11` 及重构分支均保留，未重置 main、未打发布标签。
+本次内容：`src/ClassNex.WinUI` 将五个设置分类拆为可整行点击的导航卡和十二个详情页，保留搜索、返回焦点、设置保存及共用的右对齐开关；桌面课表外观不变。`src/ClassNex/Services/WindowsTrayIcon.cs` 统一通知区单击、长按、右键和键盘菜单；保留显隐命令，忽略旧动作偏好，首次向导只显示继续和退出。产品版本从 `src/DesktopVersion.props` 读取，为 `26w48a`。
+验证：客户端 Debug 完整重建及 Release 构建均 0 警告 / 0 错误；41 项单测、84 项原生设置交互、91 项托盘检查、380 项实窗回归及账户 / 集控回环联测通过。截图、布局量测与复测命令见 `docs/26w48a-settings.md`。此前验收分别见 `docs/mainline-desktop-acceptance.md` 和 `docs/26.0-acceptance.md`。均不以真实账户、系统注册项或生产服务器跑夹具。
+后续：本次未发布安装包；实体触摸屏、跨显示器混合 DPI 与生产身份提供商仍需现场验证，正式发布另行决定。

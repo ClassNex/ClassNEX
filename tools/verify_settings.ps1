@@ -3,6 +3,7 @@ param(
     [ValidateRange(10, 300)][int]$TimeoutSeconds = 90,
     [switch]$KeepOpen,
     [string]$OutputDirectory,
+    [string]$ExpectedProductVersion,
     [string[]]$RequiredCheck = @(),
     [string]$IntermediateDirectory,
     [switch]$KeepFixture
@@ -123,6 +124,18 @@ if (-not $OutputDirectory) {
 }
 $sourceRoot = (Get-Item -LiteralPath $OutputDirectory).FullName
 Assert-PlainPath $sourceRoot
+if (-not $ExpectedProductVersion) {
+    $versionResult = @(& dotnet msbuild (Join-Path $clientRoot 'ClassNex.csproj') -nologo -getProperty:ClassNexDesktopVersion)
+    if ($LASTEXITCODE -ne 0 -or $versionResult.Count -ne 1) { throw 'Could not determine the desktop product version from ClassNex.csproj.' }
+    $ExpectedProductVersion = $versionResult[0].Trim()
+}
+if ($ExpectedProductVersion -cnotmatch '\A[A-Za-z0-9][A-Za-z0-9._-]*\z') { throw "Invalid product version: $ExpectedProductVersion" }
+foreach ($binary in 'ClassNex.exe', 'ClassNex.dll') {
+    $binaryPath = Join-Path $sourceRoot $binary
+    Assert-PlainPath $binaryPath
+    $actual = (Get-Item -LiteralPath $binaryPath).VersionInfo.ProductVersion
+    if ($actual -cne $ExpectedProductVersion) { throw "Version mismatch in ${binary}: expected '$ExpectedProductVersion', found '$actual'. Rebuild or select the intended output." }
+}
 $outputFiles = @(Get-AppFileList $sourceRoot)
 $depsPath = Join-Path $sourceRoot 'ClassNex.deps.json'
 Assert-PlainPath $depsPath
@@ -133,7 +146,18 @@ if ($outputFiles -contains 'coreclr.dll') {
         if ($outputFiles -notcontains $asset) { throw "Standalone WinUI resource missing from the publish list: $asset" }
     }
 }
-$requiredNativeChecks = @('one-home-on-first-open', 'winui-page-transition', 'local-edit-preserves-session', 'managed-theme-updates-live-controls', 'notification-restores-course-and-bounds', 'day-cache-midnight-invalidates', 'bridge-close-restores-settings-without-edit') + $RequiredCheck
+$requiredNativeChecks = @(
+    'one-home-on-first-open', 'winui-page-transition', 'local-edit-preserves-session', 'managed-theme-updates-live-controls',
+    'notification-restores-course-and-bounds', 'day-cache-midnight-invalidates', 'bridge-close-restores-settings-without-edit',
+    'native-toggle-switch', 'toggle-persisted', 'switch-state-survives-reentry', 'switch-off-state-and-disk-agree',
+    'general-shows-saved-startup-values', 'exact-desktop-product-version', 'about-shows-exact-product-version',
+    'update-shows-exact-product-version', 'profile-editor-exact-product-version', 'deep-link-breadcrumb-opens-parent', 'deep-link-back-skips-child'
+    foreach ($category in 'basic', 'widgets', 'notification', 'nex', 'privacy') { "category-list-$category" }
+    foreach ($detail in 'startup', 'schedule', 'runtime', 'widget-layout', 'appearance', 'window', 'reminder-rules', 'reminder-display', 'nex-assistant', 'nex-wake', 'privacy-storage', 'privacy-services') {
+        "option-opens-$detail"
+        "breadcrumb-returns-$detail"
+    }
+) + $RequiredCheck
 
 $sample = 'src/ClassNex/Assets/timetable.yaml'
 $samplePath = Join-Path $repoRoot $sample
@@ -170,6 +194,7 @@ $settings = [ordered]@{
     IsOobeCompleted = $true; CentralManagement = @{ IsEnabled = $false; ServerUrl = $loopback }
     UserName = ''; Email = ''; AccountEndpoint = $loopback; NexApiBaseUrl = $loopback
     ShowStartupSplash = $false; IsMainWindowVisible = $false
+    TeachingSafeMode = $false; RunAtStartup = $false; RegisterUrlProtocol = $false
     IsNexVoiceWakeEnabled = $false; IsNexEdgeBarEnabled = $false; AllowNotification = $false
     Notification = @{ IsClassOnNotificationEnabled = $false; IsClassOnPreparingNotificationEnabled = $false; IsClassOffNotificationEnabled = $false }
 }
@@ -187,6 +212,7 @@ $start.CreateNoWindow = $true
 foreach ($name in @($start.EnvironmentVariables.Keys)) {
     if ($name -like 'CLASSNEX_VERIFY*') { $start.EnvironmentVariables.Remove($name) }
 }
+$start.EnvironmentVariables['CLASSNEX_VERIFY_PRODUCT_VERSION'] = $ExpectedProductVersion
 $instance = $null
 $passed = $false
 $confirmedExit = $false

@@ -1,6 +1,6 @@
 # ClassNEX 续作指南（HANDOFF）
 
-> 最后更新：2026-11-22　｜　最近发布版本 **26w46d**　｜　发布标签 **26w46d_Alpha**。本轮客户端设置改版未创建发布标签。
+> 最后更新：2026-11-23　｜　客户端产品版本 **26w48a**（开发版，未发布）　｜　上一发布标签 **26w46d_Alpha**。
 > 已发布：`26w41a_Alpha` ~ `26w46d_Alpha`（GitHub Releases，均为预发布）
 > 这份文档的目的：**第二天打开新会话，照着它就能无缝继续写。**
 
@@ -8,7 +8,7 @@
 
 ## 0. 一分钟上手
 
-日常开发分支是 `main`。从 `2949eff` 与重构分支 `aaba73d` 按功能合并，不用重置主线；旧分支验收见 [26.0 归档](docs/26.0-acceptance.md)。本轮实窗、旧布局迁移和回环身份验证见 [主线验收](docs/mainline-desktop-acceptance.md)。下文各节保留历史记录。
+日常开发分支是 `main`。26w48a 的入口、托盘手势和版本复测见 [设置与托盘验收](docs/26w48a-settings.md)。主线此前从 `2949eff` 与 `aaba73d` 按功能合并，记录见 [主线验收](docs/mainline-desktop-acceptance.md) 与 [26.0 归档](docs/26.0-acceptance.md)。不用重置分支，下文各节保留历史记录。
 
 ```powershell
 cd E:\ClassNex
@@ -212,7 +212,9 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   因穿透后收不到鼠标消息，用 30ms 轮询 `GetCursorPos` 近似 CI 的 RawInput 即时判定 → `Services/WindowsOverlay.cs`）
 - 浅色粉白樱花渐变 / 深色深玫瑰渐变玻璃底 + 不透明度设置 + 圆角 14 + 顶部高光 + 玫瑰色柔和投影
 
-### 设置窗口与托盘菜单
+### 设置窗口与托盘菜单（历史实现）
+
+26w48a 的设置根页使用 WinUI 分类行，子页有面包屑；通知区单击、长按、右键与键盘唤起同一菜单，不再按旧 `TrayClickBehavior` 切换窗口。下面的 Avalonia 设置外壳和旧点击行为仅为早期记录，不是当前实现。
 
 - **范围和参考**：这里只改 ClassNEX 客户端设置窗口。CI 的 `E:\ci-source\ClassIsland\Views\SettingsWindowNew.axaml` 用于核对原有设置交互；外壳和布局按用户指定的 `D:\TubaWinUi3` 移植。首页参考 `DashboardPage`（不是工具分类的 `HomePage`），总览参考 `SettingsPage`。解出的 XAML 和原图只留在已忽略的 `build\captures` 作对照，不随源码或安装包分发。
 - **窗口与导航**：`SettingsWindow.axaml` 使用 AvaloniaFluentUI `AppWindow` 和支持时的 Mica。标题栏高 48，返回/折叠导航、应用图标与标题、最大宽 320 的左对齐搜索框在同一行；系统窗口按钮保留独立区域。侧栏展开宽 200、收起宽 48，宽度低于 600 时默认收起。配色集中在 `CiPalette.Settings*.cs`，只对设置窗口生效，不更改桌面课表、提醒、OOBE 或集控。
@@ -549,15 +551,14 @@ python tools\gh_release.py "E:\ClassNex\build\ClassNEX-26w41f-Alpha-win-x64.zip"
 - `WW` = 该年的第几周（ISO 周号）
 - `a` = 当周发布的第几个快照（a、b、c…）
 
-当前：**`26w46d`** = 2026 年第 46 周的第 4 个快照（2026-11-16 通过 GitHub Actions 发布）。
+当前客户端产品版本是 **`26w48a`**；更改产品版本不会新建 `26w48a_Alpha` 标签，也不等于已经发布。`26w46d` 是此前发布的快照。
 
 落地方式：
-- `ClassNex.csproj` → `<InformationalVersion>26w41a</InformationalVersion>`
-  （**对外产品版本**，显示在文件属性「产品版本」与 设置→关于）
+- `src/DesktopVersion.props` 定义 `ClassNexDesktopVersion`，由客户端和启动器共享。设置的「关于」「更新」、档案编辑器与文件属性「产品版本」读取同一版本。
 - `<Version>0.5.0</Version>` 保留给程序集数字版本用（`26w41a` 不是合法 SemVer）
 - `<IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>`
   —— 否则 MSBuild 会自动在版本号后面接 `+<git哈希>`
-- 出包时 zip 名用同一版本号：`ClassNEX-26w41a-test-win-x64.zip`
+- 获准发布时沿用 `ClassNEX-<版本>-Alpha-win-x64.zip`；发布时检查启动器和载荷版本一致。
 
 ---
 

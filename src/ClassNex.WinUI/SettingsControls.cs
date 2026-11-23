@@ -1,7 +1,10 @@
 using ClassNex.Models;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Markup;
 using Windows.System;
 
 namespace ClassNex.WinUI;
@@ -29,39 +32,100 @@ public sealed partial class NativeSettingsWindow
         return element;
     }
 
-    private void Row(string title, string detail, FrameworkElement editor)
+    private static Style? _settingSurface, _settingCaption;
+
+    private static Style SettingSurface => _settingSurface ??= (Style)XamlReader.Load("""
+        <Style xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" TargetType="Grid">
+            <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}"/>
+            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{ThemeResource ControlCornerRadius}"/>
+        </Style>
+        """);
+
+    private static TextBlock SettingCaption(string value)
     {
-        var grid = new Grid { ColumnSpacing = 14, RowSpacing = 4, Padding = new Thickness(4, 5, 4, 5) };
+        _settingCaption ??= (Style)XamlReader.Load("""
+            <Style xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" TargetType="TextBlock" BasedOn="{StaticResource CaptionTextBlockStyle}">
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}"/>
+            </Style>
+            """);
+        return new TextBlock { Text = value, Style = _settingCaption, TextWrapping = TextWrapping.Wrap };
+    }
+
+    private static Grid MakeSettingRow(string title, string detail, FrameworkElement editor, bool surface = true)
+    {
+        var grid = new Grid { ColumnSpacing = 16, HorizontalAlignment = HorizontalAlignment.Stretch,
+            MinHeight = surface ? 64 : 40, Padding = surface ? new Thickness(16, 10, 16, 10) : new Thickness(0, 3, 0, 3) };
+        if (surface) grid.Style = SettingSurface;
         grid.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         grid.RowDefinitions.Add(new() { Height = GridLength.Auto });
         grid.RowDefinitions.Add(new() { Height = GridLength.Auto });
         var label = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Spacing = 2 };
         label.Children.Add(Text(title));
-        if (detail.Length != 0) label.Children.Add(Text(detail, "CaptionTextBlockStyle"));
+        if (detail.Length != 0) label.Children.Add(SettingCaption(detail));
         grid.Children.Add(label);
-        Grid.SetColumn(editor, 1);
-        editor.VerticalAlignment = VerticalAlignment.Center;
-        grid.Children.Add(editor);
+        var id = AutomationProperties.GetAutomationId(editor);
+        if (!string.IsNullOrEmpty(id)) AutomationProperties.SetAutomationId(grid, "Row_" + id);
+        FrameworkElement action = editor is ToggleSwitch toggle ? TrailingSwitch(toggle, id) : editor;
+        action.VerticalAlignment = VerticalAlignment.Center;
+        action.HorizontalAlignment = HorizontalAlignment.Right;
+        Grid.SetColumn(action, 1);
+        grid.Children.Add(action);
+        var field = editor is TextBox or PasswordBox;
+        var multiline = editor is TextBox { AcceptsReturn: true };
         bool? stacked = null;
-        grid.SizeChanged += (_, args) =>
+        void Arrange(double width)
         {
-            var threshold = editor is ToggleSwitch ? 225 : editor is ComboBox or CalendarDatePicker or NumberBox ? 315 : 350;
-            var small = args.NewSize.Width < threshold;
+            var threshold = field ? 480 : editor is ToggleSwitch ? 240 : editor is TextBlock ? 410 : 360;
+            var small = multiline || width < threshold;
             if (small == stacked) return;
             stacked = small;
+            grid.RowSpacing = small ? 8 : 0;
             Grid.SetColumnSpan(label, small ? 2 : 1);
-            Grid.SetRow(editor, small ? 1 : 0);
-            Grid.SetColumn(editor, small ? 0 : 1);
-            Grid.SetColumnSpan(editor, small ? 2 : 1);
-            editor.HorizontalAlignment = small ? HorizontalAlignment.Left : HorizontalAlignment.Right;
-        };
-        _body.Children.Add(grid);
+            Grid.SetRow(action, small ? 1 : 0);
+            Grid.SetColumn(action, small ? 0 : 1);
+            Grid.SetColumnSpan(action, small ? 2 : 1);
+            if (field)
+            {
+                action.Width = small ? double.NaN : 248;
+                action.HorizontalAlignment = small ? HorizontalAlignment.Stretch : HorizontalAlignment.Right;
+            }
+        }
+        Arrange(double.PositiveInfinity);
+        grid.SizeChanged += (_, args) => Arrange(args.NewSize.Width);
+        return grid;
     }
+
+    private static StackPanel TrailingSwitch(ToggleSwitch toggle, string id)
+    {
+        toggle.MinWidth = 0;
+        toggle.Width = 40;
+        toggle.OnContent = toggle.OffContent = string.Empty;
+        var state = Text(toggle.IsOn ? "开" : "关");
+        AutomationProperties.SetAccessibilityView(state, AccessibilityView.Raw);
+        if (!string.IsNullOrEmpty(id)) AutomationProperties.SetAutomationId(state, id + "_State");
+        toggle.Toggled += (_, _) => state.Text = toggle.IsOn ? "开" : "关";
+        state.Tapped += (_, e) =>
+        {
+            if (!toggle.IsEnabled) return;
+            toggle.Focus(FocusState.Pointer);
+            toggle.IsOn = !toggle.IsOn;
+            e.Handled = true;
+        };
+        var group = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, VerticalAlignment = VerticalAlignment.Center };
+        group.Children.Add(state);
+        group.Children.Add(toggle);
+        return group;
+    }
+
+    private void Row(string title, string detail, FrameworkElement editor) =>
+        _body.Children.Add(MakeSettingRow(title, detail, editor, CurrentPageKey != "home" && _currentExpander is null));
 
     private ToggleSwitch Switch(string id, string title, Func<AppSettings, bool> get, Action<AppSettings, bool> set, string detail = "")
     {
-        var toggle = Target(id, title, new ToggleSwitch { OnContent = "开", OffContent = "关" });
+        var toggle = Target(id, title, new ToggleSwitch());
         _bindings.Add(s => { var value = get(s); if (toggle.IsOn != value) toggle.IsOn = value; });
         toggle.Toggled += (_, _) => { if (!_refreshing && get(_bridge.ReadSettings()) != toggle.IsOn) Edit(s => set(s, toggle.IsOn)); };
         Row(title, detail, toggle);
@@ -157,7 +221,7 @@ public sealed partial class NativeSettingsWindow
 
     private TextBox Field(string id, string title, Func<AppSettings, string?> get, Action<AppSettings, string> set, bool multiline = false, string detail = "")
     {
-        var field = Target(id, title, new TextBox { Header = title, Description = detail.Length == 0 ? null : detail, AcceptsReturn = multiline,
+        var field = Target(id, title, new TextBox { AcceptsReturn = multiline,
             MinHeight = multiline ? 72 : 32, MaxHeight = multiline ? 152 : 64, TextWrapping = multiline ? TextWrapping.Wrap : TextWrapping.NoWrap });
         var dirty = false;
         _bindings.Add(s => { var v = get(s) ?? ""; if (!dirty && field.Text != v) field.Text = v; });
@@ -171,7 +235,7 @@ public sealed partial class NativeSettingsWindow
         field.LostFocus += (_, _) => Commit();
         _fieldCommits.Add(Commit);
         field.KeyDown += (_, args) => { if (!multiline && args.Key == VirtualKey.Enter) { Commit(); args.Handled = true; } };
-        _body.Children.Add(field);
+        Row(title, detail, field);
         return field;
     }
 
@@ -180,6 +244,7 @@ public sealed partial class NativeSettingsWindow
         var label = Target(id, title, Text(""));
         label.IsTextSelectionEnabled = true;
         label.MaxWidth = 300;
+        label.TextAlignment = TextAlignment.Right;
         _bindings.Add(s => { var value = text(s); if (label.Text != value) label.Text = value; });
         Row(title, "", label);
     }

@@ -49,6 +49,7 @@ internal sealed partial class NativeDesktop
         private const string CourseName = "原生验收课程";
         private const string AccountName = "原生验收账户";
         private static readonly string AccountFile = Path.Combine(SettingsService.DataDirectory, "account.json");
+        private readonly string? _expectedVersion = Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_PRODUCT_VERSION");
         private string _step = "fixture";
         private bool _ownsAccount;
         private NativeSettingsWindow Settings => host._settings ?? throw new InvalidOperationException("No settings window");
@@ -68,6 +69,8 @@ internal sealed partial class NativeDesktop
                 await VerifyNavigation();
                 await VerifySettings();
                 await VerifyHomeFeatureCards();
+                await VerifyCategoryNavigation();
+                await VerifyProductVersion();
                 await VerifyOverlay();
                 await VerifyDayCache();
                 await VerifyEditorBridge();
@@ -112,9 +115,6 @@ internal sealed partial class NativeDesktop
                 await InvokeMeasuredHomeEntry();
                 await Check("winui-page-transition", () => Settings.CurrentPageKey == "basic" && navigations == 1 &&
                     (new UISettings().AnimationsEnabled ? transition is EntranceNavigationTransitionInfo : transition is SuppressNavigationTransitionInfo), 5000);
-                await Check("native-toggle-switch", () => Find<ToggleSwitch>(Page, "TeachingSafeMode") is { } toggle && Equals(toggle.OnContent, "开") && Equals(toggle.OffContent, "关") && Shown(toggle), 3000);
-                await Act("change-local-toggle", () => Need<ToggleSwitch>(Page, "TeachingSafeMode").IsOn = true);
-                await Check("toggle-persisted", () => AppServices.Settings.TeachingSafeMode && SettingsService.Load().TeachingSafeMode, 2000);
                 string[] destinations = ["widgets", "appearance", "notification", "basic", "window", "basic", "appearance"];
                 var depth = await Ui(() => Frame.BackStackDepth);
                 await Act("repeat-navigation", () => { foreach (var key in destinations) { Settings.NavigateTo(key); Settings.NavigateTo(key); } });
@@ -123,7 +123,7 @@ internal sealed partial class NativeDesktop
                     Tree(Frame).OfType<Page>().Count(Shown) == 1 && Find<ScrollViewer>(Page, "Page_appearance") is { VerticalOffset: 0 } scroller && Shown(scroller), 4000);
                 await Check("detail-transition-and-final-focus", () =>
                     (new UISettings().AnimationsEnabled ? transition is DrillInNavigationTransitionInfo : transition is SuppressNavigationTransitionInfo) &&
-                    ReferenceEquals(Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(Page.XamlRoot), Find<TextBlock>(Page, "SettingsPageTitle")), 4000);
+                    Find<BreadcrumbBar>(Page, "SettingsBreadcrumb") is { } heading && ContainsFocus(heading), 4000);
                 await Act("frame-back", () => Frame.GoBack());
                 await Check("back-restores-selection", () => Settings.CurrentPageKey == "basic" && Navigation.SelectedItem is NavigationViewItem { Tag: "basic" } && Frame.CanGoForward, 2000);
                 await Act("frame-forward", () => Frame.GoForward());
@@ -139,29 +139,113 @@ internal sealed partial class NativeDesktop
                 ("profile", "schedule", "课表与档案", "basic"), ("widgets", "widgets", "组件与主界面", "widgets"),
                 ("notification", "notification", "通知服务", "notification"), ("basic", "basic", "通用", "basic")
             ];
-            bool At(string route, string title, string parent) => Settings.CurrentPageKey == route &&
-                Navigation.SelectedItem is NavigationViewItem selected && Equals(selected.Tag, parent) &&
-                Find<ScrollViewer>(Page, "Page_" + route) is { } body && Shown(body) &&
-                Find<TextBlock>(body, "SettingsPageTitle") is { } heading && Shown(heading) && heading.Text == title;
-
-            var saved = SettingsService.Load();
             await Act("open-feature-card-home", () => Settings.NavigateTo("home"));
-            await Check("four-default-feature-cards", () => At("home", "主页", "home") && Find<Grid>(Page, "HomeCards") is { } grid &&
+            await Check("four-default-feature-cards", () => AtPage("home", "主页", "home") && Find<Grid>(Page, "HomeCards") is { } grid &&
                 Tree(grid).OfType<Button>().Count(b => Id(b)?.StartsWith("Feature_", StringComparison.Ordinal) == true) == cards.Length &&
                 cards.All(c => Find<Button>(grid, "Feature_" + c.Card) is { IsEnabled: true } b && Shown(b)), 4000);
             var homeDepth = await Ui(() => Frame.BackStackDepth);
             foreach (var (card, route, title, parent) in cards)
             {
                 await Act("invoke-feature-" + card, () => new ButtonAutomationPeer(Need<Button>(Need<Grid>(Page, "HomeCards"), "Feature_" + card)).Invoke());
-                await Check("feature-destination-" + card, () => At(route, title, parent) && Frame.CanGoBack && Frame.BackStackDepth == homeDepth + 1, 4000);
-                if (route == "basic")
-                    await Check("general-shows-saved-startup-values", () => Find<ToggleSwitch>(Page, "RunAtStartup")?.IsOn == saved.RunAtStartup &&
-                        Find<ToggleSwitch>(Page, "StartupSplash")?.IsOn == saved.ShowStartupSplash &&
-                        Find<ToggleSwitch>(Page, "UrlProtocol")?.IsOn == saved.RegisterUrlProtocol, 3000);
+                await Check("feature-destination-" + card, () => AtPage(route, title, parent) && Frame.CanGoBack && Frame.BackStackDepth == homeDepth + 1, 4000);
                 await Act("back-from-feature-" + card, () => Frame.GoBack());
-                await Check("feature-returns-home-" + card, () => At("home", "主页", "home") && Frame.BackStackDepth == homeDepth &&
+                await Check("feature-returns-home-" + card, () => AtPage("home", "主页", "home") && Frame.BackStackDepth == homeDepth &&
                     Find<Grid>(Page, "HomeCards") is { } grid && Find<Button>(grid, "Feature_" + card) is { } tile && Shown(tile), 4000);
             }
+            await Act("open-profile-deep-link", () => new ButtonAutomationPeer(Need<Button>(Page, "Feature_profile")).Invoke());
+            await Check("home-deep-link-opens-detail", () => AtPage("schedule", "课表与档案", "basic") && BreadcrumbParent("通用") is not null, 4000);
+            await Act("ascend-from-deep-link", () => new BreadcrumbBarItemAutomationPeer(BreadcrumbParent("通用")!).Invoke());
+            await Check("deep-link-breadcrumb-opens-parent", () => AtPage("basic", "通用", "basic") && Frame.BackStackDepth == homeDepth + 1 &&
+                Equals(Frame.BackStack.LastOrDefault()?.Parameter, "home") && Find<Button>(Page, "Category_schedule") is { } row && ContainsFocus(row), 4000);
+            await Act("back-from-deep-link-parent", () => Frame.GoBack());
+            await Check("deep-link-back-skips-child", () => AtPage("home", "主页", "home") && Frame.BackStackDepth == homeDepth, 4000);
+        }
+
+        private bool AtPage(string route, string title, string parent)
+        {
+            if (Settings.CurrentPageKey != route || Navigation.SelectedItem is not NavigationViewItem selected || !Equals(selected.Tag, parent) ||
+                Find<ScrollViewer>(Page, "Page_" + route) is not { } body || !Shown(body)) return false;
+            if (route == parent) return Find<TextBlock>(body, "SettingsPageTitle") is { } heading && Shown(heading) && heading.Text == title;
+            return Find<BreadcrumbBar>(body, "SettingsBreadcrumb") is { } path && Shown(path) && path.ItemsSource is System.Collections.IEnumerable parts &&
+                parts.Cast<object>().Select(x => x.ToString()).SequenceEqual(new[] { selected.Content?.ToString(), title });
+        }
+
+        private static bool ContainsFocus(FrameworkElement root) => Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(root.XamlRoot) is DependencyObject focused &&
+            Tree(root).Any(node => ReferenceEquals(node, focused));
+
+        private BreadcrumbBarItem? BreadcrumbParent(string title) => Find<BreadcrumbBar>(Page, "SettingsBreadcrumb") is { } path
+            ? Tree(path).OfType<BreadcrumbBarItem>().FirstOrDefault(item => Shown(item) && (Equals(item.Content, title) ||
+                Tree(item).OfType<TextBlock>().Any(label => label.Text == title && Shown(label)))) : null;
+
+        private bool SwitchShows(string id, bool on)
+        {
+            if (Find<ToggleSwitch>(Page, id) is not { IsEnabled: true } toggle || !Shown(toggle) || toggle.IsOn != on ||
+                !Equals(toggle.OnContent, "") || !Equals(toggle.OffContent, "") ||
+                Find<TextBlock>(Page, id + "_State") is not { } label || !Shown(label) || label.Text != (on ? "开" : "关") ||
+                VisualTreeHelper.GetParent(toggle) is not StackPanel { Orientation: Orientation.Horizontal } group ||
+                !ReferenceEquals(VisualTreeHelper.GetParent(label), group)) return false;
+            var left = label.TransformToVisual(group).TransformPoint(new Windows.Foundation.Point()).X;
+            var right = toggle.TransformToVisual(group).TransformPoint(new Windows.Foundation.Point()).X;
+            return left + label.ActualWidth <= right + 1;
+        }
+
+        private async Task VerifyCategoryNavigation()
+        {
+            (string Key, string Title, (string Key, string Title)[] Details)[] categories =
+            [
+                ("basic", "通用", [("startup", "启动与托盘"), ("schedule", "课表与档案"), ("runtime", "运行与恢复")]),
+                ("widgets", "组件与主界面", [("widget-layout", "组件布局"), ("appearance", "外观与主题"), ("window", "窗口行为")]),
+                ("notification", "通知服务", [("reminder-rules", "课堂提醒规则"), ("reminder-display", "提醒显示")]),
+                ("nex", "NEX Intelligence与NEX AI", [("nex-assistant", "课堂助手"), ("nex-wake", "唤醒方式")]),
+                ("privacy", "隐私与安全性", [("privacy-storage", "本机数据"), ("privacy-services", "联网与权限")])
+            ];
+            foreach (var (parent, parentTitle, details) in categories)
+            {
+                await Act("open-category-index-" + parent, () => Settings.NavigateTo(parent));
+                await Check("category-list-" + parent, () => AtPage(parent, parentTitle, parent) &&
+                    Find<StackPanel>(Page, "Categories_" + parent) is { } list && list.Children.OfType<Button>().Select(Id).SequenceEqual(details.Select(d => "Category_" + d.Key)) &&
+                    list.Children.OfType<Button>().All(row => Shown(row) && row.IsEnabled && Math.Abs(list.ActualWidth - row.ActualWidth) <= 2) && !Tree(Page).OfType<ToggleSwitch>().Any(), 5000);
+                var depth = await Ui(() => Frame.BackStackDepth);
+                foreach (var (child, childTitle) in details)
+                {
+                    void OpenDetail() => new ButtonAutomationPeer(Need<Button>(Page, "Category_" + child)).Invoke();
+                    await Act("invoke-option-" + child, OpenDetail);
+                    await Check("option-opens-" + child, () => AtPage(child, childTitle, parent) && Frame.BackStackDepth == depth + 1 && BreadcrumbParent(parentTitle) is not null, 5000);
+                    if (child == "startup")
+                    {
+                        var saved = SettingsService.Load();
+                        await Check("general-shows-saved-startup-values", () => SwitchShows("RunAtStartup", saved.RunAtStartup) && SwitchShows("StartupSplash", saved.ShowStartupSplash) && SwitchShows("UrlProtocol", saved.RegisterUrlProtocol), 4000);
+                    }
+                    if (child == "runtime")
+                    {
+                        await Check("native-toggle-switch", () => SwitchShows("TeachingSafeMode", false), 4000);
+                        await Act("switch-native-on", () => new ToggleSwitchAutomationPeer(Need<ToggleSwitch>(Page, "TeachingSafeMode")).Toggle());
+                        await Check("toggle-persisted", () => SwitchShows("TeachingSafeMode", true) && AppServices.Settings.TeachingSafeMode && SettingsService.Load().TeachingSafeMode, 3000);
+                    }
+                    await Act("invoke-parent-crumb-" + child, () => new BreadcrumbBarItemAutomationPeer(BreadcrumbParent(parentTitle) ?? throw new InvalidOperationException("Missing parent breadcrumb")).Invoke());
+                    await Check("breadcrumb-returns-" + child, () => AtPage(parent, parentTitle, parent) && Frame.BackStackDepth == depth &&
+                        Find<Button>(Page, "Category_" + child) is { } row && ContainsFocus(row), 5000);
+                    if (child != "runtime") continue;
+                    await Act("reopen-runtime-option", OpenDetail);
+                    await Check("switch-state-survives-reentry", () => AtPage(child, childTitle, parent) && SwitchShows("TeachingSafeMode", true), 4000);
+                    await Act("switch-native-off", () => new ToggleSwitchAutomationPeer(Need<ToggleSwitch>(Page, "TeachingSafeMode")).Toggle());
+                    await Check("switch-off-state-and-disk-agree", () => SwitchShows("TeachingSafeMode", false) && !AppServices.Settings.TeachingSafeMode && !SettingsService.Load().TeachingSafeMode, 3000);
+                    await Act("return-from-runtime-recheck", () => Frame.GoBack());
+                    await Check("runtime-recheck-restores-index", () => AtPage(parent, parentTitle, parent) && Frame.BackStackDepth == depth, 4000);
+                }
+            }
+        }
+
+        private async Task VerifyProductVersion()
+        {
+            await Check("exact-desktop-product-version", () => !string.IsNullOrEmpty(_expectedVersion) && AppServices.ProductVersion == _expectedVersion &&
+                ReadStatus(NativeSettingsKeys.Version) == _expectedVersion && new AppServicesAiContext(() => AppServices.Settings, AppServices.Schedule, AppServices.Time, SettingsService.DataDirectory).Version == _expectedVersion &&
+                FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, "ClassNex.exe")).ProductVersion == _expectedVersion &&
+                FileVersionInfo.GetVersionInfo(typeof(AppServices).Assembly.Location).ProductVersion == _expectedVersion);
+            await Act("open-about-version", () => Settings.NavigateTo("about"));
+            await Check("about-shows-exact-product-version", () => Find<Button>(Page, "Version") is { } version && Shown(version) && Equals(version.Content, _expectedVersion), 5000);
+            await Act("open-update-from-about", () => new ButtonAutomationPeer(Need<Button>(Page, "AboutUpdate")).Invoke());
+            await Check("update-shows-exact-product-version", () => Settings.CurrentPageKey == "update" && Find<TextBlock>(Page, "InstalledVersion") is { } value && value.Text == _expectedVersion && Shown(value), 4000);
         }
 
         private async Task InvokeMeasuredHomeEntry()
@@ -269,12 +353,12 @@ internal sealed partial class NativeDesktop
             var track = await Ui(() => Element<Avalonia.Controls.Panel>("NotificationTrack"));
             var island = await Ui(() => Element<Avalonia.Controls.Border>("IslandBackground"));
             await Check("managed-timetable-rendered", () => overlay.IsVisible && host.ReadOverlay().Today.Current?.Subject == CourseName && island.Bounds.Width > 0, 5000);
-            await Act("open-notification-settings", () => Settings.NavigateTo("notification"));
+            await Act("open-notification-settings", () => Settings.NavigateTo("reminder-rules"));
             await Check("reminders-initially-collapsed", () => Tree(Page).OfType<Expander>().Count() >= 3 && Tree(Page).OfType<Expander>().All(x => !x.IsExpanded), 3500);
             await Act("expand-details-only", () => Tree(Page).OfType<Expander>().First().IsExpanded = true);
             await Act("refresh-reminder-settings", Settings.RefreshSettings);
             await Check("refresh-preserves-disclosure", () => Tree(Page).OfType<Expander>().First().IsExpanded && !AppServices.Settings.Notification.IsClassOnPreparingNotificationEnabled);
-            await Act("reenter-notifications", () => { Settings.NavigateTo("home"); Settings.NavigateTo("notification"); });
+            await Act("reenter-notifications", () => { Settings.NavigateTo("home"); Settings.NavigateTo("reminder-rules"); });
             await Check("reentry-collapses-details", () => Tree(Page).OfType<Expander>().Count() >= 3 && Tree(Page).OfType<Expander>().All(x => !x.IsExpanded), 3000);
             await Act("schedule-enabled-reminder", () =>
             {
@@ -386,6 +470,8 @@ internal sealed partial class NativeDesktop
             nint editorHwnd = 0;
             try
             {
+                await Check("profile-editor-exact-product-version", () =>
+                    Avalonia.Controls.ControlExtensions.FindControl<Avalonia.Controls.TextBlock>(editor, "ProfileVersionText") is { IsEffectivelyVisible: true } version && version.Text == _expectedVersion, 4000);
                 await Check("bridge-profile-editor-shares-visible-sta", () =>
                 {
                     editorHwnd = editor.TryGetPlatformHandle()?.Handle ?? 0;

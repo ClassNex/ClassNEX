@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -50,10 +49,7 @@ public partial class ProfileEditorWindow : AppWindow
     public ProfileEditorWindow()
     {
         InitializeComponent();
-        ProfileVersionText.Text = typeof(ProfileEditorWindow).Assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
-            ?? typeof(ProfileEditorWindow).Assembly.GetName().Version?.ToString()
-            ?? "";
+        ProfileVersionText.Text = AppServices.ProductVersion;
         BackButton.IsVisible = false;
 
         

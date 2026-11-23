@@ -39,7 +39,7 @@ public sealed partial class NativeOverlayWindow
         if (_widgetViews.Count == 0)
         {
             var hint = Label(14);
-            hint.Text = "未启用组件 · 前往组件设置";
+            hint.Text = "未启用组件 · 打开组件布局";
             var chip = Chip(hint);
             chip.Tapped += (_, _) => GestureCommand("widgets");
             _widgets.Children.Add(chip);

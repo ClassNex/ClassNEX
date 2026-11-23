@@ -12,17 +12,14 @@ if ($LASTEXITCODE -ne 0 -or $alpha -ne '60d7b575b1b866a0bc388c9b80986c546950a2c7
 git -C $repo merge-base --is-ancestor $alpha $sha
 if ($LASTEXITCODE -ne 0) { throw 'The candidate does not descend from the specified Alpha.' }
 
-$version = '26w46d-Refactor'
 $output = Join-Path $repo 'build'
 [void][IO.Directory]::CreateDirectory($output)
 $run = (New-Item -ItemType Directory -Path (Join-Path $output ("portable-{0}-{1}" -f $sha.Substring(0, 8), [Guid]::NewGuid().ToString('N').Substring(0, 8)))).FullName
 $sourceZip = Join-Path $run 'source.zip'
 $source = Join-Path $run 'source'
 $package = Join-Path $run 'package'
-$payload = Join-Path $package "app-$version-0"
 $launcher = Join-Path $run 'launcher'
 $pending = Join-Path $run 'unverified.zip'
-$zip = Join-Path $run "ClassNEX-$version-Alpha-win-x64.zip"
 
 $inputs = @('src', 'LICENSE', 'tools/make_files_json.py')
 $top = @(git -C $repo ls-tree --name-only $sha)
@@ -35,7 +32,11 @@ if ($LASTEXITCODE -ne 0) { throw 'Could not export the exact source commit.' }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 [IO.Compression.ZipFile]::ExtractToDirectory($sourceZip, $source)
 
-$common = @('-c', 'Release', '-r', 'win-x64', '--self-contained', 'true', '-p:DebugType=none', '-p:DebugSymbols=false', "-p:InformationalVersion=$version", "-p:SourceRevisionId=$sha")
+$version = dotnet msbuild (Join-Path $source 'src/ClassNex/ClassNex.csproj') -nologo -getProperty:InformationalVersion
+if ($LASTEXITCODE -ne 0 -or $version -isnot [string] -or $version -cnotmatch '^[A-Za-z0-9][A-Za-z0-9.-]*$') { throw 'The exported desktop project did not supply a valid product version.' }
+$payload = Join-Path $package "app-$version-0"
+$zip = Join-Path $run "ClassNEX-$version-Alpha-win-x64.zip"
+$common = @('-c', 'Release', '-r', 'win-x64', '--self-contained', 'true', '-p:DebugType=none', '-p:DebugSymbols=false', "-p:SourceRevisionId=$sha")
 if ($RestoreSource) { $common += "-p:RestoreSources=$RestoreSource" }
 Push-Location -LiteralPath $source
 try {
@@ -59,6 +60,7 @@ foreach ($notice in @('HarmonyOS-Sans-LICENSE.txt', 'lucide-LICENSE.txt')) {
 $buildInfo = [ordered]@{ kind = 'refactor-candidate'; sourceCommit = $sha; baseCommit = $alpha } | ConvertTo-Json -Compress
 [IO.File]::WriteAllText((Join-Path $payload 'BuildInfo.json'), $buildInfo, [Text.UTF8Encoding]::new($false))
 Copy-Item -LiteralPath (Join-Path $launcher 'ClassNex.exe') -Destination (Join-Path $package 'ClassNex.exe')
+& (Join-Path $PSScriptRoot 'verify_desktop_version.ps1') -ExpectedVersion $version -DesktopDirectory $payload -Launcher (Join-Path $package 'ClassNex.exe')
 [IO.File]::WriteAllBytes((Join-Path $package 'PackageType'), [Text.Encoding]::ASCII.GetBytes('folder'))
 py -3 -B (Join-Path $source 'tools\make_files_json.py') $package $version 0
 if ($LASTEXITCODE -ne 0) { throw 'Cannot generate the portable update manifest.' }

@@ -8,6 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\ClassNex.Core\ClassNex.Core.csproj" />
+    <Compile Include="..\..\src\ClassNex.WinUI\DesktopRelease.cs" Link="DesktopRelease.cs" />
     <PackageReference Include="MSTest" Version="4.0.2" />
   </ItemGroup>
 </Project>
