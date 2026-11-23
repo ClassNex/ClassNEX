@@ -40,3 +40,4 @@ ClassNEX，ClassIsland 风格的桌面课表应用。Windows 客户端使用 .NE
 本次内容：`src/ClassNex.WinUI` 将五个设置分类拆为可整行点击的导航卡和十二个详情页，保留搜索、返回焦点、设置保存及共用的右对齐开关；桌面课表外观不变。`src/ClassNex/Services/WindowsTrayIcon.cs` 统一通知区单击、长按、右键和键盘菜单；保留显隐命令，忽略旧动作偏好，首次向导只显示继续和退出。产品版本从 `src/DesktopVersion.props` 读取，为 `26w48a`。
 验证：客户端 Debug 完整重建及 Release 构建均 0 警告 / 0 错误；41 项单测、84 项原生设置交互、91 项托盘检查、380 项实窗回归及账户 / 集控回环联测通过。截图、布局量测与复测命令见 `docs/26w48a-settings.md`。此前验收分别见 `docs/mainline-desktop-acceptance.md` 和 `docs/26.0-acceptance.md`。均不以真实账户、系统注册项或生产服务器跑夹具。
 发布：Windows x64 预览包由 `Build and Release` 从 `26w48a_Alpha` 构建；本次面向用户的变更见 `RELEASE_NOTES.md`。实体触摸屏、跨显示器混合 DPI 与生产身份提供商仍需现场验证，不据此标为稳定版。
+发布恢复：`26w48a_Alpha` 固定于 `ffd24fa`。首次校验把 SDK 实际的 `Microsoft.ui.xaml.dll` 误报为缺失，见 `tools/verify_portable.py`。没有发布的既存 Alpha 标签可以从 main 手动派发 `.github/workflows/build-release.yml` 恢复；只更新校验工具，不移动标签、不覆盖已有 Release。

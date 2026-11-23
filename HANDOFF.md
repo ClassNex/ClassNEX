@@ -2,6 +2,7 @@
 
 > 最后更新：2026-11-23　｜　客户端产品版本 **26w48a**　｜　本次预发布标签 **26w48a_Alpha**，上一版 **26w46d_Alpha**。
 > 上线以 GitHub Release 中实际出现 Windows ZIP 为准；推送版本标签只会启动构建。`26w46d_Alpha` 及以前的发布保留。
+> 恢复未发布的现有标签：`gh workflow run build-release.yml --ref main -f release_tag=26w48a_Alpha`。工作流从原标签编译并取发布说明，只在压缩之后读取派发提交中的 ZIP 校验器；不填标签只构建。已有发布不会被覆盖。
 > 这份文档的目的：**第二天打开新会话，照着它就能无缝继续写。**
 
 ---

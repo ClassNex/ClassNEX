@@ -116,32 +116,37 @@ def inspect(path, release_version=None):
             with archive.open(name) as stream:
                 digest = hashlib.file_digest(stream, "sha512").digest()
             require(base64.b64encode(digest).decode("ascii") == record["FileSha512"], f"SHA512 mismatch: {name}")
-        required = {"ClassNex.exe", "ClassNex.dll", "ClassNex.Core.dll", "ClassNex.Plugin.dll", "ClassNex.Notification.Service.dll",
+        # All expected payload names are ASCII. Compare their casing as on Windows, not Unicode lookalikes.
+        app_paths = {name.lower(): f"{payload}/{name}" for name in app["Files"] if name.isascii()}
+        required = {"ClassNex.exe", "ClassNex.dll", "ClassNex.runtimeconfig.json", "ClassNex.Core.dll", "ClassNex.Plugin.dll", "ClassNex.Notification.Service.dll",
                     "ClassNex.AI.dll", "Avalonia.dll", "AvaloniaFluentUI.dll", "coreclr.dll", "hostfxr.dll", "hostpolicy.dll", "System.Private.CoreLib.dll",
                     "ClassNex.WinUI.dll", "ClassNex.pri", "Licenses/ClassNex.txt", "Licenses/lucide-LICENSE.txt", "Licenses/HarmonyOS-Sans-LICENSE.txt"}
         if release_version is not None:
             required.update({"Licenses/Fluent-LICENSE.txt", "Microsoft.UI.Xaml.dll", "Assets/icon.ico", "Assets/Fonts/HarmonyOS_Sans_SC_Regular.ttf"})
-        require(required <= app["Files"].keys(), "Incomplete self-contained desktop payload: " + str(sorted(required - app["Files"].keys())))
-        require(not {"ClassNex.Notification.dll", "ClassNex.Plugins.dll", "ClassNex.Central.dll"} & app["Files"].keys(), "Obsolete or server-only assembly in desktop payload")
-        runtime = json.loads(archive.read(f"{payload}/ClassNex.runtimeconfig.json"))["runtimeOptions"]
+        else:
+            required.add("BuildInfo.json")
+        missing = sorted(name for name in required if name.lower() not in app_paths)
+        require(not missing, f"Incomplete self-contained desktop payload: {missing}")
+        require(app_paths.keys().isdisjoint({"classnex.notification.dll", "classnex.plugins.dll", "classnex.central.dll"}), "Obsolete or server-only assembly in desktop payload")
+        runtime = json.loads(archive.read(app_paths["classnex.runtimeconfig.json"]))["runtimeOptions"]
         frameworks = {i["name"]: i["version"] for i in runtime.get("includedFrameworks", [])}
         require("Microsoft.NETCore.App" in frameworks and "frameworks" not in runtime and "framework" not in runtime, "Runtime is not self-contained")
         provenance = {}
         if release_version is None:
-            build = json.loads(archive.read(f"{payload}/BuildInfo.json"))
+            build = json.loads(archive.read(app_paths["buildinfo.json"]))
             require(build["kind"] == "refactor-candidate" and re.fullmatch(r"[0-9a-f]{40}", build["sourceCommit"]) and
                     build["baseCommit"] == "60d7b575b1b866a0bc388c9b80986c546950a2c7", "Invalid candidate provenance")
             provenance = {"sourceCommit": build["sourceCommit"], "baseCommit": build["baseCommit"]}
         else:
-            require("BuildInfo.json" not in app["Files"], "Release contains candidate provenance")
+            require("buildinfo.json" not in app_paths, "Release contains candidate provenance")
             repo = Path(__file__).resolve().parents[1]
             assets = repo / "src/ClassNex/Assets"
             licenses = {"ClassNex.txt": repo / "LICENSE", "lucide-LICENSE.txt": assets / "Fonts/lucide-LICENSE.txt",
                         "HarmonyOS-Sans-LICENSE.txt": assets / "Fonts/HarmonyOS-Sans-LICENSE.txt", "Fluent-LICENSE.txt": assets / "SettingsIcons/Fluent-LICENSE.txt"}
             for name, source in licenses.items():
-                actual = archive.read(f"{payload}/Licenses/{name}")
+                actual = archive.read(app_paths[f"licenses/{name.lower()}"])
                 require(actual and actual.replace(b"\r\n", b"\n") == source.read_bytes().replace(b"\r\n", b"\n"), f"Wrong license: {name}")
-        executables = {name: verify_executable(archive.read(name), release_version) for name in ("ClassNex.exe", f"{payload}/ClassNex.exe")}
+        executables = {name: verify_executable(archive.read(name), release_version) for name in ("ClassNex.exe", app_paths["classnex.exe"])}
         payload_bytes = sum(archive.getinfo(name).file_size for name in mapped if name.startswith(payload + "/"))
     with path.open("rb") as stream:
         archive_hash = hashlib.file_digest(stream, "sha512").hexdigest()

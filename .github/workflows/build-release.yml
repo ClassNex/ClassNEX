@@ -5,9 +5,15 @@ on:
     tags:
       - '26w*'
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Recover an unpublished Alpha tag from main; leave empty for a build only'
+        type: string
+        required: false
+        default: ''
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   GIT_AUTHOR_NAME: LingOfficial
@@ -18,11 +24,39 @@ env:
 jobs:
   build:
     runs-on: windows-latest
+    outputs:
+      release_tag: ${{ steps.source.outputs.release_tag }}
+      source_sha: ${{ steps.source.outputs.source_sha }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Select release source
+        id: source
+        shell: pwsh
+        env:
+          REQUESTED_TAG: ${{ inputs.release_tag }}
+        run: |
+          $tag = ''
+          if ($env:GITHUB_EVENT_NAME -eq 'push' -and $env:GITHUB_REF_TYPE -eq 'tag') {
+            $tag = $env:GITHUB_REF_NAME
+          } elseif ($env:REQUESTED_TAG) {
+            if ($env:GITHUB_EVENT_NAME -ne 'workflow_dispatch' -or $env:GITHUB_REF -cne 'refs/heads/main' -or $env:REQUESTED_TAG -cnotmatch '\A26w[0-9]{2}[a-z]_Alpha\z') { throw 'Recovery requires an existing Alpha tag and a dispatch from main.' }
+            $tag = $env:REQUESTED_TAG
+            $commit = git rev-parse --verify "refs/tags/${tag}^{commit}"
+            if ($LASTEXITCODE -ne 0 -or !$commit) { throw "Tag not found: $tag" }
+            git merge-base --is-ancestor $commit $env:GITHUB_SHA
+            if ($LASTEXITCODE -ne 0) { throw "Tag is not on main: $tag" }
+            git switch --detach $commit
+            if ($LASTEXITCODE -ne 0) { throw "Cannot check out $commit" }
+          }
+          $source = git rev-parse --verify HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot identify build source.' }
+          "release_tag=$tag" >> $env:GITHUB_OUTPUT
+          "source_sha=$source" >> $env:GITHUB_OUTPUT
+          Write-Host "Building $source (release tag: $tag)"
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -31,13 +65,13 @@ jobs:
 
       - name: Publish
         shell: pwsh
+        env:
+          RELEASE_TAG: ${{ steps.source.outputs.release_tag }}
         run: |
-          $ver = if ($env:GITHUB_REF_TYPE -eq 'tag') {
-            $env:GITHUB_REF_NAME -replace '_.*$', ''
-          } else {
-            dotnet msbuild src\ClassNex\ClassNex.csproj -nologo -getProperty:ClassNexDesktopVersion
-          }
+          $ver = dotnet msbuild src\ClassNex\ClassNex.csproj -nologo -getProperty:ClassNexDesktopVersion
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ($ver -isnot [string] -or $ver -cnotmatch '^[A-Za-z0-9][A-Za-z0-9.-]*$') { throw 'Invalid desktop version.' }
+          if ($env:RELEASE_TAG -and $ver -cne ($env:RELEASE_TAG -replace '_.*$', '')) { throw "Desktop version $ver does not match tag $env:RELEASE_TAG" }
           "DESKTOP_VERSION=$ver" >> $env:GITHUB_ENV
           dotnet publish src\ClassNex\ClassNex.csproj -c Release -r win-x64 --self-contained true -p:DebugType=none "-p:ClassNexDesktopVersion=$ver" -o build\release\app-$ver-0
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -73,28 +107,33 @@ jobs:
 
       - name: Verify portable release ZIP
         shell: pwsh
-        run: python tools/verify_portable.py "$env:ZIP_PATH" --release-version "$env:DESKTOP_VERSION"
+        env:
+          REQUESTED_TAG: ${{ inputs.release_tag }}
+        run: |
+          if ($env:REQUESTED_TAG) {
+            git restore --source=$env:GITHUB_SHA --worktree -- tools/verify_portable.py
+            if ($LASTEXITCODE -ne 0) { throw 'Cannot load the release verifier from main.' }
+          }
+          python tools/verify_portable.py "$env:ZIP_PATH" --release-version "$env:DESKTOP_VERSION"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: release-zip
           path: ${{ env.ZIP_PATH }}
+          if-no-files-found: error
 
   release:
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/26w')
+    if: needs.build.outputs.release_tag != ''
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GH_PAT || github.token }}
-
-      - name: Configure git
-        run: |
-          git config user.name "LingOfficial"
-          git config user.email "203777411+LingOfficial@users.noreply.github.com"
+          ref: ${{ needs.build.outputs.source_sha }}
 
       - name: Download artifact
         uses: actions/download-artifact@v4
@@ -105,13 +144,15 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GH_PAT || github.token }}
+          RELEASE_TAG: ${{ needs.build.outputs.release_tag }}
+          SOURCE_SHA: ${{ needs.build.outputs.source_sha }}
         run: |
-          VER="${GITHUB_REF_NAME%%_*}"
+          git fetch --no-tags --depth=1 origin "refs/tags/$RELEASE_TAG"
+          test "$(git rev-parse --verify 'FETCH_HEAD^{commit}')" = "$SOURCE_SHA" || { echo 'Release tag no longer points to the built commit.'; exit 1; }
+          VER="${RELEASE_TAG%%_*}"
           ASSET="ClassNEX-${VER}-Alpha-win-x64.zip"
-          cp RELEASE_NOTES.md /tmp/notes.md
-          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release edit "$GITHUB_REF_NAME" --title "ClassNEX $GITHUB_REF_NAME" --notes-file /tmp/notes.md --prerelease --repo "$GITHUB_REPOSITORY"
-          else
-            gh release create "$GITHUB_REF_NAME" --title "ClassNEX $GITHUB_REF_NAME" --notes-file /tmp/notes.md --prerelease --repo "$GITHUB_REPOSITORY"
+          test -s "$ASSET"
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; it will not be changed."; exit 1
           fi
-          gh release upload "$GITHUB_REF_NAME" "$ASSET" --clobber --repo "$GITHUB_REPOSITORY"
+          gh release create "$RELEASE_TAG" "$ASSET" --verify-tag --title "ClassNEX $RELEASE_TAG" --notes-file RELEASE_NOTES.md --prerelease --repo "$GITHUB_REPOSITORY"
