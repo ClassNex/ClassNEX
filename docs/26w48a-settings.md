@@ -40,3 +40,9 @@ py -3 -B tools/test_central_oauth.py --desktop src/ClassNex/ClassNex.csproj
 ```
 
 实窗只使用匿名档案。托盘验收向已向 Explorer 注册的本程序窗口投递通知区回调，观察真实菜单、焦点和课表可见性；这不是物理触摸屏按压测试。设置使用 Windows 当前显示比例；等效客户区测试不代替另一台物理高 DPI 显示器。
+
+## 公开发行包核验
+
+2026-11-23，[Actions 45093411428](https://github.com/ClassNex/ClassNEX/actions/runs/45093411428) 从标签 `26w48a_Alpha`（`ffd24fa`）编译并发布；[预发布页](https://github.com/ClassNex/ClassNEX/releases/tag/26w48a_Alpha) 的正文与标签中的 `RELEASE_NOTES.md` 一致。
+
+从公开下载地址取回 `ClassNEX-26w48a-Alpha-win-x64.zip`：137,147,396 字节，SHA-256 `f645da272b326571ede50eee73ca7d2e3a285c01852c5f21ccc99737442d7925`，与 GitHub 附件摘要一致。包内 546 个载荷文件及根启动器全部通过 `files.json` 的 SHA-512 校验；两个 EXE 均为 `26w48a`、Windows x64 GUI、含图标且使用 `asInvoker`。包内没有用户数据或测试课表。
