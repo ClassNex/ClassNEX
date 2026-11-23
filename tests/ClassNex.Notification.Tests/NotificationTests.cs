@@ -183,6 +183,42 @@ public sealed partial class NotificationTests
     }
 
     [TestMethod]
+    public void ActualPreparationInterruptsAnImportantPreviewAndRejectsFurtherPreviews()
+    {
+        using var f = new Fixture(new Clock(7, 56, 58));
+        f.Lesson("美术", "美", "08:00", "08:45");
+        f.Service.Start();
+        f.Service.DebugTriggerClassOn();
+        f.Clock.Advance(2);
+        f.Service.DebugTriggerAfterSchool();
+        f.Clock.Advance(3);
+        CollectionAssert.AreEqual(new[] { "上课", "即将上课" }, f.Screen.Masks);
+        Assert.AreEqual(1, f.Screen.Hides);
+        Assert.AreEqual("距上课还剩 177 秒", f.Screen.Overlays.Single().Caption);
+        f.Clock.Advance(182);
+        CollectionAssert.AreEqual(new[] { "上课", "即将上课", "上课" }, f.Screen.Masks);
+    }
+
+    [TestMethod]
+    public void ManualPreviewCanReplaceAnotherPreviewButCannotDisplaceAnyPublisherOrItsQueue()
+    {
+        using var f = new Fixture();
+        f.Service.Start();
+        f.Service.DebugTriggerAfterSchool();
+        f.Service.DebugTriggerTestNotification();
+        Assert.IsTrue(f.Service.Publish(f.Request("preview/插件的正式提醒", priority: NotificationPriority.Low)));
+        Assert.IsTrue(f.Service.Publish(f.Request("下一条正式提醒", priority: NotificationPriority.Low)));
+        f.Service.DebugTriggerClassOn();
+        Assert.AreEqual(2, f.Screen.Hides);
+        f.Clock.Advance(3);
+        f.Service.DebugTriggerClassOff();
+        f.Clock.Advance(5);
+        CollectionAssert.AreEqual(new[] { "放学", "测试提醒", "preview/插件的正式提醒", "下一条正式提醒" }, f.Screen.Masks);
+        f.Service.DebugTriggerClassOn();
+        Assert.AreEqual("上课", f.Screen.Masks.Last());
+    }
+
+    [TestMethod]
     [DataRow(20, 0, 2400, 23)]
     [DataRow(59, 45, 15, 15)]
     public void PreparingPreviewEndsWithinOneCycleButShowsActualTimeToClass(int minute, int second, int timeToClass, int previewLength)
@@ -266,6 +302,7 @@ public sealed partial class NotificationTests
         f.Lesson("历史与社会", "史", "09:00", "09:45");
         f.Service.Start();
         f.Clock.Advance(1);
+        Assert.AreEqual("眼保健操", f.Screen.Masks.Single());
         Assert.AreEqual(TimeSpan.FromSeconds(22), f.Screen.Lifetimes.Single());
         f.Clock.Advance(2);
         var detail = f.Screen.Overlays.Single();
@@ -278,6 +315,25 @@ public sealed partial class NotificationTests
         Assert.AreEqual(0, f.Screen.Hides);
         f.Clock.Advance(1);
         Assert.AreEqual(1, f.Screen.Hides);
+    }
+
+    [TestMethod]
+    [DataRow("课间休息", "大课间", "大课间")]
+    [DataRow("下课铃响了", "大课间", "下课铃响了")]
+    [DataRow("", "  ", "课间休息")]
+    [DataRow("课间休息", "课间", "课间休息")]
+    public void BreakPreviewUsesTheRealIntervalAndPreservesAnExplicitTitle(string configured, string name, string expected)
+    {
+        using var f = new Fixture(new Clock(8, 15));
+        f.Settings.Notification.ClassOffMaskText = configured;
+        f.Settings.TimeLayout.Times.Add(new() { Kind = ClassTimeKind.Break, Name = name, Start = "08:45", End = "08:55" });
+        f.Lesson("语文", "语", "08:00", "08:45");
+        f.Lesson("数学", "数", "09:00", "09:45");
+        f.Service.Start();
+        f.Service.DebugTriggerClassOff();
+        Assert.AreEqual(expected, f.Screen.Masks.Single());
+        f.Clock.Advance(2);
+        Assert.AreEqual($"{(string.IsNullOrWhiteSpace(name) ? "课间" : name)} 10 分钟", f.Screen.Overlays.Single().Caption);
     }
 
     [TestMethod]

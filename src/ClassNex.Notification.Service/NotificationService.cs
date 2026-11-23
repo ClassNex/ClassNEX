@@ -16,7 +16,7 @@ public sealed class NotificationService : INotificationService, INotificationPub
     private readonly ClassroomReminders _classroom = new();
     private ITimer? _timer;
     private bool _running, _disposed, _hasOverlay;
-    private NotificationRequest? _active;
+    private NotificationRequest? _active, _preview;
     private DateTimeOffset _overlayAt, _end, _nextScheduleCheck;
     private int _lastSeconds = -1;
 
@@ -112,7 +112,7 @@ public sealed class NotificationService : INotificationService, INotificationPub
             if (_seen.Count >= 256) _seen.Remove(_seen.MinBy(item => item.Value).Key);
         }
         _seen[request.Id] = request.ExpiresAt;
-        if (_active is not null && _active.Priority < request.Priority) Finish();
+        if (_active is not null && (ReferenceEquals(_active, _preview) || _active.Priority < request.Priority)) Finish();
         return true;
     }
 
@@ -144,8 +144,11 @@ public sealed class NotificationService : INotificationService, INotificationPub
                 if (now >= _nextScheduleCheck)
                 {
                     var day = _time.GetTodaySummary(_schedule.Profile, now.DateTime);
-                    _classroom.Evaluate(day, settings, now, request => Enqueue(request, now));
+                    var dismissal = day.Next is null && settings.Notification.IsAfterSchoolNotificationEnabled
+                        ? ClassroomReminders.DismissalTime(day, settings.TimeLayout) : null;
+                    _classroom.Evaluate(day, settings, now, dismissal, request => Enqueue(request, now));
                     _nextScheduleCheck = now.AddSeconds(30);
+                    if (dismissal is { } end) CheckAt(now, end - now.TimeOfDay);
                     if (day.Current is { } current) CheckAt(now, current.End - now.TimeOfDay);
                     if (day.Next is { } next)
                     {
@@ -245,6 +248,7 @@ public sealed class NotificationService : INotificationService, INotificationPub
     {
         if (_active is not { } active) return;
         _active = null;
+        _preview = null;
         try { _channels[active.Channel].Hide(); } catch (Exception ex) { Report(active.Channel, ex); }
     }
 
@@ -260,24 +264,39 @@ public sealed class NotificationService : INotificationService, INotificationPub
         lock (_gate)
         {
             if (!_running || !_settings().AllowNotification) return;
-            Finish();
-            Publish(create(_clock.GetLocalNow()));
+            Tick();
+            if (_active is not null && !ReferenceEquals(_active, _preview)) return;
+            var now = _clock.GetLocalNow();
+            var request = create(now);
+            if (!Enqueue(request, now)) return;
+            _preview = request;
+            Dispatch(now);
+            ArmTimer(now);
         }
     }
 
     public void DebugTriggerClassPreparing() => Preview(now =>
     {
         var day = _time.GetTodaySummary(_schedule.Profile, now.DateTime);
-        var request = ClassroomReminders.Preparing(now, _settings().Notification, day.Next ?? day.Slots.FirstOrDefault() ?? ClassroomReminders.SampleCourse(now),
-            day.Next is { } next ? next.Start - now.TimeOfDay : TimeSpan.FromMinutes(1), PreviewId);
+        if (day.Next is null && !day.IsEmpty)
+        {
+            var duration = TimeSpan.FromSeconds(3);
+            return new(PreviewId, day.IsFinished ? "今天的课程已结束" : "当前是今天最后一节课", now + duration, duration, duration, NotificationPriority.Low);
+        }
+        var next = day.Next ?? ClassroomReminders.SampleCourse(now);
+        var request = ClassroomReminders.Preparing(now, _settings().Notification, next, next.Start - now.TimeOfDay, PreviewId);
         var limit = TimeSpan.FromSeconds(23);
         return request.Duration <= limit ? request : request with { Duration = limit, ExpiresAt = now + limit };
     });
 
     public void DebugTriggerClassOn() => Preview(now => ClassroomReminders.ClassOn(now, _settings().Notification, PreviewId));
 
-    public void DebugTriggerClassOff() => Preview(now => ClassroomReminders.ClassOff(now, _settings().Notification,
-        _time.GetTodaySummary(_schedule.Profile, now.DateTime).Next ?? ClassroomReminders.SampleCourse(now), now.TimeOfDay, PreviewId, _settings().TimeLayout));
+    public void DebugTriggerClassOff() => Preview(now =>
+    {
+        var day = _time.GetTodaySummary(_schedule.Profile, now.DateTime);
+        var start = day.Current?.End ?? day.Slots.LastOrDefault(slot => slot.End <= now.TimeOfDay)?.End ?? now.TimeOfDay;
+        return ClassroomReminders.ClassOff(now, _settings().Notification, day.IsEmpty ? ClassroomReminders.SampleCourse(now) : day.Next, start, PreviewId, _settings().TimeLayout);
+    });
 
     public void DebugTriggerAfterSchool() => Preview(now => ClassroomReminders.AfterSchool(now, _settings().Notification, PreviewId));
 

@@ -31,7 +31,7 @@ public sealed partial class NativeSettingsWindow : Window
         new("appearance", "外观与主题", "\uE790", "主题、透明度、字号和桌面课表缩放。", "widgets"),
         new("window", "窗口行为", "\uE737", "排列方向、窗口置顶、鼠标穿透和移入淡化。", "widgets"),
         new("reminder-rules", "上下课提醒", "\uE823", "课前准备、上课和课间休息。", "notification"),
-        new("reminder-after-school", "放学提醒", "\uE7EE", "当天最后一节课结束时显示放学提示。", "notification"),
+        new("reminder-after-school", "放学提醒", "\uE7EE", "在最后一节课或其后的课间结束时提醒。", "notification"),
         new("reminder-display", "提醒方式", "\uE9E9", "视觉强调、提醒铃声和课程信息。", "notification"),
         new("nex-assistant", "课堂助手", "\uE8BD", "打开对话、设置默认权限和自定义提示词。", "nex"),
         new("nex-wake", "唤醒方式", "\uE720", "语音唤醒、侧边唤醒条和麦克风诊断。", "nex"),

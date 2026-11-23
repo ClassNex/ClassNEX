@@ -9,6 +9,8 @@ namespace ClassNex.WinUI;
 
 public sealed partial class NativeSettingsWindow
 {
+    private const string ReminderPreviewHint = "正式提醒播放期间，请等它结束后再试。新预览会替换上一次预览。";
+
     private void NotificationOverview(Destination page)
     {
         Switch("Notifications", "启用课堂提醒", s => s.AllowNotification, (s, value) => s.AllowNotification = value,
@@ -25,7 +27,7 @@ public sealed partial class NativeSettingsWindow
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         actions.Children.Add(chooser);
         actions.Children.Add(play);
-        Row("在桌面课表中预览", "使用当前设置播放一次，不改变课表或提醒规则。", actions);
+        Row("在桌面课表中预览", ReminderPreviewHint, actions);
         BindPreviewAvailability(play);
     }
 
@@ -65,11 +67,11 @@ public sealed partial class NativeSettingsWindow
     private void AfterSchoolPage()
     {
         Switch("AfterSchoolEnabled", "放学时发出提醒", s => s.Notification.IsAfterSchoolNotificationEnabled, (s, value) => s.Notification.IsAfterSchoolNotificationEnabled = value,
-            "当天最后一节课结束后显示一次。");
+            "最后一节课下课时提醒；如果课后还排了课间，就在课间结束时提醒。");
         Field("AfterSchoolText", "放学提示", s => s.Notification.AfterSchoolText, (s, value) => s.Notification.AfterSchoolText = value, multiline: true)
             .PlaceholderText = NotificationSettings.DefaultAfterSchoolText;
         var button = ActionButton("PreviewAfterSchool", "预览", () => PlayReminderPreview(AfterSchool));
-        Row("预览放学提醒", "在桌面课表中查看这条提示。", button);
+        Row("预览放学提醒", ReminderPreviewHint, button);
         BindPreviewAvailability(button);
     }
 
@@ -104,7 +106,8 @@ public sealed partial class NativeSettingsWindow
         _bindings.Add(settings =>
         {
             button.IsEnabled = settings.AllowNotification && settings.IsMainWindowVisible;
-            var help = !settings.AllowNotification ? "先启用课堂提醒即可预览。" : !settings.IsMainWindowVisible ? "先显示桌面课表即可预览。" : "在桌面课表中播放一次";
+            var help = !settings.AllowNotification ? "请先启用课堂提醒。" : !settings.IsMainWindowVisible ? "请先从托盘显示桌面课表。" :
+                "编辑课表浮窗、显示 NEX 面板或播放正式提醒时，暂时无法预览。";
             AutomationProperties.SetHelpText(button, help);
             ToolTipService.SetToolTip(button, help);
         });

@@ -223,7 +223,7 @@ public sealed class NotificationSettings
     /// <summary>是否在课程结束时提醒。</summary>
     public bool IsClassOffNotificationEnabled { get; set; } = true;
 
-    /// <summary>最后一节课结束时使用独立的放学提醒；旧档案默认沿用普通下课提醒。</summary>
+    /// <summary>在最后一节课或其后的课间结束时发出放学提醒。旧档案默认沿用普通下课提醒。</summary>
     public bool IsAfterSchoolNotificationEnabled { get; set; }
 
     /// <summary>是否播放短提示音，不包含语音播报。</summary>

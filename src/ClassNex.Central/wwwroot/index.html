@@ -493,7 +493,7 @@ const settingsGroups=[
       {key:"Notification.IsClassOnNotificationEnabled",label:"上课提醒",description:"正式上课时显示提醒。",kind:"toggle",fallback:true},
       {key:"Notification.IsClassOnPreparingNotificationEnabled",label:"课前准备提醒",description:"上课前显示准备提醒。",kind:"toggle",fallback:true},
       {key:"Notification.IsClassOffNotificationEnabled",label:"下课提醒",description:"下课时显示休息信息。",kind:"toggle",fallback:true},
-      {key:"Notification.IsAfterSchoolNotificationEnabled",label:"放学提醒",description:"最后一节课结束时用放学提醒代替普通下课提醒。",kind:"toggle",fallback:false},
+      {key:"Notification.IsAfterSchoolNotificationEnabled",label:"放学提醒",description:"最后一节课下课时提醒；如果课后还排了课间，就在课间结束时提醒。",kind:"toggle",fallback:false},
       {key:"Notification.ClassOnBreakReminderMinutes",label:"室内课前提前量",description:"距离下节室内课多少分钟时提醒。",kind:"range",min:1,max:60,step:1,fallback:3,format:value=>value+" 分钟"},
       {key:"Notification.OutDoorClassPreparingDeltaTime",label:"室外课前提前量",description:"距离下节室外课多少秒时提醒。",kind:"range",min:0,max:3600,step:1,fallback:600,format:value=>value+" 秒"},
       {key:"Notification.ClassOnPreparingMaskText",label:"课前遮罩标题",description:"课前准备遮罩上的标题。",kind:"text",fallback:"即将上课"},
