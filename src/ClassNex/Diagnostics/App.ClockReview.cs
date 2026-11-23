@@ -178,7 +178,9 @@ public partial class App
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(35));
             try { await other.WaitForExitAsync(timeout.Token); }
             finally { if (!other.HasExited) other.Kill(); }
-            var result = await File.ReadAllTextAsync(Path.Combine(fixture, "clock-restart.json"));
+            var resultFile = Path.Combine(fixture, "clock-restart.json");
+            if (!File.Exists(resultFile)) throw new InvalidOperationException($"The isolated clock process exited with code {other.ExitCode} without writing its result: {resultFile}");
+            var result = await File.ReadAllTextAsync(resultFile);
             using var proof = JsonDocument.Parse(result);
             check(other.ExitCode == 0 && proof.RootElement.GetProperty("Passed").GetBoolean(), "Separate client process reopened saved clock, date order and visible island location: " + result);
             window.ResetPlacement(); await Settle();
@@ -210,22 +212,38 @@ public partial class App
         var directory = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, ".."));
         if (!File.Exists(Path.Combine(directory, ".classnex-review"))) return;
         var passed = false;
+        var resultFile = Path.Combine(directory, "clock-restart.json");
         try
         {
+            var ready = Stopwatch.StartNew();
+            while (!await Dispatcher.UIThread.InvokeAsync(() => window.GetIslandScreenRect() is { Width: > 0, Height: > 0 } && window.Bounds.Width > 0))
+            {
+                if (ready.Elapsed > TimeSpan.FromSeconds(5)) throw new TimeoutException("The reopened clock window did not lay out its island.");
+                await Task.Delay(40);
+            }
             await Task.Delay(800);
-            var host = window.FindControl<StackPanel>("WidgetHost")!;
-            var order = AppServices.Settings.Widgets.Where(w => w.IsEnabled).OrderBy(w => w.Order).Select(w => w.Type).ToArray();
-            var time = host.Children.FirstOrDefault() as TextBlock;
-            var date = host.Children.LastOrDefault()?.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault(b => b.Name == "DateValue");
-            var saved = new PixelPoint((int)AppServices.Settings.MainWindowLeft, (int)AppServices.Settings.MainWindowTop);
-            var actual = window.GetIslandScreenRect()!.Value;
-            passed = actual.Position == saved && order.SequenceEqual(["clock", "date"]) && host.Children.Count == 2 && time?.Name == "ClockValue" && ClockContent(time)?.Length == 5 && date?.IsEffectivelyVisible == true;
-            using var frame = new RenderTargetBitmap(PixelSize.FromSize(window.Bounds.Size, window.RenderScaling), new Vector(96, 96) * window.RenderScaling);
-            frame.Render(window);
-            frame.Save(Path.Combine(directory, "clock-restart.png"));
-            await File.WriteAllTextAsync(Path.Combine(directory, "clock-restart.json"), JsonSerializer.Serialize(new { Passed = passed, Order = order, Date = date?.Text, Time = ClockContent(time), ActualLeft = actual.X, ActualTop = actual.Y, SavedLeft = saved.X, SavedTop = saved.Y }));
+            var result = await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                var host = window.FindControl<StackPanel>("WidgetHost")!;
+                var order = AppServices.Settings.Widgets.Where(w => w.IsEnabled).OrderBy(w => w.Order).Select(w => w.Type).ToArray();
+                var time = host.Children.FirstOrDefault() as TextBlock;
+                var date = host.Children.LastOrDefault()?.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault(b => b.Name == "DateValue");
+                var saved = new PixelPoint((int)AppServices.Settings.MainWindowLeft, (int)AppServices.Settings.MainWindowTop);
+                var actual = window.GetIslandScreenRect()!.Value;
+                passed = actual.Position == saved && order.SequenceEqual(["clock", "date"]) && host.Children.Count == 2 && time?.Name == "ClockValue" && ClockContent(time)?.Length == 5 && date?.IsEffectivelyVisible == true;
+                using var frame = new RenderTargetBitmap(PixelSize.FromSize(window.Bounds.Size, window.RenderScaling), new Vector(96, 96) * window.RenderScaling);
+                frame.Render(window);
+                frame.Save(Path.Combine(directory, "clock-restart.png"));
+                return JsonSerializer.Serialize(new { Passed = passed, Order = order, Date = date?.Text, Time = ClockContent(time), ActualLeft = actual.X, ActualTop = actual.Y, SavedLeft = saved.X, SavedTop = saved.Y });
+            });
+            await File.WriteAllTextAsync(resultFile, result);
         }
-        finally { (Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown(passed ? 0 : 1); }
+        catch (Exception ex)
+        {
+            passed = false;
+            await File.WriteAllTextAsync(resultFile, JsonSerializer.Serialize(new { Passed = false, Error = ex.ToString() }));
+        }
+        finally { await Dispatcher.UIThread.InvokeAsync(() => (Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown(passed ? 0 : 1)); }
     }
 
     private static void CheckIslandRegion(MainWindow window, Action<bool, string> check)

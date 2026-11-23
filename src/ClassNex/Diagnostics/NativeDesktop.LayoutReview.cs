@@ -1,4 +1,6 @@
 #if DEBUG
+using System.Diagnostics;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Automation.Peers;
@@ -123,14 +125,62 @@ internal sealed partial class NativeDesktop
                     ReferenceEquals(route, frame.Content) && ReferenceEquals(selected, nav.SelectedItem) && field.Text == url,
                     $"Sidebar {step}, {width} DIP {theme}: frame {f.Left:0.#}–{f.Right:0.#}, page {p.Left:0.#}–{p.Right:0.#}, body {body.Left:0.#}–{body.Right:0.#}, viewport {page.ViewportWidth:0.#}, offset {page.HorizontalOffset:0.#}, card {r.Left:0.#}–{r.Right:0.#}, URL {edit.Left:0.#}–{edit.Right:0.#}, switch ends {on.Right:0.#}, client ends {root.ActualWidth:0.#}");
             }
+            async Task<string?> Observe(Func<Task> exercise)
+            {
+                if (!takeShot || !wide) { await exercise(); return null; }
+
+                var timer = root.DispatcherQueue.CreateTimer();
+                timer.Interval = TimeSpan.FromMilliseconds(16);
+                timer.IsRepeating = true;
+                var gaps = new List<double>();
+                long? previous = null;
+                double? firstTick = null;
+                var pageChanges = 0;
+                var rowChanges = 0;
+                var started = Stopwatch.GetTimestamp();
+                void Tick(DispatcherQueueTimer sender, object args)
+                {
+                    var now = Stopwatch.GetTimestamp();
+                    if (previous is long last) gaps.Add(Stopwatch.GetElapsedTime(last, now).TotalMilliseconds);
+                    else firstTick = Stopwatch.GetElapsedTime(started, now).TotalMilliseconds;
+                    previous = now;
+                }
+                void PageChanged(object sender, SizeChangedEventArgs args) { if (args.PreviousSize.Width != args.NewSize.Width) pageChanges++; }
+                void RowChanged(object sender, SizeChangedEventArgs args) { if (args.PreviousSize.Width != args.NewSize.Width) rowChanges++; }
+                timer.Tick += Tick;
+                page.SizeChanged += PageChanged;
+                row.SizeChanged += RowChanged;
+                try { timer.Start(); await exercise(); }
+                finally
+                {
+                    timer.Stop();
+                    timer.Tick -= Tick;
+                    page.SizeChanged -= PageChanged;
+                    row.SizeChanged -= RowChanged;
+                }
+                gaps.Sort();
+                var count = gaps.Count;
+                var first = firstTick is double delay ? $"first tick {delay:0.#} ms" : "no tick";
+                var timing = count == 0 ? "0 callback intervals (insufficient samples)" :
+                    $"{count} callback intervals, median {(gaps[(count - 1) / 2] + gaps[count / 2]) / 2:0.#} ms, max {gaps[^1]:0.#} ms";
+                return $"{first}, {timing}, width changes: page {pageChanges}, card {rowChanges}";
+            }
             await Verify(wide, "initial");
-            togglePane.Invoke();
-            await Verify(!wide, wide ? "closed manually" : "opened as overlay");
+            var closeTiming = await Observe(async () =>
+            {
+                togglePane.Invoke();
+                await Verify(!wide, wide ? "closed manually" : "opened as overlay");
+            });
             if (takeShot) await Shot($"settings-central-sidebar-collapsed-{width}-{theme}");
             togglePane.Invoke();
             await Verify(wide, "restored");
-            for (var i = 0; i < 5; i++) { togglePane.Invoke(); await Task.Delay(30); }
-            await Verify(!wide, "after five rapid presses");
+            var rapidTiming = await Observe(async () =>
+            {
+                for (var i = 0; i < 5; i++) { togglePane.Invoke(); await Task.Delay(30); }
+                await Verify(!wide, "after five rapid presses");
+            });
+            if (closeTiming != null && rapidTiming != null)
+                check(true, $"Sidebar UI dispatcher (16 ms requested; not compositor FPS), {width} DIP {theme}: single collapse: {closeTiming}; five rapid reversals: {rapidTiming}");
             togglePane.Invoke();
             await Verify(wide, "final");
         }
