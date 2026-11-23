@@ -10,8 +10,8 @@ public sealed partial class NativeSettingsWindow
 {
     private void BuildPane()
     {
-        var header = new StackPanel { Spacing = 8, Margin = new Thickness(6, 2, 6, 10) };
-        var identity = new Grid { ColumnSpacing = 10 };
+        var header = new StackPanel { MinWidth = _navigation.CompactPaneLength - 12, Spacing = 8, Margin = new Thickness(6, 2, 6, 10) };
+        var identity = new Grid();
         identity.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         identity.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
         foreach (var label in new[] { _identityName, _identityEmail })
@@ -26,6 +26,8 @@ public sealed partial class NativeSettingsWindow
         _identityButton.Content = identity;
         _identityButton.Style = ButtonStyle("SubtleButtonStyle");
         _identityButton.HorizontalAlignment = _identityButton.HorizontalContentAlignment = HorizontalAlignment.Stretch;
+        _identityButton.MinHeight = 46;
+        _identityButton.Padding = new Thickness(2, 4, 2, 4);
         _identityButton.Click += (_, _) => NavigateTo("account");
         Identify(_identityName, "SidebarAccountName", "ClassNEX 账户名称");
         Identify(_identityEmail, "SidebarAccountEmail", "账户邮箱");
@@ -44,18 +46,14 @@ public sealed partial class NativeSettingsWindow
         header.Children.Add(_search);
         header.Children.Add(_searchCompact);
         _navigation.PaneCustomContent = header;
-        void Layout()
+        void UpdatePaneHeader()
         {
             var full = _navigation.IsPaneOpen;
-            header.Width = (full ? _navigation.OpenPaneLength : _navigation.CompactPaneLength) - 12;
-            _identityPhoto.Width = _identityPhoto.Height = full ? 42 : 26;
-            _identityButton.Padding = full ? new Thickness(8, 6, 8, 6) : new Thickness(3);
             _identityLabels.Visibility = _search.Visibility = full ? Visibility.Visible : Visibility.Collapsed;
             _searchCompact.Visibility = full ? Visibility.Collapsed : Visibility.Visible;
         }
-        _navigation.RegisterPropertyChangedCallback(NavigationView.IsPaneOpenProperty, (_, _) => Layout());
-        _navigation.Loaded += (_, _) => Layout();
-        Layout();
+        _navigation.RegisterPropertyChangedCallback(NavigationView.IsPaneOpenProperty, (_, _) => UpdatePaneHeader());
+        UpdatePaneHeader();
         var updatePhoto = BindPhoto(_identityPhoto);
         _refreshIdentity = () =>
         {
@@ -77,7 +75,7 @@ public sealed partial class NativeSettingsWindow
 
     private void OpenSearch()
     {
-        _navigation.IsPaneOpen = true;
+        SetPaneFromUser(true);
         DispatcherQueue.TryEnqueue(() => { if (!_closed) _search.Focus(FocusState.Keyboard); });
     }
 

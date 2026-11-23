@@ -225,7 +225,7 @@ public sealed partial class NativeSettingsWindow
             MinHeight = multiline ? 72 : 32, MaxHeight = multiline ? 152 : 64, TextWrapping = multiline ? TextWrapping.Wrap : TextWrapping.NoWrap });
         var dirty = false;
         _bindings.Add(s => { var v = get(s) ?? ""; if (!dirty && field.Text != v) field.Text = v; });
-        field.TextChanged += (_, _) => { if (!_refreshing && field.FocusState != FocusState.Unfocused) dirty = true; };
+        field.TextChanging += (_, _) => { if (!_refreshing) dirty = field.Text != (get(_bridge.ReadSettings()) ?? ""); };
         void Commit()
         {
             if (!dirty || !_targets.TryGetValue(id, out var current) || current != field) return;

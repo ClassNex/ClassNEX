@@ -11,6 +11,7 @@ internal sealed class DesktopRuntime : IDisposable
     private readonly CancellationTokenSource _lifetime = new();
     private readonly TopmostEffectWindow _effects = new();
     private readonly MainWindow _overlay;
+    private readonly ReminderSound _reminderSound;
     private bool _started;
     private bool _disposed;
     public NotificationService Notifications { get; }
@@ -20,7 +21,8 @@ internal sealed class DesktopRuntime : IDisposable
     {
         _overlay = overlay;
         if (overlay.Screens.Primary is { } screen) _effects.UpdateWindowPos(screen, 1 / screen.Scaling, false);
-        Notifications = new NotificationService(new MainWindowNotificationSurface(overlay, _effects), settings, time, schedule);
+        _reminderSound = new ReminderSound(settings);
+        Notifications = new NotificationService(new MainWindowNotificationSurface(overlay, _effects, _reminderSound), settings, time, schedule);
         var api = new PluginServiceProvider();
         api.Add(schedule); api.Add(time); api.Add(layout); api.Add(widgets); api.Add(ai); api.Add(store);
         api.Add<INotificationService>(Notifications);
@@ -60,6 +62,7 @@ internal sealed class DesktopRuntime : IDisposable
         _plugins.StopAll();
         _management.Dispose();
         Notifications.Dispose();
+        _reminderSound.Dispose();
         _effects.Close();
         _lifetime.Dispose();
         AppServices.Management = null; AppServices.Plugins = null; AppServices.NotificationService = null; AppServices.MainWindow = null;

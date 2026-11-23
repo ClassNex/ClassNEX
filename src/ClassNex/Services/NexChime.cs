@@ -121,6 +121,8 @@ public static class NexChime
         return Render(notes, 0.55);
     }
 
+    internal static byte[] BuildClassroomBell() => Render([(784, 0, 0.27, 0.42), (1046.5, 0.16, 0.37, 0.33)], 0.54);
+
     private static byte[] Render((double Freq, double Start, double Length, double Gain)[] notes, double totalSeconds)
     {
         var samples = (int)(SampleRate * totalSeconds);

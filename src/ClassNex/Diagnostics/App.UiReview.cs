@@ -37,8 +37,15 @@ public partial class App
                 "Anonymous fixture, no production account or management connection");
             Check(AppServices.Settings.SampleSeedVersion == 3 && Math.Abs(AppServices.Settings.BackgroundOpacity - .55) < .001 &&
                 AppServices.Schedule.Profile.Schedules.Any(s => s.Name == "教学日"), "Alpha settings and edited portable timetable survive first startup");
-            await ReviewVoiceLifecycleAsync(Check);
             var overlay = _mainWindow ?? throw new InvalidOperationException("No classroom window");
+            if (Environment.GetEnvironmentVariable("CLASSNEX_REVIEW_REMINDERS_ONLY") == "1")
+            {
+                SetReviewDpi(overlay, 144);
+                await Task.Delay(500);
+                await ReviewRemindersAsync(overlay, Shot, Check);
+                return;
+            }
+            await ReviewVoiceLifecycleAsync(Check);
             await Task.Delay(500);
             OpenSettings();
             var settings = _desktop!.Settings ?? throw new InvalidOperationException("No WinUI settings window");

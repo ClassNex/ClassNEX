@@ -176,8 +176,8 @@ public partial class MainWindow : Window
         IslandBackground.Opacity = _nexPanelActive ? 0 : Math.Clamp(s.BackgroundOpacity, 0.05, 1.0);
         IslandBackground.CornerRadius = new CornerRadius(CiPalette.IslandCornerRadius);
         NexPanel.CornerRadius = new CornerRadius(CiPalette.IslandCornerRadius);
-        NotificationMaskBg.Fill = CiPalette.SakuraAccentGradient();
-        NotificationTrackFill.Background = _showingNotification && !NotificationOverlay.IsVisible ? CiPalette.OnAccentBrush() : CiPalette.SakuraAccentBrush();
+        NotificationMaskBg.Fill = CiPalette.AccentBrush();
+        NotificationTrackFill.Background = _showingNotification && !NotificationOverlay.IsVisible ? CiPalette.OnAccentBrush() : CiPalette.AccentBrush();
 
         if (!_showingNotification && !_nexPanelActive && _normalWidth > 0) SetIslandWidth(_normalWidth);
 
@@ -193,7 +193,7 @@ public partial class MainWindow : Window
         if (_editMode)
             BuildEditBar();
 
-        if (_showingNotification) SetIslandWidth(462);
+        if (_showingNotification) ArrangeNotification();
 
         ApplyClickThrough();
         UpdateRunningState();

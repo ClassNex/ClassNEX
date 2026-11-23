@@ -1,7 +1,8 @@
 param(
     [Parameter(Mandatory)][ValidatePattern('^[a-zA-Z0-9_-]+$')][string]$Round,
     [switch]$KeepOpen,
-    [switch]$EnabledReminders
+    [switch]$EnabledReminders,
+    [switch]$RemindersOnly
 )
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
@@ -36,8 +37,9 @@ version: 1
 subjects:
   - name: 数学
     simplified_name: 数
-  - name: 语文
-    simplified_name: 语
+  - name: 信息科技跨学科实践：校园气象数据的采集与分析
+    simplified_name: 信
+    teacher: 陈老师
 schedules:
   - name: 教学日
     enable_day: $day
@@ -46,7 +48,7 @@ schedules:
       - subject: 数学
         start_time: "$start"
         end_time: "$end"
-      - subject: 语文
+      - subject: 信息科技跨学科实践：校园气象数据的采集与分析
         start_time: "$next"
         end_time: "$finish"
 "@
@@ -58,10 +60,11 @@ $program.CreateNoWindow = $true
 $program.ArgumentList.Add('--review-ui'); $program.ArgumentList.Add($output)
 foreach ($name in @($program.Environment.Keys | Where-Object { $_ -like 'CLASSNEX_VERIFY*' -or $_ -like 'CLASSNEX_REVIEW*' -or $_ -eq 'CLASSNEX_NEX_API_KEY' })) { $null = $program.Environment.Remove($name) }
 if ($KeepOpen) { $program.Environment['CLASSNEX_REVIEW_KEEP_OPEN'] = '1' }
+if ($RemindersOnly) { $program.Environment['CLASSNEX_REVIEW_REMINDERS_ONLY'] = '1' }
 $process = [Diagnostics.Process]::Start($program)
 try {
     $report = Join-Path $output 'review.json'
-    $timeout = [DateTime]::UtcNow.AddMinutes(4)
+    $timeout = [DateTime]::UtcNow.AddMinutes($(if ($RemindersOnly) { 2 } else { 6 }))
     while (!(Test-Path -LiteralPath $report) -and !$process.HasExited -and [DateTime]::UtcNow -lt $timeout) { Start-Sleep -Milliseconds 500 }
     if (!(Test-Path -LiteralPath $report)) { throw "Missing report from fixture PID $($process.Id); diagnostic data: $data" }
     if (-not $KeepOpen) { if (!$process.WaitForExit(10000)) { throw 'Review window did not shut down' } }

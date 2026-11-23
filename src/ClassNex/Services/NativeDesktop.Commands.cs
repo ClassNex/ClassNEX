@@ -15,6 +15,7 @@ internal sealed partial class NativeDesktop
             AccountEmail => account?.Email ?? "", AccountAvatar => account is null ? "" : AccountService.AvatarImagePath ?? "",
             Schedule => AppServices.TimetableFileName,
             NativeSettingsKeys.Version => AppServices.ProductVersion,
+            ReminderSoundSource => ReminderSound.HasCustomSound(AppServices.Settings) ? "本机 WAV 音效" : "默认提示音",
             Voice => AppServices.NexVoice is { IsRunning: true } voice ? voice.EngineName : "未启用", _ => ""
         };
     }
@@ -47,6 +48,11 @@ internal sealed partial class NativeDesktop
             case Prepare: AppServices.NotificationService?.DebugTriggerClassPreparing(); break;
             case ClassOn: AppServices.NotificationService?.DebugTriggerClassOn(); break;
             case ClassOff: AppServices.NotificationService?.DebugTriggerClassOff(); break;
+            case AfterSchool: AppServices.NotificationService?.DebugTriggerAfterSchool(); break;
+            case ResetReminderSound:
+                AppServices.Settings.UseLocalReminderSound = false;
+                AppServices.SaveSettings();
+                break;
             default: OpenKnownLink(key); break;
         }
     }
@@ -59,6 +65,16 @@ internal sealed partial class NativeDesktop
             case PickTimetable:
                 await PickTimetableAsync();
                 return "";
+            case PickReminderSound:
+                if (_settings is null) return "";
+                var picker = new Windows.Storage.Pickers.FileOpenPicker();
+                picker.FileTypeFilter.Add(".wav");
+                WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(_settings));
+                if (await picker.PickSingleFileAsync() is not { } selected) return "";
+                await ReminderSound.ImportAsync(selected.Path);
+                AppServices.Settings.UseLocalReminderSound = true;
+                AppServices.SaveSettings();
+                return "已选用本机 WAV 音效";
             case CentralConnect when AppServices.Management is { } manager:
                 await manager.ConnectAndSyncAsync();
                 return s.CentralManagement.LastStatus;

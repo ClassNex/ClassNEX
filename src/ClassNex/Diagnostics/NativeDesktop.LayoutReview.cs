@@ -95,6 +95,118 @@ internal sealed partial class NativeDesktop
                     $"{id}: actual control ends at {right:0.#}, {inset:0.#} DIP from its card edge ({width} DIP)");
             }
         }
+        async Task ReviewPanePlacement(ScrollViewer page, int width, string theme, bool takeShot = false)
+        {
+            var nav = Element<NavigationView>(root, "SettingsNavigation");
+            var frame = Element<Frame>(root, "SettingsFrame");
+            var titleButton = Tree(root).OfType<Button>().Single(x => x.Name == "PART_PaneToggleButton" && Shown(x));
+            var togglePane = new ButtonAutomationPeer(titleButton);
+            var row = Element<Grid>(page, "Row_CentralUrl");
+            var field = Element<TextBox>(row, "CentralUrl");
+            var control = Element<ToggleSwitch>(page, "CentralEnabled");
+            var route = frame.Content;
+            var selected = nav.SelectedItem;
+            var url = field.Text;
+            var wide = nav.DisplayMode == NavigationViewDisplayMode.Expanded;
+            async Task Verify(bool open, string step)
+            {
+                await Task.Delay(400);
+                var left = wide && open ? nav.OpenPaneLength : nav.CompactPaneLength;
+                bool Aligned(Rect r) => Math.Abs(r.Left - left) <= 3 && Math.Abs(r.Right - root.ActualWidth) <= 3;
+                var fits = await Until(() => nav.IsPaneOpen == open && Aligned(Box(frame, root)) && Aligned(Box(page, root)));
+                var (f, p, r, edit, on) = (Box(frame, root), Box(page, root), Box(row, root), Box(field, root), Box(control, root));
+                var body = Box((StackPanel)page.Content, root);
+                var middleInset = Math.Max(0, (p.Width - 1080) / 2) + (p.Width < 550 ? 16 : 28);
+                check(fits && Math.Abs(body.Left - p.Left) <= 2 && Math.Abs(body.Width - page.ViewportWidth) <= 2 && page.HorizontalOffset <= 1 &&
+                    Math.Abs(r.Left - p.Left - middleInset) < 6 && Math.Abs(p.Right - r.Right - middleInset) < 6 &&
+                    r.Left <= edit.Left && edit.Right <= r.Right && r.Left <= on.Left && on.Right <= r.Right &&
+                    ReferenceEquals(route, frame.Content) && ReferenceEquals(selected, nav.SelectedItem) && field.Text == url,
+                    $"Sidebar {step}, {width} DIP {theme}: frame {f.Left:0.#}–{f.Right:0.#}, page {p.Left:0.#}–{p.Right:0.#}, body {body.Left:0.#}–{body.Right:0.#}, viewport {page.ViewportWidth:0.#}, offset {page.HorizontalOffset:0.#}, card {r.Left:0.#}–{r.Right:0.#}, URL {edit.Left:0.#}–{edit.Right:0.#}, switch ends {on.Right:0.#}, client ends {root.ActualWidth:0.#}");
+            }
+            await Verify(wide, "initial");
+            togglePane.Invoke();
+            await Verify(!wide, wide ? "closed manually" : "opened as overlay");
+            if (takeShot) await Shot($"settings-central-sidebar-collapsed-{width}-{theme}");
+            togglePane.Invoke();
+            await Verify(wide, "restored");
+            for (var i = 0; i < 5; i++) { togglePane.Invoke(); await Task.Delay(30); }
+            await Verify(!wide, "after five rapid presses");
+            togglePane.Invoke();
+            await Verify(wide, "final");
+        }
+        async Task ReviewEditedCentralUrl()
+        {
+            var marker = Path.Combine(SettingsService.DataDirectory, "..", ".classnex-review");
+            if (!File.Exists(marker) || File.ReadAllText(marker) != "isolated desktop review" ||
+                AccountService.Current != null || AppServices.Settings.CentralManagement.IsEnabled)
+                throw new InvalidOperationException("Sidebar edit review requires the signed-out, disconnected desktop fixture.");
+            var nav = Element<NavigationView>(root, "SettingsNavigation");
+            var frame = Element<Frame>(root, "SettingsFrame");
+            var field = Element<TextBox>((Page)frame.Content, "CentralUrl");
+            var toggle = Tree(root).OfType<Button>().Single(x => x.Name == "PART_PaneToggleButton" && Shown(x));
+            var wasOpen = nav.IsPaneOpen;
+            var saved = AppServices.Settings.CentralManagement.ServerUrl;
+            var edited = $"http://127.0.0.1:1/sidebar-{Guid.NewGuid():N}";
+            bool editedWithFocus = false;
+            void OnTextChanged(object sender, TextChangedEventArgs args) => editedWithFocus = field.Text == edited && field.FocusState != FocusState.Unfocused;
+            field.TextChanged += OnTextChanged;
+            try
+            {
+                window.Activate();
+                check(field.Focus(FocusState.Keyboard) && await Until(() => field.FocusState != FocusState.Unfocused), "Sidebar edit: the URL editor receives keyboard focus");
+                field.Text = edited;
+                check(await Until(() => editedWithFocus), "Sidebar edit: the URL change is delivered while its editor still has focus");
+                check(toggle.Focus(FocusState.Keyboard) && await Until(() => field.FocusState == FocusState.Unfocused), "Sidebar edit: moving to the title-bar toggle blurs the unfinished field without Enter");
+                new ButtonAutomationPeer(toggle).Invoke();
+                check(await Until(() => nav.IsPaneOpen != wasOpen && AppServices.Settings.CentralManagement.ServerUrl == edited) &&
+                    SettingsService.Load().CentralManagement.ServerUrl == edited, "Sidebar edit: collapsing commits the loopback URL to the fixture settings file");
+                window.NavigateTo("basic");
+                window.NavigateTo("central");
+                var returned = (Page)frame.Content;
+                check(await Until(() => Tree(returned).OfType<TextBox>().Any(x => AutomationProperties.GetAutomationId(x) == "CentralUrl" &&
+                    !ReferenceEquals(field, x) && x.IsLoaded && x.Text == edited)), "Sidebar edit: the fresh management page restores the saved URL");
+            }
+            finally
+            {
+                field.TextChanged -= OnTextChanged;
+                try { window.NavigateTo("basic"); }
+                finally
+                {
+                    AppServices.Settings.CentralManagement.ServerUrl = saved;
+                    AppServices.SaveSettings();
+                    if (nav.IsPaneOpen != wasOpen) new ButtonAutomationPeer(toggle).Invoke();
+                }
+            }
+        }
+        async Task ReviewPaneBreakpointChoice()
+        {
+            var nav = Element<NavigationView>(root, "SettingsNavigation");
+            var toggle = new ButtonAutomationPeer(Tree(root).OfType<Button>().Single(x => x.Name == "PART_PaneToggleButton" && Shown(x)));
+            var original = window.AppWindow.Size;
+            var scale = root.XamlRoot.RasterizationScale;
+            var frameWidth = original.Width / scale - root.ActualWidth;
+            async Task ResizeAndCheck(int width, NavigationViewDisplayMode mode, bool open, string reason)
+            {
+                window.AppWindow.Resize(new SizeInt32((int)Math.Round(width * scale), original.Height));
+                var reached = await Until(() => Math.Abs(root.ActualWidth - (width - frameWidth)) <= 2 && nav.DisplayMode == mode);
+                await Task.Delay(400);
+                check(reached && nav.IsPaneOpen == open, $"Sidebar {reason}: {root.ActualWidth:0.#} DIP, {nav.DisplayMode}, open {nav.IsPaneOpen}");
+            }
+            check(await Until(() => nav.DisplayMode == NavigationViewDisplayMode.Expanded && nav.IsPaneOpen), "Breakpoint review starts with the full-width rail open");
+            toggle.Invoke();
+            check(await Until(() => !nav.IsPaneOpen), "User closes the wide rail");
+            await ResizeAndCheck(1090, NavigationViewDisplayMode.Expanded, false, "preserves a manual collapse inside the wide range");
+            await ResizeAndCheck(720, NavigationViewDisplayMode.Compact, false, "enters icon mode");
+            toggle.Invoke();
+            check(await Until(() => nav.IsPaneOpen), "User opens the compact overlay");
+            window.NavigateTo("central");
+            check(await Until(() => !nav.IsPaneOpen), "Choosing a page dismisses the temporary overlay");
+            await ResizeAndCheck(1160, NavigationViewDisplayMode.Expanded, false, "restores the manually collapsed wide rail");
+            toggle.Invoke();
+            check(await Until(() => nav.IsPaneOpen), "User reopens the wide rail");
+            await ResizeAndCheck(720, NavigationViewDisplayMode.Compact, false, "closes only the narrow overlay");
+            await ResizeAndCheck((int)Math.Round(original.Width / scale), NavigationViewDisplayMode.Expanded, true, "restores the manually opened wide rail");
+        }
         async Task ReviewSidebarSearch(int width)
         {
             var nav = Tree(root).OfType<NavigationView>().Single();
@@ -168,6 +280,13 @@ internal sealed partial class NativeDesktop
             finally { frame.Navigated -= Navigated; window.SetSystemEffectsForReview(); }
             var actualMica = Microsoft.UI.Composition.SystemBackdrops.MicaController.IsSupported() && new Windows.UI.ViewManagement.UISettings().AdvancedEffectsEnabled && !new Windows.UI.ViewManagement.AccessibilitySettings().HighContrast;
             check(actualMica ? window.SystemBackdrop is MicaBackdrop && grid.Background is SolidColorBrush { Color.A: 0 } : window.SystemBackdrop is null, $"Real Windows policy restored (Mica active: {actualMica})");
+            var screenshotScale = root.XamlRoot.RasterizationScale;
+            window.AppWindow.Resize(new SizeInt32((int)(1240 * screenshotScale), (int)(720 * screenshotScale)));
+            window.NavigateTo("central");
+            await Task.Delay(450);
+            await ReviewPanePlacement(Element<ScrollViewer>(root, "Page_central"), 1240, AppServices.Settings.ThemeMode, takeShot: true);
+            await ReviewEditedCentralUrl();
+            await ReviewPaneBreakpointChoice();
             foreach (var (width, theme) in new[] { (1080, "light"), (720, "dark"), (1080, "dark"), (620, "light") })
             {
                 var scale = root.XamlRoot.RasterizationScale;
@@ -179,7 +298,7 @@ internal sealed partial class NativeDesktop
                 await ReviewSidebarSearch(width);
                 double? headingTop = null;
                 foreach (var route in new[] { "home", "basic", "startup", "schedule", "runtime", "widgets", "widget-layout", "appearance", "window",
-                    "notification", "reminder-display", "reminder-rules", "account", "plugins", "central", "nex", "nex-assistant", "nex-wake",
+                    "notification", "reminder-display", "reminder-rules", "reminder-after-school", "account", "plugins", "central", "nex", "nex-assistant", "nex-wake",
                     "privacy", "privacy-storage", "privacy-services", "update", "about", "debug" })
                 {
                     window.NavigateTo(route);
@@ -190,12 +309,21 @@ internal sealed partial class NativeDesktop
                     switch (route)
                     {
                         case "basic": case "widgets": ReviewCategories(page, route, 3, width); break;
-                        case "nex": case "notification": case "privacy": ReviewCategories(page, route, 2, width); break;
+                        case "nex": case "privacy": ReviewCategories(page, route, 2, width); break;
+                        case "notification":
+                            ReviewCategories(page, route, 3, width);
+                            check(Shown(Element<ToggleSwitch>(page, "Notifications")) && Shown(Element<Button>(page, "PreviewNotification")),
+                                $"Notification overview has its master switch and classroom preview ({width} DIP)");
+                            break;
+                        case "reminder-after-school": ReviewTrailingEdges(page, width, "AfterSchoolEnabled"); break;
                         case "startup": ReviewTrailingEdges(page, width, "RunAtStartup", "StartupSplash", "UrlProtocol"); break;
                         case "runtime": ReviewTrailingEdges(page, width, "TeachingSafeMode", "CrashHandling"); break;
                         case "schedule": ReviewTrailingEdges(page, width, "SemesterStart", "ProfileWeek"); break;
                         case "window": ReviewTrailingEdges(page, width, "Orientation", "Topmost"); break;
-                        case "central": ReviewTrailingEdges(page, width, "CentralEnabled", "CentralUrl", "CentralAccount"); break;
+                        case "central":
+                            ReviewTrailingEdges(page, width, "CentralEnabled", "CentralUrl", "CentralAccount");
+                            await ReviewPanePlacement(page, width, theme);
+                            break;
                     }
                     if (route is "startup" or "runtime")
                     {

@@ -150,7 +150,7 @@
                                                        Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}" VerticalAlignment="Center"/>
                                             <TextBlock x:Name="NotificationMaskText"
                                                        FontSize="18" Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}" Margin="8,0"
-                                                       TextTrimming="CharacterEllipsis"
+                                                       TextWrapping="Wrap" TextAlignment="Center"
                                                        VerticalAlignment="Center"/>
                                             <TextBlock x:Name="NotificationMaskRightIcon"
                                                        Text="&#xE54F;" FontFamily="avares://ClassNex/Assets/Fonts/#lucide"
@@ -167,37 +167,34 @@
                                     VerticalAlignment="Center"
                                     IsVisible="False"
                                     IsHitTestVisible="False"
+                                    Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
                                     TextElement.Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                                     ClipToBounds="True" CornerRadius="14"
                                     Width="{Binding #IslandBackground.Width}">
 
                                 <Grid>
                                     <Grid x:Name="NotificationOverlayCoursePage"
-                                          ColumnDefinitions="1.6*,3*,Auto" Margin="16,0" ColumnSpacing="10">
-                                        <Grid.RenderTransform>
-                                            <TranslateTransform/>
-                                        </Grid.RenderTransform>
+                                          ColumnDefinitions="Auto,*" Margin="16,0" ColumnSpacing="16">
                                         <TextBlock x:Name="NotificationOverlayLeft" Grid.Column="0"
-                                                   FontSize="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                                        <Grid Grid.Column="1" RowDefinitions="Auto,Auto" VerticalAlignment="Center">
-                                            <TextBlock x:Name="NotificationOverlayPrefix" Text="下节课"
-                                                       FontSize="10" LineHeight="12" Opacity="0.72"/>
-                                            <TextBlock x:Name="NotificationOverlaySubject" Grid.Row="1" FontSize="17"
-                                                       LineHeight="20" TextTrimming="CharacterEllipsis"/>
+                                                   FontSize="16" VerticalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
+                                        <Grid Grid.Column="1" x:Name="NotificationLesson" VerticalAlignment="Center"
+                                              ColumnDefinitions="Auto,Auto,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="6">
+                                            <TextBlock x:Name="NotificationOverlayPrefix" Text="下节课是"
+                                                       FontSize="14" Opacity="0.77" VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="NotificationOverlaySubject" Grid.Column="1" FontSize="20"
+                                                       TextWrapping="Wrap" VerticalAlignment="Center"/>
+                                            <StackPanel x:Name="NotificationLessonMeta" Grid.Column="2" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                                                <TextBlock x:Name="NotificationOverlayTeacher" FontSize="13" Opacity="0.8"/>
+                                                <TextBlock x:Name="NotificationOverlayTime" FontSize="13" Opacity="0.8"/>
+                                            </StackPanel>
                                         </Grid>
-                                        <StackPanel Grid.Column="2" MaxWidth="106" VerticalAlignment="Center">
-                                            <TextBlock x:Name="NotificationOverlayTime" FontSize="13" LineHeight="16"
-                                                       TextAlignment="Right" TextTrimming="CharacterEllipsis"/>
-                                            <TextBlock x:Name="NotificationOverlayTeacher" FontSize="11" Opacity="0.72"
-                                                       TextAlignment="Right" TextTrimming="CharacterEllipsis"/>
-                                        </StackPanel>
                                     </Grid>
                                     <TextBlock x:Name="NotificationOverlayMessagePage"
                                                IsVisible="False"
                                                FontSize="16"
                                                Margin="24,0"
                                                TextAlignment="Center"
-                                               TextTrimming="CharacterEllipsis"
+                                               TextWrapping="Wrap"
                                                HorizontalAlignment="Stretch"
                                                VerticalAlignment="Center">
                                         <TextBlock.RenderTransform>

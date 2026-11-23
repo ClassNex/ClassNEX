@@ -158,6 +158,9 @@ $requiredNativeChecks = @(
         "breadcrumb-returns-$detail"
     }
 ) + $RequiredCheck
+if ($ExpectedProductVersion -ceq '26w48b') {
+    $requiredNativeChecks += 'option-opens-reminder-after-school', 'breadcrumb-returns-reminder-after-school', 'dismissal-opt-in-default', 'dismissal-saved-through-navigation'
+}
 
 $sample = 'src/ClassNex/Assets/timetable.yaml'
 $samplePath = Join-Path $repoRoot $sample

@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <ClassNexDesktopVersion Condition="'$(ClassNexDesktopVersion)' == ''">26w48a</ClassNexDesktopVersion>
+    <ClassNexDesktopVersion Condition="'$(ClassNexDesktopVersion)' == ''">26w48b</ClassNexDesktopVersion>
     <InformationalVersion>$(ClassNexDesktopVersion)</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>

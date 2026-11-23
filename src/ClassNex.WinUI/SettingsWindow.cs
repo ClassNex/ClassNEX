@@ -30,8 +30,9 @@ public sealed partial class NativeSettingsWindow : Window
         new("widget-layout", "组件布局", "\uECA5", "编辑桌面布局，添加、移除和排列组件。", "widgets"),
         new("appearance", "外观与主题", "\uE790", "主题、透明度、字号和桌面课表缩放。", "widgets"),
         new("window", "窗口行为", "\uE737", "排列方向、窗口置顶、鼠标穿透和移入淡化。", "widgets"),
-        new("reminder-rules", "课堂提醒规则", "\uE823", "设置课前准备、上课和下课的提醒时间与文字。", "notification"),
-        new("reminder-display", "提醒显示", "\uEA8F", "允许课堂提醒、显示效果、次要提醒和教师姓名。", "notification"),
+        new("reminder-rules", "上下课提醒", "\uE823", "课前准备、上课和课间休息。", "notification"),
+        new("reminder-after-school", "放学提醒", "\uE7EE", "当天最后一节课结束时显示放学提示。", "notification"),
+        new("reminder-display", "提醒方式", "\uE9E9", "视觉强调、提醒铃声和课程信息。", "notification"),
         new("nex-assistant", "课堂助手", "\uE8BD", "打开对话、设置默认权限和自定义提示词。", "nex"),
         new("nex-wake", "唤醒方式", "\uE720", "语音唤醒、侧边唤醒条和麦克风诊断。", "nex"),
         new("privacy-storage", "本机数据", "\uE8B7", "打开课表、应用设置和运行日志所在目录。", "privacy"),
@@ -52,10 +53,10 @@ public sealed partial class NativeSettingsWindow : Window
     private readonly List<Action> _fieldCommits = [];
     private readonly Dictionary<string, double> _scrollPositions = [];
     private readonly UISettings _motion = new();
-    private readonly StackPanel _identityLabels = new() { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
+    private readonly StackPanel _identityLabels = new() { Spacing = 2, Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock _identityName = Text("");
     private readonly TextBlock _identityEmail = Text("", "CaptionTextBlockStyle");
-    private readonly PersonPicture _identityPhoto = new() { Width = 40, Height = 40 };
+    private readonly PersonPicture _identityPhoto = new() { Width = 30, Height = 30 };
     private readonly Button _identityButton = new();
     private readonly Button _searchCompact = new();
     private Action? _refreshIdentity;
@@ -63,6 +64,7 @@ public sealed partial class NativeSettingsWindow : Window
     private UIElement? _pageHeading;
     private string? _requestedTarget;
     private long _navigationTicket;
+    private bool _widePaneOpen = true;
     private bool _refreshing, _closed;
     private int _versionClicks;
     private StackPanel _body = null!;
@@ -76,7 +78,7 @@ public sealed partial class NativeSettingsWindow : Window
         ExtendsContentIntoTitleBar = true;
         _titleBar.RightHeader = CreateOptionsMenu();
         _titleBar.BackRequested += (_, _) => Back();
-        _titleBar.PaneToggleRequested += (_, _) => _navigation.IsPaneOpen = !_navigation.IsPaneOpen;
+        _titleBar.PaneToggleRequested += (_, _) => SetPaneFromUser(!_navigation.IsPaneOpen);
         _shell.RowDefinitions.Add(new() { Height = GridLength.Auto });
         _shell.RowDefinitions.Add(new() { Height = new GridLength(1, GridUnitType.Star) });
         _shell.Children.Add(_titleBar);
@@ -86,10 +88,19 @@ public sealed partial class NativeSettingsWindow : Window
         _navigation.IsTitleBarAutoPaddingEnabled = false;
         _navigation.IsBackButtonVisible = NavigationViewBackButtonVisible.Collapsed;
         _navigation.IsPaneToggleButtonVisible = false;
-        _navigation.PaneDisplayMode = NavigationViewPaneDisplayMode.Left;
+        _navigation.PaneDisplayMode = NavigationViewPaneDisplayMode.Auto;
         _navigation.CompactModeThresholdWidth = 0;
         _navigation.ExpandedModeThresholdWidth = 840;
         _navigation.OpenPaneLength = 260;
+        _navigation.DisplayModeChanged += (_, args) =>
+        {
+            if (args.DisplayMode != NavigationViewDisplayMode.Expanded) return;
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                if (!_closed && _navigation.DisplayMode == NavigationViewDisplayMode.Expanded && _navigation.IsPaneOpen != _widePaneOpen)
+                    _navigation.IsPaneOpen = _widePaneOpen;
+            });
+        };
         _navigation.AlwaysShowHeader = false;
         BuildPane();
         ConfigureSurfaceResources();
@@ -141,23 +152,18 @@ public sealed partial class NativeSettingsWindow : Window
         SetTitleBar(_titleBar);
         ConfigureShellWindow();
         ObserveSystemEffects();
-        bool? wide = null;
-        void SetPane(double width)
-        {
-            var expanded = width >= _navigation.ExpandedModeThresholdWidth;
-            if (expanded == wide) return;
-            wide = expanded;
-            _navigation.PaneDisplayMode = expanded ? NavigationViewPaneDisplayMode.Left : NavigationViewPaneDisplayMode.LeftCompact;
-            _navigation.IsPaneOpen = expanded;
-        }
-        SetPane(AppWindow.Size.Width / (Math.Max(96, GetDpiForWindow(WinRT.Interop.WindowNative.GetWindowHandle(this))) / 96d));
-        _shell.SizeChanged += (_, args) => { if (args.NewSize.Width > 0) SetPane(args.NewSize.Width); };
         RefreshSettings();
         Activated += (_, _) => { if (!_closed && _page is null) NavigateTo("home"); };
         Closed += (_, _) => { CommitInputs(); _closed = true; StopObservingSystemEffects(); SetHomeClock(false); LeavePageServices(); _bindings.Clear(); _targets.Clear(); _fieldCommits.Clear(); };
     }
 
     public void NavigateTo(string key) => Navigate(key, null);
+
+    private void SetPaneFromUser(bool open)
+    {
+        if (_navigation.DisplayMode == NavigationViewDisplayMode.Expanded) _widePaneOpen = open;
+        _navigation.IsPaneOpen = open;
+    }
 
     private static string ResolveKey(string key) => key.Trim().ToLowerInvariant() switch
     {
@@ -176,7 +182,7 @@ public sealed partial class NativeSettingsWindow : Window
         _requestedTarget = target;
         if (CurrentPageKey == key)
         {
-            if (_navigation.PaneDisplayMode == NavigationViewPaneDisplayMode.LeftCompact) _navigation.IsPaneOpen = false;
+            if (_navigation.DisplayMode == NavigationViewDisplayMode.Compact) _navigation.IsPaneOpen = false;
             FocusDestination(target); _requestedTarget = null; return;
         }
         NavigationTransitionInfo transition = _page is null || !AnimationsEnabled ? new SuppressNavigationTransitionInfo()
@@ -209,7 +215,7 @@ public sealed partial class NativeSettingsWindow : Window
         _page = page;
         CurrentPageKey = key;
         _navigation.SelectedItem = _items[Destinations.Single(d => d.Key == key).Parent ?? key];
-        if (_navigation.PaneDisplayMode == NavigationViewPaneDisplayMode.LeftCompact) _navigation.IsPaneOpen = false;
+        if (_navigation.DisplayMode == NavigationViewDisplayMode.Compact) _navigation.IsPaneOpen = false;
         TrimBackStack();
         RenderPage();
         SetHomeClock(key == "home");
@@ -251,17 +257,18 @@ public sealed partial class NativeSettingsWindow : Window
         _fieldCommits.Clear();
         var page = _page;
         var key = CurrentPageKey;
-        _body = new StackPanel { Spacing = key == "home" ? 12 : 4, Padding = new Thickness(28, 18, 28, 36), MaxWidth = 1080, HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Top };
-        var scroll = new ScrollViewer { Content = _body, HorizontalScrollMode = ScrollMode.Disabled, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Top };
-        var body = _body;
-        bool? compact = null;
-        scroll.SizeChanged += (_, size) =>
+        _body = new StackPanel { Spacing = key == "home" ? 12 : 4, Padding = new Thickness(28, 18, 28, 36), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
+        var scroll = new ScrollViewer { Content = _body, HorizontalScrollMode = ScrollMode.Disabled, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalContentAlignment = HorizontalAlignment.Left, VerticalContentAlignment = VerticalAlignment.Top };
+        scroll.RegisterPropertyChangedCallback(ScrollViewer.ViewportWidthProperty, static (sender, _) =>
         {
-            var next = size.NewSize.Width < 550;
-            if (next == compact) return;
-            compact = next;
-            body.Padding = next ? new Thickness(16, 12, 16, 24) : new Thickness(28, 18, 28, 36);
-        };
+            var viewport = (ScrollViewer)sender;
+            var width = viewport.ViewportWidth;
+            if (width <= 0 || viewport.Content is not StackPanel body || body.Width == width) return;
+            var compact = width < 550;
+            var inset = compact ? 16 : 28 + Math.Max(0, (width - 1080) / 2);
+            body.Width = width;
+            body.Padding = new Thickness(inset, compact ? 12 : 18, inset, compact ? 24 : 36);
+        });
         var info = Destinations.Single(d => d.Key == key);
         Identify(scroll, "Page_" + key, info.Title);
         page.Content = scroll;
@@ -269,7 +276,8 @@ public sealed partial class NativeSettingsWindow : Window
         switch (key)
         {
             case "home": HomePage(); break;
-            case "basic": case "widgets": case "notification": case "nex": case "privacy": CategoryList(info); break;
+            case "basic": case "widgets": case "nex": case "privacy": CategoryList(info); break;
+            case "notification": NotificationOverview(info); break;
             case "startup": StartupPage(); break;
             case "runtime": RuntimePage(); break;
             case "appearance": AppearancePage(); break;
@@ -284,6 +292,7 @@ public sealed partial class NativeSettingsWindow : Window
             case "nex-assistant": AssistantPage(); break;
             case "nex-wake": WakePage(); break;
             case "reminder-rules": ReminderRulesPage(); break;
+            case "reminder-after-school": AfterSchoolPage(); break;
             case "reminder-display": ReminderDisplayPage(); break;
             case "account": AccountPage(); break;
             case "about": AboutPage(); break;
@@ -341,8 +350,11 @@ public sealed partial class NativeSettingsWindow : Window
         new("学期开始日期", "schedule", "SemesterStart"), new("单周起始日期", "schedule", "SemesterStart"), new("教学安全模式", "runtime", "TeachingSafeMode"), new("异常处理", "runtime", "CrashHandling"), new("主题（深色 / 浅色 / 系统）", "appearance", "Theme"),
         new("主界面背景不透明度", "appearance", "Opacity"), new("全局字号缩放", "appearance", "FontScale"), new("主界面缩放", "appearance", "MainScale"),
         new("窗口置顶", "window", "Topmost"), new("鼠标穿透", "window", "ClickThrough"), new("组件库", "widget-layout", "WidgetLibrary"),
-        new("允许课堂提醒", "reminder-display", "Notifications"), new("课前准备提醒", "reminder-rules", "ClassPrepare"), new("下课前剩余分钟", "reminder-rules", "PrepareMinutes"),
-        new("上课提醒", "reminder-rules", "ClassOn"), new("下课提醒", "reminder-rules", "ClassOff"), new("科任老师", "reminder-display", "Teacher"),
+        new("允许课堂提醒", "notification", "Notifications"), new("课前准备提醒", "reminder-rules", "ClassPrepare"), new("课间剩余分钟", "reminder-rules", "PrepareMinutes"),
+        new("室外课程提前时间", "reminder-rules", "OutdoorSeconds"), new("上课提醒", "reminder-rules", "ClassOn"), new("下课提醒", "reminder-rules", "ClassOff"),
+        new("放学提示文字", "reminder-after-school", "AfterSchoolText"), new("启用放学提醒", "reminder-after-school", "AfterSchoolEnabled"), new("预览课堂提醒", "notification", "PreviewNotification"),
+        new("科任老师", "reminder-display", "Teacher"), new("次要提醒", "reminder-display", "MinorNotifications"), new("视觉强调", "reminder-display", "NotificationEffects"),
+        new("提醒铃声", "reminder-display", "ReminderSound"), new("铃声音量", "reminder-display", "ReminderVolume"), new("自定义铃声", "reminder-display", "ReminderSoundFile"),
         new("默认权限", "nex-assistant", "NexPermission"), new("语音唤醒", "nex-wake", "VoiceWake"), new("侧边唤醒条", "nex-wake", "EdgeBar"),
         new("运行日志", "privacy-storage", "PrivacyLogs"), new("浏览器登录", "account", "AccountAction"), new("版本", "about", "Version"), new("拉起测试提醒", "debug", "NotifyTest")
     ];

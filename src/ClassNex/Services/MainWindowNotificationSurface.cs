@@ -11,10 +11,14 @@ public sealed class MainWindowNotificationSurface : INotificationSurface
 {
     private readonly TopmostEffectWindow _effectWindow;
     private readonly MainWindow _window;
+    private readonly ReminderSound? _sound;
 
-    public MainWindowNotificationSurface(MainWindow window, TopmostEffectWindow effectWindow)
+    public MainWindowNotificationSurface(MainWindow window, TopmostEffectWindow effectWindow) : this(window, effectWindow, null) { }
+
+    internal MainWindowNotificationSurface(MainWindow window, TopmostEffectWindow effectWindow, ReminderSound? sound)
     {
         _window = window;
+        _sound = sound;
         _effectWindow = effectWindow;
     }
 
@@ -47,6 +51,7 @@ public sealed class MainWindowNotificationSurface : INotificationSurface
             }
 
             mainWindow.ShowNotificationMask(text, leftGlyph, rightGlyph, lifetime);
+            _sound?.Play();
         });
     }
 
@@ -73,7 +78,7 @@ public sealed class MainWindowNotificationSurface : INotificationSurface
 
     public void Hide()
     {
-        Dispatcher.UIThread.Post(() => _window.HideNotificationMask());
+        Dispatcher.UIThread.Post(() => { _sound?.Stop(); _window.HideNotificationMask(); });
     }
 
     public void UpdateCountdown(string text)

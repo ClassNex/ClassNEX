@@ -64,57 +64,6 @@ public sealed partial class NativeSettingsWindow
         Scale("HoverOpacity", "鼠标移入时不透明度", .0, 1, .05, s => s.HoverOpacity, (s, v) => s.HoverOpacity = v, v => $"{v:P0}");
     }
 
-    private void ReminderRulesPage()
-    {
-        Detail("PrepareDetails", "课前准备", () =>
-        {
-            Switch("ClassPrepare", "发出课前准备提醒", s => s.Notification.IsClassOnPreparingNotificationEnabled, (s, v) => s.Notification.IsClassOnPreparingNotificationEnabled = v);
-            Number("PrepareMinutes", "室内课程 · 课间剩余分钟", 1, 60, s => s.Notification.ClassOnBreakReminderMinutes, (s, v) =>
-            {
-                s.Notification.ClassOnBreakReminderMinutes = v;
-                s.Notification.InDoorClassPreparingDeltaTime = 60 * v;
-            });
-            Number("OutdoorSeconds", "室外课程 · 提前秒数", 0, 3600, s => s.Notification.OutDoorClassPreparingDeltaTime, (s, v) => s.Notification.OutDoorClassPreparingDeltaTime = v);
-            Field("PreparingText", "室内课程提醒文字", s => s.Notification.ClassOnPreparingText, (s, v) => s.Notification.ClassOnPreparingText = v);
-            Field("PreparingMask", "室内课程遮罩文字", s => s.Notification.ClassOnPreparingMaskText, (s, v) => s.Notification.ClassOnPreparingMaskText = v);
-            Field("OutdoorText", "室外课程提醒文字", s => s.Notification.OutdoorClassOnPreparingText, (s, v) => s.Notification.OutdoorClassOnPreparingText = v);
-            Field("OutdoorMask", "室外课程遮罩文字", s => s.Notification.OutdoorClassOnPreparingMaskText, (s, v) => s.Notification.OutdoorClassOnPreparingMaskText = v);
-        });
-        Detail("ClassOnDetails", "上课提醒", () =>
-        {
-            Switch("ClassOn", "上课提醒", s => s.Notification.IsClassOnNotificationEnabled, (s, v) => s.Notification.IsClassOnNotificationEnabled = v);
-            Field("ClassOnMask", "上课遮罩文字", s => s.Notification.ClassOnMaskText, (s, v) => s.Notification.ClassOnMaskText = v);
-        });
-        Detail("ClassOffDetails", "下课提醒", () =>
-        {
-            Switch("ClassOff", "下课提醒", s => s.Notification.IsClassOffNotificationEnabled, (s, v) => s.Notification.IsClassOffNotificationEnabled = v);
-            Field("ClassOffMask", "下课遮罩文字", s => s.Notification.ClassOffMaskText, (s, v) => s.Notification.ClassOffMaskText = v);
-            Field("ClassOffText", "下课提醒文字", s => s.Notification.ClassOffOverlayText, (s, v) => s.Notification.ClassOffOverlayText = v);
-        });
-    }
-
-    private void ReminderDisplayPage()
-    {
-        Switch("Notifications", "允许课堂提醒", s => s.AllowNotification, (s, v) => s.AllowNotification = v);
-        Detail("DisplayDetails", "效果与课程信息", () =>
-        {
-            Switch("NotificationEffects", "提醒效果", s => s.AllowNotificationEffect, (s, v) => s.AllowNotificationEffect = v);
-            Switch("MinorNotifications", "允许次要提醒", s => s.AllowMinorNotification, (s, v) => s.AllowMinorNotification = v);
-            Switch("Teacher", "显示科任老师名字", s => s.Notification.ShowTeacherName, (s, v) => s.Notification.ShowTeacherName = v);
-        });
-    }
-
-    private void Detail(string id, string title, Action fill)
-    {
-        var child = new StackPanel { Spacing = 8 };
-        var expander = Target(id, title, new Expander { Header = title, Content = child, IsExpanded = false, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch });
-        var parent = _body;
-        _body = child;
-        _currentExpander = expander;
-        try { fill(); } finally { _body = parent; _currentExpander = null; }
-        parent.Children.Add(expander);
-    }
-
     private void AssistantPage()
     {
         Switch("NexEnabled", "启用 NEX Intelligence", s => s.IsNexIntelligenceEnabled, (s, v) => s.IsNexIntelligenceEnabled = v);

@@ -1,5 +1,6 @@
 #if DEBUG
 using System.Diagnostics;
+using Avalonia;
 using Avalonia.Controls;
 using ClassNex.Models;
 using ClassNex.Services;
@@ -26,6 +27,8 @@ public partial class App
         var settings = AppServices.Settings;
         var enabled = settings.AllowNotification;
         var effect = settings.AllowNotificationEffect;
+        var originalBreakMessage = settings.Notification.ClassOffOverlayText;
+        var originalDismissalMessage = settings.Notification.AfterSchoolText;
         WidgetConfig? added = null;
         var track = Element<Panel>("NotificationTrack");
         var background = Element<Border>("IslandBackground");
@@ -39,6 +42,7 @@ public partial class App
         bool FitsContent() => Math.Abs(background.Bounds.Width - Math.Ceiling(content.Bounds.Width + 2 * content.Margin.Left)) <= 1;
         try
         {
+            await ReviewLocalChimeAsync(check);
             check(!window.Topmost && !settings.Topmost, "Non-topmost classroom fixture respects its saved setting");
             check(window.Screens.Primary is { } screen && window.GetIslandScreenRect() is { } island &&
                 island.Width <= screen.WorkingArea.Width && Math.Abs(island.X + island.Width / 2.0 - (screen.WorkingArea.X + screen.WorkingArea.Width / 2.0)) <= 2,
@@ -58,6 +62,9 @@ public partial class App
             var expected = (today.Next ?? today.Slots.FirstOrDefault())?.Subject ?? "演示课程";
             check(subject.Text == expected,
                 "Preparing detail displays the full next course from the live timetable");
+            check(subject.TranslatePoint(default, background) is { } at && at.X >= 0 && at.Y >= 0 &&
+                at.X + subject.Bounds.Width <= background.Bounds.Width + 1 && at.Y + subject.Bounds.Height <= background.Bounds.Height + 1 &&
+                subject.TextLayout.Height <= subject.Bounds.Height + 1, "The full lesson text fits the visible reminder, including wrapped lines");
             await shot(window, "reminder-subject", mode, dpi);
             var normalBefore = content.Bounds.Width;
             added = AppServices.Widgets.Add("text");
@@ -81,11 +88,30 @@ public partial class App
             AppServices.Widgets.Remove(added);
             added = null;
             await WaitFor(() => !track.IsVisible && FitsContent(), "Classroom width did not shrink when class-on reminder expired", 7);
+            settings.Notification.ClassOffOverlayText = "离开座位活动一下，下节课见。";
             notifications.DebugTriggerClassOff();
             await WaitFor(() => !mask.IsVisible && course.IsEffectivelyVisible && track.IsVisible, "Break did not show the next lesson");
+            var breakDetailStart = Stopwatch.GetTimestamp();
+            check(subject.Text == expected, "Break details use the full next lesson, not its short timetable label");
             await shot(window, "reminder-break", mode, dpi);
-            await WaitFor(() => !track.IsVisible && FitsContent(), "Classroom width did not recover after break", 8);
+            await WaitFor(() => message.IsEffectivelyVisible && !course.IsVisible && message.Text == settings.Notification.ClassOffOverlayText,
+                "Break did not turn to its custom message", 12);
+            check(Stopwatch.GetElapsedTime(breakDetailStart).TotalSeconds >= 9 && track.IsVisible,
+                "The break message follows a ten-second course page without restarting the track");
+            await shot(window, "reminder-break-message", mode, dpi);
+            await WaitFor(() => !track.IsVisible && FitsContent(), "Classroom width did not recover after break", 12);
             check(true, "Class-on and break expiry both restore the measured classroom width");
+            settings.Notification.AfterSchoolText = "请带好随身物品，明天见。";
+            notifications.DebugTriggerAfterSchool();
+            await WaitFor(() => mask.IsEffectivelyVisible && Element<TextBlock>("NotificationMaskText").Text == "放学", "Dismissal mask missing");
+            await WaitFor(() => !mask.IsVisible && message.IsEffectivelyVisible && !course.IsVisible, "Dismissal showed an empty next-lesson page", 5);
+            check(track.IsVisible && message.Text == settings.Notification.AfterSchoolText, "Dismissal goes straight to its custom message");
+            await shot(window, "reminder-after-school", mode, dpi);
+            settings.AllowNotification = false;
+            AppServices.SaveSettings();
+            await WaitFor(() => !track.IsVisible && FitsContent(), "Disabling dismissal did not restore the measured classroom width");
+            settings.AllowNotification = true;
+            AppServices.SaveSettings();
             window.EnterEditMode();
             check(!window.CanPresentReminder && !notifications.Publish(new("review/edit", "1", DateTimeOffset.Now.AddMinutes(1), TimeSpan.Zero, TimeSpan.FromSeconds(1))),
                 "Editing components suppresses classroom reminders");
@@ -103,8 +129,31 @@ public partial class App
             if (added != null) AppServices.Widgets.Remove(added);
             settings.AllowNotification = enabled;
             settings.AllowNotificationEffect = effect;
+            settings.Notification.ClassOffOverlayText = originalBreakMessage;
+            settings.Notification.AfterSchoolText = originalDismissalMessage;
             AppServices.SaveSettings();
         }
+    }
+
+    private static async Task ReviewLocalChimeAsync(Action<bool, string> check)
+    {
+        var data = new DirectoryInfo(SettingsService.DataDirectory);
+        if (data.Parent is not { } fixture || !File.Exists(Path.Combine(fixture.FullName, ".classnex-review")))
+            throw new InvalidOperationException("Chime review requires an isolated review directory");
+        var good = NexChime.BuildClassroomBell();
+        var bad = (byte[])good.Clone();
+        bad[36] = 0;
+        check(ReminderSound.IsShortWave(good) && !ReminderSound.IsShortWave(good.AsSpan(0, 12)) && !ReminderSound.IsShortWave(bad),
+            "Local chime accepts an actual short PCM bell; rejects a truncated header or missing audio samples");
+        var source = Path.Combine(fixture.FullName, "review-chime.wav");
+        await File.WriteAllBytesAsync(source, good);
+        await ReminderSound.ImportAsync(source);
+        await File.WriteAllBytesAsync(source, bad);
+        try { await ReminderSound.ImportAsync(source); throw new InvalidOperationException("Invalid replacement sound was accepted"); }
+        catch (InvalidDataException) { }
+        var saved = await File.ReadAllBytesAsync(Path.Combine(data.FullName, "NotificationChime.wav"));
+        check(saved.AsSpan().SequenceEqual(good) && ReminderSound.HasCustomSound(new() { UseLocalReminderSound = true }) && !ReminderSound.HasCustomSound(new()),
+            "Invalid replacement preserves imported WAV; restoring the default does not delete the saved sound");
     }
 }
 #endif

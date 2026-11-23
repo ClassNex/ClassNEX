@@ -195,7 +195,7 @@ internal sealed partial class NativeDesktop
             [
                 ("basic", "通用", [("startup", "启动与托盘"), ("schedule", "课表与档案"), ("runtime", "运行与恢复")]),
                 ("widgets", "组件与主界面", [("widget-layout", "组件布局"), ("appearance", "外观与主题"), ("window", "窗口行为")]),
-                ("notification", "通知服务", [("reminder-rules", "课堂提醒规则"), ("reminder-display", "提醒显示")]),
+                ("notification", "通知服务", [("reminder-rules", "上下课提醒"), ("reminder-after-school", "放学提醒"), ("reminder-display", "提醒方式")]),
                 ("nex", "NEX Intelligence与NEX AI", [("nex-assistant", "课堂助手"), ("nex-wake", "唤醒方式")]),
                 ("privacy", "隐私与安全性", [("privacy-storage", "本机数据"), ("privacy-services", "联网与权限")])
             ];
@@ -204,7 +204,10 @@ internal sealed partial class NativeDesktop
                 await Act("open-category-index-" + parent, () => Settings.NavigateTo(parent));
                 await Check("category-list-" + parent, () => AtPage(parent, parentTitle, parent) &&
                     Find<StackPanel>(Page, "Categories_" + parent) is { } list && list.Children.OfType<Button>().Select(Id).SequenceEqual(details.Select(d => "Category_" + d.Key)) &&
-                    list.Children.OfType<Button>().All(row => Shown(row) && row.IsEnabled && Math.Abs(list.ActualWidth - row.ActualWidth) <= 2) && !Tree(Page).OfType<ToggleSwitch>().Any(), 5000);
+                    list.Children.OfType<Button>().All(row => Shown(row) && row.IsEnabled && Math.Abs(list.ActualWidth - row.ActualWidth) <= 2) &&
+                    (parent == "notification" ? Find<ToggleSwitch>(Page, "Notifications") is not null && Find<ComboBox>(Page, "PreviewKind")?.Items.Count == 4 &&
+                        Find<Button>(Page, "PreviewNotification") is { } preview && preview.IsEnabled == (AppServices.Settings.AllowNotification && AppServices.Settings.IsMainWindowVisible)
+                        : !Tree(Page).OfType<ToggleSwitch>().Any()), 5000);
                 var depth = await Ui(() => Frame.BackStackDepth);
                 foreach (var (child, childTitle) in details)
                 {
@@ -222,9 +225,31 @@ internal sealed partial class NativeDesktop
                         await Act("switch-native-on", () => new ToggleSwitchAutomationPeer(Need<ToggleSwitch>(Page, "TeachingSafeMode")).Toggle());
                         await Check("toggle-persisted", () => SwitchShows("TeachingSafeMode", true) && AppServices.Settings.TeachingSafeMode && SettingsService.Load().TeachingSafeMode, 3000);
                     }
-                    await Act("invoke-parent-crumb-" + child, () => new BreadcrumbBarItemAutomationPeer(BreadcrumbParent(parentTitle) ?? throw new InvalidOperationException("Missing parent breadcrumb")).Invoke());
+                    if (child == "reminder-after-school")
+                    {
+                        await Check("dismissal-opt-in-default", () => SwitchShows("AfterSchoolEnabled", false) && Find<Button>(Page, "PreviewAfterSchool") is not null);
+                        await Act("enable-dismissal", () => new ToggleSwitchAutomationPeer(Need<ToggleSwitch>(Page, "AfterSchoolEnabled")).Toggle());
+                        await Check("dismissal-switch-persisted", () => SwitchShows("AfterSchoolEnabled", true) && SettingsService.Load().Notification.IsAfterSchoolNotificationEnabled, 3000);
+                        await Act("focus-dismissal-message", () => Need<TextBox>(Page, "AfterSchoolText").Focus(FocusState.Keyboard));
+                        await Check("dismissal-message-has-focus", () => ContainsFocus(Need<TextBox>(Page, "AfterSchoolText")), 3000);
+                    }
+                    await Act("invoke-parent-crumb-" + child, () =>
+                    {
+                        if (child == "reminder-after-school")
+                        {
+                            var field = Need<TextBox>(Page, "AfterSchoolText");
+                            field.SelectAll();
+                            field.SelectedText = "明天见。";
+                            Settings.RefreshSettings();
+                            if (field.Text != "明天见。") throw new InvalidOperationException("Settings refresh overwrote the uncommitted dismissal message");
+                        }
+                        new BreadcrumbBarItemAutomationPeer(BreadcrumbParent(parentTitle) ?? throw new InvalidOperationException("Missing parent breadcrumb")).Invoke();
+                    });
                     await Check("breadcrumb-returns-" + child, () => AtPage(parent, parentTitle, parent) && Frame.BackStackDepth == depth &&
                         Find<Button>(Page, "Category_" + child) is { } row && ContainsFocus(row), 5000);
+                    if (child == "reminder-after-school")
+                        await Check("dismissal-saved-through-navigation", () => AppServices.Settings.Notification.AfterSchoolText == "明天见。" &&
+                            SettingsService.Load().Notification is { IsAfterSchoolNotificationEnabled: true, AfterSchoolText: "明天见。" });
                     if (child != "runtime") continue;
                     await Act("reopen-runtime-option", OpenDetail);
                     await Check("switch-state-survives-reentry", () => AtPage(child, childTitle, parent) && SwitchShows("TeachingSafeMode", true), 4000);
