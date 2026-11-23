@@ -1,7 +1,7 @@
 # ClassNEX 续作指南（HANDOFF）
 
-> 最后更新：2026-11-23　｜　客户端产品版本 **26w48a**（开发版，未发布）　｜　上一发布标签 **26w46d_Alpha**。
-> 已发布：`26w41a_Alpha` ~ `26w46d_Alpha`（GitHub Releases，均为预发布）
+> 最后更新：2026-11-23　｜　客户端产品版本 **26w48a**　｜　本次预发布标签 **26w48a_Alpha**，上一版 **26w46d_Alpha**。
+> 上线以 GitHub Release 中实际出现 Windows ZIP 为准；推送版本标签只会启动构建。`26w46d_Alpha` 及以前的发布保留。
 > 这份文档的目的：**第二天打开新会话，照着它就能无缝继续写。**
 
 ---
@@ -551,7 +551,7 @@ python tools\gh_release.py "E:\ClassNex\build\ClassNEX-26w41f-Alpha-win-x64.zip"
 - `WW` = 该年的第几周（ISO 周号）
 - `a` = 当周发布的第几个快照（a、b、c…）
 
-当前客户端产品版本是 **`26w48a`**；更改产品版本不会新建 `26w48a_Alpha` 标签，也不等于已经发布。`26w46d` 是此前发布的快照。
+当前客户端产品版本为 **`26w48a`**，对应 `26w48a_Alpha`。版本号、预发布标签和 `ClassNEX-26w48a-Alpha-win-x64.zip` 附件是三个不同字段；今后更改客户端版本仍须另行获准才推送新标签。
 
 落地方式：
 - `src/DesktopVersion.props` 定义 `ClassNexDesktopVersion`，由客户端和启动器共享。设置的「关于」「更新」、档案编辑器与文件属性「产品版本」读取同一版本。

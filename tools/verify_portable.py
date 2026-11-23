@@ -14,7 +14,7 @@ def require(condition, reason):
         raise ValueError(reason)
 
 
-def verify_executable(image):
+def verify_executable(image, expected_version=None):
     def word(offset):
         return struct.unpack_from("<H", image, offset)[0]
 
@@ -60,10 +60,26 @@ def verify_executable(image):
     execution = [n for n in manifest.iter() if n.tag.rsplit("}", 1)[-1] == "requestedExecutionLevel"]
     require(len(execution) == 1 and execution[0].get("level") == "asInvoker" and execution[0].get("uiAccess") == "false",
             "Executable requests privilege elevation")
-    return {"machine": "x64", "subsystem": "Windows GUI", "iconImages": icon_count, "executionLevel": "asInvoker"}
+    result = {"machine": "x64", "subsystem": "Windows GUI", "iconImages": icon_count, "executionLevel": "asInvoker"}
+    if expected_version is not None:
+        require(16 in types, "Missing executable version resource")
+        info = resource(16)
+        versions = set()
+        for key in re.finditer(re.escape("ProductVersion\0".encode("utf-16le")), info):
+            start = key.start() - 6
+            if start < 0 or start % 4:
+                continue
+            length, chars, value_type = struct.unpack_from("<HHH", info, start)
+            value = (key.end() + 3) & ~3
+            end = value + chars * 2
+            if value_type == 1 and chars and end <= start + length <= len(info):
+                versions.add(info[value:end].decode("utf-16le").rstrip("\0"))
+        require(versions == {expected_version}, f"Unexpected executable ProductVersion: {sorted(versions)}; expected {expected_version}")
+        result["productVersion"] = expected_version
+    return result
 
 
-def inspect(path):
+def inspect(path, release_version=None):
     with ZipFile(path) as archive:
         entries = archive.infolist()
         seen = set()
@@ -85,6 +101,9 @@ def inspect(path):
         require(set(components) == {"app", "launcher"}, "Unexpected package components")
         version, number = (manifest["Variables"][k] for k in ("version", "number"))
         require(re.fullmatch(r"[a-zA-Z0-9_.-]+", version) and str(number).isdecimal(), "Invalid package version or number")
+        if release_version is not None:
+            require(version == release_version and number == "0", f"Expected release {release_version}, package number 0")
+            require(path.name == f"ClassNEX-{release_version}-Alpha-win-x64.zip", "Unexpected release ZIP filename")
         payload = f"app-{version}-{number}"
         roots = {e.filename.rstrip("/").split("/")[0] for e in entries}
         require(roots == {payload, "ClassNex.exe", "PackageType", "files.json"}, "Expected exactly the four portable root entries")
@@ -100,24 +119,40 @@ def inspect(path):
         required = {"ClassNex.exe", "ClassNex.dll", "ClassNex.Core.dll", "ClassNex.Plugin.dll", "ClassNex.Notification.Service.dll",
                     "ClassNex.AI.dll", "Avalonia.dll", "AvaloniaFluentUI.dll", "coreclr.dll", "hostfxr.dll", "hostpolicy.dll", "System.Private.CoreLib.dll",
                     "ClassNex.WinUI.dll", "ClassNex.pri", "Licenses/ClassNex.txt", "Licenses/lucide-LICENSE.txt", "Licenses/HarmonyOS-Sans-LICENSE.txt"}
+        if release_version is not None:
+            required.update({"Licenses/Fluent-LICENSE.txt", "Microsoft.UI.Xaml.dll", "Assets/icon.ico", "Assets/Fonts/HarmonyOS_Sans_SC_Regular.ttf"})
         require(required <= app["Files"].keys(), "Incomplete self-contained desktop payload: " + str(sorted(required - app["Files"].keys())))
         require(not {"ClassNex.Notification.dll", "ClassNex.Plugins.dll", "ClassNex.Central.dll"} & app["Files"].keys(), "Obsolete or server-only assembly in desktop payload")
         runtime = json.loads(archive.read(f"{payload}/ClassNex.runtimeconfig.json"))["runtimeOptions"]
         frameworks = {i["name"]: i["version"] for i in runtime.get("includedFrameworks", [])}
         require("Microsoft.NETCore.App" in frameworks and "frameworks" not in runtime and "framework" not in runtime, "Runtime is not self-contained")
-        build = json.loads(archive.read(f"{payload}/BuildInfo.json"))
-        require(build["kind"] == "refactor-candidate" and re.fullmatch(r"[0-9a-f]{40}", build["sourceCommit"]) and
-                build["baseCommit"] == "60d7b575b1b866a0bc388c9b80986c546950a2c7", "Invalid candidate provenance")
-        executables = {name: verify_executable(archive.read(name)) for name in ("ClassNex.exe", f"{payload}/ClassNex.exe")}
+        provenance = {}
+        if release_version is None:
+            build = json.loads(archive.read(f"{payload}/BuildInfo.json"))
+            require(build["kind"] == "refactor-candidate" and re.fullmatch(r"[0-9a-f]{40}", build["sourceCommit"]) and
+                    build["baseCommit"] == "60d7b575b1b866a0bc388c9b80986c546950a2c7", "Invalid candidate provenance")
+            provenance = {"sourceCommit": build["sourceCommit"], "baseCommit": build["baseCommit"]}
+        else:
+            require("BuildInfo.json" not in app["Files"], "Release contains candidate provenance")
+            repo = Path(__file__).resolve().parents[1]
+            assets = repo / "src/ClassNex/Assets"
+            licenses = {"ClassNex.txt": repo / "LICENSE", "lucide-LICENSE.txt": assets / "Fonts/lucide-LICENSE.txt",
+                        "HarmonyOS-Sans-LICENSE.txt": assets / "Fonts/HarmonyOS-Sans-LICENSE.txt", "Fluent-LICENSE.txt": assets / "SettingsIcons/Fluent-LICENSE.txt"}
+            for name, source in licenses.items():
+                actual = archive.read(f"{payload}/Licenses/{name}")
+                require(actual and actual.replace(b"\r\n", b"\n") == source.read_bytes().replace(b"\r\n", b"\n"), f"Wrong license: {name}")
+        executables = {name: verify_executable(archive.read(name), release_version) for name in ("ClassNex.exe", f"{payload}/ClassNex.exe")}
         payload_bytes = sum(archive.getinfo(name).file_size for name in mapped if name.startswith(payload + "/"))
     with path.open("rb") as stream:
         archive_hash = hashlib.file_digest(stream, "sha512").hexdigest()
     return {"archive": str(path.resolve()), "archiveBytes": path.stat().st_size, "archiveSha512": archive_hash,
-            "version": version, "sourceCommit": build["sourceCommit"], "baseCommit": build["baseCommit"], "payload": payload, "payloadFiles": len(app["Files"]), "payloadBytes": payload_bytes,
+            "version": version, **provenance, "payload": payload, "payloadFiles": len(app["Files"]), "payloadBytes": payload_bytes,
             "filesHashVerified": len(mapped), "includedFrameworks": frameworks, "executables": executables}
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Independently verify a ClassNEX refactor portable ZIP; no extraction or network access.")
+    parser = argparse.ArgumentParser(description="Verify a ClassNEX portable ZIP; defaults to the refactor candidate format. No extraction or network access.")
     parser.add_argument("archive", type=Path)
-    print(json.dumps(inspect(parser.parse_args().archive), ensure_ascii=False, indent=2))
+    parser.add_argument("--release-version", help="Verify a release ZIP against the expected desktop version instead of a candidate commit.")
+    args = parser.parse_args()
+    print(json.dumps(inspect(args.archive, args.release_version), ensure_ascii=False, indent=2))

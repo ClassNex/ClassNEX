@@ -36,7 +36,7 @@ ClassNEX，ClassIsland 风格的桌面课表应用。Windows 客户端使用 .NE
 ## 当前状态
 
 持有者：无
-工作分支：`main`；本轮基线 `943e47a`。此前的主线合并 `b17768d`、便携包 `5ea3b11` 及重构分支均保留，未重置 main、未打发布标签。
+工作分支：`main`；本轮基线 `943e47a`，客户端功能提交 `2952452`。此前的主线合并 `b17768d`、便携包 `5ea3b11` 及重构分支均保留。本次预发布使用新标签 `26w48a_Alpha`，不改写旧标签。
 本次内容：`src/ClassNex.WinUI` 将五个设置分类拆为可整行点击的导航卡和十二个详情页，保留搜索、返回焦点、设置保存及共用的右对齐开关；桌面课表外观不变。`src/ClassNex/Services/WindowsTrayIcon.cs` 统一通知区单击、长按、右键和键盘菜单；保留显隐命令，忽略旧动作偏好，首次向导只显示继续和退出。产品版本从 `src/DesktopVersion.props` 读取，为 `26w48a`。
 验证：客户端 Debug 完整重建及 Release 构建均 0 警告 / 0 错误；41 项单测、84 项原生设置交互、91 项托盘检查、380 项实窗回归及账户 / 集控回环联测通过。截图、布局量测与复测命令见 `docs/26w48a-settings.md`。此前验收分别见 `docs/mainline-desktop-acceptance.md` 和 `docs/26.0-acceptance.md`。均不以真实账户、系统注册项或生产服务器跑夹具。
-后续：本次未发布安装包；实体触摸屏、跨显示器混合 DPI 与生产身份提供商仍需现场验证，正式发布另行决定。
+发布：Windows x64 预览包由 `Build and Release` 从 `26w48a_Alpha` 构建；本次面向用户的变更见 `RELEASE_NOTES.md`。实体触摸屏、跨显示器混合 DPI 与生产身份提供商仍需现场验证，不据此标为稳定版。

@@ -55,6 +55,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Copy-Item build\launcher\ClassNex.exe build\release\ClassNex.exe
           ./tools/verify_desktop_version.ps1 -ExpectedVersion $ver -DesktopDirectory "build\release\app-$ver-0" -Launcher build\release\ClassNex.exe
+          $licenses = New-Item -ItemType Directory -Force -Path "build\release\app-$ver-0\Licenses"
+          Copy-Item -LiteralPath 'LICENSE' -Destination (Join-Path $licenses.FullName 'ClassNex.txt')
+          foreach ($source in 'src\ClassNex\Assets\Fonts\lucide-LICENSE.txt', 'src\ClassNex\Assets\Fonts\HarmonyOS-Sans-LICENSE.txt', 'src\ClassNex\Assets\SettingsIcons\Fluent-LICENSE.txt') {
+            Copy-Item -LiteralPath $source -Destination $licenses.FullName
+          }
           [System.IO.File]::WriteAllText("$PWD\build\release\PackageType", "folder", (New-Object System.Text.UTF8Encoding($false)))
           python tools\make_files_json.py build\release $ver 0
 
@@ -63,8 +68,12 @@ jobs:
         run: |
           $ver = $env:DESKTOP_VERSION
           $out = "build\ClassNEX-$ver-Alpha-win-x64.zip"
-          Compress-Archive -Path build\release\* -DestinationPath $out -CompressionLevel Optimal
+          [IO.Compression.ZipFile]::CreateFromDirectory((Resolve-Path 'build/release').Path, (Join-Path $PWD $out), [IO.Compression.CompressionLevel]::Optimal, $false)
           "ZIP_PATH=$out" >> $env:GITHUB_ENV
+
+      - name: Verify portable release ZIP
+        shell: pwsh
+        run: python tools/verify_portable.py "$env:ZIP_PATH" --release-version "$env:DESKTOP_VERSION"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
