@@ -1,6 +1,6 @@
 # ClassNEX 续作指南（HANDOFF）
 
-> 最后更新：2026-11-23　｜　客户端产品版本 **26w48a**　｜　本次预发布标签 **26w48a_Alpha**，上一版 **26w46d_Alpha**。
+> 最后更新：2026-11-23　｜　工作分支桌面预览 **26w48b**（未打标签）　｜　最近已发布版本 **26w48a_Alpha**，上一版 **26w46d_Alpha**。
 > 上线以 GitHub Release 中实际出现 Windows ZIP 为准；推送版本标签只会启动构建。`26w46d_Alpha` 及以前的发布保留。
 > 恢复未发布的现有标签：`gh workflow run build-release.yml --ref main -f release_tag=26w48a_Alpha`。工作流从原标签编译并取发布说明，只在压缩之后读取派发提交中的 ZIP 校验器；不填标签只构建。已有发布不会被覆盖。
 > 这份文档的目的：**第二天打开新会话，照着它就能无缝继续写。**
@@ -10,6 +10,8 @@
 ## 0. 一分钟上手
 
 日常开发分支是 `main`。26w48a 的入口、托盘手势和版本复测见 [设置与托盘验收](docs/26w48a-settings.md)。主线此前从 `2949eff` 与 `aaba73d` 按功能合并，记录见 [主线验收](docs/mainline-desktop-acceptance.md) 与 [26.0 归档](docs/26.0-acceptance.md)。不用重置分支，下文各节保留历史记录。
+
+26w48b 课堂通知与设置侧栏在 `codex/26w48b-notifications`，从 `09a6ada` 开始。运行 `./tools/preview_classroom.ps1 -ExpectedVersion 26w48b` 可打开匿名便携预览，详见[提醒规则与窗口验收](docs/26w48b-notifications.md)。不要因为版本号已更新就在 `main` 上打标签；本轮未要求发布或部署集控。
 
 ```powershell
 cd E:\ClassNex
@@ -117,27 +119,9 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   现在 `RippleEffect` 在播放时读取 `MainWindow.GetIslandScreenRect()`，按实际屏幕矩形和圆角建立 `RectangleGeometry` 裁切；
   颜色统一走 `CiPalette.SakuraAccentBrush()`。`GetIslandScreenRect()` 用岛的两个角 `PointToScreen` 计算尺寸，
   能正确包含 `LayoutTransform` 缩放和系统 DPI。⚠️ 不要改成直接给岛开 `ClipToBounds`。
-- **通知提醒**：`NotificationService` 按 CI 的事件模型处理课前准备、上课、下课三类提醒；
-  课前使用室内/室外各自的提前量和文案，下课显示下一节课、剩余休息时长与可选教师名。
-  `CourseSlot.IsOutDoor` 由 `TimeService` 从科目配置填充。**项目禁用所有 TTS 合成语音**，
-  通知不再显示“启用语音”选项；麦克风识别和 NEX 唤醒属于语音识别，不受影响。
-  提醒使用代次编号取消旧计时器，避免上一段通知的 `HideNotificationMask` 覆盖下一段通知；
-  主界面也用独立的转场代次拦截已过期的隐藏回调。
-  提醒岛宽度限制为 416 逻辑像素，不再扩成整屏；提醒结束后按当前课表内容重新测量岛宽，
-  避免下课、上课提醒结束后出现背景短于或长于文字。
-  **遮罩与浮层必须互斥**：不能只关闭遮罩背景后延迟 500ms 再撤掉文字，否则两套内容会叠在一起。
-  课前遮罩停留 3 秒后以 360ms 上下翻页进入浮层，其他提醒使用左轴翻页；旧页完全收拢后卸载遮罩。
-  课前浮层与 CI 一致，第 1 页显示实时“距上课还剩 N 秒”和下节课信息，第 2 页显示准备上课文案，
-  每 10 秒用 250ms、`TranslateTransform.Y` 从 -40→0 / 0→40 的交叉滑动切换，并持续到本节正式开始。
-  倒计时每秒更新；切回第 1 页时显示当前剩余秒数。
-  室内课程的下一节课准备提醒由 `ClassOnBreakReminderMinutes` 控制，默认在下课剩余 3 分钟时触发；
-  设置页“下课前发出准备提醒”默认展开，可直接修改分钟数。室外课程继续使用独立的秒级提前量。
-  上课与课前使用 CI 的双图标组合（左 `E0FF`、右 `E54F`），
-  上课只显示遮罩并停留 5 秒；下课使用左 `E0FF`、右 `E250`。测试提醒的浮层不显示“下节课是”前缀。
-  关闭提醒特效只关闭涟漪，不会连带关闭遮罩和浮层。调试页可单独触发课前准备、上课、下课提醒，
-  并新增“拉起测试提醒”完整演示遮罩、浮层和底部轨道。底部轨道出现时立即为满格，
-  课前倒计时按真实剩余时长线性 ScaleX 收缩，与“距上课还剩 N 秒”同步；上课、下课和测试提醒
-  按各自浮层可见时长收缩，不再固定为 6.8 秒，也不会先空白后突然填充。
+- **课堂提醒（26w48b）**：课前准备、上课、下课、放学由独立通知服务调度，时序和界面见[课堂提醒与设置侧栏](docs/26w48b-notifications.md)。室内课沿用提前 3 分钟，室外有独立提前量。旧档案不默认开启放学提醒、声音或上传本地铃声。**项目禁用 TTS**，不影响麦克风识别和 NEX 唤醒。
+  正式提醒优先于手动预览。课前/课间在有文案时每 10 秒上下翻页，课名取全称；没有下一节时不显示空白课程页。轨道从开场满格开始，按本次提醒的完整时长播放，不随换页重启。
+  浮窗按文案、当前屏幕工作区和实际缩放测量，空间不足时课程及时间分行；不固定为 416 DIP。退出提醒后取**此时的课表内容**恢复背景大小，过期转场不得隐藏新提醒。
 - **取色跟随主题，组件强调色改为樱花玫瑰**：主题明暗 = `ThemeMode=system`（`PreferSystemTheme`）；
   主界面表面由 `CiPalette.IslandSurfaceBrush()` 按 `IsDarkTheme()` 返回粉白/深玫瑰渐变，不再依赖
   `SolidBackgroundFillColorSecondaryBrush`（不带主题变体取资源会返回浅色变体，深色主题下卡片会发白）。
@@ -552,7 +536,7 @@ python tools\gh_release.py "E:\ClassNex\build\ClassNEX-26w41f-Alpha-win-x64.zip"
 - `WW` = 该年的第几周（ISO 周号）
 - `a` = 当周发布的第几个快照（a、b、c…）
 
-当前客户端产品版本为 **`26w48a`**，对应 `26w48a_Alpha`。版本号、预发布标签和 `ClassNEX-26w48a-Alpha-win-x64.zip` 附件是三个不同字段；今后更改客户端版本仍须另行获准才推送新标签。
+工作分支的客户端产品版本为 **`26w48b`**，没有对应 Release 或 Tag。已发布的 `26w48a_Alpha` 和 `ClassNEX-26w48a-Alpha-win-x64.zip` 保持不变；更改客户端版本仍须另行获准才推送新标签。
 
 落地方式：
 - `src/DesktopVersion.props` 定义 `ClassNexDesktopVersion`，由客户端和启动器共享。设置的「关于」「更新」、档案编辑器与文件属性「产品版本」读取同一版本。
