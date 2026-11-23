@@ -48,6 +48,7 @@ public interface IScheduleService
     void ImportFrom(string path);
 
     /// <summary>将当前档案写到另一个位置，不切换活动档案。</summary>
+    /// <exception cref="InvalidOperationException">目标是正在使用的工作档案。</exception>
     void ExportTo(string path);
 }
 
@@ -107,7 +108,7 @@ public sealed class ScheduleService : IScheduleService
         var saved = false;
         try
         {
-            CsesCodec.Save(_profile, FilePath);
+            AtomicFile.Write(FilePath, CsesCodec.SerializeWorkingProfile(_profile));
             saved = true;
         }
         catch
@@ -175,7 +176,11 @@ public sealed class ScheduleService : IScheduleService
     /// <inheritdoc />
     public void ExportTo(string path)
     {
-        CsesCodec.Save(_profile, path);
+        var target = Path.GetFullPath(path);
+        if (!string.IsNullOrWhiteSpace(FilePath) && string.Equals(Path.GetFullPath(FilePath), target,
+            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+            throw new InvalidOperationException("标准 CSES 不保留室外课程标记。请选择其他文件名或文件夹，不要覆盖正在使用的课表。");
+        CsesCodec.Save(_profile, target);
     }
 
     private Schedule? Find(int enableDay, string weeks) =>

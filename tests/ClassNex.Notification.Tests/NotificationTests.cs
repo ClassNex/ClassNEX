@@ -8,7 +8,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace ClassNex.Notification.Tests;
 
 [TestClass]
-public sealed class NotificationTests
+public sealed partial class NotificationTests
 {
     private sealed class Clock(int hour = 0, int minute = 0, int second = 0) : TimeProvider
     {
@@ -183,6 +183,28 @@ public sealed class NotificationTests
     }
 
     [TestMethod]
+    [DataRow(20, 0, 2400, 23)]
+    [DataRow(59, 45, 15, 15)]
+    public void PreparingPreviewEndsWithinOneCycleButShowsActualTimeToClass(int minute, int second, int timeToClass, int previewLength)
+    {
+        using var f = new Fixture(new Clock(7, minute, second));
+        f.Settings.Notification.IsClassOnPreparingNotificationEnabled = false;
+        f.Settings.Notification.IsClassOnNotificationEnabled = false;
+        f.Lesson("物理", "物", "08:00", "08:45");
+        f.Service.Start();
+        f.Service.DebugTriggerClassPreparing();
+        Assert.AreEqual(TimeSpan.FromSeconds(previewLength), f.Screen.Lifetimes.Single());
+        f.Clock.Advance(3);
+        var page = f.Screen.Overlays.Single();
+        Assert.AreEqual($"距上课还剩 {timeToClass - 3} 秒", page.Caption);
+        Assert.AreEqual(TimeSpan.FromSeconds(previewLength - 3), page.Track);
+        f.Clock.Advance(previewLength - 4);
+        Assert.AreEqual(0, f.Screen.Hides);
+        f.Clock.Advance(1);
+        Assert.AreEqual(1, f.Screen.Hides);
+    }
+
+    [TestMethod]
     public void PreparationShowsFullSubjectAndExpiresAtExactClassBoundary()
     {
         using var f = new Fixture(new Clock(7, 56, 59));
@@ -223,15 +245,52 @@ public sealed class NotificationTests
         f.Service.Start();
         f.Clock.Advance(1);
         Assert.AreEqual("课间休息", f.Screen.Masks.Single());
-        Assert.AreEqual(TimeSpan.FromSeconds(8), f.Screen.Lifetimes.Single());
-        f.Clock.Advance(1.2);
+        Assert.AreEqual(TimeSpan.FromSeconds(12), f.Screen.Lifetimes.Single());
+        f.Clock.Advance(2);
         var page = f.Screen.Overlays.Single();
         Assert.AreEqual("信息技术", page.Subject);
         Assert.AreEqual("课间 15 分钟", page.Caption);
         Assert.AreEqual("", page.Teacher);
-        Assert.AreEqual(TimeSpan.FromMilliseconds(6800), page.Track);
-        f.Clock.Advance(6.8);
+        Assert.AreEqual(TimeSpan.FromSeconds(10), page.Track);
+        f.Clock.Advance(10);
         Assert.AreEqual(1, f.Screen.Hides);
+    }
+
+    [TestMethod]
+    public void BreakKeepsNamedIntervalAndShowsCustomTextAsASecondTenSecondPage()
+    {
+        using var f = new Fixture(new Clock(8, 44, 59));
+        f.Settings.Notification.ClassOffOverlayText = "请收好实验器材。";
+        f.Settings.TimeLayout.Times.Add(new() { Kind = ClassTimeKind.Break, Name = "眼保健操", Start = "08:45", End = "08:49:30" });
+        f.Lesson("科学实验", "科", "08:00", "08:45");
+        f.Lesson("历史与社会", "史", "09:00", "09:45");
+        f.Service.Start();
+        f.Clock.Advance(1);
+        Assert.AreEqual(TimeSpan.FromSeconds(22), f.Screen.Lifetimes.Single());
+        f.Clock.Advance(2);
+        var detail = f.Screen.Overlays.Single();
+        Assert.AreEqual("眼保健操 4 分钟 30 秒", detail.Caption);
+        Assert.AreEqual("历史与社会", detail.Subject);
+        Assert.AreEqual("请收好实验器材。", detail.Message);
+        Assert.IsTrue(detail.Vertical);
+        Assert.AreEqual(TimeSpan.FromSeconds(20), detail.Track);
+        f.Clock.Advance(19);
+        Assert.AreEqual(0, f.Screen.Hides);
+        f.Clock.Advance(1);
+        Assert.AreEqual(1, f.Screen.Hides);
+    }
+
+    [TestMethod]
+    public void WakingLateDoesNotReplayLongBreakEvenIfItsDetailWouldStillHaveTime()
+    {
+        using var f = new Fixture(new Clock(8, 44, 59));
+        f.Settings.Notification.ClassOffOverlayText = "课间提醒";
+        f.Lesson("语文", "语", "08:00", "08:45");
+        f.Lesson("物理", "物", "09:00", "09:45");
+        f.Service.Start();
+        f.Clock.Sleep(9);
+        f.Service.RefreshSchedule();
+        Assert.IsEmpty(f.Screen.Masks);
     }
 
     [TestMethod]

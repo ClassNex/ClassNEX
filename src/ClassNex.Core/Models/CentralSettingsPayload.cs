@@ -11,7 +11,8 @@ public static class CentralSettingsPayload
         nameof(AppSettings.NexApiKey), nameof(AppSettings.AccountClientId), nameof(AppSettings.AccountEndpoint),
         nameof(AppSettings.Email), nameof(AppSettings.UserName), nameof(AppSettings.IsOobeCompleted),
         nameof(AppSettings.TimetablePath), nameof(AppSettings.CentralManagement), nameof(AppSettings.IsDebugOptionsEnabled),
-        nameof(AppSettings.NexPermission), nameof(AppSettings.NexApiBaseUrl), nameof(AppSettings.NexModel)
+        nameof(AppSettings.NexPermission), nameof(AppSettings.NexApiBaseUrl), nameof(AppSettings.NexModel),
+        nameof(AppSettings.UseLocalReminderSound)
     };
     private static readonly JsonSerializerOptions Wire = new(JsonSerializerDefaults.Web)
     {
@@ -40,6 +41,7 @@ public static class CentralSettingsPayload
         remote.IsOobeCompleted = local.IsOobeCompleted;
         remote.IsDebugOptionsEnabled = local.IsDebugOptionsEnabled;
         remote.TimetablePath = local.TimetablePath;
+        remote.UseLocalReminderSound = local.UseLocalReminderSound;
         remote.CentralManagement = local.CentralManagement;
     }
 }

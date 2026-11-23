@@ -20,6 +20,9 @@ public interface INotificationService
     /// <summary>预览下课与下一节课提示。</summary>
     void DebugTriggerClassOff();
 
+    /// <summary>预览最后一节课后的放学提示；旧宿主不必实现新入口。</summary>
+    void DebugTriggerAfterSchool() { }
+
     /// <summary>触发独立于课表的测试提示。</summary>
     void DebugTriggerTestNotification();
 }

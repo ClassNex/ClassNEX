@@ -17,8 +17,8 @@ public sealed class Subject
     /// <summary>可选教室或上课地点。</summary>
     public string? Room { get; set; }
 
-    /// <summary>本地户外课标记，不写入 CSES 文件。</summary>
-    [YamlIgnore]
+    /// <summary>户外课使用独立准备提前量。工作档案和集控保留该扩展；标准 CSES 导出省略。</summary>
+    [YamlMember(Alias = "x_classnex_outdoor", ApplyNamingConventions = false, DefaultValuesHandling = DefaultValuesHandling.OmitDefaults)]
     public bool IsOutDoor { get; set; }
 
     /// <summary>可选的本地科目颜色，不属于 CSES 字段。</summary>

@@ -268,14 +268,18 @@ public sealed class NotificationService : INotificationService, INotificationPub
     public void DebugTriggerClassPreparing() => Preview(now =>
     {
         var day = _time.GetTodaySummary(_schedule.Profile, now.DateTime);
-        return ClassroomReminders.Preparing(now, _settings().Notification, day.Next ?? day.Slots.FirstOrDefault() ?? ClassroomReminders.SampleCourse(now),
+        var request = ClassroomReminders.Preparing(now, _settings().Notification, day.Next ?? day.Slots.FirstOrDefault() ?? ClassroomReminders.SampleCourse(now),
             day.Next is { } next ? next.Start - now.TimeOfDay : TimeSpan.FromMinutes(1), PreviewId);
+        var limit = TimeSpan.FromSeconds(23);
+        return request.Duration <= limit ? request : request with { Duration = limit, ExpiresAt = now + limit };
     });
 
     public void DebugTriggerClassOn() => Preview(now => ClassroomReminders.ClassOn(now, _settings().Notification, PreviewId));
 
     public void DebugTriggerClassOff() => Preview(now => ClassroomReminders.ClassOff(now, _settings().Notification,
-        _time.GetTodaySummary(_schedule.Profile, now.DateTime).Next ?? ClassroomReminders.SampleCourse(now), now.TimeOfDay, PreviewId));
+        _time.GetTodaySummary(_schedule.Profile, now.DateTime).Next ?? ClassroomReminders.SampleCourse(now), now.TimeOfDay, PreviewId, _settings().TimeLayout));
+
+    public void DebugTriggerAfterSchool() => Preview(now => ClassroomReminders.AfterSchool(now, _settings().Notification, PreviewId));
 
     public void DebugTriggerTestNotification() => Preview(now => new(PreviewId, "测试提醒", now.AddSeconds(8), TimeSpan.FromMilliseconds(1200),
         TimeSpan.FromSeconds(8), Overlay: new("这是一条测试提醒", "通知系统工作正常", "", now.ToString("HH:mm"))));

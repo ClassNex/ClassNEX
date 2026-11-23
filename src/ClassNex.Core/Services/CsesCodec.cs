@@ -13,10 +13,12 @@ public static class CsesCodec
         .IgnoreUnmatchedProperties()
         .Build();
 
-    private static readonly ISerializer Serializer = new SerializerBuilder()
+    private static SerializerBuilder ConfiguredSerializer() => new SerializerBuilder()
         .WithNamingConvention(UnderscoredNamingConvention.Instance)
-        .ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull)
-        .Build();
+        .ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull);
+
+    private static readonly ISerializer Serializer = ConfiguredSerializer().WithAttributeOverride<Subject>(s => s.IsOutDoor, new YamlIgnoreAttribute()).Build();
+    private static readonly ISerializer WorkingSerializer = ConfiguredSerializer().Build();
 
     /// <summary>从文件读取并解析整个档案；I/O 或格式错误交给调用方处理。</summary>
     public static ScheduleProfile Load(string path) =>
@@ -26,9 +28,12 @@ public static class CsesCodec
     public static ScheduleProfile Parse(string yaml) =>
         Deserializer.Deserialize<ScheduleProfile>(yaml) ?? new ScheduleProfile();
 
-    /// <summary>生成适于导出和集控传输的 CSES YAML 文本。</summary>
+    /// <summary>生成适于与其他应用交换的标准 CSES YAML，不含 ClassNEX 扩展。</summary>
     public static string Serialize(ScheduleProfile profile) =>
         Serializer.Serialize(profile);
+
+    /// <summary>保存供本机或集控使用的档案，保留已启用的 ClassNEX 科目扩展。</summary>
+    public static string SerializeWorkingProfile(ScheduleProfile profile) => WorkingSerializer.Serialize(profile);
 
     /// <summary>先写入同目录临时文件，再替换目标，避免部分写入破坏旧档案。</summary>
     public static void Save(ScheduleProfile profile, string path)

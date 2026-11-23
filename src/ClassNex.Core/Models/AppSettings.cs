@@ -112,6 +112,9 @@ public sealed class AppSettings : IJsonOnDeserializing, IJsonOnDeserialized
     /// <summary>是否显示次要课堂通知。</summary>
     public bool AllowMinorNotification { get; set; } = true;
 
+    /// <summary>本机是否使用用户选定的提醒音频；音频和此选择不随班级同步。</summary>
+    public bool UseLocalReminderSound { get; set; }
+
     /// <summary>课前、上课和下课通知的规则与文案。</summary>
     public NotificationSettings Notification { get; set; } = new();
 
@@ -219,6 +222,21 @@ public sealed class NotificationSettings
 
     /// <summary>是否在课程结束时提醒。</summary>
     public bool IsClassOffNotificationEnabled { get; set; } = true;
+
+    /// <summary>最后一节课结束时使用独立的放学提醒；旧档案默认沿用普通下课提醒。</summary>
+    public bool IsAfterSchoolNotificationEnabled { get; set; }
+
+    /// <summary>是否播放短提示音，不包含语音播报。</summary>
+    public bool IsSoundEnabled { get; set; }
+
+    /// <summary>提示音自身的音量百分比，不改变 Windows 主音量。</summary>
+    public int SoundVolume { get; set; } = 65;
+
+    /// <summary>用户未设置放学文案时显示的提示。</summary>
+    public const string DefaultAfterSchoolText = "今天的课程已结束，请同学们有序离开。";
+
+    /// <summary>放学提醒的正文。</summary>
+    public string AfterSchoolText { get; set; } = DefaultAfterSchoolText;
 
     /// <summary>旧格式使用的室内课提前量（秒）；新设置以课间剩余分钟数为准。</summary>
     public int InDoorClassPreparingDeltaTime { get; set; } = 60;

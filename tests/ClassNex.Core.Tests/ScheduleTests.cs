@@ -131,4 +131,55 @@ public sealed class ScheduleTests
         }
         finally { dir.Delete(true); }
     }
+
+    [TestMethod]
+    public void StandardExportCannotOverwriteTheActiveWorkingProfile()
+    {
+        var dir = Directory.CreateTempSubdirectory("classnex-export-");
+        try
+        {
+            var file = Path.Combine(dir.FullName, "timetable.yaml");
+            var schedule = new ScheduleService(() => new AppSettings());
+            schedule.Load(file);
+            schedule.AddSubject("体育").IsOutDoor = true;
+            schedule.Save();
+            var before = File.ReadAllBytes(file);
+            var alias = Path.Combine(dir.FullName, ".", OperatingSystem.IsWindows() ? "TIMETABLE.YAML" : "timetable.yaml");
+            Assert.ThrowsExactly<InvalidOperationException>(() => schedule.ExportTo(alias));
+            CollectionAssert.AreEqual(before, File.ReadAllBytes(file));
+            var copy = Path.Combine(dir.FullName, "exchange", "timetable.yaml");
+            schedule.ExportTo(copy);
+            Assert.IsFalse(CsesCodec.Load(copy).Subjects.Single().IsOutDoor);
+            CollectionAssert.AreEqual(before, File.ReadAllBytes(file));
+            Assert.AreEqual(file, schedule.FilePath);
+        }
+        finally { dir.Delete(true); }
+    }
+
+    [TestMethod]
+    public void OutdoorReminderFlagSurvivesRestartAndCentralRoundTripButNotStandardExport()
+    {
+        var dir = Directory.CreateTempSubdirectory("classnex-outdoor-");
+        try
+        {
+            var settings = new AppSettings { SingleWeekStartTime = Monday };
+            var file = Path.Combine(dir.FullName, "profile.yaml");
+            var schedule = new ScheduleService(() => settings);
+            schedule.Load(file);
+            schedule.AddSubject("体育与健康").IsOutDoor = true;
+            schedule.AddCourse(1, "all", Period("体育与健康", "09:00", "09:45"));
+            schedule.Reload();
+            Assert.IsTrue(new TimeService(() => settings).GetTodaySummary(schedule.Profile, Monday.AddHours(8)).Next?.IsOutDoor);
+            var managed = CsesCodec.Parse(CsesCodec.SerializeWorkingProfile(schedule.Profile));
+            Assert.IsTrue(managed.Subjects.Single().IsOutDoor);
+            var exported = Path.Combine(dir.FullName, "export.yaml");
+            schedule.ExportTo(exported);
+            Assert.DoesNotContain("x_classnex_", File.ReadAllText(exported));
+            Assert.IsFalse(CsesCodec.Load(exported).Subjects.Single().IsOutDoor);
+            schedule.Profile.Subjects.Single().IsOutDoor = false;
+            schedule.Save();
+            Assert.DoesNotContain("x_classnex_", File.ReadAllText(file));
+        }
+        finally { dir.Delete(true); }
+    }
 }

@@ -269,7 +269,7 @@ app.MapPut("/api/v1/classes/{classId}/timetable", async (
             classId,
             user.Subject,
             record.SettingsJson,
-            CsesCodec.Serialize(profile),
+            CsesCodec.SerializeWorkingProfile(profile),
             "由集控中心更新课程表");
         return updated is null ? Results.NotFound() : Results.Json(ToDetail(updated));
     }

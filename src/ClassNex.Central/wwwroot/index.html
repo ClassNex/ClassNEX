@@ -488,17 +488,22 @@ const settingsGroups=[
       {key:"AllowNotification",label:"允许通知",description:"启用所有课堂通知。",kind:"toggle",fallback:true},
       {key:"AllowNotificationEffect",label:"通知特效",description:"启用遮罩、涟漪和浮层等视觉效果。",kind:"toggle",fallback:true},
       {key:"AllowMinorNotification",label:"次要通知",description:"允许非关键状态提醒。",kind:"toggle",fallback:true},
+      {key:"Notification.IsSoundEnabled",label:"提醒音效",description:"提醒开始时播放短铃声，不朗读文字。",kind:"toggle",fallback:false},
+      {key:"Notification.SoundVolume",label:"音效音量",description:"只调整课堂提醒，不改变系统音量。",kind:"range",min:0,max:100,step:1,fallback:65,format:value=>value+"%"},
       {key:"Notification.IsClassOnNotificationEnabled",label:"上课提醒",description:"正式上课时显示提醒。",kind:"toggle",fallback:true},
       {key:"Notification.IsClassOnPreparingNotificationEnabled",label:"课前准备提醒",description:"上课前显示准备提醒。",kind:"toggle",fallback:true},
       {key:"Notification.IsClassOffNotificationEnabled",label:"下课提醒",description:"下课时显示休息信息。",kind:"toggle",fallback:true},
-      {key:"Notification.InDoorClassPreparingDeltaTime",label:"室内课前提前量",description:"距离上课多少秒开始提醒。",kind:"range",min:10,max:600,step:10,fallback:60,format:value=>value+" 秒"},
-      {key:"Notification.OutDoorClassPreparingDeltaTime",label:"室外课前提前量",description:"室外课程提前多少秒提醒。",kind:"range",min:30,max:1800,step:30,fallback:600,format:value=>value+" 秒"},
-      {key:"Notification.ClassOnBreakReminderMinutes",label:"下课前准备提醒",description:"课间剩余多少分钟时提醒下节课。",kind:"range",min:1,max:20,step:1,fallback:3,format:value=>value+" 分钟"},
+      {key:"Notification.IsAfterSchoolNotificationEnabled",label:"放学提醒",description:"最后一节课结束时用放学提醒代替普通下课提醒。",kind:"toggle",fallback:false},
+      {key:"Notification.ClassOnBreakReminderMinutes",label:"室内课前提前量",description:"距离下节室内课多少分钟时提醒。",kind:"range",min:1,max:60,step:1,fallback:3,format:value=>value+" 分钟"},
+      {key:"Notification.OutDoorClassPreparingDeltaTime",label:"室外课前提前量",description:"距离下节室外课多少秒时提醒。",kind:"range",min:0,max:3600,step:1,fallback:600,format:value=>value+" 秒"},
       {key:"Notification.ClassOnPreparingMaskText",label:"课前遮罩标题",description:"课前准备遮罩上的标题。",kind:"text",fallback:"即将上课"},
       {key:"Notification.ClassOnPreparingText",label:"课前准备文案",description:"室内课程课前准备提示。",kind:"textarea",fallback:""},
+      {key:"Notification.OutdoorClassOnPreparingMaskText",label:"室外课前标题",description:"室外课程的准备提醒标题。",kind:"text",fallback:"即将上课"},
       {key:"Notification.OutdoorClassOnPreparingText",label:"室外准备文案",description:"室外课程的课前准备提示。",kind:"textarea",fallback:""},
       {key:"Notification.ClassOnMaskText",label:"上课标题",description:"正式上课遮罩上的标题。",kind:"text",fallback:"上课"},
       {key:"Notification.ClassOffMaskText",label:"下课标题",description:"下课遮罩上的标题。",kind:"text",fallback:"课间休息"},
+      {key:"Notification.ClassOffOverlayText",label:"课间提示语",description:"与下节课程信息交替显示；留空只显示课程。",kind:"textarea",fallback:""},
+      {key:"Notification.AfterSchoolText",label:"放学提示语",description:"放学标题结束后显示的文字。",kind:"textarea",fallback:"今天的课程已结束，请同学们有序离开。"},
       {key:"Notification.ShowTeacherName",label:"显示教师名",description:"提醒中显示科任教师姓名。",kind:"toggle",fallback:false}
     ]
   },
@@ -588,7 +593,7 @@ const normalizeTimetable=source=>{
   const raw=source||{};
   return {
     version:raw.version??raw.Version??1,
-    subjects:(raw.subjects??raw.Subjects??[]).map(item=>({name:item.name??item.Name??"",simplifiedName:item.simplifiedName??item.SimplifiedName??"",teacher:item.teacher??item.Teacher??"",room:item.room??item.Room??""})),
+    subjects:(raw.subjects??raw.Subjects??[]).map(item=>({name:item.name??item.Name??"",simplifiedName:item.simplifiedName??item.SimplifiedName??"",teacher:item.teacher??item.Teacher??"",room:item.room??item.Room??"",isOutDoor:item.isOutDoor??item.IsOutDoor??false})),
     schedules:(raw.schedules??raw.Schedules??[]).map(item=>({name:item.name??item.Name??"",enableDay:Number(item.enableDay??item.EnableDay??1),weeks:String(item.weeks??item.Weeks??"all"),classes:(item.classes??item.Classes??[]).map(course=>({subject:course.subject??course.Subject??"",startTime:course.startTime??course.StartTime??"08:00:00",endTime:course.endTime??course.EndTime??"08:45:00"}))}))
   };
 };

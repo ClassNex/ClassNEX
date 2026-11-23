@@ -1101,7 +1101,15 @@ public partial class ProfileEditorWindow : AppWindow
         if (path is null)
             return;
 
-        AppServices.Schedule.ExportTo(path);
-        ProfileInfoText.Text = $"已导出到：{path}";
+        try
+        {
+            AppServices.Schedule.ExportTo(path);
+            ProfileInfoText.Text = $"已导出到：{path}";
+            ToolTip.SetTip(ProfileInfoText, path);
+        }
+        catch (Exception error) when (error is InvalidOperationException or IOException or UnauthorizedAccessException)
+        {
+            await new ContentDialog { Title = "未导出课表", Content = error.Message, CloseButtonText = "关闭" }.ShowAsync(this);
+        }
     }
 }
