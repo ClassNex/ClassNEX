@@ -21,7 +21,11 @@ public enum NotificationPriority
 /// <param name="Vertical">Requests a vertical page turn between message and details.</param>
 /// <param name="CountdownTo">Optional instant from which the presenter derives a live countdown.</param>
 public sealed record NotificationOverlay(string Caption, string Subject, string Teacher, string Time,
-    string Prefix = "", string Message = "", bool Vertical = false, DateTimeOffset? CountdownTo = null);
+    string Prefix = "", string Message = "", bool Vertical = false, DateTimeOffset? CountdownTo = null)
+{
+    /// <summary>When set, the heading is the class break's name and duration, rather than a plain caption.</summary>
+    public (string Name, string Duration)? Break { get; init; }
+}
 
 /// <summary>A time-limited, identifiable presentation request. It contains no window or platform objects.</summary>
 /// <param name="Id">Deduplication and cancellation key for this occurrence.</param>

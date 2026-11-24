@@ -27,6 +27,13 @@ public interface INotificationService
     void DebugTriggerTestNotification();
 }
 
+/// <summary>当前提醒正文的播放进度；遮罩和正文内翻页不会占用或重建此会话。</summary>
+public interface INotificationOverlayProgress
+{
+    /// <summary>正文剩余的比例，起始为 1。显示端按渲染节奏取样，不需要订阅后台事件。</summary>
+    double LeftProgress { get; }
+}
+
 /// <summary>宿主提供的展示端点；通知管理不需要知道具体窗口类型。</summary>
 public interface INotificationSurface
 {
@@ -51,9 +58,22 @@ public interface INotificationSurface
         bool verticalPageTurn,
         TimeSpan trackDuration);
 
+    /// <summary>用此正文自己的播放时钟展示详情；原有展示端仍按时长展示。</summary>
+    void ShowOverlay(string left, string subject, string teacher, string time, string prefix, string message,
+        bool verticalPageTurn, TimeSpan trackDuration, INotificationOverlayProgress progress) =>
+        ShowOverlay(left, subject, teacher, time, prefix, message, verticalPageTurn, trackDuration);
+
+    /// <summary>Starts the provider's detail template. Older hosts receive the same content as plain strings.</summary>
+    void ShowOverlay(NotificationOverlay detail, int? seconds, TimeSpan trackDuration, INotificationOverlayProgress progress) =>
+        ShowOverlay(seconds is { } s ? $"距上课还剩 {s} 秒" : detail.Caption, detail.Subject, detail.Teacher,
+            detail.Time, detail.Prefix, detail.Message, detail.Vertical, trackDuration, progress);
+
     /// <summary>恢复没有通知时的画面。</summary>
     void Hide();
 
     /// <summary>替换正在显示的倒数文本，不重建通知。</summary>
     void UpdateCountdown(string text);
+
+    /// <summary>Changes only the number in a live lesson countdown.</summary>
+    void UpdateCountdown(int seconds) => UpdateCountdown($"距上课还剩 {seconds} 秒");
 }

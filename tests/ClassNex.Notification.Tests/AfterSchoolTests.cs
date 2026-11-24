@@ -18,8 +18,10 @@ public sealed partial class NotificationTests
         f.Clock.Advance(1);
         f.Service.RefreshSchedule();
         CollectionAssert.AreEqual(new[] { "放学" }, f.Screen.Masks);
-        Assert.AreEqual(TimeSpan.FromSeconds(33), f.Screen.Lifetimes.Single());
-        f.Clock.Advance(3);
+        Assert.AreEqual(TimeSpan.FromSeconds(35), f.Screen.Lifetimes.Single());
+        f.Clock.Advance(4.99);
+        Assert.IsEmpty(f.Screen.Overlays);
+        f.Clock.Advance(0.01);
         var detail = f.Screen.Overlays.Single();
         Assert.AreEqual("带好课本，明天见。", detail.Message);
         Assert.AreEqual("", detail.Subject);
@@ -144,7 +146,7 @@ public sealed partial class NotificationTests
         ((INotificationService)f.Service).DebugTriggerAfterSchool();
         Assert.IsFalse(f.Settings.Notification.IsAfterSchoolNotificationEnabled);
         Assert.AreEqual("放学", f.Screen.Masks.Single());
-        f.Clock.Advance(3);
+        f.Clock.Advance(5);
         Assert.AreEqual(NotificationSettings.DefaultAfterSchoolText, f.Screen.Overlays.Single().Message);
     }
 

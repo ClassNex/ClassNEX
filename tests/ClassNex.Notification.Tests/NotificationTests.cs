@@ -13,12 +13,22 @@ public sealed partial class NotificationTests
     private sealed class Clock(int hour = 0, int minute = 0, int second = 0) : TimeProvider
     {
         private DateTimeOffset _now = new(2026, 11, 16, hour, minute, second, TimeSpan.Zero);
+        private TimeSpan _wallAdjustment;
         private readonly List<ManualTimer> _timers = [];
         public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
         public override DateTimeOffset GetUtcNow() => _now;
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+        public override long GetTimestamp() => _now.UtcTicks - _wallAdjustment.Ticks;
         public int Created => _timers.Count;
         public int Ticks { get; private set; }
         public void Sleep(double seconds) => _now = _now.AddSeconds(seconds);
+        public void ShiftWall(double seconds)
+        {
+            var by = TimeSpan.FromSeconds(seconds);
+            _now += by;
+            _wallAdjustment += by;
+            foreach (var timer in _timers) timer.Shift(by);
+        }
         public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
         {
             var timer = new ManualTimer(this, callback, state);
@@ -51,6 +61,7 @@ public sealed partial class NotificationTests
                 return true;
             }
             public void Fire() { Due = null; callback(state); }
+            public void Shift(TimeSpan by) => Due += by;
             public void Dispose() { Due = null; _disposed = true; }
             public ValueTask DisposeAsync() { Dispose(); return ValueTask.CompletedTask; }
         }
@@ -58,7 +69,7 @@ public sealed partial class NotificationTests
 
     private sealed record Overlay(string Caption, string Subject, string Teacher, string Time, string Message, bool Vertical, TimeSpan Track);
 
-    private sealed class Surface : INotificationSurface
+    private class Surface : INotificationSurface
     {
         public bool IsAvailable { get; set; } = true;
         public bool ThrowOnMask { get; set; }
@@ -87,12 +98,13 @@ public sealed partial class NotificationTests
     {
         public readonly Clock Clock;
         public readonly AppSettings Settings = new();
-        public readonly Surface Screen = new();
+        public readonly Surface Screen;
         public readonly ScheduleService Schedule;
         public readonly NotificationService Service;
-        public Fixture(Clock? clock = null, Surface? secondary = null)
+        public Fixture(Clock? clock = null, Surface? secondary = null, Surface? primary = null)
         {
             Clock = clock ?? new();
+            Screen = primary ?? new();
             Schedule = new(() => Settings);
             var channels = new Dictionary<string, INotificationSurface> { ["classroom"] = Screen };
             if (secondary != null) channels.Add("secondary", secondary);
@@ -306,7 +318,7 @@ public sealed partial class NotificationTests
         Assert.AreEqual(TimeSpan.FromSeconds(22), f.Screen.Lifetimes.Single());
         f.Clock.Advance(2);
         var detail = f.Screen.Overlays.Single();
-        Assert.AreEqual("眼保健操 4 分钟 30 秒", detail.Caption);
+        Assert.AreEqual("眼保健操 4 分 30 秒", detail.Caption);
         Assert.AreEqual("历史与社会", detail.Subject);
         Assert.AreEqual("请收好实验器材。", detail.Message);
         Assert.IsTrue(detail.Vertical);

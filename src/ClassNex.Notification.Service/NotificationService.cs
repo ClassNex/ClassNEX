@@ -15,8 +15,9 @@ public sealed class NotificationService : INotificationService, INotificationPub
     private readonly Dictionary<string, DateTimeOffset> _seen = new(StringComparer.Ordinal);
     private readonly ClassroomReminders _classroom = new();
     private ITimer? _timer;
-    private bool _running, _disposed, _hasOverlay;
+    private bool _running, _disposed, _hasOverlay, _previewHasOverlayDeadline;
     private NotificationRequest? _active, _preview;
+    private NotificationOverlayPlayback? _overlayPlayback;
     private DateTimeOffset _overlayAt, _end, _nextScheduleCheck;
     private int _lastSeconds = -1;
 
@@ -207,14 +208,16 @@ public sealed class NotificationService : INotificationService, INotificationPub
                 }
                 if (_active is not { Overlay: { } overlay } request || now < _overlayAt) return;
                 var channel = _channels[request.Channel];
-                var seconds = overlay.CountdownTo is { } target ? (int)Math.Clamp(Math.Ceiling((target - now).TotalSeconds), 0, int.MaxValue) : -1;
+                var preparing = IsPreparingPresentation(request);
+                var seconds = overlay.CountdownTo is { } target ? CountdownSeconds(target - now, preparing) : -1;
                 if (!_hasOverlay)
                 {
                     _hasOverlay = true;
-                    channel.ShowOverlay(seconds >= 0 ? $"距上课还剩 {seconds} 秒" : overlay.Caption, overlay.Subject, overlay.Teacher,
-                        overlay.Time, overlay.Prefix, overlay.Message, overlay.Vertical, _end - now);
+                    var duration = _end - now;
+                    _overlayPlayback = new(_clock, now, duration, preparing ? _end : null);
+                    channel.ShowOverlay(overlay, seconds >= 0 ? seconds : null, duration, _overlayPlayback);
                 }
-                else if (seconds >= 0 && seconds != _lastSeconds) channel.UpdateCountdown($"距上课还剩 {seconds} 秒");
+                else if (seconds >= 0 && seconds != _lastSeconds) channel.UpdateCountdown(seconds);
                 _lastSeconds = seconds;
                 return;
             }
@@ -226,6 +229,14 @@ public sealed class NotificationService : INotificationService, INotificationPub
         }
     }
 
+    private bool IsPreparingPresentation(NotificationRequest request) =>
+        request.Id.StartsWith(ClassroomReminders.PreparingPrefix, StringComparison.Ordinal) ||
+        (ReferenceEquals(request, _preview) && _previewHasOverlayDeadline);
+
+    private static int CountdownSeconds(TimeSpan remaining, bool preparing) =>
+        (int)Math.Clamp(preparing ? Math.Round(remaining.TotalSeconds, MidpointRounding.AwayFromZero) :
+            Math.Ceiling(remaining.TotalSeconds), 0, int.MaxValue);
+
     private void ArmTimer(DateTimeOffset now)
     {
         if (!_running) return;
@@ -234,9 +245,11 @@ public sealed class NotificationService : INotificationService, INotificationPub
         {
             if (_end < due) due = _end;
             if (!_hasOverlay && _active.Overlay != null && _overlayAt < due) due = _overlayAt;
-            if (_hasOverlay && _active.Overlay?.CountdownTo is { } target)
+            if (_hasOverlay && _lastSeconds > 0 && _active.Overlay?.CountdownTo is { } target)
             {
-                var next = target - TimeSpan.FromSeconds(Math.Max(0, _lastSeconds - 1));
+                var next = IsPreparingPresentation(_active)
+                    ? target - TimeSpan.FromSeconds(_lastSeconds - 0.5) + TimeSpan.FromTicks(1)
+                    : target - TimeSpan.FromSeconds(_lastSeconds - 1);
                 if (next > now && next < due) due = next;
             }
         }
@@ -247,8 +260,11 @@ public sealed class NotificationService : INotificationService, INotificationPub
     private void Finish()
     {
         if (_active is not { } active) return;
+        _overlayPlayback?.Stop();
+        _overlayPlayback = null;
         _active = null;
         _preview = null;
+        _previewHasOverlayDeadline = false;
         try { _channels[active.Channel].Hide(); } catch (Exception ex) { Report(active.Channel, ex); }
     }
 
@@ -259,7 +275,7 @@ public sealed class NotificationService : INotificationService, INotificationPub
     }
 
     private static string PreviewId => "preview/" + Guid.NewGuid().ToString("N");
-    private void Preview(Func<DateTimeOffset, NotificationRequest> create)
+    private void Preview(Func<DateTimeOffset, NotificationRequest> create, bool hasOverlayDeadline = false)
     {
         lock (_gate)
         {
@@ -270,6 +286,7 @@ public sealed class NotificationService : INotificationService, INotificationPub
             var request = create(now);
             if (!Enqueue(request, now)) return;
             _preview = request;
+            _previewHasOverlayDeadline = hasOverlayDeadline;
             Dispatch(now);
             ArmTimer(now);
         }
@@ -287,7 +304,7 @@ public sealed class NotificationService : INotificationService, INotificationPub
         var request = ClassroomReminders.Preparing(now, _settings().Notification, next, next.Start - now.TimeOfDay, PreviewId);
         var limit = TimeSpan.FromSeconds(23);
         return request.Duration <= limit ? request : request with { Duration = limit, ExpiresAt = now + limit };
-    });
+    }, hasOverlayDeadline: true);
 
     public void DebugTriggerClassOn() => Preview(now => ClassroomReminders.ClassOn(now, _settings().Notification, PreviewId));
 

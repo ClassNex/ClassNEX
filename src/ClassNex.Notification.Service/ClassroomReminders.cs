@@ -102,17 +102,19 @@ internal sealed class ClassroomReminders
         var span = end - breakStart;
         var parts = new List<string>(3);
         if (span.Hours > 0) parts.Add($"{span.Hours} 小时");
-        if (span.Minutes > 0) parts.Add($"{span.Minutes} 分钟");
+        if (span.Minutes > 0) parts.Add($"{span.Minutes} {(span.Seconds > 0 ? "分" : "分钟")}");
         if (span.Seconds > 0) parts.Add($"{span.Seconds} 秒");
-        var label = $"{breakName ?? "课间"} {(parts.Count == 0 ? "0 分钟" : string.Join(' ', parts))}";
+        var durationText = parts.Count == 0 ? "0 分钟" : string.Join(' ', parts);
+        var label = $"{breakName ?? "课间"} {durationText}";
         var duration = TimeSpan.FromSeconds(string.IsNullOrWhiteSpace(n.ClassOffOverlayText) ? 12 : 22);
         return new(id, mask, now + duration, TimeSpan.FromSeconds(2), duration,
-            Overlay: new(label, next.Subject, n.ShowTeacherName ? next.Teacher ?? "" : "", next.TimeRange, "下节课是", n.ClassOffOverlayText, true), RightGlyph: "\uE250");
+            Overlay: new(label, next.Subject, n.ShowTeacherName ? next.Teacher ?? "" : "", next.TimeRange, "下节课是", n.ClassOffOverlayText, true)
+                { Break = (breakName ?? DefaultBreakTitle, durationText) }, RightGlyph: "\uE250");
     }
 
     public static NotificationRequest AfterSchool(DateTimeOffset now, NotificationSettings n, string id) =>
-        new(id, "放学", now.AddSeconds(33), TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(33),
-            Overlay: new("", "", "", "", Message: string.IsNullOrWhiteSpace(n.AfterSchoolText) ? NotificationSettings.DefaultAfterSchoolText : n.AfterSchoolText), RightGlyph: "\uE2C8");
+        new(id, "放学", now.AddSeconds(35), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(35),
+            Overlay: new("", "", "", "", Message: string.IsNullOrWhiteSpace(n.AfterSchoolText) ? NotificationSettings.DefaultAfterSchoolText : n.AfterSchoolText), RightGlyph: "\uED34");
 
     public static CourseSlot SampleCourse(DateTimeOffset now) =>
         new("演示课程", "演示", null, null, now.TimeOfDay + TimeSpan.FromMinutes(1), now.TimeOfDay + TimeSpan.FromMinutes(41));
