@@ -7,6 +7,8 @@
     <Window.Styles>
         <Style Selector="Button#WakeButton">
             <Setter Property="Opacity" Value="0.72"/>
+        </Style>
+        <Style Selector="Button#WakeButton.motion">
             <Setter Property="Transitions"><Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.12"/></Transitions></Setter>
         </Style>
         <Style Selector="Button#WakeButton:pointerover"><Setter Property="Opacity" Value="1"/></Style>

@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -29,20 +28,21 @@ public sealed class NexGlowControl : Control
     private static readonly Geometry PetalGeometry = CreatePetalGeometry();
     private static readonly IBrush[] PetalBrushes = CreatePetalBrushes();
     private static readonly Pen[] GlowPens = CreateGlowPens();
-    private readonly List<Petal> _petals = new();
+    private static readonly Petal[] Petals = CreatePetals();
+    internal bool DrawPetals { get; set; } = true;
 
     static NexGlowControl()
     {
         AffectsRender<NexGlowControl>(TimeProperty, IntensityProperty);
     }
 
-    public NexGlowControl()
+    private static Petal[] CreatePetals()
     {
         var random = new Random(20261103);
-
-        for (var i = 0; i < 150; i++)
+        var petals = new Petal[150];
+        for (var i = 0; i < petals.Length; i++)
         {
-            _petals.Add(new Petal
+            petals[i] = new Petal
             {
                 Edge = random.Next(4),
                 Offset = 0.02 + random.NextDouble() * 0.96,
@@ -54,8 +54,9 @@ public sealed class NexGlowControl : Control
                 Rotation = random.NextDouble() * Math.PI * 2,
                 Spin = -1.6 + random.NextDouble() * 3.2,
                 Brush = PetalBrushes[i % PetalBrushes.Length],
-            });
+            };
         }
+        return petals;
     }
 
     public double Time
@@ -84,12 +85,14 @@ public sealed class NexGlowControl : Control
             return;
 
         DrawEdgeGlow(context, w, h, intensity);
+        if (!DrawPetals) return;
 
         var span = Math.Min(w, h);
+        var time = Time;
 
-        foreach (var petal in _petals)
+        foreach (var petal in Petals)
         {
-            var u = (Time * petal.Speed + petal.Phase) % 1.0;
+            var u = (time * petal.Speed + petal.Phase) % 1.0;
             if (u <= 0.001 || u >= 0.999)
                 continue;
 
@@ -138,12 +141,16 @@ public sealed class NexGlowControl : Control
             y += inY * travel + inX * sway;
 
             var size = petal.Size * (0.82 + 0.18 * Math.Sin(u * Math.PI * 2 + petal.Phase * 4));
-            var rotation = petal.Rotation + petal.Spin * Time;
+            var rotation = petal.Rotation + petal.Spin * time;
+            var transform = Matrix.CreateScale(size, size * 1.35) * Matrix.CreateRotation(rotation) * Matrix.CreateTranslation(x, y);
 
             using (context.PushOpacity(fade * intensity))
             {
-                DrawPetal(context, x, y, size * 2.1, rotation, petal.Brush, 0.18);
-                DrawPetal(context, x, y, size, rotation, petal.Brush, 1.0);
+                using (context.PushOpacity(.18))
+                using (context.PushTransform(Matrix.CreateScale(2.1, 2.1) * transform))
+                    context.DrawGeometry(petal.Brush, null, PetalGeometry);
+                using (context.PushTransform(transform))
+                    context.DrawGeometry(petal.Brush, null, PetalGeometry);
             }
         }
     }
@@ -173,27 +180,6 @@ public sealed class NexGlowControl : Control
             (byte)(from.R + (to.R - from.R) * t),
             (byte)(from.G + (to.G - from.G) * t),
             (byte)(from.B + (to.B - from.B) * t));
-    }
-
-    private static void DrawPetal(
-        DrawingContext context,
-        double cx,
-        double cy,
-        double size,
-        double rotation,
-        IBrush brush,
-        double alpha)
-    {
-        if (alpha <= 0.001)
-            return;
-
-        var transform = Matrix.CreateScale(size, size * 1.35)
-                        * Matrix.CreateRotation(rotation)
-                        * Matrix.CreateTranslation(cx, cy);
-
-        using (context.PushOpacity(Math.Clamp(alpha, 0, 1)))
-        using (context.PushTransform(transform))
-            context.DrawGeometry(brush, null, PetalGeometry);
     }
 
     private static IBrush[] CreatePetalBrushes()

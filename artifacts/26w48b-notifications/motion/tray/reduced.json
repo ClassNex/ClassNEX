@@ -1,0 +1,29 @@
+{
+  "Passed": true,
+  "Checks": [
+    "An initial shell registration failure schedules one retry, even with no classroom visible",
+    "Two temporary failures recover with increasing delays; the real registered shell icon is no longer polled",
+    "Legacy configuration keeps its overlay visibility but always opens the menu",
+    "Idle shell mouse moves neither sample the cursor nor open the menu",
+    "A short press waits for release",
+    "Short press and shell select open one populated menu",
+    "The gesture left the classroom, settings and profile unchanged",
+    "Long press opens once while the button is still down",
+    "The gesture left the classroom, settings and profile unchanged",
+    "The long-press release cannot reopen even an already dismissed menu",
+    "Dragging away cancels the hold, release and synthesized select without moving the system pointer",
+    "A shell move beyond the drag threshold stays cancelled after returning to the original point",
+    "Right-click context and button-up reach the same menu once",
+    "The gesture left the classroom, settings and profile unchanged",
+    "Keyboard activation opens the menu once and Down selects the next command",
+    "The context-menu key can immediately reopen the dismissed menu",
+    "Visible menu fits the tray working area; shell icon=1589, 1032, 32, 48, menu=1493, 688..1717, 1028, work=0, 0, 1920, 1032",
+    "The visible menu is next to the registered icon",
+    "Placement supports a 150% monitor with a negative desktop origin",
+    "Only the explicit menu command changes and saves visibility",
+    "The explicit layout command reaches the editor without changing classroom visibility",
+    "Reduced motion closes the tray immediately",
+    "Reduced motion opens a fully readable tray without a fade"
+  ],
+  "Error": null
+}

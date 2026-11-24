@@ -417,8 +417,6 @@ public sealed class NexVoiceCoordinator : IDisposable
         }
 
         
-        _glow.StartFromLeft = AppServices.Settings.NexEdgeBarSide == "left";
-
         _glow.UpdateWindowPos(screen, 1 / screen.Scaling, false);
 
         if (!_glow.IsVisible)
@@ -426,8 +424,7 @@ public sealed class NexVoiceCoordinator : IDisposable
 
         
         WindowsOverlay.SetClickThrough(_glow.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero, false);
-        if (!_glow.IsRunning)
-            _glow.Start();
+        _glow.Start();
     }
 
     

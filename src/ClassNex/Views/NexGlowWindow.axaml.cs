@@ -1,113 +1,90 @@
-using System;
+using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Media;
-using Avalonia.Threading;
+using ClassNex.Styles;
 
 namespace ClassNex.Views;
 
 public partial class NexGlowWindow : Window
 {
-    private const double Fps = 45;
+    private readonly Stopwatch _clock = new();
+    private readonly Action<TimeSpan> _drawFrame;
+    private double _phaseStart, _phaseFrom, _nextDraw;
+    private bool _closing, _closed, _framePending;
+    private const double FullOpacity = .98;
 
-    private readonly DispatcherTimer _timer;
-
-    private double _time;
-    private bool _closing;
-    private double _outroOpacity = 1;
-
-    // Kept for compatibility with the edge-bar setting; petals always enter from all four edges.
-    public bool StartFromLeft { get; set; }
-
-    public bool IsRunning => _timer.IsEnabled;
+    public bool IsRunning { get; private set; }
+    public event Action? CancelRequested;
+    public event Action? Stopped;
 
     public NexGlowWindow()
     {
         InitializeComponent();
-
-        _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1000 / Fps) };
-        _timer.Tick += (_, _) => Step();
-        Closed += (_, _) => _timer.Stop();
-
+        _drawFrame = DrawFrame;
+        Root.Opacity = 0;
+        Closed += (_, _) =>
+        {
+            _closed = true;
+            IsRunning = false;
+            _clock.Stop();
+            Stopped?.Invoke();
+        };
         PointerPressed += (_, _) => CancelRequested?.Invoke();
     }
 
     public void Start()
     {
-        _time = 0;
+        if (_closed || (IsRunning && !_closing)) return;
+        if (!IsRunning) _clock.Restart();
+        IsRunning = true;
         _closing = false;
-        _outroOpacity = 1;
-        Root.Opacity = 0.98;
-
-        Width = GetScreenWidth();
-        Height = GetScreenHeight();
-
-        Glow.Time = 0;
-        Glow.Intensity = 0;
-
-        Step();
-        _timer.Start();
+        _phaseFrom = Root.Opacity;
+        _phaseStart = _clock.Elapsed.TotalSeconds;
+        Glow.DrawPetals = DesktopMotion.IsEnabled;
+        if (!Glow.DrawPetals)
+        {
+            Glow.Intensity = .65;
+            Root.Opacity = FullOpacity;
+            return;
+        }
+        Glow.Intensity = 1;
+        QueueFrame();
     }
-
-    private double GetScreenWidth() => Screens.Primary is { } s
-        ? s.Bounds.Width / s.Scaling
-        : Bounds.Width;
-
-    private double GetScreenHeight() => Screens.Primary is { } s
-        ? s.Bounds.Height / s.Scaling
-        : Bounds.Height;
 
     public void StopGlow()
     {
-        if (!_timer.IsEnabled)
-        {
-            CompleteStop();
-            return;
-        }
-
+        if (_closed || _closing) return;
+        if (!IsRunning || !IsVisible || !DesktopMotion.IsEnabled) { Close(); return; }
         _closing = true;
+        _phaseFrom = Root.Opacity;
+        _phaseStart = _clock.Elapsed.TotalSeconds;
+        QueueFrame();
     }
 
-    private void Step()
+    private void QueueFrame()
     {
-        if (_closing)
+        if (_framePending || _closed || !IsVisible) return;
+        _framePending = true;
+        RequestAnimationFrame(_drawFrame);
+    }
+
+    private void DrawFrame(TimeSpan frameTime)
+    {
+        _framePending = false;
+        if (_closed || !IsRunning || !IsVisible) return;
+        var now = _clock.Elapsed.TotalSeconds;
+        var duration = _closing ? DesktopMotion.Exit : DesktopMotion.Enter;
+        var progress = Math.Clamp((now - _phaseStart) / duration.TotalSeconds, 0, 1);
+        if (_closing && progress >= 1) { Close(); return; }
+        if (now >= _nextDraw)
         {
-            _outroOpacity -= 0.06;
-            if (_outroOpacity <= 0.02)
-            {
-                CompleteStop();
-            }
-            else
-            {
-                Root.Opacity = _outroOpacity;
-            }
-
-            return;
+            var eased = (_closing ? DesktopMotion.ExitEase : DesktopMotion.EnterEase).Ease(progress);
+            Root.Opacity = _phaseFrom + ((_closing ? 0 : FullOpacity) - _phaseFrom) * eased;
+            Glow.Time = now;
+            const double interval = 1d / 60;
+            _nextDraw += (Math.Floor((now - _nextDraw) / interval) + 1) * interval;
         }
-
-        _time += 1 / Fps;
-
-        Glow.Time = _time;
-        Glow.Intensity = Math.Min(1, _time * 3.4);
-        Root.Opacity = 0.98;
-    }
-
-    public event Action? CancelRequested;
-
-    public event Action? Stopped;
-
-    private void CompleteStop()
-    {
-        Root.Opacity = 0;
-        _closing = false;
-        _timer.Stop();
-        Glow.Intensity = 0;
-        Glow.Time = 0;
-        Width = 1;
-        Height = 1;
-        Hide();
-        Stopped?.Invoke();
-        Close();
+        QueueFrame();
     }
 
     public void UpdateWindowPos(Avalonia.Platform.Screen screen, double scale, bool useWorkingArea)

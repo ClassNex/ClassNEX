@@ -1,6 +1,11 @@
 #if DEBUG
+using System.Diagnostics;
+using Avalonia.Controls;
 using Avalonia.Threading;
+using ClassNex.Controls;
 using ClassNex.Services;
+using ClassNex.Styles;
+using ClassNex.Views;
 
 namespace ClassNex;
 
@@ -70,12 +75,51 @@ public partial class App
                 "Only confirmed primary failure starts one fallback and releases the old handlers");
             coordinator.Dispose();
             check(!coordinator.Start() && !coordinator.IsRunning && fallback.Subscribers == 0, "Disposed coordinator cannot reopen an engine");
+            await ReviewWakeVisualAsync(check);
         }
         finally
         {
             settings.IsNexVoiceWakeEnabled = false;
             AppServices.SaveSettings();
         }
+    }
+
+    private static async Task ReviewWakeVisualAsync(Action<bool, string> check)
+    {
+        var glow = new NexGlowWindow { Width = 240, Height = 100, Topmost = false };
+        var drawing = glow.FindControl<NexGlowControl>("Glow")!;
+        var stops = 0;
+        glow.Stopped += () => stops++;
+        static async Task Until(Func<bool> done)
+        {
+            var before = Stopwatch.GetTimestamp();
+            while (!done() && Stopwatch.GetElapsedTime(before).TotalSeconds < 3) await Task.Delay(16);
+            if (!done()) throw new InvalidOperationException("Listening visual did not settle");
+        }
+        try
+        {
+            glow.Show();
+            glow.Start(); glow.Start();
+            if (DesktopMotion.IsEnabled)
+            {
+                await Until(() => drawing.Time > .05);
+                var timeBefore = drawing.Time;
+                glow.StopGlow(); glow.Start();
+                await Task.Delay(2 * DesktopMotion.Enter);
+                check(glow.IsRunning && glow.IsVisible && drawing.Time > timeBefore && stops == 0,
+                    "A renewed wake during dismissal reuses the visible surface and its running clock");
+            }
+            else
+            {
+                await Task.Delay(125);
+                check(glow.IsRunning && !drawing.DrawPetals && drawing.Time == 0,
+                    "Reduced motion shows the listening state with no moving petals or redraw clock");
+            }
+            glow.StopGlow(); glow.StopGlow();
+            await Until(() => stops == 1);
+            check(!glow.IsRunning && !glow.IsVisible, "Finishing a wake releases its frame loop and closes the effect window once");
+        }
+        finally { if (stops == 0) glow.Close(); }
     }
 }
 #endif

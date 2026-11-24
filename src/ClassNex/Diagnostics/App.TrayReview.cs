@@ -9,6 +9,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.VisualTree;
 using ClassNex.Services;
+using ClassNex.Styles;
 using ClassNex.Views;
 
 namespace ClassNex;
@@ -24,7 +25,12 @@ public partial class App
         string? failure = null;
         try
         {
-            void Check(bool passed, string reason) { if (!passed) throw new InvalidOperationException(reason); checks.Add(reason); }
+            void Check(bool passed, string reason)
+            {
+                if (!passed) throw new InvalidOperationException(reason);
+                checks.Add(reason);
+                File.AppendAllText(Path.Combine(directory, "tray-progress.log"), $"{DateTimeOffset.Now:O} {reason}{Environment.NewLine}");
+            }
             var owner = (Window?)_mainWindow ?? _oobeWindow!;
             var simulatedPointer = new PixelPoint(32, 32);
             var pointerReads = 0;
@@ -159,6 +165,39 @@ public partial class App
             KeyFromFocus(Key.Enter);
             await Wait(() => _desktop?.Settings is { CurrentPageKey: "widget-layout", AppWindow.IsVisible: true } && !menu.IsVisible, "Edit classroom did not open the actual component layout editor");
             Check(overlay!.IsVisible == !saved && AppServices.Settings.IsMainWindowVisible == !saved, "The explicit layout command reaches the editor without changing classroom visibility");
+
+            menu.OpenAt(icon, false);
+            await Wait(() => menu.IsVisible && root.Opacity >= .999, "Menu did not reach full opacity");
+            var originalBounds = buttons.Select(b => b.Bounds).ToArray();
+            if (DesktopMotion.IsEnabled)
+            {
+                var intermediate = false;
+                root.PropertyChanged += ObserveFade;
+                void ObserveFade(object? sender, AvaloniaPropertyChangedEventArgs e)
+                {
+                    if (e.Property == Visual.OpacityProperty && root.Opacity is > .002 and < .998) intermediate = true;
+                }
+                try
+                {
+                    menu.CloseAnimated();
+                    await Wait(() => intermediate, "Menu closed without an intermediate fade sample");
+                    menu.OpenAt(icon, false);
+                    await Task.Delay(2 * DesktopMotion.Enter);
+                    Check(menu.IsVisible && root.Opacity >= .999 && buttons.Select(b => b.Bounds).SequenceEqual(originalBounds),
+                        "Reopening during fade-out keeps the same menu and row bounds; no stale callback hides it");
+                    await Close();
+                    Check(intermediate, "The live tray fades as one surface, with intermediate opacity before hiding");
+                }
+                finally { root.PropertyChanged -= ObserveFade; }
+            }
+            else
+            {
+                menu.CloseAnimated();
+                Check(!menu.IsVisible, "Reduced motion closes the tray immediately");
+                menu.OpenAt(icon, false);
+                Check(menu.IsVisible && root.Opacity == 1 && root.Transitions == null, "Reduced motion opens a fully readable tray without a fade");
+                await Close();
+            }
         }
         catch (Exception ex) { failure = ex.ToString(); }
         finally

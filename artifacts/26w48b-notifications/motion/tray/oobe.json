@@ -1,0 +1,13 @@
+{
+  "Passed": true,
+  "Checks": [
+    "Disposing a temporarily unregistered icon cancels its pending retry",
+    "An initial shell registration failure schedules one retry, even with no classroom visible",
+    "Two temporary failures recover with increasing delays; the real registered shell icon is no longer polled",
+    "Setup exposes only resume and exit in the same menu",
+    "Setup short press does not silently restore the wizard",
+    "A setup long press and release opens the menu once",
+    "Resuming setup does not complete it or start classroom services"
+  ],
+  "Error": null
+}

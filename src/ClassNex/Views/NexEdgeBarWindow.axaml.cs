@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using ClassNex.Services;
+using ClassNex.Styles;
 
 namespace ClassNex.Views;
 
@@ -31,6 +32,7 @@ public partial class NexEdgeBarWindow : Window
     public override void Show()
     {
         ShowInTaskbar = false;
+        WakeButton.Classes.Set("motion", DesktopMotion.IsEnabled);
         base.Show();
         ApplyToolWindowStyle();
     }

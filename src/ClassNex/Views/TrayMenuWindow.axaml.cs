@@ -1,14 +1,13 @@
 using Avalonia;
 using Avalonia.Animation;
-using Avalonia.Animation.Easings;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
-using Avalonia.Rendering.Composition;
 using Avalonia.Threading;
+using ClassNex.Styles;
 
 namespace ClassNex.Views;
 
@@ -19,11 +18,23 @@ public partial class TrayMenuWindow : Window
     private bool _prewarmed;
     private bool _prewarming;
     private int _closeVersion;
+    private bool _restoreFocus;
+    private readonly DoubleTransition _fade = new() { Property = OpacityProperty };
+    private readonly Transitions _menuTransitions = [];
     internal event EventHandler? KeyboardDismissed;
 
     public TrayMenuWindow()
     {
         InitializeComponent();
+        _menuTransitions.Add(_fade);
+        MenuRoot.PropertyChanged += (_, change) =>
+        {
+            if (change.Property == OpacityProperty && _closing && MenuRoot.Opacity <= .001)
+            {
+                var close = _closeVersion;
+                Dispatcher.UIThread.Post(() => FinishClose(close));
+            }
+        };
         AddHandler(KeyDownEvent, NavigateMenu, RoutingStrategies.Tunnel);
         Deactivated += (_, _) =>
         {
@@ -62,8 +73,14 @@ public partial class TrayMenuWindow : Window
             if (keyboard) ItemsPanel.Children.OfType<Button>().FirstOrDefault()?.Focus(NavigationMethod.Directional);
             return;
         }
-        PrepareForOpen();
-        var opening = _closeVersion;
+        var opening = ++_closeVersion;
+        _closing = _restoreFocus = false;
+        if (!IsVisible)
+        {
+            MenuRoot.Transitions = null;
+            MenuRoot.Opacity = 0;
+        }
+        ConfigureFade(opening: true);
         void Place()
         {
             var screen = (anchor is { } region ? Screens.ScreenFromPoint(region.Center) : null) ?? Screens.Primary;
@@ -79,11 +96,12 @@ public partial class TrayMenuWindow : Window
         Place();
         if (!IsVisible) Show();
         Activate();
+        MenuRoot.Opacity = 1;
         if (keyboard) ItemsPanel.Children.OfType<Button>().FirstOrDefault()?.Focus(NavigationMethod.Directional);
         Dispatcher.UIThread.Post(() =>
         {
             if (opening != _closeVersion || !IsVisible) return;
-            Place(); PlayOpenAnimation();
+            Place();
         }, DispatcherPriority.Render);
     }
 
@@ -108,59 +126,11 @@ public partial class TrayMenuWindow : Window
         e.Handled = items[next].Focus(NavigationMethod.Directional);
     }
 
-    private void PrepareForOpen()
+    private void ConfigureFade(bool opening)
     {
-        _closeVersion++;
-        _closing = false;
-        MenuRoot.Opacity = 0;
-
-        var rootVisual = ElementComposition.GetElementVisual(MenuRoot);
-        if (rootVisual is not null)
-        {
-            rootVisual.StopAnimation("Opacity");
-            rootVisual.Opacity = 0;
-        }
-
-        foreach (var child in ItemsPanel.Children)
-        {
-            if (child is not Control control)
-                continue;
-
-            var visual = ElementComposition.GetElementVisual(control);
-            if (visual is null)
-                continue;
-
-            visual.StopAnimation("Opacity");
-            visual.StopAnimation("Scale");
-            visual.StopAnimation("Offset");
-            visual.Opacity = 0;
-        }
-
-        if (Bounds.Width <= 0)
-            UpdateLayout();
-    }
-
-    private void PlayOpenAnimation()
-    {
-        if (!IsVisible || _closing)
-            return;
-
-        MenuRoot.Opacity = 1;
-
-        var rootVisual = ElementComposition.GetElementVisual(MenuRoot);
-        if (rootVisual is not null)
-        {
-            rootVisual.StopAnimation("Opacity");
-            rootVisual.Opacity = 0;
-
-            var fade = rootVisual.Compositor.CreateScalarKeyFrameAnimation();
-            fade.Duration = TimeSpan.FromMilliseconds(140);
-            fade.InsertKeyFrame(0f, 0f);
-            fade.InsertKeyFrame(1f, 1f, Easing.Parse("0.16,1,0.3,1"));
-            rootVisual.StartAnimation("Opacity", fade);
-        }
-
-        ClassNex.Styles.MetroTransitions.PlayTrayMenuTransition(ItemsPanel);
+        _fade.Duration = opening ? DesktopMotion.Enter : DesktopMotion.Exit;
+        _fade.Easing = opening ? DesktopMotion.EnterEase : DesktopMotion.ExitEase;
+        MenuRoot.Transitions = DesktopMotion.IsEnabled ? _menuTransitions : null;
     }
 
     public void CloseAnimated(bool returnFocus = false)
@@ -169,34 +139,20 @@ public partial class TrayMenuWindow : Window
             return;
 
         _closing = true;
-        var version = ++_closeVersion;
+        _restoreFocus = returnFocus;
+        var close = ++_closeVersion;
+        ConfigureFade(opening: false);
+        MenuRoot.Opacity = 0;
+        FinishClose(close);
+    }
 
-        var visual = ElementComposition.GetElementVisual(MenuRoot);
-        if (visual is null)
-        {
-            Hide();
-            _closing = false;
-            if (returnFocus) KeyboardDismissed?.Invoke(this, EventArgs.Empty);
-            return;
-        }
-
-        visual.StopAnimation("Opacity");
-        var fade = visual.Compositor.CreateScalarKeyFrameAnimation();
-        fade.Duration = TimeSpan.FromMilliseconds(120);
-        fade.InsertKeyFrame(0f, 1f);
-        fade.InsertKeyFrame(1f, 0f, Easing.Parse("0.4,0,1,1"));
-        visual.StartAnimation("Opacity", fade);
-
-        DispatcherTimer.RunOnce(() =>
-        {
-            if (version != _closeVersion)
-                return;
-
-            if (IsVisible)
-                Hide();
-            _closing = false;
-            if (returnFocus) KeyboardDismissed?.Invoke(this, EventArgs.Empty);
-        }, TimeSpan.FromMilliseconds(140));
+    private void FinishClose(int close)
+    {
+        if (!_closing || close != _closeVersion || MenuRoot.Opacity > .001) return;
+        var focus = _restoreFocus;
+        if (IsVisible) Hide();
+        _closing = _restoreFocus = false;
+        if (focus) KeyboardDismissed?.Invoke(this, EventArgs.Empty);
     }
 
     
@@ -256,7 +212,6 @@ public partial class TrayMenuWindow : Window
             };
             AutomationProperties.SetName(button, item.Header);
             button.Classes.Add("TrayMenuItem");
-            ClassNex.Styles.MetroTilt.Attach(button);
             button.Click += (_, _) =>
             {
                 if (_closing) return;
