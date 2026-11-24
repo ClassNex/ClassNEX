@@ -38,11 +38,6 @@ public partial class App : Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            
-            desktop.ShutdownMode = AppServices.Settings.IsOobeCompleted
-                ? ShutdownMode.OnExplicitShutdown
-                : ShutdownMode.OnMainWindowClose;
-
             ApplyCiPalette();
             ApplyTheme(AppServices.Settings.ThemeMode);
 
@@ -52,29 +47,26 @@ public partial class App : Application
                 Environment.ExitCode = args.ApplicationExitCode;
                 Microsoft.UI.Xaml.Application.Current.Exit();
             };
-#if DEBUG
-            if (desktop.Args is ["--preview-migration"] && File.Exists(Path.Combine(AppContext.BaseDirectory, "..", ".classnex-review")))
+            if (desktop.Args?.Contains("--preview-migration", StringComparer.Ordinal) == true)
             {
-                desktop.ShutdownMode = ShutdownMode.OnMainWindowClose;
-                desktop.MainWindow = new OobeWindow(preview: true);
-                desktop.MainWindow.Show();
-                base.OnFrameworkInitializationCompleted();
-                return;
-            }
-#endif
-            if (!AppServices.Settings.IsOobeCompleted)
-            {
-                _oobeWindow = new Views.OobeWindow();
-                desktop.MainWindow = _oobeWindow;
-                _oobeWindow.Show();
 #if DEBUG
-                if (desktop.Args is ["--review-tray"]) Dispatcher.UIThread.Post(() => _ = ReviewTrayAsync(desktop));
+                if (IsIsolatedMigrationPreview()) ShowSetup(desktop, OobeMode.StandalonePreview);
                 else
 #endif
-                    InstallTray(_oobeWindow);
-                base.OnFrameworkInitializationCompleted();
-                return;
+                    desktop.Shutdown(2);
             }
+            else if (!AppServices.Settings.IsOobeCompleted) ShowSetup(desktop, OobeMode.FirstRun);
+            else StartClassroom(desktop);
+        }
+
+        base.OnFrameworkInitializationCompleted();
+    }
+
+    private void StartClassroom(IClassicDesktopStyleApplicationLifetime desktop)
+    {
+        if (_mainWindow is null)
+        {
+            desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 #if DEBUG
             if (desktop.Args is ["--review-ui", _] && File.Exists(Path.Combine(AppContext.BaseDirectory, "..", ".classnex-review")))
                 AppServices.UseReviewClock(new ClassroomReviewClock());
@@ -91,20 +83,17 @@ public partial class App : Application
             if (desktop.Args is ["--review-tray"])
             {
                 Dispatcher.UIThread.Post(() => _ = ReviewTrayAsync(desktop));
-                base.OnFrameworkInitializationCompleted();
                 return;
             }
             if (desktop.Args is ["--review-alpha-plugin"])
             {
                 Dispatcher.UIThread.Post(() => _ = VerifyLegacyPluginAsync(desktop));
-                base.OnFrameworkInitializationCompleted();
                 return;
             }
             if (desktop.Args is ["--review-account", var issuer, var control])
             {
                 _desktop.Connect();
                 Dispatcher.UIThread.Post(() => _ = VerifyAccountAsync(issuer, control, desktop));
-                base.OnFrameworkInitializationCompleted();
                 return;
             }
             if (desktop.Args is ["--review-ui", var output] &&
@@ -112,7 +101,6 @@ public partial class App : Application
             {
                 _desktop.Connect();
                 Dispatcher.UIThread.Post(() => _ = ReviewWindowsAsync(output, desktop), DispatcherPriority.Background);
-                base.OnFrameworkInitializationCompleted();
                 return;
             }
 #endif
@@ -286,8 +274,6 @@ public partial class App : Application
             }
 #endif
         }
-
-        base.OnFrameworkInitializationCompleted();
     }
 
     public static FluentAvaloniaTheme? FluentTheme => (FluentAvaloniaTheme?)Current?.Styles[0];
@@ -601,15 +587,19 @@ public partial class App : Application
 
     private void DisposeDesktopServices()
     {
-        _trayIcon?.Dispose();
-        _trayIcon = null;
+        StopClassroom();
+        AppServices.Day.Dispose();
+    }
+
+    private void StopClassroom()
+    {
+        RemoveTray();
         _desktop?.Dispose();
         _desktop = null;
         _nexVoice?.Dispose();
         AppServices.NexVoice = _nexVoice = null;
         _runtime?.Dispose();
         _runtime = null;
-        AppServices.Day.Dispose();
     }
 
     public static void ExitApp()
@@ -645,7 +635,7 @@ public partial class App : Application
             return;
         }
 
-        app._oobePreview = new Views.OobeWindow(preview: true);
+        app._oobePreview = new Views.OobeWindow(OobeMode.SettingsPreview);
         app._oobePreview.Closed += (_, _) => app._oobePreview = null;
         app._oobePreview.Show();
         app._oobePreview.Activate();
@@ -715,6 +705,14 @@ public partial class App : Application
 
     private void InstallTray(Window owner, Func<PixelPoint?>? cursor = null, WindowsTrayIcon.RegisterIcon? register = null) =>
         _trayIcon ??= new WindowsTrayIcon(owner, ShowTrayMenu, cursor, register);
+
+    private void RemoveTray()
+    {
+        _trayIcon?.Dispose();
+        _trayIcon = null;
+        _trayMenu?.Close();
+        _trayMenu = null;
+    }
 
     private void ShowTrayMenu(PixelRect? anchor, bool keyboard)
     {

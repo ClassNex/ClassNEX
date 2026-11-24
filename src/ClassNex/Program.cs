@@ -18,6 +18,11 @@ internal static class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        if (args.Contains("--preview-migration", StringComparer.Ordinal) && !App.IsPreviewInstallation())
+        {
+            Environment.ExitCode = 2;
+            return;
+        }
 #if DEBUG
         if (args.FirstOrDefault() is "--review-account" or "--review-ui" or "--review-tray" or "--review-alpha-plugin" &&
             !File.Exists(Path.Combine(AppContext.BaseDirectory, "..", ".classnex-review")))

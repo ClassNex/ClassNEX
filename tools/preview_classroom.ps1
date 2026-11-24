@@ -12,6 +12,7 @@ if ($exe.VersionInfo.ProductVersion -cne $ExpectedVersion) { throw "Preview buil
 $prefs = [ordered]@{ IsOobeCompleted=$true; SampleSeedVersion=3; IsMainWindowVisible=$true; IsClickThrough=$false; Topmost=$true;
     ThemeMode='dark'; MainWindowScale=1.45; RunAtStartup=$false; RegisterUrlProtocol=$false; IsNexVoiceWakeEnabled=$false; IsNexEdgeBarEnabled=$false;
     AccountEndpoint='http://127.0.0.1:9'; CentralManagement=@{IsEnabled=$false; ServerUrl='http://127.0.0.1:9'} }
+if ($Migration) { $prefs['IsNexIntelligenceEnabled'] = $false }
 $utf8 = [Text.UTF8Encoding]::new($false)
 [IO.File]::WriteAllText((Join-Path $data.FullName 'Settings.json'), ($prefs | ConvertTo-Json), $utf8)
 $now = Get-Date

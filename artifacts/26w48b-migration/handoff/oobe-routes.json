@@ -1,0 +1,116 @@
+{
+  "version": "26w48b",
+  "date": "2026-11-24",
+  "routes": 9,
+  "checksPassed": 121,
+  "checksFailed": 0,
+  "sameProcessHandoffs": 5,
+  "results": [
+    {
+      "mode": "finish",
+      "passed": 12,
+      "wizardPid": 7208,
+      "classroomPid": 7208,
+      "classroomVisible": true,
+      "selectedPassedChecks": [
+        "finishReplacesWizardWithClassroom",
+        "classroomServicesConnected"
+      ]
+    },
+    {
+      "mode": "preview-finish",
+      "passed": 9,
+      "wizardPid": 9692,
+      "classroomPid": 9692,
+      "classroomVisible": true,
+      "selectedPassedChecks": [
+        "previewCannotAuthorizeOrSignOut",
+        "readOnlyPreviewKeepsSettingsAndRegistration"
+      ]
+    },
+    {
+      "mode": "migration-keep",
+      "passed": 27,
+      "wizardPid": 7800,
+      "classroomPid": 7800,
+      "classroomVisible": false,
+      "sourcePreserved": true,
+      "renderedAccentPixel": "#FFC5408A",
+      "observedHiddenMs": 1564,
+      "selectedPassedChecks": [
+        "sameWindowOptionalStep",
+        "busyProgressHasItsOwnRowClearOfAllVisibleText",
+        "liveClassroomHasImportedProfileAndBreak",
+        "hiddenClassroomCanBeRestoredAndHiddenFromTray"
+      ]
+    },
+    {
+      "mode": "migration-recycle",
+      "passed": 25,
+      "wizardPid": 15188,
+      "classroomPid": 15188,
+      "classroomVisible": true,
+      "sourcePreserved": false,
+      "renderedAccentPixel": "#FFC5408A",
+      "selectedPassedChecks": [
+        "sameWindowOptionalStep",
+        "verifiedImportAppliesThemeAndSelectedCleanup",
+        "liveClassroomHasImportedProfileAndBreak"
+      ]
+    },
+    {
+      "mode": "preview-import",
+      "passed": 10,
+      "wizardPid": 17308,
+      "classroomPid": 17308,
+      "classroomVisible": true,
+      "selectedPassedChecks": [
+        "previewImportWithDefaultCleanupLeavesBothInstallsUntouched",
+        "readOnlyPreviewKeepsSettingsAndRegistration"
+      ]
+    },
+    {
+      "mode": "preview-close",
+      "passed": 8,
+      "wizardPid": 4332,
+      "classroomPid": null,
+      "classroomVisible": null,
+      "selectedPassedChecks": [
+        "closingDoesNotStartTheClassroom",
+        "readOnlyPreviewKeepsSettingsAndRegistration"
+      ]
+    },
+    {
+      "mode": "close",
+      "passed": 4,
+      "wizardPid": 16848,
+      "classroomPid": null,
+      "classroomVisible": null,
+      "selectedPassedChecks": [
+        "closingDoesNotStartTheClassroom"
+      ]
+    },
+    {
+      "mode": "reduced",
+      "passed": 14,
+      "wizardPid": 2964,
+      "classroomPid": null,
+      "classroomVisible": null,
+      "selectedPassedChecks": [
+        "reducedMotionKeepsGreetingStill",
+        "draftPreferencesNotCommitted"
+      ]
+    },
+    {
+      "mode": "measure",
+      "passed": 12,
+      "wizardPid": 10264,
+      "classroomPid": null,
+      "classroomVisible": null,
+      "selectedPassedChecks": [
+        "differentButtonsRespondDuringPageMotion",
+        "rapidLastNextDidNotFinish"
+      ]
+    }
+  ]
+}

@@ -60,7 +60,7 @@ public partial class OobeWindow
             (true, _, _, _, _, _) => L("正在取消…", "Cancelling…"),
             (_, _, true, _, _, null) => L("正在读取配置和组件…", "Reading configuration and widgets…"),
             (_, _, true, _, _, _) => L("正在迁移并验证数据…", "Importing and verifying your data…"),
-            (_, _, _, true, _, _) => _preview ? L("迁移预览完成", "Import preview complete") : L("迁移完成", "Migration complete"),
+            (_, _, _, true, _, _) => IsPreview ? L("迁移预览完成", "Import preview complete") : L("迁移完成", "Migration complete"),
             (_, _, _, _, true, _) => L("迁移未完成", "Import not completed"),
             _ => L("可迁移的内容", "Ready to import"),
         };
@@ -68,7 +68,7 @@ public partial class OobeWindow
         ImportDetails.IsVisible = !string.IsNullOrEmpty(ImportDetails.Text);
         ImportNotes.IsVisible = _migrationError is null && !busy && plan?.Warnings.Count > 0;
         ImportNotesText.Text = ImportNotes.IsVisible && plan is not null ? string.Join("\n", plan.Warnings) : "";
-        CleanupSummary.Text = _preview ? L("当前是向导预览。不会写入设置或回收任何文件。", "This is a preview. No settings will be written and no files will be recycled.") : _cleanupResult ?? (plan switch
+        CleanupSummary.Text = IsPreview ? L("当前是向导预览。不会写入设置或回收任何文件。", "This is a preview. No settings will be written and no files will be recycled.") : _cleanupResult ?? (plan switch
         {
             null => "",
             { Source.PackageType: not "folder" } => L("此安装只导入数据，原 ClassIsland 文件夹将保留。", "Only the data will be imported. The original installation will be kept."),
@@ -133,7 +133,7 @@ public partial class OobeWindow
     private async Task RunImportAsync()
     {
         if (_closed || _page != Page.Import || _pickerOpen || _migrationOperation != null || _migrationFinished || _importPlan is not { } plan) return;
-        if (_preview)
+        if (IsPreview)
         {
             _migrationFinished = true;
             RefreshMigrationPage();
@@ -151,6 +151,7 @@ public partial class OobeWindow
             var result = await Task.Run(() => ClassIslandImporter.Apply(plan, AppServices.Settings, SettingsService.DataDirectory, operation.Token), operation.Token);
             _migrationFinished = true;
             AppServices.AcceptOnboardingMigration(result.Settings);
+            if (result.ActiveProfilePath is { } activeProfile) AppServices.Schedule.Load(activeProfile);
             ThemeCombo.SelectedIndex = result.Settings.ThemeMode switch { "light" => 1, "dark" => 2, _ => 0 };
             SemesterPicker.SelectedDate = result.Settings.SemesterStartDate ?? DefaultSemesterStart();
             RunAtStartupCheck.IsChecked = result.Settings.RunAtStartup;

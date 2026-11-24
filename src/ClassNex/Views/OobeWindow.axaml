@@ -253,7 +253,7 @@
                     <TextBlock x:Name="FinishTitle" Text="一切就绪" FontSize="34" HorizontalAlignment="Center"/>
                     <TextBlock x:Name="FinishBody" Classes="OobeBody" Opacity="0.85"
                                TextAlignment="Center" MaxWidth="560"
-                               Text="点击「完成」后 ClassNEX 会重新启动，并在桌面上显示课表浮窗。"/>
+                               Text="点击「完成」在桌面上显示课表浮窗。"/>
                 </StackPanel>
             </Panel>
             </Panel>

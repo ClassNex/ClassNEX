@@ -1,8 +1,9 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('measure','finish','close','reduced','migration-keep','migration-recycle')][string]$Mode = 'measure',
+    [ValidateSet('measure','finish','close','reduced','migration-keep','migration-recycle','preview-finish','preview-close','preview-import')][string]$Mode = 'measure',
     [string]$Project = (Join-Path $PSScriptRoot '../src/ClassNex/ClassNex.csproj'),
     [string]$ArtifactsPath,
+    [string]$PreparedApp,
     [string]$RecordingPython,
     [string]$ClassIslandPackage,
     [switch]$CompareOld
@@ -13,12 +14,17 @@ $fixture = (New-Item -ItemType Directory -Path (Join-Path $root ('build/oobe-rev
 $app = Join-Path $fixture 'app'
 $data = (New-Item -ItemType Directory -Path (Join-Path $fixture 'data')).FullName
 $utf8 = [Text.UTF8Encoding]::new($false)
-$settings = '{"IsOobeCompleted":false,"IsNexVoiceWakeEnabled":false,"IsNexEdgeBarEnabled":false,"IsNexIntelligenceEnabled":false,"RegisterUrlProtocol":false,"RunAtStartup":false,"CentralManagement":{"IsEnabled":false},"ThemeMode":"light","Language":"zh-CN","AllowNotification":false}'
+$preview = $Mode -like 'preview-*'
+if ($CompareOld -and $preview) { throw 'Historical builds did not implement a standalone classroom preview.' }
+$settings = [ordered]@{ IsOobeCompleted=$preview; WidgetLayoutVersion=1; IsMainWindowVisible=($Mode -ne 'finish' -or $CompareOld.IsPresent); IsNexVoiceWakeEnabled=$false;
+    IsNexEdgeBarEnabled=$false; IsNexIntelligenceEnabled=$false; RegisterUrlProtocol=$false; RunAtStartup=$false; CentralManagement=@{IsEnabled=$false};
+    ThemeMode='light'; Language='zh-CN'; AllowNotification=$false; AccountEndpoint='http://127.0.0.1:9' } | ConvertTo-Json -Depth 5
 [IO.File]::WriteAllText((Join-Path $data 'Settings.json'), $settings, $utf8)
 [IO.File]::WriteAllText((Join-Path $fixture '.classnex-oobe-review'), 'anonymous-oobe-v1', $utf8)
+if ($preview) { [IO.File]::WriteAllText((Join-Path $fixture '.classnex-review'), 'isolated migration preview', $utf8) }
 $migration = $Mode -like 'migration-*'
 $expectVisible = $Mode -ne 'migration-keep'
-if ($migration) {
+if ($migration -or $Mode -eq 'preview-import') {
     if (!$ClassIslandPackage) { throw 'Pass -ClassIslandPackage with the path to a ClassIsland 2.x portable package; only executable files will be read.' }
     $reference = (Resolve-Path -LiteralPath $ClassIslandPackage).Path
     $payloadName = Get-ChildItem -LiteralPath $reference -Directory | Where-Object Name -Match '^app-2\.[0-9.]+-\d+$' | Sort-Object Name -Descending | Select-Object -First 1 -ExpandProperty Name
@@ -51,12 +57,24 @@ if ($migration) {
     } | ConvertTo-Json -Depth 10
     [IO.File]::WriteAllText((Join-Path $profiles 'Default.json'),$profile,$utf8)
 }
-$shouldFinish = $Mode -eq 'finish' -or $migration
-$artifactArgs = if ($ArtifactsPath) { @('--artifacts-path', (Resolve-Path -LiteralPath $ArtifactsPath).Path) } else { @() }
-dotnet publish (Resolve-Path -LiteralPath $Project).Path -c Debug --no-build --no-restore --no-self-contained -o $app --nologo -v:q @artifactArgs
-if ($LASTEXITCODE -ne 0) { throw 'Build the Debug client before running this review.' }
+$shouldFinish = $Mode -in @('finish','preview-finish','preview-import') -or $migration
+if ($PreparedApp) {
+    $published = Get-Item -LiteralPath $PreparedApp
+    if (!$published.PSIsContainer -or $published.Name -ne 'app' -or $published.Parent.Name -notmatch '^oobe-review-[0-9a-f]{32}$' -or
+        $published.Parent.Parent.FullName -ne (Join-Path $root 'build') -or ($published.Attributes -band [IO.FileAttributes]::ReparsePoint) -or
+        ($published.Parent.Attributes -band [IO.FileAttributes]::ReparsePoint) -or
+        [IO.File]::ReadAllText((Join-Path $published.Parent.FullName '.classnex-oobe-review')) -cne 'anonymous-oobe-v1' -or
+        !(Test-Path -LiteralPath (Join-Path $published.FullName 'ClassNex.exe') -PathType Leaf) -or (Test-Path -LiteralPath (Join-Path $published.FullName 'data'))) {
+        throw 'PreparedApp must be the published payload of an isolated review in this checkout; no existing user data will be copied.'
+    }
+    Copy-Item -LiteralPath $published.FullName -Destination $app -Recurse
+} else {
+    $artifactArgs = if ($ArtifactsPath) { @('--artifacts-path', (Resolve-Path -LiteralPath $ArtifactsPath).Path) } else { @() }
+    dotnet publish (Resolve-Path -LiteralPath $Project).Path -c Debug --no-build --no-restore --no-self-contained -o $app --nologo -v:q @artifactArgs
+    if ($LASTEXITCODE -ne 0) { throw 'Build the Debug client before running this review.' }
+}
 $recorder = Join-Path $PSScriptRoot 'OobeCapture/bin/Debug/net10.0-windows10.0.19041.0/OobeCapture.exe'
-if ($RecordingPython -or $shouldFinish) {
+if (($RecordingPython -or $shouldFinish) -and (!$PreparedApp -or !(Test-Path -LiteralPath $recorder -PathType Leaf))) {
     dotnet build (Join-Path $PSScriptRoot 'OobeCapture/OobeCapture.csproj') -c Debug -m:1 -v:q
     if ($LASTEXITCODE -ne 0) { throw 'Could not build the window-only capture helper.' }
 }
@@ -65,13 +83,14 @@ $start = [Diagnostics.ProcessStartInfo]::new($exe)
 $start.UseShellExecute = $false
 $start.CreateNoWindow = $true
 $start.WorkingDirectory = $app
+if ($preview) { $start.ArgumentList.Add('--preview-migration') }
 $start.ArgumentList.Add('--review-oobe-motion'); $start.ArgumentList.Add($Mode)
 if ($CompareOld) { $start.ArgumentList.Add('--baseline') }
 foreach ($key in @($start.Environment.Keys | Where-Object { $_ -like 'CLASSNEX_*' })) { [void]$start.Environment.Remove($key) }
 $clock = [Diagnostics.Stopwatch]::StartNew()
 $run = [Diagnostics.Process]::Start($start)
 $capture = $null
-$summary = [ordered]@{ mode=$Mode; fixture=$fixture; pid=$run.Id; processToWindowManifestMs=$null; restartedClassroom=$false }
+$summary = [ordered]@{ mode=$Mode; fixture=$fixture; pid=$run.Id; processToWindowManifestMs=$null; sameProcessHandoff=$false }
 try {
     $manifest = Join-Path $fixture 'wizard.json'
     while (!(Test-Path -LiteralPath $manifest) -and !$run.HasExited -and $clock.Elapsed.TotalSeconds -lt 60) { Start-Sleep -Milliseconds 15 }
@@ -84,9 +103,12 @@ try {
         $capture = [Diagnostics.Process]::Start($rec)
         $recordingErrors = $capture.StandardError.ReadToEndAsync()
     }
-    if (!$run.WaitForExit(45000)) { throw "Wizard did not close: $fixture" }
-    if ($run.ExitCode -ne 0) { throw "Wizard exited with $($run.ExitCode): $fixture" }
-    $report = Get-Content -LiteralPath (Join-Path $fixture 'oobe-motion.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+    $reportPath = Join-Path $fixture 'oobe-motion.json'
+    $walk = [Diagnostics.Stopwatch]::StartNew()
+    while (!(Test-Path -LiteralPath $reportPath) -and !$run.HasExited -and $walk.Elapsed.TotalSeconds -lt 45) { Start-Sleep -Milliseconds 40 }
+    if (!(Test-Path -LiteralPath $reportPath)) { throw "Wizard did not produce a result: $fixture" }
+    if ((!$shouldFinish -or $CompareOld) -and (!$run.WaitForExit(10000) -or $run.ExitCode -ne 0)) { throw "Closing the wizard did not exit cleanly: $fixture" }
+    $report = Get-Content -LiteralPath $reportPath -Raw -Encoding UTF8 | ConvertFrom-Json
     if ($report.error) { throw $report.error }
     $failed = @($report.checks.PSObject.Properties | Where-Object { !$_.Value } | ForEach-Object Name)
     if ($CompareOld) { $failed = @($failed | Where-Object { $_ -ne 'textAndFooterReadableOnFirstFrame' }) }
@@ -100,25 +122,35 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'Window frame encoding failed.' }
     }
     if ($shouldFinish) {
-        $post = [Diagnostics.Stopwatch]::StartNew()
-        do {
-            $copies = @(Get-Process -Name ClassNex -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $exe -and $_.Id -ne $run.Id })
-            if ($copies.Count -gt 1) { throw 'Finish started more than one desktop process.' }
-            if ($copies.Count -eq 1) {
-                $visibilityCheck = if ($expectVisible) { '--classroom' } else { '--classroom-hidden' }
-                & $recorder $fixture ([string]$copies[0].Id) $visibilityCheck
-                if ($LASTEXITCODE -ne 0) { throw "Restarted classroom visibility did not match the chosen setting: $fixture" }
-                $room = Get-Content -LiteralPath (Join-Path $fixture 'classroom.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-                $summary.restartedClassroom = [bool]$room.visible -eq $expectVisible; $summary.classroomTitle = $room.title
-                $summary.classroomVisible = [bool]$room.visible; $summary.observedHiddenMs = $room.observedHiddenMs
-                $summary.restartedProcess = $room.pid; break
-            }
-            Start-Sleep -Milliseconds 60
-        } while ($post.Elapsed.TotalSeconds -lt 25)
-        if (!$summary.restartedClassroom) { throw "Classroom startup was not verified after Finish: $fixture" }
+        $owner = $run.Id
+        $visibilityCheck = if ($expectVisible) { '--classroom' } else { '--classroom-hidden' }
+        if ($CompareOld) {
+            $post = [Diagnostics.Stopwatch]::StartNew()
+            do {
+                $successors = @(Get-Process -Name ClassNex -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $exe -and $_.Id -ne $run.Id })
+                if ($successors.Count) { break }
+                Start-Sleep -Milliseconds 60
+            } while ($post.Elapsed.TotalSeconds -lt 25)
+            if ($successors.Count -ne 1) { throw 'The historical build did not start one successor.' }
+            $owner = $successors[0].Id; $visibilityCheck = $visibilityCheck.Replace('--','--legacy-')
+        }
+        & $recorder $fixture ([string]$owner) $visibilityCheck
+        if ($LASTEXITCODE -ne 0) { throw "Native classroom window did not match its expected owner or visibility: $fixture" }
+        $room = Get-Content -LiteralPath (Join-Path $fixture 'classroom.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+        $copies = @(Get-Process -Name ClassNex -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $exe })
+        if ($copies.Count -ne 1 -or $copies[0].Id -ne $owner -or [bool]$room.visible -ne $expectVisible) { throw "Unexpected desktop PID or visibility: $fixture" }
+        $summary.classroomPid = $room.pid; $summary.classroomTitle = $room.title; $summary.sameProcessHandoff = $run.Id -eq $room.pid
+        $summary.classroomVisible = [bool]$room.visible; $summary.observedHiddenMs = $room.observedHiddenMs
+        if (!$CompareOld) {
+            if (!$summary.sameProcessHandoff) { throw 'Finish unexpectedly relaunched the application.' }
+            [IO.File]::WriteAllText((Join-Path $fixture '.desktop-observed'),'ok',$utf8)
+            if (!$run.WaitForExit(10000) -or $run.ExitCode -ne 0) { throw 'The observed desktop did not shut down cleanly.' }
+        }
+    } elseif (@(Get-Process -Name ClassNex -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $exe }).Count) {
+        throw 'Cancelling setup left a hidden desktop process running.'
     }
     $saved = Get-Content -LiteralPath (Join-Path $data 'Settings.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-    if (([bool]$saved.IsOobeCompleted) -ne $shouldFinish -or $saved.IsNexVoiceWakeEnabled -or $saved.RunAtStartup -or $saved.RegisterUrlProtocol -or
+    if (([bool]$saved.IsOobeCompleted) -ne ($shouldFinish -or $preview) -or $saved.IsNexVoiceWakeEnabled -or $saved.RunAtStartup -or $saved.RegisterUrlProtocol -or
         $saved.UserName -or $saved.Email -or (Test-Path -LiteralPath (Join-Path $data 'Logs/crash.log'))) { throw 'Unexpected persistence, identity, or crash in fixture.' }
     $summary.savedVoiceOff = $true; $summary.completedPersisted = [bool]$saved.IsOobeCompleted
     if ($Mode -eq 'reduced') {
@@ -130,16 +162,16 @@ try {
         if (!$summary.chosenSemesterPersisted) { throw 'The chosen semester was not saved on Finish.' }
     }
     if ($migration) {
-        $summary.preservedImportOnRestart = $saved.ThemeMode -eq 'dark' -and $saved.ThemeAccentColor -eq '#FFB6377E' -and $saved.IsMainWindowVisible -eq $expectVisible -and [math]::Abs($saved.MainWindowScale - 1.35) -lt 0.001 -and [math]::Abs($saved.BackgroundOpacity - 0.62) -lt 0.001
+        $summary.preservedImportOnDesktop = $saved.ThemeMode -eq 'dark' -and $saved.ThemeAccentColor -eq '#FFB6377E' -and $saved.IsMainWindowVisible -eq $expectVisible -and [math]::Abs($saved.MainWindowScale - 1.35) -lt 0.001 -and [math]::Abs($saved.BackgroundOpacity - 0.62) -lt 0.001
         $profilePath = [IO.Path]::GetFullPath($saved.TimetablePath)
         if (![IO.Path]::GetRelativePath($data,$profilePath).StartsWith('ClassIsland-', [StringComparison]::Ordinal) -or
-            !(Test-Path -LiteralPath $profilePath -PathType Leaf)) { throw 'Restart lost the imported active profile.' }
+            !(Test-Path -LiteralPath $profilePath -PathType Leaf)) { throw 'The imported active profile was lost.' }
         $yaml = [IO.File]::ReadAllText($profilePath)
         $summary.preservedScheduleAndWidgetOrder = $yaml.Contains('地理') -and $yaml.Contains('08:45:00') -and $yaml.Contains('晨间休息') -and
             ($saved.Widgets.Type -join ',') -ceq 'date,clock,schedule' -and $saved.Widgets[1].ShowSeconds
-        if (!$summary.preservedScheduleAndWidgetOrder) { throw 'Restart lost a course, a named break, or the imported widget order.' }
+        if (!$summary.preservedScheduleAndWidgetOrder) { throw 'The desktop lost a course, a named break, or the imported widget order.' }
         $summary.sourcePreserved = Test-Path -LiteralPath $source
-        if (!$summary.preservedImportOnRestart -or $summary.sourcePreserved -ne ($Mode -eq 'migration-keep')) { throw "Import, cleanup or restart evidence mismatch: $fixture" }
+        if (!$summary.preservedImportOnDesktop -or $summary.sourcePreserved -ne ($Mode -eq 'migration-keep')) { throw "Import, cleanup or handoff evidence mismatch: $fixture" }
         Add-Type -AssemblyName System.Drawing
         $sample = Get-Content -LiteralPath (Join-Path $fixture 'migration-accent-sample.json') -Raw -Encoding UTF8 | ConvertFrom-Json
         $shot = [Drawing.Bitmap]::new((Join-Path $fixture 'migration-result.png'))

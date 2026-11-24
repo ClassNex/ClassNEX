@@ -1,10 +1,12 @@
 #if DEBUG
 using System.Diagnostics;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Interactivity;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using ClassNex.Services;
 using ClassNex.Views;
 
@@ -12,6 +14,27 @@ namespace ClassNex;
 
 public partial class App
 {
+    internal static bool ReviewFirstRunTray(OobeWindow guide)
+    {
+        if (Current is not App app || !ReferenceEquals(guide, app._oobeWindow) || app._trayIcon is null) return false;
+        app.EnsureTrayMenu();
+        return app._trayMenu!.GetVisualDescendants().OfType<Button>().Select(AutomationProperties.GetName).SequenceEqual(["继续首次设置", "退出"]);
+    }
+
+    internal static bool ReviewHiddenClassroomTray(MainWindow classroom)
+    {
+        if (Current is not App app || app._oobeWindow is not null || !ReferenceEquals(app._mainWindow, classroom) ||
+            classroom.IsVisible || app._trayIcon is not { } icon) return false;
+        app.ShowTrayMenu(icon.IconBounds(), false);
+        var toggle = app._trayMenu!.GetVisualDescendants().OfType<Button>().SingleOrDefault(b => AutomationProperties.GetName(b) == "显示 / 隐藏主界面");
+        if (toggle is null) return false;
+        toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        var shown = classroom.IsVisible && AppServices.Settings.IsMainWindowVisible;
+        app.ShowTrayMenu(icon.IconBounds(), false);
+        toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        return shown && !classroom.IsVisible && !AppServices.Settings.IsMainWindowVisible;
+    }
+
     private async Task ReviewOobePreviewAsync(IClassicDesktopStyleApplicationLifetime desktop, MainWindow classroom, ClassNex.WinUI.NativeSettingsWindow settings,
         Func<Window, string, string, int, Task> shot, Action<bool, string> check)
     {
@@ -21,6 +44,8 @@ public partial class App
         var original = AppServices.Settings.IsNexVoiceWakeEnabled;
         var initialPreferences = (AppServices.Settings.Language, AppServices.Settings.ThemeMode, AppServices.Settings.RunAtStartup);
         var registered = StartupRegistry.IsRunAtStartupEnabled();
+        var runtime = _runtime;
+        var notifications = AppServices.NotificationService;
         var category = settings.CurrentPageKey;
         try
         {
@@ -78,6 +103,10 @@ public partial class App
                         Element<ComboBox>("ThemeCombo").SelectedIndex = initialPreferences.ThemeMode == "dark" ? 1 : 2;
                     }
                     await Step(4, next);
+                    var signIn = Element<Button>("OobeLoginButton");
+                    var signOut = Element<Button>("OobeLogoutButton");
+                    Click(signIn); Click(signOut);
+                    check(!signIn.IsEnabled && !signOut.IsVisible, "Read-only setup preview does not offer account changes");
                     check(!AccountService.FlowActive && AccountService.Current is null, "Visiting onboarding account step does not authorize or open a browser");
                     await Step(5, next);
                     check(toggle.IsEffectivelyVisible && toggle.IsEffectivelyEnabled && toggle.IsChecked == saved,
@@ -101,6 +130,7 @@ public partial class App
                         (disk.Language, disk.ThemeMode, disk.RunAtStartup) == initialPreferences && StartupRegistry.IsRunAtStartupEnabled() == registered,
                         $"Preview does not persist language, appearance or Windows startup registration: {saved}");
                     check(ReferenceEquals(desktop.MainWindow, classroom) && ReferenceEquals(_desktop?.Settings, settings) &&
+                        ReferenceEquals(_runtime, runtime) && ReferenceEquals(AppServices.NotificationService, notifications) &&
                         classroom.IsVisible && settings.AppWindow.IsVisible, "Closing a preview preserves the active classroom and settings windows");
                 }
                 finally { if (guide.IsVisible) guide.Close(); }

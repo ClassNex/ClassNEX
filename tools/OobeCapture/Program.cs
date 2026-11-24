@@ -16,9 +16,11 @@ if (fixture.Parent?.Name != "build" || !fixture.Name.StartsWith("oobe-review-", 
 using var process = Process.GetProcessById(pid);
 if (!StringComparer.OrdinalIgnoreCase.Equals(process.MainModule?.FileName, Path.Combine(fixture.FullName, "app", "ClassNex.exe"))) return 2;
 using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(fixture.FullName, "wizard.json")));
-if (args is [_, _, "--classroom" or "--classroom-hidden"] && manifest.RootElement.GetProperty("pid").GetInt32() != pid)
+if (args is [_, _, "--classroom" or "--classroom-hidden" or "--legacy-classroom" or "--legacy-classroom-hidden"])
 {
-    var expectHidden = args[2] == "--classroom-hidden";
+    var legacy = args[2].StartsWith("--legacy-", StringComparison.Ordinal);
+    if ((manifest.RootElement.GetProperty("pid").GetInt32() == pid) == legacy) return 2;
+    var expectHidden = args[2].EndsWith("-hidden", StringComparison.Ordinal);
     var timer = Stopwatch.StartNew();
     var hidden = new Stopwatch();
     while (!process.HasExited && timer.Elapsed.TotalSeconds < 20)
@@ -51,7 +53,7 @@ if (args is [_, _, "--classroom" or "--classroom-hidden"] && manifest.RootElemen
     }
     return 3;
 }
-if (manifest.RootElement.GetProperty("pid").GetInt32() != pid) return 2;
+if (args.Length != 2 || manifest.RootElement.GetProperty("pid").GetInt32() != pid) return 2;
 var hwnd = (nint)manifest.RootElement.GetProperty("hwnd").GetInt64();
 if (hwnd == 0 || Native.GetWindowThreadProcessId(hwnd, out var owner) == 0 || owner != pid) return 2;
 if (!GraphicsCaptureSession.IsSupported()) throw new PlatformNotSupportedException("Windows Graphics Capture is unavailable.");

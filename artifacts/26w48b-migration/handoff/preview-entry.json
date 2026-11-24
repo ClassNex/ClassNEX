@@ -1,0 +1,59 @@
+{
+  "version": "26w48b",
+  "date": "2026-11-24",
+  "casesPassed": 4,
+  "fileComparison": [
+    "SHA-256",
+    "size",
+    "last-write timestamp"
+  ],
+  "watchedEvents": [
+    "created",
+    "deleted",
+    "renamed"
+  ],
+  "results": [
+    {
+      "configuration": "Debug",
+      "cases": [
+        {
+          "case": "empty-install",
+          "exitCode": 2,
+          "unchanged": true,
+          "entryChanges": 0,
+          "filesHashed": 123,
+          "dataExistsAfter": false
+        },
+        {
+          "case": "existing-settings-with-preview-marker",
+          "exitCode": 2,
+          "unchanged": true,
+          "entryChanges": 0,
+          "filesHashed": 125,
+          "dataExistsAfter": true
+        }
+      ]
+    },
+    {
+      "configuration": "Release",
+      "cases": [
+        {
+          "case": "empty-install",
+          "exitCode": 2,
+          "unchanged": true,
+          "entryChanges": 0,
+          "filesHashed": 123,
+          "dataExistsAfter": false
+        },
+        {
+          "case": "existing-settings-with-preview-marker",
+          "exitCode": 2,
+          "unchanged": true,
+          "entryChanges": 0,
+          "filesHashed": 125,
+          "dataExistsAfter": true
+        }
+      ]
+    }
+  ]
+}

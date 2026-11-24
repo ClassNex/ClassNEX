@@ -7,6 +7,10 @@
 
 经典便携版（`folderClassic`）读取原桌面程序旁边的配置；一个启动器下面有多个可能的经典版本时，向导会请你直接选原来使用的 `ClassIsland.Desktop.exe`。经典版和安装版只导入，向导不会替你卸载或回收它们。
 
+### 点「完成」之后
+
+新设备直接进入桌面课表，不必再启动一次。向导先保存设置，由**同一个进程**接管课表、托盘和课堂服务，交接成功才关闭向导。迁入的档案如果明确隐藏了浮窗，会保留这个选择；从托盘可以重新显示它。设置里重看向导只返回已有桌面，不应用试选项。运行下面的独立迁移预览时，完成后显示的是预览目录自己的示例课表，不是你的正式课表。
+
 ## 会带过来哪些内容
 
 | 来源 | ClassNEX 中的结果 |
@@ -25,6 +29,8 @@
 
 ## 实际窗口与验证
 
+这次修正的对象是「完成」之后的桌面交接。旧版独立预览只关闭了向导；正式流程则依赖另外启动一份程序。新版的 [9 条实窗路线](../artifacts/26w48b-migration/handoff/oobe-routes.json)共 121 项检查通过，5 条完成路线均由向导原进程持有课表窗口。包括新设备、迁移、独立预览、保留隐藏状态后用托盘唤回，以及取消不保存。设置里重看向导时，原桌面和通知服务仍是同一组实例。另在 Debug 与 Release 各测了两种普通安装误带预览参数的情况：[四次均在初始化数据之前拒绝进入预览](../artifacts/26w48b-migration/handoff/preview-entry.json)。下面关于另起进程的记录仅是修复前的历史验证。
+
 [两个入口](../artifacts/26w48b-migration/data-and-migration.png) → [选程序后的预检](../artifacts/26w48b-migration/migration-ready.png) → [迁移中](../artifacts/26w48b-migration/migration-working.png) → [完成回执](../artifacts/26w48b-migration/migration-result.png)。忙时只在标题下面显示进度条，预检和完成才显示档案与组件计数。实窗测试也把标题压窄至换行，检查轨道和可见文字的实际边界没有相交。
 
 2026-11-24 在同一份 Windows Debug 客户端上完成了以下验证：
@@ -35,11 +41,13 @@
 
 ## 本地复验
 
-以下命令只从参考便携包取程序文件；两次运行各生成独立的匿名配置，在临时安装上实际完成迁移和重启。不要拿正在使用的安装目录测试回收。
+以下命令只从参考便携包取程序文件；每次运行各生成独立的匿名配置，在临时安装上实际完成向导并检查桌面窗口。不要拿正在使用的安装目录测试回收。
 
 ```powershell
 dotnet build src/ClassNex/ClassNex.csproj -c Debug -t:Rebuild
 ./tools/preview_classroom.ps1 -ExpectedVersion 26w48b -Migration  # 只读预览，同一窗口
+./tools/review_oobe_motion.ps1 -Mode finish
+./tools/review_oobe_motion.ps1 -Mode preview-finish
 ./tools/review_oobe_motion.ps1 -Mode migration-keep -ClassIslandPackage 'E:\ci-app\ClassIsland_app_windows_x64_full_folder'
 ./tools/review_oobe_motion.ps1 -Mode migration-recycle -ClassIslandPackage 'E:\ci-app\ClassIsland_app_windows_x64_full_folder'
 ./tools/verify_classisland_example.ps1  # 上游公开的示例课表；不回收源

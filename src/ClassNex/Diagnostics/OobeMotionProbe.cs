@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.VisualTree;
@@ -19,13 +20,15 @@ public partial class OobeWindow
         const string option = "--review-oobe-motion";
         var args = Environment.GetCommandLineArgs();
         var i = Array.IndexOf(args, option);
-        if (i < 0 || i + 1 >= args.Length || _preview) return;
+        if (i < 0 || i + 1 >= args.Length || _mode == OobeMode.SettingsPreview) return;
         var mode = args[i + 1];
+        var preview = _mode == OobeMode.StandalonePreview;
         var directory = Directory.GetParent(AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar))!.FullName;
         var marker = Path.Combine(directory, ".classnex-oobe-review");
-        if (mode is not ("measure" or "reduced" or "finish" or "close" or "migration-keep" or "migration-recycle") || !File.Exists(marker) || File.ReadAllText(marker) != "anonymous-oobe-v1") return;
+        if (mode is not ("measure" or "reduced" or "finish" or "close" or "migration-keep" or "migration-recycle" or "preview-finish" or "preview-close" or "preview-import") ||
+            mode.StartsWith("preview-", StringComparison.Ordinal) != preview || !File.Exists(marker) || File.ReadAllText(marker) != "anonymous-oobe-v1") return;
         var s = AppServices.Settings;
-        if (s.IsOobeCompleted || s.IsNexVoiceWakeEnabled || s.IsNexEdgeBarEnabled || s.IsNexIntelligenceEnabled || s.CentralManagement.IsEnabled ||
+        if (s.IsOobeCompleted != preview || s.IsNexVoiceWakeEnabled || s.IsNexEdgeBarEnabled || s.IsNexIntelligenceEnabled || s.CentralManagement.IsEnabled ||
             s.RunAtStartup || s.RegisterUrlProtocol || !string.IsNullOrEmpty(s.UserName) || !string.IsNullOrEmpty(s.Email) || AccountService.Current is not null)
             throw new InvalidOperationException("Onboarding motion review requires a new anonymous, offline fixture.");
 
@@ -43,10 +46,16 @@ public partial class OobeWindow
         string? error = null;
         bool finish = false;
         var report = Path.Combine(directory, "oobe-motion.json");
+        var originalSettings = preview ? File.ReadAllBytes(SettingsService.SettingsPath) : null;
+        var registeredAtStart = StartupRegistry.IsRunAtStartupEnabled();
         var pages = new Control[] { PageWelcome, PageData, PageImport, PagePreferences, PageAccount, PageMore, PageFinish };
         bool At(int p) => pages[p].IsEffectivelyVisible && pages.Count(x => x.IsEffectivelyVisible) == 1;
         static void Click(Button b) => b.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-        void Save() => File.WriteAllText(report, JsonSerializer.Serialize(new { mode, systemAnimations, error, timing, checks }, new JsonSerializerOptions { WriteIndented = true }));
+        void Save()
+        {
+            File.WriteAllText(report + ".tmp", JsonSerializer.Serialize(new { mode, systemAnimations, error, timing, checks }, new JsonSerializerOptions { WriteIndented = true }));
+            File.Move(report + ".tmp", report, true);
+        }
 
         async Task Observe(Func<bool> predicate, string label)
         {
@@ -62,7 +71,7 @@ public partial class OobeWindow
             var start = elapsed.ElapsedMilliseconds;
             Click(button);
             if (burst) { Click(button); Click(button); }
-            await Observe(() => At(target) && !_pageSwitching, "step " + target);
+            await Observe(() => At(target) && IsNavigationSettled, "step " + target);
             timing[$"step{target}ReadyAt{start}"] = elapsed.ElapsedMilliseconds - start;
         }
         try
@@ -77,6 +86,7 @@ public partial class OobeWindow
             checks["textAndFooterReadableOnFirstFrame"] = WelcomeTextPanel.Opacity >= .75 && FooterActions.Opacity >= .75 && NextButton.IsEffectivelyEnabled;
             if (!baseline)
                 checks["firstRunDefersClassroomNotificationPluginsAndCentral"] = AppServices.MainWindow is null && AppServices.NotificationService is null && AppServices.Plugins is null && AppServices.Management is null;
+            if (!baseline && mode == "migration-keep") checks["firstRunTrayStartsWithWizardCommands"] = App.ReviewFirstRunTray(this);
             await Observe(() => WelcomeTextPanel.Opacity >= .75, "readable welcome text");
             timing["openedToReadableWelcomeMs"] = elapsed.ElapsedMilliseconds;
             await Observe(() => FooterActions.Opacity >= .75 && NextButton.IsEffectivelyEnabled, "readable footer");
@@ -92,6 +102,41 @@ public partial class OobeWindow
             }
             await Step(1, NextButton, burst: true);
             checks["burstStopsOnData"] = At(1) && !NextButton.IsEffectivelyVisible;
+            if (!baseline && mode == "measure")
+            {
+                Click(NewDeviceButton); Click(BackButton); Click(ImportDeviceButton);
+                checks["differentButtonsRespondDuringPageMotion"] = At(2);
+                await Step(1, BackButton);
+            }
+            if (preview)
+            {
+                if (mode == "preview-import")
+                {
+                    await Step(2, ImportDeviceButton);
+                    var source = Path.Combine(directory, "source", "ClassIsland");
+                    var sourceSettings = Path.Combine(source, "data", "Settings.json");
+                    var before = File.ReadAllBytes(sourceSettings);
+                    await InspectMigrationAsync(Path.Combine(source, "ClassIsland.exe"));
+                    if (_importPlan is null) throw new InvalidOperationException("Preview preflight failed: " + _migrationError);
+                    await RunImportAsync();
+                    checks["previewImportWithDefaultCleanupLeavesBothInstallsUntouched"] = _migrationFinished && CleanupToggle.IsChecked == true &&
+                        File.Exists(Path.Combine(source, "ClassIsland.exe")) && before.SequenceEqual(File.ReadAllBytes(sourceSettings)) &&
+                        !Directory.EnumerateDirectories(SettingsService.DataDirectory, "ClassIsland-*").Any() && ReferenceEquals(s, AppServices.Settings);
+                    await Step(3, NextButton);
+                }
+                else await Step(3, NewDeviceButton);
+                ThemeCombo.SelectedIndex = 2;
+                RunAtStartupCheck.IsChecked = true;
+                await Step(4, NextButton);
+                Click(OobeLoginButton); Click(OobeLogoutButton);
+                checks["previewCannotAuthorizeOrSignOut"] = !OobeLoginButton.IsEnabled && !AccountService.FlowActive && AccountService.Current is null;
+                if (mode == "preview-close") return;
+                await Step(5, NextButton);
+                VoiceWakeCheck.IsChecked = true;
+                await Step(6, NextButton, burst: true);
+                finish = true;
+                return;
+            }
             if (mode.StartsWith("migration-", StringComparison.Ordinal))
             {
                 var sourceRoot = Path.Combine(directory, "source", "ClassIsland");
@@ -232,10 +277,43 @@ public partial class OobeWindow
         catch (Exception ex) { error = ex.ToString(); }
         finally
         {
+            try
+            {
+                if (finish && error is null)
+                {
+                    Click(NextButton); Click(NextButton);
+                    var lifetime = Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
+                    var classroom = AppServices.MainWindow;
+                    var visible = mode != "migration-keep";
+                    checks["finishReplacesWizardWithClassroom"] = _closed && !IsVisible && classroom != null &&
+                        ReferenceEquals(lifetime?.MainWindow, classroom) && lifetime!.ShutdownMode == ShutdownMode.OnExplicitShutdown && classroom.IsVisible == visible;
+                    checks["classroomServicesConnected"] = AppServices.NotificationService != null && AppServices.Plugins != null && AppServices.Management != null;
+                    if (!visible && classroom is not null)
+                    {
+                        var recovered = App.ReviewHiddenClassroomTray(classroom);
+                        checks["hiddenClassroomCanBeRestoredAndHiddenFromTray"] = recovered;
+                    }
+                    if (mode.StartsWith("migration-", StringComparison.Ordinal))
+                        checks["liveClassroomHasImportedProfileAndBreak"] = string.Equals(AppServices.Schedule.FilePath, AppServices.Settings.TimetablePath, StringComparison.OrdinalIgnoreCase) &&
+                            AppServices.Schedule.Profile.Schedules.SelectMany(day => day.Classes).Any(course => course.Subject == "地理") &&
+                            AppServices.TimeLayout.Layout.Times.Any(time => time.Name == "晨间休息");
+                }
+                else checks["closingDoesNotStartTheClassroom"] = AppServices.MainWindow is null && AppServices.Management is null;
+                if (originalSettings is not null)
+                    checks["readOnlyPreviewKeepsSettingsAndRegistration"] = originalSettings.SequenceEqual(File.ReadAllBytes(SettingsService.SettingsPath)) &&
+                        !s.IsNexVoiceWakeEnabled && !s.RunAtStartup && s.ThemeMode == "light" && registeredAtStart == StartupRegistry.IsRunAtStartupEnabled();
+            }
+            catch (Exception ex) { error ??= ex.ToString(); }
             timing["probeFinishedMs"] = elapsed.ElapsedMilliseconds;
             Save();
-            if (finish && error is null) { Click(NextButton); Click(NextButton); }
-            else Close();
+            if (!_closed && (!finish || error != null)) Close();
+            if (finish && _closed && error is null && !baseline)
+            {
+                var timer = Stopwatch.StartNew();
+                var receipt = Path.Combine(directory, ".desktop-observed");
+                while (!File.Exists(receipt) && timer.Elapsed < TimeSpan.FromSeconds(75)) await Task.Delay(80);
+                App.ExitApp();
+            }
         }
     }
 }
