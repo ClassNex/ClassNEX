@@ -1,0 +1,43 @@
+{
+  "Passed": true,
+  "ReferenceCommit": "235914a2fac1733cc2a169457c7bad4edb2ca2f6",
+  "ReferenceFile": "ClassIsland/XamlThemes/FluentTheme/Styles.axaml",
+  "ReferenceAvalonia": "11.3.17+ceff994585e783ebb7602aac28337db1b222fdbb",
+  "ReferenceTheme": "2.4.1+a1dc0c0428ff0a2d9e5368dc73ea0358eab459d7",
+  "CandidateAvalonia": "11.3.12+37fbd9655cc581ff5b1c6b1fb1be4e3118c889d0",
+  "CandidateTheme": "1.0.3+672a37e9a994121cedd1d3444804cbc5742cb2e4",
+  "Pixels": "320 x 40 at 96 DPI",
+  "ReferenceLayoutScaling": 1,
+  "CandidateLayoutScaling": 1,
+  "Theme": "dark",
+  "Accent": "#459BAC",
+  "Captures": [
+    {
+      "Progress": 1,
+      "DifferentPixels": 0,
+      "TotalPixels": 12800,
+      "DifferentGeometry": [],
+      "ReferenceFill": "#ff73b9c7",
+      "CandidateFill": "#ff73b9c7",
+      "Match": true
+    },
+    {
+      "Progress": 0.5,
+      "DifferentPixels": 0,
+      "TotalPixels": 12800,
+      "DifferentGeometry": [],
+      "ReferenceFill": "#ff73b9c7",
+      "CandidateFill": "#ff73b9c7",
+      "Match": true
+    },
+    {
+      "Progress": 0.25,
+      "DifferentPixels": 0,
+      "TotalPixels": 12800,
+      "DifferentGeometry": [],
+      "ReferenceFill": "#ff73b9c7",
+      "CandidateFill": "#ff73b9c7",
+      "Match": true
+    }
+  ]
+}

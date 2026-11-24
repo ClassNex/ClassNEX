@@ -1,0 +1,43 @@
+{
+  "mode": "reduced",
+  "fixture": "E:\\ClassNex\\build\\oobe-review-a5227d7069e14fd198844d1f8b14fd73",
+  "pid": 3432,
+  "processToWindowManifestMs": 13841,
+  "restartedClassroom": false,
+  "savedVoiceOff": true,
+  "completedPersisted": false,
+  "discardedDraftPreferences": true,
+  "systemAnimationsEnabled": true,
+  "checks": {
+    "localReducedMotionPolicyActive": true,
+    "chineseFirstGreeting": true,
+    "textAndFooterReadableOnFirstFrame": true,
+    "firstRunDefersClassroomNotificationPluginsAndCentral": true,
+    "welcomeArtworkReady": true,
+    "reducedMotionKeepsGreetingStill": true,
+    "burstStopsOnData": true,
+    "draftPreferencesNotCommitted": true,
+    "visitingAccountDoesNotAuthorize": true,
+    "voiceInitiallyOff": true,
+    "finishVisibleAndDesktopNotInitialized": true,
+    "rapidLastNextDidNotFinish": true,
+    "noMicrophoneCoordinatorBeforeFinish": true
+  },
+  "timing": {
+    "openedToFirstFrameCallbackMs": 281,
+    "openedToReadableWelcomeMs": 283,
+    "openedToReadableFooterMs": 284,
+    "step1ReadyAt1904": 154,
+    "step3ReadyAt2058": 154,
+    "step1ReadyAt2237": 154,
+    "step0ReadyAt2391": 153,
+    "step1ReadyAt2544": 180,
+    "step3ReadyAt2724": 148,
+    "step4ReadyAt2872": 145,
+    "step5ReadyAt3019": 143,
+    "step4ReadyAt3162": 168,
+    "step5ReadyAt3330": 161,
+    "step6ReadyAt3491": 155,
+    "probeFinishedMs": 3646
+  }
+}

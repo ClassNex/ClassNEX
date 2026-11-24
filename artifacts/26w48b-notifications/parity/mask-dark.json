@@ -1,0 +1,68 @@
+{
+  "Passed": true,
+  "ValidAnimatedReference": true,
+  "ReferenceCommit": "235914a2fac1733cc2a169457c7bad4edb2ca2f6",
+  "Source": "ClassIsland/XamlThemes/FluentTheme/Styles.axaml",
+  "ReferenceModule": "80509FD56CCDAEA228C5FDFFBD11CB1D5F8005A0F211E8CD945D3CF324966698",
+  "CandidateModule": "F6C8D0B90C41E1CE8D921A8713A57C53D79A36D271FFCC2EF9E03FCF3005D894",
+  "ReferenceAvalonia": "11.3.17+ceff994585e783ebb7602aac28337db1b222fdbb",
+  "CandidateAvalonia": "11.3.12+37fbd9655cc581ff5b1c6b1fb1be4e3118c889d0",
+  "Theme": "dark",
+  "Captures": [
+    {
+      "Frame": "opening",
+      "ElapsedMs": 100,
+      "DifferentPixels": 0,
+      "DifferentTitlePixels": 0,
+      "DifferentCoveragePixels": 0,
+      "DifferentProperties": [],
+      "VisibleReferencePixels": 7482,
+      "OpaqueReferencePixelsOutsideFill": 0,
+      "Match": true
+    },
+    {
+      "Frame": "title-entering",
+      "ElapsedMs": 330,
+      "DifferentPixels": 0,
+      "DifferentTitlePixels": 0,
+      "DifferentCoveragePixels": 0,
+      "DifferentProperties": [],
+      "VisibleReferencePixels": 12768,
+      "OpaqueReferencePixelsOutsideFill": 1378,
+      "Match": true
+    },
+    {
+      "Frame": "open",
+      "ElapsedMs": 1100,
+      "DifferentPixels": 0,
+      "DifferentTitlePixels": 0,
+      "DifferentCoveragePixels": 0,
+      "DifferentProperties": [],
+      "VisibleReferencePixels": 12768,
+      "OpaqueReferencePixelsOutsideFill": 1343,
+      "Match": true
+    },
+    {
+      "Frame": "title-leaving",
+      "ElapsedMs": 100,
+      "DifferentPixels": 0,
+      "DifferentTitlePixels": 0,
+      "DifferentCoveragePixels": 0,
+      "DifferentProperties": [],
+      "VisibleReferencePixels": 12601,
+      "OpaqueReferencePixelsOutsideFill": 1265,
+      "Match": true
+    },
+    {
+      "Frame": "closing",
+      "ElapsedMs": 300,
+      "DifferentPixels": 0,
+      "DifferentTitlePixels": 0,
+      "DifferentCoveragePixels": 0,
+      "DifferentProperties": [],
+      "VisibleReferencePixels": 8440,
+      "OpaqueReferencePixelsOutsideFill": 0,
+      "Match": true
+    }
+  ]
+}

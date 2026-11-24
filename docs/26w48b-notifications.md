@@ -9,11 +9,19 @@
 | 课前准备 | 开场标题 3 秒；然后显示距上课的倒计时、下一节课程全名和时段。有准备提示时，每 10 秒上下翻页，到上课即结束。室内、室外可以设置不同提前量。 |
 | 上课 | 显示上课标题 5 秒，然后恢复当前课程。不会在课已上到一半时补播。 |
 | 下课 | 有下一节时先显示标题 2 秒，再显示课间时长和下一节课程 10 秒；有自定义课间提示时再翻一页 10 秒。作息表里命名的课间可直接用作开场标题；用户指定的提醒标题优先。没有下一节时不显示空白课程页。 |
-| 放学 | 可单独启用，默认关。标题 3 秒，接着显示放学文案 30 秒。若末课后还有课间，先正常下课，在末尾课间结束时再提醒放学；两个时刻相同时只播放学。 |
+| 放学 | 可单独启用，默认关。原版通用双图标标题默认 5 秒，接着显示放学文案 30 秒。若末课后还有课间，先正常下课，在末尾课间结束时再提醒放学；两个时刻相同时只播放学。 |
 
 设置入口是 **通知服务 → 上下课提醒 / 放学提醒 / 提醒方式**。总览可以直接预览四种事件。手动课前预览最多占用桌面 23 秒，倒计时仍指向实际课程；正式提醒不受这一上限影响。铃声默认静音；开启后可使用内置短铃或本机 WAV，没有语音播报。集控只同步声音开关和音量，不会上传铃声文件或本机选择。室外课程标记随工作档案与集控往返保留；标准 CSES 另存不携带扩展字段。
 
 课堂呈现的参考是本地 ClassIsland 源码快照 `235914a` 的上下课和放学提醒提供程序。适配范围是这四类课堂事件、桌面展示与设置；未引入 ClassIsland 运行时、天气预警或集控广播。默认保留 ClassNEX 的室内提前 3 分钟、放学提醒关闭。正式提醒优先于手动预览。
+
+### 通知底部滑轨
+
+课前和课间直接使用原版 `SlidingListBox.axaml`，不是手写同曲线的近似动画：每页 10 秒，换页 250 ms，透明度线性、上下位移 40 DIP 的末帧使用 `0.65, 0, 0.35, 1`。正文两等分，内边距 16 + 12 DIP；正文/次要/标题/课程为 16/14/18/20 DIP。常规提醒行高 40 DIP、圆角 8 DIP；在屏幕确实容不下完整课名时允许课程换行。放学用独立的单行模板，左右各 24 DIP，不经过课程页。通知用到的五枚图标保留原字形，包括放学右侧的 Fluent 奔跑者，不影响软件其它 Lucide 图标。
+
+开场遮罩上没有滑轨。课前、下课和放学切入正文时，滑轨才从满格开始缩短。只有五秒标题的上课提醒不会出现滑轨。课前的时间基准是上课时刻；下课、放学按正文已播放的时长计算。十秒一翻的课程页与文案页使用同一个进度，不会重播。手动课前预览仍在预览窗口结束时收起，不改变上课时间。
+
+这里直接移入了 ClassIsland `235914a` 主题内的 `ProgressContainer` / `OverlayTimeProgressBar`，以及它实际使用的 FluentAvalonia 2.4.1 单控件模板。背景轨为 1 DIP，指示条为 3 DIP，可用宽度取自整行，端部由浮窗圆角裁剪。仅在显示正文时按渲染优先级每 50 ms 取样，`Value` 做 50 ms 线性过渡，不再叠加宿主默认模板的 500 ms 宽度动画。底轨不跟随文字位移，随正文淡出。以前的“从遮罩开始按整条提醒寿命缩放”已移除。来源、依赖与许可在[移植清单](../third_party/ClassIsland/NOTICE.md)。
 
 ## 侧栏错位的原因
 
@@ -27,7 +35,25 @@
 - [通知服务](../artifacts/26w48b-notifications/notification-preview.jpg)：在「预览」行选择事件并播放，不改动真实课表。
 - 透明桌面浮窗：[完整课程名](../artifacts/26w48b-notifications/prepare-full-course.png) / [放学文案](../artifacts/26w48b-notifications/after-school.png)。
 
-## 本轮验收
+## 2026-11-24：通知原件对照
+
+对照使用固定 CI 源码 `235914a`、CI 2.1.0.1 Windows 发行包与 26w48b 的实际渲染结果。移入的模板、字体、布局、文字与关键帧通过 116 项静态核对。下面是相同输入下两端分别渲染的结果，每份报告都保留逐场景的像素差异，而不是截图的相似度评分。
+
+| 对照对象 | 深色 | 浅色 | 比较范围 |
+| --- | --- | --- | --- |
+| 开场遮罩 | [5 帧](../artifacts/26w48b-notifications/parity/mask-dark.json) | [5 帧](../artifacts/26w48b-notifications/parity/mask-light.json) | 320 × 40，展开后 100 / 330 / 1100 ms、关闭后 100 / 300 ms；标题、图标、底色和五段斜条 |
+| 底部滑轨 | [3 帧](../artifacts/26w48b-notifications/parity/rail-dark.json) | [3 帧](../artifacts/26w48b-notifications/parity/rail-light.json) | 320 × 40，进度 100%、50%、25%；轨道、填充范围和颜色 |
+| 完整正文行 | [5 个场景](../artifacts/26w48b-notifications/parity/provider-dark.json) | [5 个场景](../artifacts/26w48b-notifications/parity/provider-light.json) | 560 或 860 × 40，课前、课间各含短课名和长课名＋教师，另有放学文案 |
+
+26 张采样画面均为零像素差异。在强调色 `#459BAC` 的对照中，开场与滑轨使用原版的深色 `#73B9C7`、浅色 `#3B8492`，没有更改 ClassNEX 其他页面的配色。这项结果不等同于所有设备、所有系统强调色、外侧阴影或连续播放的每一帧都已经比对。
+
+### 本轮客户端与桌面验收
+
+- Windows 客户端 Debug、Release 完整重建和集控服务 Release 构建均为 0 警告 / 0 错误。106 项单元测试通过（Core 66、通知 34、插件 6），[原生设置的 91 项交互验证](../artifacts/26w48b-notifications/parity/native-checks.txt)全部通过。此次没有部署集控。
+- [桌面实窗报告](../artifacts/26w48b-notifications/parity/desktop-review.json)记录 37 个渲染画面、465 项通过的行为和布局断言，另有 1 项侧栏 UI 队列响应采样，不是合成器帧率。覆盖 100%、125%、150% 缩放，含真实浮窗的[课前长课名](../artifacts/26w48b-notifications/parity/reminder-subject-dark-144.png)和[课间下一节课](../artifacts/26w48b-notifications/parity/reminder-break-dark-144.png)，以及结束后恢复正常课表宽度。
+- 对应的 Debug `ClassNex.dll` SHA-256 为 `F6C8D0B90C41E1CE8D921A8713A57C53D79A36D271FFCC2EF9E03FCF3005D894`。同一客户端的首次设置、迁移与重启验收见[迁移文档](26w48b-migration.md)。
+
+## 上一轮：通知调度与设置侧栏验收
 
 - Windows 客户端 Debug 完整重建、集控服务 Debug 构建：均为 0 警告 / 0 错误。63 项单元测试通过（Core 28、通知 29、插件 6）；集控页面的两个脚本均通过语法检查，未部署到服务器。
 - [90 项原生设置交互](../artifacts/26w48b-notifications/native-checks.txt)全部通过，包括返回/搜索、提醒开关与放学文案落盘、真实调度、账户保持登录和版本入口一致性。已从桌面实窗打开「通知服务」，用菜单选择并播放了课前预览。
@@ -41,6 +67,12 @@ dotnet build src/ClassNex/ClassNex.csproj -c Debug -t:Rebuild
 dotnet test ClassNex.sln -c Debug --no-restore
 dotnet build src/ClassNex.Central/ClassNex.Central.csproj -c Debug
 ./tools/verify_settings.ps1 -ExpectedProductVersion 26w48b -TimeoutSeconds 180
+./tools/verify_ci_notification_templates.ps1
+foreach ($theme in 'light','dark') {
+    ./tools/compare_ci_notification_mask.ps1 -Theme $theme
+    ./tools/compare_ci_notification_rail.ps1 -Theme $theme
+    ./tools/compare_ci_notification_provider.ps1 -Theme $theme
+}
 ./tools/review_desktop.ps1 -Round w48b-local-review -EnabledReminders
 ./tools/review_desktop.ps1 -Round w48b-classroom-only -EnabledReminders -RemindersOnly
 ./tools/preview_classroom.ps1 -ExpectedVersion 26w48b

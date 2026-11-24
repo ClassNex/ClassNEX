@@ -1,0 +1,68 @@
+{
+  "Passed": true,
+  "Commit": "235914a2fac1733cc2a169457c7bad4edb2ca2f6",
+  "Sources": [
+    "ClassIsland/Controls/NotificationProviders/ClassNotificationProviderControl.axaml",
+    "ClassIsland.Core/Controls/NotificationTemplates/SimpleTextOverlayTemplate.axaml",
+    "ClassIsland.Core/Themes/SlidingListBox.axaml",
+    "ClassIsland.Core/Themes/Layers.axaml",
+    "ClassIsland.Core/Themes/TextBaselineFixes.axaml",
+    "ClassIsland/Themes/LightTheme.axaml",
+    "ClassIsland/Themes/DarkTheme.axaml"
+  ],
+  "Reference": "2.1.0.1+15273f82c9d2d55929df83b5fb806e68ee4547c0",
+  "Candidate": "26w48b",
+  "CandidateSha256": "f6c8d0b90c41e1ce8d921a8713a57c53d79a36d271ffcc2ef9e03fcf3005d894",
+  "ReferenceRuntime": "11.3.17+ceff994585e783ebb7602aac28337db1b222fdbb",
+  "CandidateRuntime": "11.3.12+37fbd9655cc581ff5b1c6b1fb1be4e3118c889d0",
+  "Theme": "dark",
+  "Accent": "#459BAC",
+  "Scope": "Fixed classroom width. Each settled body is placed at its measured layout offset on the full row. Excludes screen placement, mask, rail and temporal transitions.",
+  "Captures": [
+    {
+      "Scene": "prepare",
+      "Match": true,
+      "DifferentPixels": 0,
+      "TotalPixels": 22400,
+      "ReferenceInk": 2965,
+      "CandidateInk": 2965,
+      "Layout": []
+    },
+    {
+      "Scene": "prepare-teacher",
+      "Match": true,
+      "DifferentPixels": 0,
+      "TotalPixels": 34400,
+      "ReferenceInk": 5022,
+      "CandidateInk": 5022,
+      "Layout": []
+    },
+    {
+      "Scene": "break",
+      "Match": true,
+      "DifferentPixels": 0,
+      "TotalPixels": 22400,
+      "ReferenceInk": 3104,
+      "CandidateInk": 3104,
+      "Layout": []
+    },
+    {
+      "Scene": "break-teacher",
+      "Match": true,
+      "DifferentPixels": 0,
+      "TotalPixels": 34400,
+      "ReferenceInk": 4329,
+      "CandidateInk": 4329,
+      "Layout": []
+    },
+    {
+      "Scene": "dismissal",
+      "Match": true,
+      "DifferentPixels": 0,
+      "TotalPixels": 22400,
+      "ReferenceInk": 1740,
+      "CandidateInk": 1740,
+      "Layout": []
+    }
+  ]
+}

@@ -37,7 +37,8 @@ ClassNEX，ClassIsland 风格的桌面课表应用。Windows 客户端使用 .NE
 
 持有者：无
 工作分支：`codex/26w48b-notifications`，基线 `09a6ada`。`1052b26` / `3d1b5d5` 为课堂调度、浮窗和设置侧栏；`89a00ad` 处理末尾课间、真实课间名称与正式提醒优先；`a351590` 记录侧栏 UI 响应与时钟跨进程回归。`src/DesktopVersion.props` 为 `26w48b`；只作预览，不合并 `main`、不推新标签、不部署服务器。
-本次内容：`ClassNex.Notification.Service` 与透明浮窗对齐课前、上课、下课、放学的展示顺序与持续时间；原生通知页提供四种事件预览。铃声默认静音、没有 TTS，本机 WAV 不参与集控。`SettingsWindow` 使用可视宽度排版；窄窗覆盖菜单和宽屏手动选择分开管理，切页不丢刚输入的文字。
-验证：客户端 Debug 完整重建、集控服务构建均 0 警告 / 0 错误；63 项单测、90 项原生设置交互通过；全套桌面报告含 447 项通过的检查与 1 项侧栏响应采样。620–1240 DIP 下反复开合、125%/150% 缩放、长课名与浮窗复位已验证。同宽实窗前后对照、报告及复测命令见 `docs/26w48b-notifications.md`。下一步由用户在匿名预览上试用；实物音箱、混合 DPI 显示器和教室现场体验不由本机回归替代。
+本次内容：`ClassNex.Notification.Service`、`MainWindow.Reminders` 和 `Styles/Upstream` 接入 CI `235914a` 课堂提供程序使用的滑轨、上下翻页、遮罩、图标字体及播放时钟。铃声默认静音、无 TTS。`OobeWindow.Migration` 在同一窗口分流新设备与 CI 2.x；`ClassNex.Core/Services/Migration` 只读解析并验证可兼容的组件、外观和课表。仅显式开始且成功回读后，Windows 才可回收来源明确的便携目录；检查期间可保留原目录，未执行任何原程序或插件。
+验证（2026-11-24）：客户端 Debug / Release 完整重建、集控 Release 构建均为 0 警告 / 0 错误。106 项单测通过（Core 66 / 通知 34 / 插件 6），原生设置交互 91 项通过。桌面实窗 37 个画面、465 项断言通过，另有 1 项侧栏响应采样。通知原件静态核对 116 项通过，深浅色 26 个采样画面均为零像素差异；见 `docs/26w48b-notifications.md`。迁移保留和回收两条实窗路线各通过 22 项，新设备 10 项、减少动态效果 13 项；经典版只读导入，不回收。证据及示例课表见 `docs/26w48b-migration.md`。
+下一步：在 `./tools/preview_classroom.ps1 -ExpectedVersion 26w48b -Migration` 启动的只读预览试用向导；不加 `-Migration` 可在通知服务中试播四类提醒。实物音箱、跨显示器混合 DPI 和教室现场体验未由这轮回归覆盖。
 发布：`26w48a_Alpha` 已发布为 Windows x64 预览版。[Actions 45093411428](https://github.com/ClassNex/ClassNEX/actions/runs/45093411428) 成功，公开 ZIP 已回下载，547 项文件哈希全部通过。版本说明见 `RELEASE_NOTES.md`，附件摘要见 `docs/26w48a-settings.md`。实体触摸屏、跨显示器混合 DPI 与生产身份提供商仍需现场验证。
 发布恢复：`26w48a_Alpha` 固定于 `ffd24fa`。首次校验把 SDK 实际的 `Microsoft.ui.xaml.dll` 误报为缺失，见 `tools/verify_portable.py`。没有发布的既存 Alpha 标签可以从 main 手动派发 `.github/workflows/build-release.yml` 恢复；只更新校验工具，不移动标签、不覆盖已有 Release。

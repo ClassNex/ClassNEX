@@ -1,6 +1,6 @@
 # ClassNEX 续作指南（HANDOFF）
 
-> 最后更新：2026-11-23　｜　工作分支桌面预览 **26w48b**（未打标签）　｜　最近已发布版本 **26w48a_Alpha**，上一版 **26w46d_Alpha**。
+> 最后更新：2026-11-24　｜　工作分支桌面预览 **26w48b**（未打标签）　｜　最近已发布版本 **26w48a_Alpha**，上一版 **26w46d_Alpha**。
 > 上线以 GitHub Release 中实际出现 Windows ZIP 为准；推送版本标签只会启动构建。`26w46d_Alpha` 及以前的发布保留。
 > 恢复未发布的现有标签：`gh workflow run build-release.yml --ref main -f release_tag=26w48a_Alpha`。工作流从原标签编译并取发布说明，只在压缩之后读取派发提交中的 ZIP 校验器；不填标签只构建。已有发布不会被覆盖。
 > 这份文档的目的：**第二天打开新会话，照着它就能无缝继续写。**
@@ -12,6 +12,8 @@
 日常开发分支是 `main`。26w48a 的入口、托盘手势和版本复测见 [设置与托盘验收](docs/26w48a-settings.md)。主线此前从 `2949eff` 与 `aaba73d` 按功能合并，记录见 [主线验收](docs/mainline-desktop-acceptance.md) 与 [26.0 归档](docs/26.0-acceptance.md)。不用重置分支，下文各节保留历史记录。
 
 26w48b 课堂通知与设置侧栏在 `codex/26w48b-notifications`，从 `09a6ada` 开始。运行 `./tools/preview_classroom.ps1 -ExpectedVersion 26w48b` 可打开匿名便携预览，详见[提醒规则与窗口验收](docs/26w48b-notifications.md)。不要因为版本号已更新就在 `main` 上打标签；本轮未要求发布或部署集控。
+
+本分支的[首次设置与 CI 2.x 迁移](docs/26w48b-migration.md)支持同窗只读预检、导入后回读，以及可关闭的独立便携目录回收。经典便携版和安装版只导入，不回收；用上条预览命令加 `-Migration` 可直接查看，不会修改原数据。不要在真正使用的安装上试验回收。通知对照使用固定源码 `235914a`，见[移植清单与许可](third_party/ClassIsland/NOTICE.md)和[本轮桌面报告](artifacts/26w48b-notifications/parity/desktop-review.json)；视图、计时和测试均未引入 TTS。
 
 ```powershell
 cd E:\ClassNex
@@ -120,7 +122,7 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
   颜色统一走 `CiPalette.SakuraAccentBrush()`。`GetIslandScreenRect()` 用岛的两个角 `PointToScreen` 计算尺寸，
   能正确包含 `LayoutTransform` 缩放和系统 DPI。⚠️ 不要改成直接给岛开 `ClipToBounds`。
 - **课堂提醒（26w48b）**：课前准备、上课、下课、放学由独立通知服务调度，时序和界面见[课堂提醒与设置侧栏](docs/26w48b-notifications.md)。室内课沿用提前 3 分钟，室外有独立提前量。旧档案不默认开启放学提醒、声音或上传本地铃声。**项目禁用 TTS**，不影响麦克风识别和 NEX 唤醒。
-  正式提醒优先于手动预览。课前/课间在有文案时每 10 秒上下翻页，课名取全称；没有下一节时不显示空白课程页。轨道从开场满格开始，按本次提醒的完整时长播放，不随换页重启。
+  正式提醒优先于手动预览。课前/课间在有文案时每 10 秒上下翻页，课名取全称；没有下一节时不显示空白课程页。通知底轨来自 ClassIsland：开场遮罩和纯上课标题无轨；正文从满格按自身播放会话倒数，翻页不重启。不要用整个通知的时长，也不要用宿主默认的 500 ms 指示条宽度缓动替代局部 FluentAvalonia 2.4.1 模板。课程组件自己的进度条是另一套。
   浮窗按文案、当前屏幕工作区和实际缩放测量，空间不足时课程及时间分行；不固定为 416 DIP。退出提醒后取**此时的课表内容**恢复背景大小，过期转场不得隐藏新提醒。
 - **取色跟随主题，组件强调色改为樱花玫瑰**：主题明暗 = `ThemeMode=system`（`PreferSystemTheme`）；
   主界面表面由 `CiPalette.IslandSurfaceBrush()` 按 `IsDarkTheme()` 返回粉白/深玫瑰渐变，不再依赖
