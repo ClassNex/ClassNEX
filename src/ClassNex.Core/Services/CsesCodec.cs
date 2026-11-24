@@ -17,7 +17,8 @@ public static class CsesCodec
         .WithNamingConvention(UnderscoredNamingConvention.Instance)
         .ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull);
 
-    private static readonly ISerializer Serializer = ConfiguredSerializer().WithAttributeOverride<Subject>(s => s.IsOutDoor, new YamlIgnoreAttribute()).Build();
+    private static readonly ISerializer Serializer = ConfiguredSerializer().WithAttributeOverride<Subject>(s => s.IsOutDoor, new YamlIgnoreAttribute())
+        .WithAttributeOverride<ScheduleProfile>(p => p.ImportedTimeLayout!, new YamlIgnoreAttribute()).Build();
     private static readonly ISerializer WorkingSerializer = ConfiguredSerializer().Build();
 
     /// <summary>从文件读取并解析整个档案；I/O 或格式错误交给调用方处理。</summary>

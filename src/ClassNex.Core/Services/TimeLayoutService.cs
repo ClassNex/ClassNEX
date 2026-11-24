@@ -66,11 +66,12 @@ public sealed class TimeLayoutService : ITimeLayoutService
     /// <inheritdoc />
     public void EnsureFromProfile(ScheduleProfile profile)
     {
-        if (!Layout.IsEmpty || profile.Schedules.Count == 0)
+        if (!Layout.IsEmpty || profile.Schedules.Count == 0 || ReferenceEquals(Layout, profile.ImportedTimeLayout))
             return;
 
-        _settings().TimeLayout = TimeLayout.FromProfile(profile);
-        Save();
+        _settings().TimeLayout = profile.ImportedTimeLayout ?? TimeLayout.FromProfile(profile);
+        _saveSettings();
+        Changed?.Invoke();
     }
 
     /// <inheritdoc />
@@ -298,6 +299,11 @@ public sealed class TimeLayoutService : ITimeLayoutService
     /// <inheritdoc />
     public void Save()
     {
+        if (_schedule.Profile.ImportedTimeLayout != null && !string.IsNullOrEmpty(_schedule.FilePath))
+        {
+            _schedule.Profile.ImportedTimeLayout = Layout;
+            _schedule.Save();
+        }
         _saveSettings();
         Changed?.Invoke();
     }

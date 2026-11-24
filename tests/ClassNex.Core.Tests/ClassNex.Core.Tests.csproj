@@ -8,7 +8,10 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\ClassNex.Core\ClassNex.Core.csproj" />
+    <ProjectReference Include="..\Fixtures\ClassIsland2Identity\ClassIsland2Identity.csproj" />
+    <ProjectReference Include="..\Fixtures\OnboardingHost\OnboardingHost.csproj" />
     <Compile Include="..\..\src\ClassNex.WinUI\DesktopRelease.cs" Link="DesktopRelease.cs" />
+    <Compile Include="..\..\src\ClassNex\Services\ClassIslandSourceCleanup.cs" Link="ClassIslandSourceCleanup.cs" />
     <PackageReference Include="MSTest" Version="4.0.2" />
   </ItemGroup>
 </Project>

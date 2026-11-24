@@ -40,6 +40,9 @@ public sealed class AppSettings : IJsonOnDeserializing, IJsonOnDeserialized
     /// <summary>浮窗可见区域顶部的屏幕像素坐标，支持副屏的负坐标。</summary>
     public double MainWindowTop { get; set; } = 80;
 
+    /// <summary>从 ClassIsland 导入的屏幕停靠方式。手动挪动后改用本地绝对坐标。</summary>
+    public ImportedDockPosition? ImportedDock { get; set; }
+
     /// <summary>桌面浮窗背景的不透明度，0 为全透明，1 为不透明。</summary>
     public double BackgroundOpacity { get; set; } = 0.5;
 
@@ -83,6 +86,18 @@ public sealed class AppSettings : IJsonOnDeserializing, IJsonOnDeserialized
 
     /// <summary>保存的主题选择：system、light 或 dark。</summary>
     public string ThemeMode { get; set; } = "system";
+
+    /// <summary>可选强调色。system 表示系统强调色，空值保留 ClassNEX 原本的桌面配色。</summary>
+    public string? ThemeAccentColor { get; set; }
+
+    /// <summary>覆盖浮窗背景的可选 ARGB 颜色；空值保留主题背景。</summary>
+    public string? OverlayBackgroundColor { get; set; }
+
+    /// <summary>覆盖浮窗文字的可选 ARGB 颜色；空值跟随主题。</summary>
+    public string? OverlayForegroundColor { get; set; }
+
+    /// <summary>导入的浮窗圆角（DIP）。未指定时沿用 ClassNEX 的默认圆角。</summary>
+    public double? OverlayCornerRadius { get; set; }
 
     /// <summary>旧扩展兼容入口。托盘始终打开菜单（3），不再保存或同步点击动作。</summary>
     [JsonIgnore]

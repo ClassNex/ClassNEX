@@ -22,6 +22,10 @@ public sealed class ScheduleProfile
     /// <summary>按星期和周次组合的课程计划。</summary>
     public List<Schedule> Schedules { get; set; } = new();
 
+    /// <summary>导入档案的原始作息模板，标准 CSES 导出不包含此扩展。</summary>
+    [YamlMember(Alias = "x_classnex_time_layout", ApplyNamingConventions = false, DefaultValuesHandling = DefaultValuesHandling.OmitNull)]
+    public TimeLayout? ImportedTimeLayout { get; set; }
+
     /// <summary>按档案中的完整名称查找科目；未找到时返回 null。</summary>
     public Subject? FindSubject(string name) =>
         Subjects.FirstOrDefault(s => s.Name == name);
