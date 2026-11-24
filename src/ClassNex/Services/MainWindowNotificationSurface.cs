@@ -1,8 +1,6 @@
-using Avalonia;
 using Avalonia.Threading;
 using ClassNex.Controls.NotificationEffects;
 using ClassNex.Core.Abstractions;
-using ClassNex.Styles;
 using ClassNex.Views;
 
 namespace ClassNex.Services;
@@ -37,20 +35,13 @@ public sealed class MainWindowNotificationSurface : INotificationSurface
             if (mainWindow is null)
                 return;
 
-            if (playEffect)
+            if (playEffect && mainWindow.GetIslandCenterOnScreen() is { } center && mainWindow.Screens.ScreenFromPoint(center) is { } screen)
             {
-                var center = mainWindow.GetIslandCenterOnScreen() ?? new PixelPoint(0, 0);
-                if (mainWindow.Screens.ScreenFromPoint(center) is { } screen)
-                    _effectWindow.UpdateWindowPos(screen, 1 / screen.Scaling, false);
-                var clipCornerRadius = CiPalette.IslandCornerRadius * mainWindow.ReminderScale;
-                _effectWindow.PlayEffect(new RippleEffect(
-                    center,
-                    CiPalette.AccentBrush(),
-                    mainWindow.GetIslandScreenRect,
-                    clipCornerRadius));
+                _effectWindow.UpdateWindowPos(screen, 1 / screen.Scaling, WindowsOverlay.ForegroundCovers(screen.Bounds));
+                _effectWindow.PlayEffect(new RippleEffect(center, mainWindow.ClassroomNotificationAccent));
             }
 
-            mainWindow.ShowNotificationMask(text, leftGlyph, rightGlyph, lifetime);
+            mainWindow.ShowNotificationMask(text, leftGlyph, rightGlyph);
             _sound?.Play();
         });
     }
@@ -75,6 +66,15 @@ public sealed class MainWindowNotificationSurface : INotificationSurface
             verticalPageTurn,
             trackDuration));
     }
+
+    public void ShowOverlay(string left, string subject, string teacher, string time, string prefix, string message,
+        bool verticalPageTurn, TimeSpan trackDuration, INotificationOverlayProgress progress) =>
+        ShowOverlay(new(left, subject, teacher, time, prefix, message, verticalPageTurn), null, trackDuration, progress);
+
+    public void ShowOverlay(NotificationOverlay detail, int? seconds, TimeSpan trackDuration, INotificationOverlayProgress progress) =>
+        Dispatcher.UIThread.Post(() => Window?.ShowNotificationOverlay(detail, seconds, progress));
+
+    public void UpdateCountdown(int seconds) => Dispatcher.UIThread.Post(() => Window?.UpdateNotificationOverlayCountdown(seconds));
 
     public void Hide()
     {

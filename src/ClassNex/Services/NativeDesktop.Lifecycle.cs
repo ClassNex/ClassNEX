@@ -30,7 +30,8 @@ internal sealed partial class NativeDesktop
             _refreshSettings = false;
             var previous = _applied;
             _applied = Applied.Read();
-            if (previous.Theme != _applied.Theme) App.ApplyTheme(_applied.Theme);
+            var themeChanged = previous.Theme != _applied.Theme || previous.Accent != _applied.Accent;
+            if (themeChanged) App.ApplyTheme(_applied.Theme);
             if (previous.Startup != _applied.Startup) StartupRegistry.SetRunAtStartup(_applied.Startup);
             if (previous.Protocol != _applied.Protocol) StartupRegistry.SetUrlProtocol(_applied.Protocol);
             if (previous.Voice != _applied.Voice)
@@ -43,7 +44,7 @@ internal sealed partial class NativeDesktop
             {
                 if (show) _overlay.Show(); else _overlay.Hide();
             }
-            if (refresh || previous.Theme != _applied.Theme) _settings?.RefreshSettings();
+            if (refresh || themeChanged) _settings?.RefreshSettings();
         });
     }
 

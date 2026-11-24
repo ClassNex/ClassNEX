@@ -17,6 +17,13 @@ namespace ClassNex;
 
 public partial class App
 {
+    private sealed class ClassroomReviewClock : TimeProvider
+    {
+        private readonly long _start = Stopwatch.GetTimestamp();
+        private readonly DateTimeOffset _schoolMorning = new DateTime(2026, 11, 23, 10, 0, 0, DateTimeKind.Local);
+        public override DateTimeOffset GetUtcNow() => _schoolMorning.ToUniversalTime() + Stopwatch.GetElapsedTime(_start);
+    }
+
     private sealed record Capture(string Surface, string Theme, double Scaling, int Width, int Height, int VisibleText);
 
     private async Task ReviewWindowsAsync(string directory, IClassicDesktopStyleApplicationLifetime desktop)
@@ -41,7 +48,8 @@ public partial class App
             if (Environment.GetEnvironmentVariable("CLASSNEX_REVIEW_REMINDERS_ONLY") == "1")
             {
                 SetReviewDpi(overlay, 144);
-                await Task.Delay(500);
+                await Dispatcher.UIThread.InvokeAsync(() => overlay.UpdateLayout(), DispatcherPriority.Background);
+                overlay.ResetPlacement();
                 await ReviewRemindersAsync(overlay, Shot, Check);
                 return;
             }

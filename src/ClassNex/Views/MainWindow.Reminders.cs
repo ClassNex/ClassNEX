@@ -1,12 +1,9 @@
 using Avalonia;
-using Avalonia.Animation;
-using Avalonia.Animation.Easings;
 using Avalonia.Controls;
-using Avalonia.Layout;
 using Avalonia.Media;
-using Avalonia.Rendering.Composition;
-using Avalonia.Styling;
 using Avalonia.Threading;
+using ClassNex.Core.Abstractions;
+using ClassNex.Services;
 using ClassNex.Styles;
 using System.Globalization;
 using Windows.UI.ViewManagement;
@@ -16,11 +13,27 @@ namespace ClassNex.Views;
 public partial class MainWindow
 {
     private DispatcherTimer? _messageTimer;
-    private CancellationTokenSource? _turn;
-    private bool _onMessage;
-    private int _presentation;
+    private readonly DispatcherTimer _progressTimer = new(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(50) };
+    private INotificationOverlayProgress? _overlayProgress;
+    private bool _overlayExiting;
+    public static readonly StyledProperty<double> CountdownProgressValueProperty =
+        AvaloniaProperty.Register<MainWindow, double>(nameof(CountdownProgressValue), 1.0);
+
+    public double CountdownProgressValue
+    {
+        get => GetValue(CountdownProgressValueProperty);
+        set => SetValue(CountdownProgressValueProperty, value);
+    }
+
+    private const double NotificationHeight = 40;
+    private static readonly FontFamily NotificationLucide = new("avares://ClassNex/Assets/NotificationFonts/#lucide");
+    private static readonly FontFamily NotificationFluent = new("avares://ClassNex/Assets/NotificationFonts/#FluentSystemIcons-Resizable");
+    private static readonly FontFamily ApplicationLucide = new("avares://ClassNex/Assets/Fonts/#lucide");
     private readonly UISettings _notificationUi = new();
-    private bool _hasReminderDetail, _hasCoursePage;
+    private int _presentation;
+    private bool _hasCoursePage;
+    private PixelPoint? _lastNotificationCenter;
+    internal IBrush? ClassroomNotificationAccent => NotificationMaskBg.Fill;
 
     public PixelRect? GetIslandScreenRect()
     {
@@ -30,191 +43,188 @@ public partial class MainWindow
         return new(start, new PixelSize(Math.Max(1, end.X - start.X), Math.Max(1, end.Y - start.Y)));
     }
 
-    public PixelPoint? GetIslandCenterOnScreen() => !IslandBackground.IsLoaded ? null :
-        IslandBackground.PointToScreen(new Point(IslandBackground.Bounds.Width / 2, IslandBackground.Bounds.Height / 2));
+    public PixelPoint? GetIslandCenterOnScreen()
+    {
+        if (!IslandBackground.IsLoaded || IslandBackground.Bounds.Width <= 0 || IslandBackground.Bounds.Height <= 0) return _lastNotificationCenter;
+        return _lastNotificationCenter = IslandBackground.PointToScreen(new Point(IslandBackground.Bounds.Width / 2, IslandBackground.Bounds.Height / 2));
+    }
+
+    private static FontFamily IconFont(string glyph) => glyph switch
+    {
+        "\uED34" => NotificationFluent,
+        "\uE0FF" or "\uE54F" or "\uE250" or "\uE224" => NotificationLucide,
+        _ => ApplicationLucide
+    };
 
     public void ShowNotificationMask(string text, string leftGlyph = "\uE0FF", string rightGlyph = "\uE54F", TimeSpan lifetime = default)
     {
         if (!CanPresentReminder) return;
         FinishIslandDrag(false);
         ++_presentation;
+        StopOverlayProgress();
         StopNotificationOverlayMessageTicker();
-        CancelTurn();
-        ResetPage(NotificationOverlayMessagePage, false);
-        ResetPage(NotificationOverlayCoursePage, true);
+        _overlayExiting = _hasCoursePage = false;
+        NotificationOverlay.Classes.Remove("leaving");
+        NotificationMaskContent.Classes.Remove("revealing");
+        NotificationMaskContent.Classes.Remove("entering");
+        NotificationMaskShadow.Classes.Remove("entering");
+        NotificationMaskShadow.Classes.Remove("revealing");
+        NotificationSlides.SelectedIndex = 0;
         ResetPage(NotificationOverlay, false);
+        CountdownProgressValue = 1.0;
         ResetPage(NotificationMask, true);
-        _onMessage = _hasReminderDetail = _hasCoursePage = false;
         _showingNotification = true;
         CardContent.Opacity = 0;
         NotificationMaskText.Text = text;
-        NotificationMaskLeftIcon.Text = leftGlyph;
-        NotificationMaskRightIcon.Text = rightGlyph;
-        NotificationMaskContent.Opacity = 1;
+        NotificationMaskLeftIcon.FontFamily = IconFont(leftGlyph);
+        NotificationMaskRightIcon.FontFamily = IconFont(rightGlyph);
+        NotificationMaskLeftIcon.Glyph = leftGlyph;
+        NotificationMaskRightIcon.Glyph = rightGlyph;
+        var breakMask = rightGlyph == "\uE250";
+        NotificationMaskIcons.Margin = breakMask ? new Thickness(16, 0) : default;
+        NotificationMaskLeftIcon.Margin = NotificationMaskRightIcon.Margin = breakMask ? default : new Thickness(0, -1.5, 0, -1.5);
+        NotificationMaskLeftIcon.FontWeight = NotificationMaskRightIcon.FontWeight = breakMask ? FontWeight.Medium : FontWeight.Normal;
+        ApplyNotificationBackdrop(true);
         ArrangeNotification();
-        NotificationMaskBg.IsOpened = true;
-        NotificationTrackFill.Background = CiPalette.OnAccentBrush();
-        if (lifetime > TimeSpan.Zero) StartNotificationTrack(lifetime);
-        else NotificationTrack.IsVisible = false;
+        if (_notificationUi.AnimationsEnabled)
+        {
+            NotificationMaskContent.Classes.Add("entering");
+            NotificationMaskShadow.Classes.Add("entering");
+        }
+        if (NotificationMaskBg.IsOpened) NotificationMaskBg.Open(); else NotificationMaskBg.IsOpened = true;
     }
 
     public void ShowNotificationOverlay(string left, string subject, string teacher, string time, string prefix = "下节课",
-        string message = "", bool verticalPageTurn = false, TimeSpan trackDuration = default)
+        string message = "", bool verticalPageTurn = false, TimeSpan trackDuration = default) =>
+        ShowNotificationOverlay(new(left, subject, teacher, time, prefix, message, verticalPageTurn), null,
+            trackDuration > TimeSpan.Zero ? new NotificationOverlayPlayback(trackDuration) : null);
+
+    internal void ShowNotificationOverlay(NotificationOverlay detail, int? seconds, INotificationOverlayProgress? progress)
     {
         if (!CanPresentReminder || !_showingNotification) return;
         StopNotificationOverlayMessageTicker();
-        NotificationOverlayLeft.Text = left;
-        NotificationOverlaySubject.Text = subject;
-        NotificationOverlayTeacher.Text = teacher;
-        NotificationOverlayTeacher.IsVisible = !string.IsNullOrWhiteSpace(teacher);
-        NotificationOverlayTime.Text = time;
-        NotificationOverlayTime.IsVisible = !string.IsNullOrWhiteSpace(time);
-        NotificationOverlayPrefix.Text = prefix;
-        NotificationOverlayPrefix.IsVisible = !string.IsNullOrWhiteSpace(prefix);
-        NotificationOverlayMessagePage.Text = message;
-        NotificationOverlayLeft.IsVisible = !string.IsNullOrWhiteSpace(left);
-        _hasReminderDetail = true;
-        _hasCoursePage = NotificationOverlayLeft.IsVisible || !string.IsNullOrWhiteSpace(subject) || NotificationOverlayTime.IsVisible || NotificationOverlayTeacher.IsVisible;
-        _onMessage = !_hasCoursePage;
-        ResetPage(NotificationOverlayMessagePage, _onMessage);
-        ResetPage(NotificationOverlayCoursePage, _hasCoursePage);
+        NotificationOverlayLeft.IsVisible = seconds.HasValue;
+        NotificationBreakCaption.IsVisible = !seconds.HasValue && detail.Break.HasValue;
+        NotificationPlainCaption.IsVisible = !seconds.HasValue && !detail.Break.HasValue;
+        if (seconds is { } count) NotificationSeconds.Text = count.ToString(CultureInfo.CurrentCulture);
+        else if (detail.Break is { } pause)
+        {
+            NotificationBreakName.Text = pause.Name;
+            NotificationBreakDuration.Text = pause.Duration;
+        }
+        else NotificationPlainCaption.Text = detail.Caption;
+        NotificationOverlaySubject.Text = detail.Subject;
+        NotificationOverlayTeacher.Text = detail.Teacher;
+        NotificationOverlayTeacher.IsVisible = !string.IsNullOrWhiteSpace(detail.Teacher);
+        NotificationOverlayTime.Text = detail.Time.Replace('–', '-');
+        NotificationOverlayPrefix.Text = detail.Prefix == "下节课是" ? "下节课是：" : detail.Prefix;
+        NotificationOverlayMessagePage.Text = NotificationSimpleMessage.Text = detail.Message;
+        _hasCoursePage = seconds.HasValue || detail.Break.HasValue || !string.IsNullOrEmpty(detail.Caption) ||
+                         !string.IsNullOrEmpty(detail.Subject) || !string.IsNullOrEmpty(detail.Time) || !string.IsNullOrEmpty(detail.Teacher);
+        NotificationCourseProvider.IsVisible = _hasCoursePage;
+        NotificationSimpleProvider.IsVisible = !_hasCoursePage;
+        NotificationSlides.SelectedIndex = 0;
+        ResetPage(NotificationOverlay, true);
         ArrangeNotification();
-        NotificationTrackFill.Background = CiPalette.AccentBrush();
-        if (!NotificationTrack.IsVisible && trackDuration > TimeSpan.Zero) StartNotificationTrack(trackDuration);
-        _ = TurnPageAsync(NotificationMask, NotificationOverlay, verticalPageTurn);
-        if (!_hasCoursePage || string.IsNullOrWhiteSpace(message)) return;
-        _messageTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
-        _messageTimer.Tick += AdvanceMessage;
-        _messageTimer.Start();
+        _overlayProgress = progress;
+        ProgressContainer.IsVisible = progress is not null;
+        if (progress is not null)
+        {
+            CountdownProgressValue = 1.0;
+            _progressTimer.Start();
+        }
+        _ = RetreatMaskAsync(_presentation, finish: false);
+        if (_hasCoursePage && detail.Vertical && !string.IsNullOrWhiteSpace(detail.Message))
+        {
+            _messageTimer ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
+            _messageTimer.Tick += AdvanceMessage;
+            _messageTimer.Start();
+        }
+    }
+
+    private void ApplyNotificationBackdrop(bool active)
+    {
+        IslandSheen.IsVisible = !active;
+        var reminderRadius = new CornerRadius(ClassroomReminderRadius);
+        NotificationMask.CornerRadius = NotificationMaskShadow.CornerRadius = NotificationOverlay.CornerRadius = reminderRadius;
+        IslandBackground.CornerRadius = active ? reminderRadius : new CornerRadius(ClassroomCornerRadius);
+        IslandBackground.BorderThickness = active ? new Thickness(1) : default;
+        IslandBackground.BoxShadow = active ? BoxShadows.Parse("0 4 8 2 #48000000") : CiPalette.IslandShadow();
+        IslandBackground.Background = active && this.TryFindResource("SolidBackgroundFillColorSecondaryBrush", ActualThemeVariant, out var fill) && fill is IBrush brush
+            ? brush : CiPalette.IslandSurfaceBrush();
+        IslandBackground.BorderBrush = active && this.TryFindResource("ControlElevationBorderBrush", ActualThemeVariant, out var border) ? border as IBrush : null;
     }
 
     private void ArrangeNotification()
     {
-        static FormattedText Measure(TextBlock label, double maxWidth = double.PositiveInfinity)
+        var height = NotificationHeight;
+        NotificationMaskIcons.Measure(Size.Infinity);
+        var width = Math.Max(_normalWidth, NotificationMaskIcons.DesiredSize.Width + 24);
+        if (NotificationOverlay.IsVisible && _hasCoursePage)
         {
-            var text = new FormattedText(label.Text ?? "", CultureInfo.CurrentUICulture, label.FlowDirection,
-                new Typeface(label.FontFamily, label.FontStyle, label.FontWeight, label.FontStretch), label.FontSize, Brushes.Black);
-            if (double.IsFinite(maxWidth)) text.MaxTextWidth = Math.Max(1, maxWidth);
-            return text;
-        }
-        double Natural(TextBlock label) => Math.Ceiling(Measure(label).WidthIncludingTrailingWhitespace);
-        var width = Math.Max(360, Math.Min(_normalWidth, 500));
-        width = Math.Max(width, Natural(NotificationMaskText) + 84);
-        var height = CiPalette.IslandHeight;
-        if (_hasReminderDetail)
-        {
-            var left = NotificationOverlayLeft.IsVisible ? Natural(NotificationOverlayLeft) : 0;
-            var prefix = string.IsNullOrWhiteSpace(NotificationOverlayPrefix.Text) ? 0 : Natural(NotificationOverlayPrefix) + 6;
-            var subject = Natural(NotificationOverlaySubject);
-            var meta = (NotificationOverlayTime.IsVisible ? Natural(NotificationOverlayTime) : 0)
-                + (NotificationOverlayTeacher.IsVisible ? Natural(NotificationOverlayTeacher) + 5 : 0);
-            NotificationLessonMeta.IsVisible = meta > 0;
-            var pairGap = left > 0 ? 20 : 0;
-            var inline = left + pairGap + prefix + subject + (meta > 0 ? meta + 6 : 0) + 34;
-            var messageWidth = Natural(NotificationOverlayMessagePage) + 48;
-            width = Math.Min(AvailableIslandWidth, Math.Max(width, Math.Max(inline, Math.Min(messageWidth, 720))));
-            var usable = Math.Max(1, width - 32);
-            var leftWidth = Math.Min(left, Math.Floor(usable * 0.42));
-            var stacked = inline > width;
-            var lessonWidth = Math.Max(1, usable - leftWidth - pairGap);
-            NotificationOverlayCoursePage.ColumnSpacing = pairGap;
-            NotificationOverlayCoursePage.ColumnDefinitions[0].Width = new GridLength(leftWidth);
+            NotificationOverlayCoursePage.ColumnDefinitions[0].Width = GridLength.Star;
             NotificationOverlayCoursePage.ColumnDefinitions[1].Width = GridLength.Star;
-            NotificationLesson.ColumnDefinitions[0].Width = stacked ? GridLength.Star : GridLength.Auto;
-            NotificationLesson.ColumnDefinitions[1].Width = stacked ? new GridLength(0) : GridLength.Auto;
-            NotificationLesson.ColumnDefinitions[2].Width = stacked ? new GridLength(0) : GridLength.Auto;
-            NotificationLesson.ColumnSpacing = stacked ? 0 : 6;
-            NotificationOverlayPrefix.IsVisible = !stacked && !string.IsNullOrWhiteSpace(NotificationOverlayPrefix.Text);
-            Grid.SetColumn(NotificationOverlaySubject, stacked ? 0 : 1);
-            Grid.SetColumn(NotificationLessonMeta, stacked ? 0 : 2);
-            Grid.SetRow(NotificationLessonMeta, stacked ? 1 : 0);
-            NotificationLesson.HorizontalAlignment = stacked ? HorizontalAlignment.Stretch : HorizontalAlignment.Center;
-            NotificationLessonMeta.Orientation = stacked && meta > lessonWidth ? Orientation.Vertical : Orientation.Horizontal;
-            NotificationOverlayTeacher.MaxWidth = lessonWidth;
-            NotificationOverlayTeacher.TextWrapping = TextWrapping.Wrap;
-            NotificationOverlaySubject.MaxWidth = stacked ? lessonWidth : double.PositiveInfinity;
-            if (stacked && _hasCoursePage)
+            NotificationOverlaySubject.MaxWidth = double.PositiveInfinity;
+            NotificationOverlaySubject.TextWrapping = TextWrapping.NoWrap;
+            var caption = NotificationOverlayLeft.IsVisible ? NotificationOverlayLeft : NotificationBreakCaption.IsVisible ? NotificationBreakCaption : NotificationPlainCaption;
+            caption.Measure(Size.Infinity);
+            NotificationLesson.Measure(Size.Infinity);
+            NotificationOverlayMessagePage.Measure(Size.Infinity);
+            var left = caption.DesiredSize.Width;
+            var right = NotificationLesson.DesiredSize.Width;
+            NotificationOverlayCoursePage.Measure(Size.Infinity);
+            width = Math.Max(width, 32 + Math.Max(NotificationOverlayCoursePage.DesiredSize.Width, NotificationOverlayMessagePage.DesiredSize.Width));
+            var available = Math.Max(1, AvailableIslandWidth - 32);
+            if (Math.Max(left, right) * 2 > available)
             {
-                var courseHeight = Measure(NotificationOverlaySubject, lessonWidth).Height;
-                if (meta > 0)
-                    courseHeight += NotificationLessonMeta.Orientation == Orientation.Vertical
-                        ? Measure(NotificationOverlayTeacher, lessonWidth).Height + Measure(NotificationOverlayTime, lessonWidth).Height + 5
-                        : Math.Max(Measure(NotificationOverlayTeacher, lessonWidth).Height, Measure(NotificationOverlayTime, lessonWidth).Height);
-                height = Math.Max(height, Math.Ceiling(Math.Max(courseHeight, Measure(NotificationOverlayLeft, Math.Max(1, leftWidth)).Height)) + 12);
+                var labelWidth = Math.Min(left, available / 2);
+                NotificationOverlayCoursePage.ColumnDefinitions[0].Width = new GridLength(labelWidth);
+                width = Math.Max(width, 32 + left + right);
+                NotificationOverlaySubject.Measure(Size.Infinity);
+                var meta = right - NotificationOverlaySubject.DesiredSize.Width;
+                NotificationOverlaySubject.MaxWidth = Math.Max(1, available - labelWidth - meta);
+                NotificationOverlaySubject.TextWrapping = TextWrapping.Wrap;
+                NotificationLesson.Measure(Size.Infinity);
+                height = Math.Max(height, NotificationLesson.DesiredSize.Height);
             }
-            if (!string.IsNullOrWhiteSpace(NotificationOverlayMessagePage.Text))
-                height = Math.Max(height, Math.Ceiling(Measure(NotificationOverlayMessagePage, width - 48).Height) + 12);
         }
-        SetIslandWidth(width);
-        NotificationMaskText.MaxWidth = Math.Max(1, IslandBackground.Width - 80);
-        height = Math.Max(height, Math.Ceiling(Measure(NotificationMaskText, NotificationMaskText.MaxWidth).Height) + 12);
-        height = Math.Min(height, CardContent.MaxHeight);
-        LinePanel.Height = IslandBackground.Height = NotificationOverlay.Height = NotificationMask.Height = height;
-        NotificationTrack.Width = NotificationTrackFill.Width = Math.Max(1, IslandBackground.Width - 2 * IslandContentMargin);
-    }
-
-    private void AdvanceMessage(object? sender, EventArgs e)
-    {
-        if (!_showingNotification || !CanPresentReminder || _turn is not null) return;
-        var from = _onMessage ? (Control)NotificationOverlayMessagePage : NotificationOverlayCoursePage;
-        var to = _onMessage ? (Control)NotificationOverlayCoursePage : NotificationOverlayMessagePage;
-        _onMessage = !_onMessage;
-        _ = TurnPageAsync(from, to, true);
-    }
-
-    private async Task TurnPageAsync(Control from, Control to, bool vertical)
-    {
-        CancelTurn();
-        using var turn = new CancellationTokenSource();
-        _turn = turn;
-        try
+        else if (NotificationOverlay.IsVisible)
         {
-            to.IsVisible = true;
-            from.IsVisible = true;
-            from.Opacity = 1;
-            to.Opacity = 0;
-            if (_notificationUi.AnimationsEnabled)
-            {
-                from.RenderTransform = new TranslateTransform();
-                to.RenderTransform = new TranslateTransform();
-                await Task.WhenAll(Motion(true).RunAsync(from, turn.Token), Motion(false).RunAsync(to, turn.Token));
-            }
-            if (turn.IsCancellationRequested) return;
-            ResetPage(from, false);
-            ResetPage(to, true);
-            if (from == NotificationMask) NotificationMaskBg.IsOpened = false;
+            NotificationSimpleMessage.Measure(Size.Infinity);
+            width = Math.Max(width, NotificationSimpleMessage.DesiredSize.Width);
         }
-        catch (OperationCanceledException) when (turn.IsCancellationRequested) { }
-        finally { if (ReferenceEquals(_turn, turn)) _turn = null; }
-
-        Animation Motion(bool outgoing)
+        NotificationDetailLayout.HorizontalAlignment = (AppServices.Settings.ImportedDock?.Anchor % 3) switch
         {
-            var shift = vertical ? TranslateTransform.YProperty : TranslateTransform.XProperty;
-            var offset = vertical ? 40d : -20d;
-            return new Animation
-            {
-                Duration = TimeSpan.FromMilliseconds(250), Easing = new SplineEasing { X1 = .65, Y1 = 0, X2 = .35, Y2 = 1 },
-                Children =
-                {
-                    new KeyFrame { Cue = new Cue(0), Setters = { new Setter(OpacityProperty, outgoing ? 1d : 0d), new Setter(shift, outgoing ? 0d : -offset) } },
-                    new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, outgoing ? 0d : 1d), new Setter(shift, outgoing ? offset : 0d) } }
-                }
-            };
-        }
+            0 => Avalonia.Layout.HorizontalAlignment.Left,
+            2 => Avalonia.Layout.HorizontalAlignment.Right,
+            _ => Avalonia.Layout.HorizontalAlignment.Center
+        };
+        SetIslandWidth(width, reminder: true);
+        height = Math.Min(Math.Ceiling(height), CardContent.MaxHeight);
+        LinePanel.Height = IslandBackground.Height = NotificationOverlay.Height = NotificationMask.Height = NotificationMaskShadow.Height = height;
     }
+
+    private async Task RetreatMaskAsync(int presentation, bool finish)
+    {
+        NotificationMaskContent.Classes.Remove("entering");
+        NotificationMaskShadow.Classes.Remove("entering");
+        NotificationMaskBg.IsOpened = false;
+        if (_notificationUi.AnimationsEnabled)
+        {
+            NotificationMaskContent.Classes.Add("revealing");
+            NotificationMaskShadow.Classes.Add("revealing");
+            await NotificationMaskBg.TransitionCompleted;
+        }
+        if (presentation != _presentation) return;
+        if (finish) ResetNotification(); else ResetPage(NotificationMask, false);
+    }
+
+    private void AdvanceMessage(object? sender, EventArgs e) => NotificationSlides.SelectedIndex = NotificationSlides.SelectedIndex == 0 ? 1 : 0;
 
     private static void ResetPage(Control view, bool visible)
     {
         view.IsVisible = visible;
-        view.RenderTransform = null;
         view.Opacity = visible ? 1 : 0;
-    }
-
-    private void CancelTurn()
-    {
-        var old = _turn;
-        _turn = null;
-        old?.Cancel();
     }
 
     private void StopNotificationOverlayMessageTicker()
@@ -222,49 +232,82 @@ public partial class MainWindow
         if (_messageTimer is not { } timer) return;
         timer.Stop();
         timer.Tick -= AdvanceMessage;
-        _messageTimer = null;
     }
 
-    private void StartNotificationTrack(TimeSpan duration)
+    private void SampleOverlayProgress(object? sender, EventArgs args)
     {
-        NotificationTrack.IsVisible = true;
-        if (ElementComposition.GetElementVisual(NotificationTrackFill) is not { } visual) return;
-        visual.StopAnimation(nameof(visual.Scale));
-        visual.CenterPoint = new Vector3D(0, 0, 0);
-        visual.Scale = new Vector3D(1, 1, 1);
-        var anim = visual.Compositor.CreateVector3DKeyFrameAnimation();
-        anim.InsertKeyFrame(0f, new Vector3D(1, 1, 1));
-        anim.InsertKeyFrame(1f, new Vector3D(0, 1, 1), new LinearEasing());
-        anim.Duration = duration;
-        visual.StartAnimation(nameof(visual.Scale), anim);
+        if (_overlayProgress is { } progress) CountdownProgressValue = progress.LeftProgress;
+    }
+
+    private void StopOverlayProgress()
+    {
+        _progressTimer.Stop();
+        _overlayProgress = null;
     }
 
     public void UpdateNotificationOverlayCountdown(string text)
     {
-        if (_showingNotification && NotificationOverlay.IsVisible) NotificationOverlayLeft.Text = text;
+        if (!_showingNotification || !NotificationOverlay.IsVisible) return;
+        NotificationOverlayLeft.IsVisible = NotificationBreakCaption.IsVisible = false;
+        NotificationPlainCaption.IsVisible = true;
+        NotificationPlainCaption.Text = text;
+    }
+
+    internal void UpdateNotificationOverlayCountdown(int seconds)
+    {
+        if (_showingNotification && NotificationOverlay.IsVisible && NotificationOverlayLeft.IsVisible)
+            NotificationSeconds.Text = seconds.ToString(CultureInfo.CurrentCulture);
     }
 
     public void HideNotificationMask()
     {
-        if (_showingNotification) ResetNotification();
+        if (!_showingNotification || _overlayExiting) return;
+        if (!CanPresentReminder || !_notificationUi.AnimationsEnabled)
+        {
+            ResetNotification();
+            return;
+        }
+        SampleOverlayProgress(null, EventArgs.Empty);
+        StopOverlayProgress();
+        StopNotificationOverlayMessageTicker();
+        CardContent.Opacity = 1;
+        _overlayExiting = true;
+        if (!NotificationOverlay.IsVisible)
+        {
+            _ = RetreatMaskAsync(_presentation, finish: true);
+            return;
+        }
+        NotificationOverlay.Classes.Add("leaving");
+        NotificationOverlay.Opacity = 0;
+    }
+
+    private void OnOverlayOpacityChanged(object? sender, AvaloniaPropertyChangedEventArgs args)
+    {
+        if (_overlayExiting && args.Property == OpacityProperty && NotificationOverlay.Opacity <= 0)
+            ResetNotification();
     }
 
     private void ResetNotification()
     {
         ++_presentation;
+        _overlayExiting = false;
+        StopOverlayProgress();
         StopNotificationOverlayMessageTicker();
-        CancelTurn();
+        NotificationMaskContent.Classes.Remove("entering");
+        NotificationMaskContent.Classes.Remove("revealing");
+        NotificationMaskShadow.Classes.Remove("entering");
+        NotificationMaskShadow.Classes.Remove("revealing");
         NotificationMaskBg.IsOpened = false;
         ResetPage(NotificationMask, false);
         ResetPage(NotificationOverlay, false);
-        NotificationTrack.IsVisible = false;
-        if (ElementComposition.GetElementVisual(NotificationTrackFill) is { } visual) visual.StopAnimation(nameof(visual.Scale));
-        _hasReminderDetail = _hasCoursePage = _showingNotification = false;
+        NotificationOverlay.Classes.Remove("leaving");
+        _hasCoursePage = _showingNotification = false;
+        ApplyNotificationBackdrop(false);
         LinePanel.Height = double.NaN;
         if (_nexPanelActive) return;
         CardContent.Opacity = 1;
         IslandBackground.Height = Math.Max(CiPalette.IslandHeight, CardContent.DesiredSize.Height);
-        SetIslandWidth(CardContent.Bounds.Width > 0 ? CardContent.Bounds.Width + 2 * IslandContentMargin : _normalWidth);
+        SetIslandWidth(CardContent.Bounds.Width > 0 ? CardContent.Bounds.Width + 2 * IslandContentMargin : _normalWidth, reminder: true);
     }
 
     public void WarmNotificationMask()

@@ -1,4 +1,4 @@
-param([Parameter(Mandatory)][ValidatePattern('^26w[0-9]{2}[a-z]$')][string]$ExpectedVersion)
+param([Parameter(Mandatory)][ValidatePattern('^26w[0-9]{2}[a-z]$')][string]$ExpectedVersion, [switch]$Migration)
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $id = [Guid]::NewGuid().ToString('N').Substring(0, 8)
@@ -44,7 +44,11 @@ schedules:
 $launch = [Diagnostics.ProcessStartInfo]::new($exe.FullName)
 $launch.WorkingDirectory = $app
 $launch.UseShellExecute = $false
-$launch.ArgumentList.Add('classnex://settings')
 foreach ($name in @($launch.Environment.Keys | Where-Object { $_ -like 'CLASSNEX_VERIFY*' -or $_ -like 'CLASSNEX_REVIEW*' -or $_ -eq 'CLASSNEX_NEX_API_KEY' })) { $null = $launch.Environment.Remove($name) }
+if ($Migration) {
+    [IO.File]::WriteAllText((Join-Path $root '.classnex-review'), 'isolated migration preview', $utf8)
+    $launch.ArgumentList.Add('--preview-migration')
+    $launch.Environment['CLASSNEX_VERIFY_OOBE'] = 'Data'
+} else { $launch.ArgumentList.Add('classnex://settings') }
 $process = [Diagnostics.Process]::Start($launch)
 "$ExpectedVersion · PID $($process.Id) · $($exe.FullName)"

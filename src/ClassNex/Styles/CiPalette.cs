@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Styling;
+using ClassNex.Services;
 
 namespace ClassNex.Styles;
 
@@ -95,14 +96,21 @@ public static partial class CiPalette
 
     public static readonly Color SakuraAccentDark = Color.Parse("#F08AA3");
 
-    public static IBrush SakuraAccentBrush() =>
-        new SolidColorBrush(IsDarkTheme() ? SakuraAccentDark : SakuraAccent);
+    private static IBrush? ImportedAccent() => AppServices.Settings.ThemeAccentColor switch
+    {
+        "system" => AccentBrush(),
+        { } text when Color.TryParse(text, out var color) => new SolidColorBrush(color),
+        _ => null
+    };
+
+    public static IBrush SakuraAccentBrush() => ImportedAccent() ?? new SolidColorBrush(IsDarkTheme() ? SakuraAccentDark : SakuraAccent);
 
     public static IBrush SakuraAccentTint(double opacity) =>
         WithOpacity(SakuraAccentBrush(), opacity);
 
     public static IBrush SakuraAccentGradient()
     {
+        if (ImportedAccent() is { } accent) return accent;
         var dark = IsDarkTheme();
 
         return new LinearGradientBrush
@@ -119,6 +127,7 @@ public static partial class CiPalette
 
     public static IBrush IslandSurfaceBrush()
     {
+        if (AppServices.Settings.OverlayBackgroundColor is { } text && Color.TryParse(text, out var color)) return new SolidColorBrush(color);
         var dark = IsDarkTheme();
         var brush = new LinearGradientBrush
         {
@@ -154,6 +163,7 @@ public static partial class CiPalette
 
     public static IBrush IslandSheenBrush()
     {
+        if (AppServices.Settings.OverlayBackgroundColor is not null) return Brushes.Transparent;
         var dark = IsDarkTheme();
 
         return new LinearGradientBrush

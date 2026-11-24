@@ -10,7 +10,7 @@ namespace ClassNex.Widgets;
 public sealed class CountdownWidget : WidgetBase
 {
     private readonly TextBlock _text;
-    private (DateTime Date, DateTimeOffset? Target, string? Name, bool Accent, string Live, double Font)? _last;
+    private (DateTime Date, DateTimeOffset? Target, string? Name, bool Accent, string Live, double Font, string? Color)? _last;
 
     public CountdownWidget()
     {
@@ -22,7 +22,8 @@ public sealed class CountdownWidget : WidgetBase
 
     public override void Refresh(WidgetContext ctx)
     {
-        var state = (ctx.Now.Date, Config.CountdownTarget, Config.CountdownName, Config.UseCountdownAccent, ctx.CountdownText, Config.FontScale);
+        var state = (ctx.Now.Date, Config.CountdownTarget, Config.CountdownName, Config.UseCountdownAccent, ctx.CountdownText, Config.FontScale,
+            Config.UseCustomFontColor ? Config.FontColor : null);
         if (_last == state) return;
         _last = state;
         if (Config.CountdownTarget is { } target)
@@ -45,5 +46,6 @@ public sealed class CountdownWidget : WidgetBase
         }
 
         _text.FontSize = Size(13.5);
+        if (Config.UseCustomFontColor && Color.TryParse(Config.FontColor, out var custom)) _text.Foreground = new SolidColorBrush(custom);
     }
 }

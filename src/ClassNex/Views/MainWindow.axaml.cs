@@ -55,10 +55,16 @@ public partial class MainWindow : Window
 #endif
 
     private const double IslandContentMargin = 16;
+    private static double EffectiveCornerRadius(double fallback) => AppServices.Settings.OverlayCornerRadius is { } value && double.IsFinite(value) ? Math.Clamp(value, 0, 256) : fallback;
+    private static double ClassroomCornerRadius => EffectiveCornerRadius(CiPalette.IslandCornerRadius);
+    private static double ClassroomReminderRadius => EffectiveCornerRadius(CiPalette.CardCornerRadius);
 
     public MainWindow()
     {
         InitializeComponent();
+        ClassroomNotificationColors.Attach(OverlayTimeProgressBar, NotificationMask, NotificationMaskShadow);
+        _progressTimer.Tick += SampleOverlayProgress;
+        NotificationOverlay.PropertyChanged += OnOverlayOpacityChanged;
         WirePlacement();
 
         AppServices.SettingsChanged += ApplySettings;
@@ -139,7 +145,9 @@ public partial class MainWindow : Window
         FinishIslandDrag(false);
         UpdateRunningState();
         StopNotificationOverlayMessageTicker();
-        CancelTurn();
+        StopOverlayProgress();
+        _progressTimer.Tick -= SampleOverlayProgress;
+        NotificationOverlay.PropertyChanged -= OnOverlayOpacityChanged;
         AppServices.SettingsChanged -= ApplySettings;
         AppServices.Schedule.ProfileChanged -= OnDataChanged;
         AppServices.TimeLayout.Changed -= OnDataChanged;
@@ -173,11 +181,11 @@ public partial class MainWindow : Window
         IslandBackground.BoxShadow = CiPalette.IslandShadow();
         IslandSheen.Background = NexSheen.Background = CiPalette.IslandSheenBrush();
         NexPanel.Background = IslandBackground.Background;
-        IslandBackground.Opacity = _nexPanelActive ? 0 : Math.Clamp(s.BackgroundOpacity, 0.05, 1.0);
-        IslandBackground.CornerRadius = new CornerRadius(CiPalette.IslandCornerRadius);
-        NexPanel.CornerRadius = new CornerRadius(CiPalette.IslandCornerRadius);
+        IslandBackground.Opacity = _nexPanelActive ? 0 : Math.Clamp(s.BackgroundOpacity, 0, 1);
+        var radius = ClassroomCornerRadius;
+        IslandBackground.CornerRadius = NexPanel.CornerRadius = new CornerRadius(radius);
+        IslandSheen.CornerRadius = NexSheen.CornerRadius = new CornerRadius(Math.Max(0, radius - 1));
         NotificationMaskBg.Fill = CiPalette.AccentBrush();
-        NotificationTrackFill.Background = _showingNotification && !NotificationOverlay.IsVisible ? CiPalette.OnAccentBrush() : CiPalette.AccentBrush();
 
         if (!_showingNotification && !_nexPanelActive && _normalWidth > 0) SetIslandWidth(_normalWidth);
 
@@ -193,7 +201,11 @@ public partial class MainWindow : Window
         if (_editMode)
             BuildEditBar();
 
-        if (_showingNotification) ArrangeNotification();
+        if (_showingNotification)
+        {
+            ApplyNotificationBackdrop(true);
+            ArrangeNotification();
+        }
 
         ApplyClickThrough();
         UpdateRunningState();
@@ -224,12 +236,12 @@ public partial class MainWindow : Window
                     VerticalAlignment = VerticalAlignment.Bottom,
                 };
                 item.Children.Add(BuildComponentToolbar(config));
-                item.Children.Add(widget.View);
+                item.Children.Add(widget.DisplayView);
                 WidgetHost.Children.Add(item);
             }
             else
             {
-                WidgetHost.Children.Add(widget.View);
+                WidgetHost.Children.Add(widget.DisplayView);
             }
         }
 
@@ -287,7 +299,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void RefreshWidgets() => RefreshWidgetsAt(DateTime.Now);
+    private void RefreshWidgets() => RefreshWidgetsAt(AppServices.ClassroomNow);
 
     internal void RefreshWidgetsAt(DateTime now)
     {
@@ -303,7 +315,7 @@ public partial class MainWindow : Window
         foreach (var widget in _widgets)
         {
             if (widget is ScheduleWidget) schedules++;
-            else if (!vertical) otherWidth += Math.Max(widget.View.DesiredSize.Width, widget.View.Bounds.Width);
+            else if (!vertical) otherWidth += Math.Max(widget.DisplayView.DesiredSize.Width, widget.DisplayView.Bounds.Width);
             needsCountdown |= widget is CountdownWidget && widget.Config.CountdownTarget is null ||
                               widget is TextWidget && widget.Config.Text?.Contains("{countdown}", StringComparison.Ordinal) == true;
         }
@@ -442,7 +454,7 @@ public partial class MainWindow : Window
         NexPanel.IsVisible = false;
         CardContent.IsVisible = true;
         CardContent.Opacity = 1;
-        IslandBackground.Opacity = Math.Clamp(AppServices.Settings.BackgroundOpacity, 0.05, 1.0);
+        IslandBackground.Opacity = Math.Clamp(AppServices.Settings.BackgroundOpacity, 0, 1);
         SetIslandWidth(_normalWidth);
         UpdateReminderAvailability();
     }
@@ -467,10 +479,13 @@ public partial class MainWindow : Window
     private double _availableIslandWidth = 960;
     private double AvailableIslandWidth => _availableIslandWidth;
 
-    private void SetIslandWidth(double target)
+    private void SetIslandWidth(double target, bool reminder = false)
     {
         if (!double.IsFinite(target) || target <= 0) return;
-        IslandBackground.Width = Math.Min(AvailableIslandWidth, Math.Ceiling(target));
+        var width = Math.Min(AvailableIslandWidth, Math.Ceiling(target));
+        IslandBackground.Classes.Set("reminder-resize", reminder && IsVisible && IslandBackground.IsLoaded && double.IsFinite(IslandBackground.Width) && _notificationUi.AnimationsEnabled);
+        if (reminder) NotificationDetailLayout.Width = width;
+        IslandBackground.Width = width;
         _lastHoverPoint = null;
         QueuePlacement();
     }

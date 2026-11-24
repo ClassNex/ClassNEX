@@ -22,12 +22,24 @@
     <AvaloniaResource Include="Assets\icon.ico" />
     <AvaloniaResource Include="Assets\avatar.png" />
     <AvaloniaResource Include="Assets\Fonts\*.ttf" />
+    <AvaloniaResource Include="Assets\NotificationFonts\*.ttf" />
     <AvaloniaResource Include="Assets\Oobe\*.png" />
+    <AvaloniaResource Include="Assets\SettingsIcons\window.png;Assets\SettingsIcons\profile.png" />
+    <None Update="Assets\SettingsIcons\Fluent-LICENSE.txt" Link="Licenses\Fluent-LICENSE.txt"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <AvaloniaResource Include="Assets\NexAi.png" />
     <AvaloniaResource Include="Assets\NexWake.wav" />
     <None Update="Assets\icon.ico;Assets\Fonts\HarmonyOS_Sans_SC_Regular.ttf"
           CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Update="Assets\Fonts\HarmonyOS-Sans-LICENSE.txt"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Update="Assets\Fonts\lucide-LICENSE.txt" Link="ThirdParty\ClassIsland\Lucide-LICENSE.txt"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\LICENSE" Link="ThirdParty\ClassIsland\GPL-3.0.txt"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\third_party\ClassIsland\*" Link="ThirdParty\ClassIsland\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Update="Styles\Upstream\FluentAvalonia\LICENSE.txt" Link="ThirdParty\FluentAvalonia\LICENSE.txt"
           CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 

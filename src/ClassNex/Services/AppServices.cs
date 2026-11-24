@@ -15,6 +15,11 @@ public static class AppServices
         .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "";
     public static ISettingsService SettingsStore => SettingsService.Store;
     internal static Views.MainWindow? MainWindow { get; set; }
+    internal static TimeProvider ClassroomClock { get; private set; } = TimeProvider.System;
+    internal static DateTime ClassroomNow => ClassroomClock.GetLocalNow().DateTime;
+#if DEBUG
+    internal static void UseReviewClock(TimeProvider clock) => ClassroomClock = clock;
+#endif
     private static bool _applyingRevision;
     public static AppSettings Settings { get; private set; } = new();
 
@@ -52,7 +57,12 @@ public static class AppServices
     public static void Initialize()
     {
         SettingsService.EnsureDataDirectory();
-        Settings = SettingsService.Load();
+        Initialize(SettingsService.Load());
+    }
+
+    internal static void Initialize(AppSettings startupSettings)
+    {
+        Settings = startupSettings;
         AccountService.Load();
 
         if (Settings.SampleSeedVersion > 0 && Settings.SampleSeedVersion < SampleSeedVersion)
@@ -79,6 +89,7 @@ public static class AppServices
     {
         Settings.TimetablePath = path;
         Schedule.Load(path);
+        if (Schedule.Profile.ImportedTimeLayout is { } imported) Settings.TimeLayout = imported;
         SaveSettings();
     }
 
@@ -86,6 +97,13 @@ public static class AppServices
     public static void ReloadTimetable()
     {
         Schedule.Reload();
+    }
+
+    internal static void AcceptOnboardingMigration(AppSettings verified)
+    {
+        if (Settings.IsOobeCompleted || verified.IsOobeCompleted)
+            throw new InvalidOperationException("只能在首次设置中应用迁移结果。");
+        Settings = verified;
     }
 
     public static void SaveSettings()
@@ -103,7 +121,7 @@ public static class AppServices
         remote.Notification ??= new NotificationSettings();
         remote.TimeLayout ??= new TimeLayout();
         CentralSettingsPayload.PreserveLocal(remote, local);
-        remote.BackgroundOpacity = Math.Clamp(remote.BackgroundOpacity, 0.1, 1);
+        remote.BackgroundOpacity = Math.Clamp(remote.BackgroundOpacity, 0, 1);
         remote.FontScale = Math.Clamp(remote.FontScale, 0.8, 2.4);
         remote.MainWindowScale = Math.Clamp(remote.MainWindowScale, 0.5, 4);
 

@@ -453,7 +453,7 @@ const settingsGroups=[
     icon:"◐",
     fields:[
       {key:"ThemeMode",label:"主题",description:"跟随系统，或强制使用浅色、深色主题。",kind:"select",fallback:"system",options:[{value:"system",label:"跟随系统"},{value:"light",label:"浅色"},{value:"dark",label:"深色"}]},
-      {key:"BackgroundOpacity",label:"背景不透明度",description:"主界面背景的整体不透明度。",kind:"range",min:.05,max:1,step:.01,fallback:.5,format:value=>Math.round(value*100)+"%" },
+      {key:"BackgroundOpacity",label:"背景不透明度",description:"主界面背景的整体不透明度。",kind:"range",min:0,max:1,step:.01,fallback:.5,format:value=>Math.round(value*100)+"%" },
       {key:"HoverOpacity",label:"悬停淡化透明度",description:"鼠标移入主界面后保留的最低透明度。",kind:"range",min:.01,max:.5,step:.01,fallback:.05,format:value=>Math.round(value*100)+"%" },
       {key:"MainWindowScale",label:"主界面缩放",description:"调整悬浮课表整体大小。",kind:"range",min:1,max:3,step:.05,fallback:1.9,format:value=>Math.round(value*100)+"%" },
       {key:"FontScale",label:"字号缩放",description:"单独调整主界面文字大小。",kind:"range",min:.5,max:2,step:.05,fallback:1,format:value=>Math.round(value*100)+"%" },

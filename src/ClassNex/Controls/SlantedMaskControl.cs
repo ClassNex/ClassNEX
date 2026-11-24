@@ -102,6 +102,7 @@ public class SlantedMaskControl : Control
     }
 
     private CancellationTokenSource? _cts;
+    internal Task TransitionCompleted { get; private set; } = Task.CompletedTask;
 
     private static readonly double Tan30 = Math.Tan(Math.PI / 3.0);
 
@@ -130,15 +131,9 @@ public class SlantedMaskControl : Control
 
     #region 公共 API：Open / Close
 
-    public async void Open()
-    {
-        await StartSequence(open: true);
-    }
+    public void Open() => TransitionCompleted = StartSequence(open: true);
 
-    public async void Close()
-    {
-        await StartSequence(open: false);
-    }
+    public void Close() => TransitionCompleted = StartSequence(open: false);
 
     private async Task StartSequence(bool open)
     {
@@ -274,25 +269,29 @@ public class SlantedMaskControl : Control
             Math.Clamp(Region4Progress, 0.0, 1.0)
         ];
 
-        ReadOnlySpan<double> boundaries = [0, 0.1, 0.3, 0.7, 0.9, 1];
+        ReadOnlySpan<double> weight = [0.0, 0.1, 0.2, 0.4, 0.2, 0.1];
+        ReadOnlySpan<double> startX =
+        [
+            totalW * weight[0],
+            totalW * weight[1] + totalW * weight[0],
+            totalW * weight[2] + totalW * weight[1] + totalW * weight[0],
+            totalW * weight[3] + totalW * weight[2] + totalW * weight[1] + totalW * weight[0],
+            totalW * weight[4] + totalW * weight[3] + totalW * weight[2] + totalW * weight[1] + totalW * weight[0],
+            totalW * weight[5] + totalW * weight[4] + totalW * weight[3] + totalW * weight[2] + totalW * weight[1] + totalW * weight[0]
+        ];
 
         var brush = Fill ?? Brushes.Black;
-        if (p[0] == 1 && p[1] == 1 && p[2] == 1 && p[3] == 1 && p[4] == 1)
-        {
-            context.FillRectangle(brush, new Rect(0, 0, size.Width, h));
-            return;
-        }
 
         for (int i = 0; i < 5; i++)
         {
             double prog = p[i];
-            if (prog <= 0) continue;
+            if (prog < 0) continue;
 
-            double rx0 = totalW * boundaries[i];
-            double rx1 = totalW * boundaries[i + 1];
+            double rx0 = startX[i];
+            double rx1 = startX[i + 1];
             double rCenter = (rx0 + rx1) / 2.0;
 
-            double fullW = rx1 - rx0 + 0.5;
+            double fullW = totalW * weight[i + 1] + 0.5;
             double currentW = fullW * prog;
             if (currentW < 0.0001) continue;
 

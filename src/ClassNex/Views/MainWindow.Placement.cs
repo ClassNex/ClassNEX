@@ -131,7 +131,8 @@ public partial class MainWindow
     private static void SavePlacement(PixelPoint point)
     {
         var settings = AppServices.Settings;
-        if (settings.MainWindowLeft == point.X && settings.MainWindowTop == point.Y) return;
+        if (settings.ImportedDock == null && settings.MainWindowLeft == point.X && settings.MainWindowTop == point.Y) return;
+        settings.ImportedDock = null;
         settings.MainWindowLeft = point.X;
         settings.MainWindowTop = point.Y;
         AppServices.SaveSettings();
@@ -153,7 +154,8 @@ public partial class MainWindow
         return x * x + y * y;
     });
 
-    private Screen? PlacementScreen() => _dragScreen ?? (SavedAnchor() is { } p ? ScreenFor(p) : Screens.Primary);
+    private Screen? PlacementScreen() => _dragScreen ?? (SavedAnchor() is { } p ? ScreenFor(p) :
+        AppServices.Settings.ImportedDock is { MonitorIndex: >= 0 } dock && dock.MonitorIndex < Screens.All.Count ? Screens.All[dock.MonitorIndex] : Screens.Primary);
     private double DpiFor(Screen screen) => IsVisible && RenderScaling > 0 && Screens.ScreenFromWindow(this)?.Bounds == screen.Bounds ? RenderScaling : screen.Scaling;
 
     private void UpdatePlacementBudget(Screen? screen)
@@ -184,7 +186,16 @@ public partial class MainWindow
     private void EnforcePlacement()
     {
         if (!IsVisible || _closed || GetIslandScreenRect() is not { } island || PlacementScreen() is not { } screen) return;
-        var target = ClampIsland(screen.WorkingArea, island.Size, _dragAnchor ?? SavedAnchor());
+        var area = screen.WorkingArea;
+        var anchor = _dragAnchor ?? SavedAnchor();
+        if (!anchor.HasValue && AppServices.Settings.ImportedDock is { } d)
+        {
+            var width = Math.Max(0, area.Width - island.Width);
+            var x = area.X + ((d.Anchor % 3) switch { 0 => 0, 2 => width, _ => width / 2 });
+            var y = d.Anchor >= 3 ? area.Y + Math.Max(0, area.Height - island.Height) : area.Y;
+            anchor = new(x + Math.Clamp(d.OffsetX, -area.Width, area.Width), y + Math.Clamp(d.OffsetY, -area.Height, area.Height));
+        }
+        var target = ClampIsland(area, island.Size, anchor);
         var offset = island.Position - Position;
         var origin = new PixelPoint(target.X - offset.X, target.Y - offset.Y);
         if (Position != origin) Position = origin;
@@ -207,7 +218,8 @@ public partial class MainWindow
             toolbar = new PixelRect(start.X, start.Y, Math.Max(1, end.X - start.X), Math.Max(1, end.Y - start.Y));
         }
         var scale = Math.Clamp(ReminderScale, .4, 5) * RenderScaling;
-        var region = (Island: island, Radius: (int)Math.Round(CiPalette.IslandCornerRadius * scale), Toolbar: toolbar, ToolRadius: (int)Math.Round(12 * scale));
+        var radius = Math.Min(Math.Min(island.Width, island.Height) / 2, (int)Math.Round(IslandBackground.CornerRadius.TopLeft * scale));
+        var region = (Island: island, Radius: radius, Toolbar: toolbar, ToolRadius: (int)Math.Round(12 * scale));
         if (_inputRegion == region) return;
         if (WindowsOverlay.SetInputRegion(_hwnd, region.Island, region.Radius, region.Toolbar, region.ToolRadius)) _inputRegion = region;
     }

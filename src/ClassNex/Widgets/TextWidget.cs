@@ -34,7 +34,7 @@ public sealed class TextWidget : WidgetBase
         if (_lastText != textState)
         {
             _lastText = textState;
-            _text.Text = template.Replace("{date}", ctx.Today.DateText).Replace("{day}", ctx.Today.DayText)
+            _text.Text = Config.ImportedLiteralText ? template : template.Replace("{date}", ctx.Today.DateText).Replace("{day}", ctx.Today.DayText)
                 .Replace("{time}", ctx.Now.ToString("HH:mm")).Replace("{parity}", ctx.Today.ParityText)
                 .Replace("{countdown}", ctx.CountdownText).Replace("{current}", ctx.Today.Current?.DisplayName ?? "")
                 .Replace("{next}", ctx.Today.Next?.DisplayName ?? "");

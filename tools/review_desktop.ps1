@@ -27,11 +27,6 @@ $settings = [ordered]@{ IsOobeCompleted=$true; IsDebugOptionsEnabled=$true; IsNe
 $settings.SampleSeedVersion = 1
 $settings.BackgroundOpacity = 0.55
 [IO.File]::WriteAllText((Join-Path $data 'Settings.json'),($settings | ConvertTo-Json -Depth 8),$encoding)
-$now = Get-Date
-$mins = $now.Hour * 60 + $now.Minute
-function Format-Time([int]$value) { [TimeSpan]::FromMinutes([Math]::Clamp($value,0,1439)).ToString('hh\:mm\:ss') }
-$start = Format-Time ($mins-18); $end = Format-Time ($mins+22); $next = Format-Time ($mins+32); $finish = Format-Time ($mins+72)
-$day = if ([int]$now.DayOfWeek -eq 0) { 7 } else { [int]$now.DayOfWeek }
 $yaml = @"
 version: 1
 subjects:
@@ -42,15 +37,15 @@ subjects:
     teacher: 陈老师
 schedules:
   - name: 教学日
-    enable_day: $day
+    enable_day: 1
     weeks: all
     classes:
       - subject: 数学
-        start_time: "$start"
-        end_time: "$end"
+        start_time: "09:42:00"
+        end_time: "10:22:00"
       - subject: 信息科技跨学科实践：校园气象数据的采集与分析
-        start_time: "$next"
-        end_time: "$finish"
+        start_time: "10:32:00"
+        end_time: "11:12:00"
 "@
 [IO.File]::WriteAllText((Join-Path $data 'timetable.yaml'),$yaml,$encoding)
 $program = [Diagnostics.ProcessStartInfo]::new((Join-Path $app 'ClassNex.exe'))

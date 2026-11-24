@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Text;
 using Avalonia;
 
 namespace ClassNex.Services;
@@ -39,6 +40,22 @@ internal static class WindowsOverlay
 
     [DllImport("user32.dll")]
     private static extern bool GetCursorPos(out Point lpPoint);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect { public int Left, Top, Right, Bottom; }
+    [DllImport("user32.dll")] private static extern nint GetForegroundWindow();
+    [DllImport("user32.dll")] private static extern bool GetWindowRect(nint window, out NativeRect rect);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
+    private static extern int GetClassNameW(nint window, StringBuilder name, int length);
+
+    internal static bool ForegroundCovers(PixelRect screen)
+    {
+        if (!OperatingSystem.IsWindows()) return false;
+        var foreground = GetForegroundWindow();
+        if (foreground == 0 || !GetWindowRect(foreground, out var rect) || rect.Left > screen.X || rect.Top > screen.Y || rect.Right < screen.Right || rect.Bottom < screen.Bottom) return false;
+        var name = new StringBuilder(256);
+        return GetClassNameW(foreground, name, name.Capacity) > 0 && name.ToString() is not ("WorkerW" or "Progman");
+    }
 
     [DllImport("gdi32.dll")] private static extern nint CreateRoundRectRgn(int left, int top, int right, int bottom, int ellipseWidth, int ellipseHeight);
     [DllImport("gdi32.dll")] private static extern int CombineRgn(nint result, nint first, nint second, int mode);

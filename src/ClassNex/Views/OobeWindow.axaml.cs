@@ -17,7 +17,8 @@ namespace ClassNex.Views;
 
 public partial class OobeWindow : AppWindow
 {
-    private const int PageCount = 5;
+    private enum Page { Welcome, Data, Import, Preferences, Account, More, Finish }
+    private const int StepCount = 6;
     private static readonly TimeSpan PageMotion = TimeSpan.FromMilliseconds(360);
     private static readonly CubicEaseOut EaseOut = new();
     private static readonly string[] Greetings =
@@ -27,12 +28,14 @@ public partial class OobeWindow : AppWindow
     ];
 
     private readonly bool _preview;
+    private readonly bool _initialRunAtStartup;
     private readonly UISettings _systemUi = new();
     private readonly DispatcherTimer _greetingTimer = new() { Interval = TimeSpan.FromMilliseconds(1400) };
     private readonly DispatcherTimer _stepGate = new();
     private CancellationTokenSource? _artworkLoad;
     private Bitmap? _artwork;
-    private int _page, _greetingIndex, _greetingEpoch, _lastDirection;
+    private Page _page;
+    private int _greetingIndex, _greetingEpoch, _lastDirection;
     private bool _isEnglish, _pageSwitching, _finishing, _closed;
     internal bool IsNavigationSettled => !_pageSwitching;
 #if DEBUG
@@ -55,6 +58,7 @@ public partial class OobeWindow : AppWindow
     public OobeWindow(bool preview)
     {
         _preview = preview;
+        _initialRunAtStartup = AppServices.Settings.RunAtStartup;
         InitializeComponent();
         if (preview) Topmost = true;
         LoadCurrentSettings();
@@ -62,7 +66,7 @@ public partial class OobeWindow : AppWindow
         _greetingTimer.Tick += (_, _) => RotateGreeting();
         _stepGate.Tick += (_, _) => { _stepGate.Stop(); _pageSwitching = false; };
 #if DEBUG
-        if (int.TryParse(Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_OOBE"), out var target))
+        if (Enum.TryParse<Page>(Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_OOBE"), true, out var target) && Enum.IsDefined(target))
             Dispatcher.UIThread.Post(() => SwitchPage(target), DispatcherPriority.Background);
 #endif
     }
@@ -74,6 +78,15 @@ public partial class OobeWindow : AppWindow
         RunMotionProbe();
 #endif
         ArmGreeting();
+    }
+
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        base.OnClosing(e);
+        if (_migrationOperation is null) return;
+        e.Cancel = true;
+        _closeAfterMigration = true;
+        CancelMigration();
     }
 
     protected override void OnClosed(EventArgs e)
@@ -94,12 +107,12 @@ public partial class OobeWindow : AppWindow
         var epoch = ++_greetingEpoch;
         _greetingTimer.Stop();
         _artworkLoad?.Cancel();
-        if (_closed || _page != 0) return;
+        if (_closed || _page != Page.Welcome) return;
         _greetingIndex = 0;
         GreetingText.Text = Greetings[0];
         RequestAnimationFrame(frameTime =>
         {
-            if (_closed || !IsVisible || _page != 0 || epoch != _greetingEpoch) return;
+            if (_closed || !IsVisible || _page != Page.Welcome || epoch != _greetingEpoch) return;
             if (_artwork is null) _ = LoadArtworkAsync(epoch);
             if (MotionEnabled) _greetingTimer.Start();
         });
@@ -135,7 +148,7 @@ public partial class OobeWindow : AppWindow
 
     private void RotateGreeting()
     {
-        if (_closed || _page != 0 || !MotionEnabled)
+        if (_closed || _page != Page.Welcome || !MotionEnabled)
         {
             _greetingTimer.Stop();
             return;
@@ -147,18 +160,39 @@ public partial class OobeWindow : AppWindow
 
     private void WireEvents()
     {
-        NextButton.Click += (_, _) =>
+        NextButton.Click += async (_, _) =>
         {
-            if (_page == PageCount - 1)
+            switch (_page)
             {
-                Finish();
-                return;
+                case Page.Welcome: SwitchPage(Page.Data); break;
+                case Page.Import when _migrationFinished: SwitchPage(Page.Preferences); break;
+                case Page.Import when !_pageSwitching: await RunImportAsync(); break;
+                case Page.Preferences: SwitchPage(Page.Account); break;
+                case Page.Account: SwitchPage(Page.More); break;
+                case Page.More: SwitchPage(Page.Finish); break;
+                case Page.Finish: Finish(); break;
             }
-
-            SwitchPage(_page + 1);
         };
 
-        BackButton.Click += (_, _) => SwitchPage(_page - 1);
+        BackButton.Click += (_, _) =>
+        {
+            if (_migrationOperation is not null) { CancelMigration(); return; }
+            var previous = _page switch
+            {
+                Page.Data => Page.Welcome,
+                Page.Import when !_migrationFinished => Page.Data,
+                Page.Preferences => _migrationFinished ? Page.Import : Page.Data,
+                Page.Account => Page.Preferences,
+                Page.More => Page.Account,
+                Page.Finish => Page.More,
+                _ => _page,
+            };
+            SwitchPage(previous);
+        };
+        NewDeviceButton.Click += (_, _) => { if (_page == Page.Data) SwitchPage(Page.Preferences); };
+        ImportDeviceButton.Click += (_, _) => { if (_page == Page.Data) SwitchPage(Page.Import); };
+        BrowseImportButton.Click += async (_, _) => await BrowseImportAsync();
+        CleanupToggle.IsCheckedChanged += (_, _) => RefreshMigrationPage();
 
         LanguageCombo.SelectionChanged += (_, _) =>
         {
@@ -244,7 +278,6 @@ public partial class OobeWindow : AppWindow
             MoreBody.Text = "Let NEX listen for its wake word after setup. You can also open NEX without a microphone.";
             VoiceWakeLabel.Text = "Listen for the wake word";
             FinishTitle.Text = "You're all set";
-            FinishBody.Text = "ClassNEX will restart and show the timetable widget on your desktop.";
             BackButton.Content = "Back";
         }
         else
@@ -267,24 +300,31 @@ public partial class OobeWindow : AppWindow
             MoreBody.Text = "开启后，NEX 会在向导完成后使用麦克风监听唤醒词。关闭也可以手动打开 NEX。";
             VoiceWakeLabel.Text = "监听唤醒词";
             FinishTitle.Text = "一切就绪";
-            FinishBody.Text = "点击「完成」后 ClassNEX 会重新启动，并在桌面上显示课表浮窗。";
             BackButton.Content = "上一步";
         }
+        UpdateFinishMessage();
+        SetMigrationLanguage();
         UpdateFooter();
     }
 
     private void UpdateFooter()
     {
-        BackButton.IsVisible = _page > 0;
+        var importing = _page == Page.Import;
+        var canKeepSource = _cleanupStage is ClassIslandCleanupStage.CheckingPackage or ClassIslandCleanupStage.VerifyingSource;
+        BackButton.IsVisible = _page != Page.Welcome && (!importing || !_migrationFinished || canKeepSource);
+        BackButton.IsEnabled = !importing || !_pickerOpen && _cleanupStage != ClassIslandCleanupStage.Recycling && _migrationOperation?.IsCancellationRequested != true;
+        BackButton.Content = canKeepSource ? L("保留原目录", "Keep original folder") : importing && _migrationOperation is not null ? L("取消", "Cancel") : L("上一步", "Back");
+        NextButton.IsVisible = _page != Page.Data;
+        NextButton.IsEnabled = !importing || !_pickerOpen && _migrationOperation is null && (_migrationFinished || _importPlan is not null);
         NextButton.Content = _page switch
         {
-            0 => _isEnglish ? "Agree and continue" : "同意并继续",
-            PageCount - 1 => _isEnglish ? "Finish" : "完成",
-            _ => _isEnglish ? "Continue" : "继续",
+            Page.Welcome => L("同意并继续", "Agree and continue"),
+            Page.Import when !_migrationFinished => _preview ? L("预览迁移", "Preview import") : L("开始迁移", "Start migration"),
+            Page.Finish => L("完成", "Finish"),
+            _ => L("继续", "Continue"),
         };
-        StepIndicator.Text = _isEnglish
-            ? $"Step {_page + 1} of {PageCount}"
-            : $"第 {_page + 1} 步 / 共 {PageCount} 步";
+        var step = _page <= Page.Data ? (int)_page + 1 : (int)_page;
+        StepIndicator.Text = L($"第 {step} 步 / 共 {StepCount} 步", $"Step {step} of {StepCount}");
     }
 
     private void StartOobeLogin()
@@ -302,7 +342,7 @@ public partial class OobeWindow : AppWindow
             Dispatcher.UIThread.Post(RefreshOobeAccount);
             return;
         }
-        if (_closed || _page != 2) return;
+        if (_closed || _page != Page.Account) return;
         var profile = AccountService.Current;
         var loggedIn = profile is not null;
 
@@ -330,17 +370,18 @@ public partial class OobeWindow : AppWindow
         AccountAvatar.Apply(OobeAvatar, profile.DisplayName, AccountService.AvatarImagePath);
     }
 
-    private void SwitchPage(int page)
+    private void SwitchPage(Page target)
     {
-        if (_closed || _finishing) return;
-        var target = Math.Clamp(page, 0, PageCount - 1);
-        var direction = Math.Sign(target - _page);
+        if (_closed || _finishing || _pickerOpen || _migrationOperation is not null) return;
+        var direction = Math.Sign((int)target - (int)_page);
         if (direction == 0 || (_pageSwitching && direction == _lastDirection)) return;
 
         CurrentPage().IsVisible = false;
         _page = target;
         CurrentPage().IsVisible = true;
-        if (_page == 2) RefreshOobeAccount();
+        if (_page == Page.Account) RefreshOobeAccount();
+        if (_page == Page.Import) RefreshMigrationPage();
+        if (_page == Page.Finish) UpdateFinishMessage();
         UpdateFooter();
         ArmGreeting();
 
@@ -374,10 +415,12 @@ public partial class OobeWindow : AppWindow
 
     private Control CurrentPage() => _page switch
     {
-        0 => PageWelcome,
-        1 => PagePreferences,
-        2 => PageAccount,
-        3 => PageMore,
+        Page.Welcome => PageWelcome,
+        Page.Data => PageData,
+        Page.Import => PageImport,
+        Page.Preferences => PagePreferences,
+        Page.Account => PageAccount,
+        Page.More => PageMore,
         _ => PageFinish,
     };
 
@@ -409,9 +452,13 @@ public partial class OobeWindow : AppWindow
         await dialog.ShowAsync(this);
     }
 
+    private void UpdateFinishMessage() => FinishBody.Text = AppServices.Settings.IsMainWindowVisible
+        ? L("点击「完成」后 ClassNEX 会重新启动，并在桌面上显示课表浮窗。", "ClassNEX will restart and show the timetable widget on your desktop.")
+        : L("ClassNEX 会重新启动，并保留课表浮窗的隐藏状态。需要时可从托盘菜单显示浮窗。", "ClassNEX will restart with the timetable hidden. You can show it from the system tray.");
+
     private void Finish()
     {
-        if (_closed || _finishing || _pageSwitching || _page != PageCount - 1) return;
+        if (_closed || _finishing || _pageSwitching || _page != Page.Finish) return;
         _finishing = true;
         if (_preview)
         {
@@ -425,14 +472,18 @@ public partial class OobeWindow : AppWindow
         s.Language = _isEnglish ? "en-US" : "zh-CN";
         s.ThemeMode = ThemeCombo.SelectedIndex switch { 1 => "light", 2 => "dark", _ => "system" };
         var runAtStartup = RunAtStartupCheck.IsChecked == true;
-        if (s.RunAtStartup != runAtStartup)
-        {
-            s.RunAtStartup = runAtStartup;
-            StartupRegistry.SetRunAtStartup(runAtStartup);
-        }
+        s.RunAtStartup = runAtStartup;
         s.IsNexVoiceWakeEnabled = VoiceWakeCheck.IsChecked == true;
-        s.IsMainWindowVisible = true;
-        Services.SettingsService.Save(s);
+        try { AppServices.SettingsStore.Save(s); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            Trace.WriteLine(ex);
+            s.IsOobeCompleted = false;
+            _finishing = false;
+            FinishBody.Text = L("无法保存向导设置。请检查数据目录的写入权限或可用空间，再点击「完成」重试。", "Setup could not save your settings. Check write access and free space, then select Finish to retry.");
+            return;
+        }
+        if (_initialRunAtStartup != runAtStartup) StartupRegistry.SetRunAtStartup(runAtStartup);
 
         App.RestartApplication();
     }

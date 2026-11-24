@@ -1,9 +1,11 @@
 #if DEBUG
 using System.Diagnostics;
 using System.Text.Json;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using ClassNex.Services;
 
 namespace ClassNex.Views;
@@ -21,7 +23,7 @@ public partial class OobeWindow
         var mode = args[i + 1];
         var directory = Directory.GetParent(AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar))!.FullName;
         var marker = Path.Combine(directory, ".classnex-oobe-review");
-        if (mode is not ("measure" or "reduced" or "finish" or "close") || !File.Exists(marker) || File.ReadAllText(marker) != "anonymous-oobe-v1") return;
+        if (mode is not ("measure" or "reduced" or "finish" or "close" or "migration-keep" or "migration-recycle") || !File.Exists(marker) || File.ReadAllText(marker) != "anonymous-oobe-v1") return;
         var s = AppServices.Settings;
         if (s.IsOobeCompleted || s.IsNexVoiceWakeEnabled || s.IsNexEdgeBarEnabled || s.IsNexIntelligenceEnabled || s.CentralManagement.IsEnabled ||
             s.RunAtStartup || s.RegisterUrlProtocol || !string.IsNullOrEmpty(s.UserName) || !string.IsNullOrEmpty(s.Email) || AccountService.Current is not null)
@@ -41,7 +43,7 @@ public partial class OobeWindow
         string? error = null;
         bool finish = false;
         var report = Path.Combine(directory, "oobe-motion.json");
-        var pages = new Control[] { PageWelcome, PagePreferences, PageAccount, PageMore, PageFinish };
+        var pages = new Control[] { PageWelcome, PageData, PageImport, PagePreferences, PageAccount, PageMore, PageFinish };
         bool At(int p) => pages[p].IsEffectivelyVisible && pages.Count(x => x.IsEffectivelyVisible) == 1;
         static void Click(Button b) => b.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         void Save() => File.WriteAllText(report, JsonSerializer.Serialize(new { mode, systemAnimations, error, timing, checks }, new JsonSerializerOptions { WriteIndented = true }));
@@ -89,7 +91,119 @@ public partial class OobeWindow
                 LanguageCombo.SelectedIndex = 1;
             }
             await Step(1, NextButton, burst: true);
-            checks["burstStopsOnPreferences"] = At(1);
+            checks["burstStopsOnData"] = At(1) && !NextButton.IsEffectivelyVisible;
+            if (mode.StartsWith("migration-", StringComparison.Ordinal))
+            {
+                var sourceRoot = Path.Combine(directory, "source", "ClassIsland");
+                var exe = Path.Combine(sourceRoot, "ClassIsland.exe");
+                var folder = new DirectoryInfo(directory);
+                var sourceSettings = Path.Combine(sourceRoot, "data", "Settings.json");
+                if (!File.Exists(exe) || !File.Exists(sourceSettings) || folder.Parent?.Name != "build" || !folder.Name.StartsWith("oobe-review-", StringComparison.Ordinal) ||
+                    !Guid.TryParseExact(folder.Name[12..], "N", out _) || new[] { directory, Path.Combine(directory, "source"), sourceRoot, Path.GetDirectoryName(sourceSettings)!, sourceSettings }
+                        .Any(p => File.GetAttributes(p).HasFlag(FileAttributes.ReparsePoint)))
+                    throw new InvalidOperationException("Missing anonymous migration fixture.");
+                void Shot(string name)
+                {
+                    UpdateLayout();
+                    var pixels = Avalonia.PixelSize.FromSize(Bounds.Size, RenderScaling);
+                    using var shot = new Avalonia.Media.Imaging.RenderTargetBitmap(pixels, new Avalonia.Vector(96 * RenderScaling, 96 * RenderScaling));
+                    shot.Render(this);
+                    shot.Save(Path.Combine(directory, name + ".png"));
+                }
+                Rect InWizard(Visual visual)
+                {
+                    var origin = visual.TranslatePoint(default, this) ?? throw new InvalidOperationException("Migration feedback is not attached to the wizard.");
+                    return new Rect(origin, visual.Bounds.Size);
+                }
+                bool BusyLayoutIsClear()
+                {
+                    UpdateLayout();
+                    var title = InWizard(ImportStatus);
+                    var row = InWizard(ImportProgressRow);
+                    var rail = InWizard(ImportProgress);
+                    return ImportStatus.IsEffectivelyVisible && ImportProgress.IsEffectivelyVisible && !ImportDetails.IsEffectivelyVisible &&
+                        !ImportNotes.IsEffectivelyVisible && !CleanupSummary.IsEffectivelyVisible && ImportProgress.IsArrangeValid &&
+                        title.Height > 0 && rail.Height > 0 && rail.Width > 0 && row.Top >= title.Bottom + 4 &&
+                        row.Top <= rail.Top && rail.Bottom <= row.Bottom && PageImport.GetVisualDescendants().OfType<TextBlock>()
+                            .Where(text => text.IsEffectivelyVisible && !string.IsNullOrWhiteSpace(text.Text) && text.Bounds.Width > 0 && text.Bounds.Height > 0)
+                            .All(text => !InWizard(text).Intersects(rail));
+                }
+                Shot("data-and-migration");
+                await Step(2, ImportDeviceButton);
+                checks["sameWindowOptionalStep"] = TryGetPlatformHandle()?.Handle == hwnd && !NextButton.IsEffectivelyEnabled && !ImportAdvanced.IsExpanded && CleanupToggle.IsChecked == true;
+                await InspectMigrationAsync(Path.Combine(directory, "not-classisland.exe"));
+                checks["badSourceStaysOnImportAndOffersRetry"] = At(2) && _migrationError is not null && BrowseImportButton.IsEffectivelyEnabled && !NextButton.IsEffectivelyEnabled && Directory.Exists(sourceRoot);
+                var inspection = InspectMigrationAsync(exe);
+                CancelMigration();
+                await inspection;
+                checks["cancelledInspectionDoesNotTouchSource"] = _importPlan is null && File.Exists(exe) && _migrationOperation is null;
+                await InspectMigrationAsync(exe);
+                checks["preflightReadsOnlyAndReportsSkippedWidget"] = _importPlan is { WidgetCount: 3, SkippedWidgetCount: 1 } && NextButton.IsEffectivelyEnabled && File.Exists(exe) && !AppServices.Settings.IsOobeCompleted;
+                if (_importPlan is null) throw new InvalidOperationException("Preflight failed: " + _migrationError);
+                checks["recyclePathVisibleBeforeCommit"] = CleanupSummary.Text?.Contains(sourceRoot, StringComparison.OrdinalIgnoreCase) == true;
+                ImportAdvanced.IsExpanded = true;
+                CleanupToggle.IsChecked = mode == "migration-recycle";
+                await Task.Delay(400);
+                Shot("migration-ready");
+                checks["readyShowsCountsWithoutAProgressRail"] = ImportDetails.IsEffectivelyVisible && !string.IsNullOrWhiteSpace(ImportDetails.Text) && !ImportProgress.IsEffectivelyVisible;
+                var savedBefore = await File.ReadAllBytesAsync(SettingsService.SettingsPath);
+                await File.AppendAllTextAsync(sourceSettings, "\n");
+                await RunImportAsync();
+                var savedAfter = await File.ReadAllBytesAsync(SettingsService.SettingsPath);
+                checks["changedSourceKeepsBothSidesAndRequiresNewInspection"] = At(2) && !_migrationFinished && _migrationError is not null &&
+                    _importPlan is null && File.Exists(exe) && BrowseImportButton.IsEffectivelyEnabled && !NextButton.IsEffectivelyEnabled && savedBefore.SequenceEqual(savedAfter);
+                await InspectMigrationAsync(exe);
+                if (_importPlan is null) throw new InvalidOperationException("Retry preflight failed: " + _migrationError);
+                var cancelRun = RunImportAsync();
+                var couldCancel = BackButton.IsEffectivelyEnabled && Equals(BackButton.Content, "取消");
+                Click(BackButton);
+                await cancelRun;
+                var savedAfterCancel = await File.ReadAllBytesAsync(SettingsService.SettingsPath);
+                checks["cancelBeforeCommitPreservesSourceAndSettingsAndAllowsRetry"] = couldCancel && At(2) && !_migrationFinished &&
+                    _importPlan is not null && _migrationOperation is null && File.Exists(exe) && NextButton.IsEffectivelyEnabled && savedBefore.SequenceEqual(savedAfterCancel);
+                var run = RunImportAsync();
+                var firstOperation = _migrationOperation;
+                var duplicate = RunImportAsync();
+                checks["doubleStartDoesNotCreateASecondImport"] = duplicate.IsCompletedSuccessfully && firstOperation is not null && ReferenceEquals(firstOperation, _migrationOperation);
+                checks["progressVisibleWhileImporterRuns"] = ImportProgress.IsEffectivelyVisible && !NextButton.IsEffectivelyEnabled;
+                checks["busyProgressHasItsOwnRowClearOfAllVisibleText"] = BusyLayoutIsClear();
+                Shot("migration-working");
+                var fullTitleHeight = ImportStatus.Bounds.Height;
+                var feedbackWidth = ImportFeedback.MaxWidth;
+                try
+                {
+                    ImportFeedback.MaxWidth = 100;
+                    checks["wrappedBusyTitleStillClearsTheRail"] = BusyLayoutIsClear() && ImportStatus.Bounds.Height > fullTitleHeight;
+                }
+                finally { ImportFeedback.MaxWidth = feedbackWidth; UpdateLayout(); }
+                await run;
+                checks["verifiedImportAppliesThemeAndSelectedCleanup"] = _migrationFinished && ThemeCombo.SelectedIndex == 2 && AppServices.Settings.ThemeMode == "dark" && Directory.Exists(sourceRoot) == (mode == "migration-keep");
+                if (!_migrationFinished) throw new InvalidOperationException("Commit failed: " + _migrationError);
+                await Task.Delay(300);
+                var expected = Color.Parse("#FFB6377E");
+                var liveBrush = NextButton.Background as ISolidColorBrush;
+                var hasAccent = this.TryFindResource("SystemAccentColor", ActualThemeVariant, out var accent);
+                checks["importedAccentReachesLiveWizardButton"] = ActualThemeVariant == Avalonia.Styling.ThemeVariant.Dark &&
+                    hasAccent && accent is Color liveAccent && liveAccent == expected &&
+                    this.TryFindResource("AccentFillColorDefaultBrush", ActualThemeVariant, out var fill) && fill is ISolidColorBrush resolved &&
+                    liveBrush?.Color == resolved.Color && resolved.Color.R > resolved.Color.G && resolved.Color.B > resolved.Color.G;
+                var sample = NextButton.TranslatePoint(new Point(12, NextButton.Bounds.Height / 2), this) ?? throw new InvalidOperationException("The receipt button is not in the wizard.");
+                File.WriteAllText(Path.Combine(directory, "migration-accent-sample.json"), JsonSerializer.Serialize(new { x = (int)Math.Round(sample.X * RenderScaling), y = (int)Math.Round(sample.Y * RenderScaling), accent = accent?.ToString(), button = liveBrush?.Color.ToString() }));
+                Shot("migration-result");
+                checks["receiptShowsCountsWithoutAProgressRail"] = ImportDetails.IsEffectivelyVisible && !string.IsNullOrWhiteSpace(ImportDetails.Text) && !ImportProgress.IsEffectivelyVisible;
+                await Step(3, NextButton);
+                await Step(2, BackButton);
+                checks["backShowsReceiptOnly"] = !BrowseImportButton.IsEnabled && !BackButton.IsEffectivelyVisible && _migrationFinished;
+                await Step(3, NextButton);
+                await Step(4, NextButton);
+                await Step(5, NextButton);
+                await Step(6, NextButton);
+                checks["finishReflectsImportedClassroomVisibility"] = AppServices.Settings.IsMainWindowVisible == (mode == "migration-recycle") &&
+                    FinishBody.Text?.Contains(mode == "migration-recycle" ? "显示课表浮窗" : "隐藏状态", StringComparison.Ordinal) == true;
+                finish = true;
+                return;
+            }
+            await Step(3, NewDeviceButton);
             if (mode == "finish") SemesterPicker.SelectedDate = new DateTimeOffset(2026, 9, 15, 0, 0, 0, TimeSpan.Zero);
             if (mode == "reduced")
             {
@@ -98,16 +212,18 @@ public partial class OobeWindow
                 checks["draftPreferencesNotCommitted"] = s.ThemeMode == "light" && s.Language == "zh-CN" && !s.RunAtStartup &&
                     ActualThemeVariant == Avalonia.Styling.ThemeVariant.Dark && Equals(NextButton.Content, "Continue");
             }
+            await Step(1, BackButton);
             await Step(0, BackButton);
             await Step(1, NextButton);
-            await Step(2, NextButton);
+            await Step(3, NewDeviceButton);
+            await Step(4, NextButton);
             checks["visitingAccountDoesNotAuthorize"] = !AccountService.FlowActive && AccountService.Current is null;
-            await Step(3, NextButton);
+            await Step(5, NextButton);
             checks["voiceInitiallyOff"] = VoiceWakeCheck.IsChecked == false;
-            await Step(2, BackButton);
-            await Step(3, NextButton);
-            await Step(4, NextButton, burst: !baseline);
-            checks["finishVisibleAndDesktopNotInitialized"] = At(4) && !s.IsOobeCompleted && (baseline ||
+            await Step(4, BackButton);
+            await Step(5, NextButton);
+            await Step(6, NextButton, burst: !baseline);
+            checks["finishVisibleAndDesktopNotInitialized"] = At(6) && !s.IsOobeCompleted && (baseline ||
                 (AppServices.MainWindow is null && AppServices.Plugins is null && AppServices.NotificationService is null && AppServices.Management is null));
             if (!baseline) checks["rapidLastNextDidNotFinish"] = IsVisible && !AppServices.Settings.IsOobeCompleted;
             checks["noMicrophoneCoordinatorBeforeFinish"] = AppServices.NexVoice is null;

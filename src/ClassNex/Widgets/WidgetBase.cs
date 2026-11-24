@@ -46,13 +46,41 @@ public abstract class WidgetBase
 
     public Control View { get; protected set; } = new Panel();
 
+    private Control? _displayView;
+    internal Control DisplayView => _displayView ??= Config.Presentation is { } p ? Present(p) : View;
+
+    private Control Present(WidgetPresentation style)
+    {
+        static double Limit(double input, double min, double max, double fallback = 0) => double.IsFinite(input) ? Math.Clamp(input, min, max) : fallback;
+        var wrapper = new Border { Child = View, Opacity = Limit(style.Opacity, 0, 1, 1), VerticalAlignment = VerticalAlignment.Center };
+        if (style.Width is { } fixedWidth) wrapper.Width = Limit(fixedWidth, 0, 4096);
+        else
+        {
+            if (style.MinWidth is { } min) wrapper.MinWidth = Limit(min, 0, 4096);
+            if (style.MaxWidth is { } max) wrapper.MaxWidth = Limit(max, wrapper.MinWidth, 4096, 4096);
+        }
+        if (style.Alignment is not null) View.HorizontalAlignment = style.Alignment switch
+            { "left" => HorizontalAlignment.Left, "right" => HorizontalAlignment.Right, "center" => HorizontalAlignment.Center, _ => HorizontalAlignment.Stretch };
+        if (style.Margin is [var l, var t, var r, var b]) wrapper.Margin = new Thickness(Limit(l, -160, 512), Limit(t, -160, 512), Limit(r, -160, 512), Limit(b, -160, 512));
+        if (style.Background is { } text && Color.TryParse(text, out var color))
+            wrapper.Background = new SolidColorBrush(color, Limit(style.BackgroundOpacity ?? AppServices.Settings.BackgroundOpacity, 0, 1));
+        else if (style.BackgroundOpacity is { } opacity) wrapper.Background = CiPalette.WithOpacity(CiPalette.IslandSurfaceBrush(), Limit(opacity, 0, 1));
+        if (style.CornerRadius is { } radius) wrapper.CornerRadius = new CornerRadius(Limit(radius, 0, 512));
+        wrapper.ClipToBounds = true;
+        wrapper.Bind(Visual.IsVisibleProperty, View.GetObservable(Visual.IsVisibleProperty));
+        return wrapper;
+    }
+
     public abstract void Refresh(WidgetContext ctx);
 
     protected double Size(double baseSize) =>
         baseSize * Math.Clamp(Config.FontScale, 0.5, 2.5);
 
-    protected static IBrush White(double opacity = 1.0)
+    protected IBrush White(double opacity = 1.0)
     {
+        if (Config.UseCustomFontColor && Config.FontColor is { } chosen && Color.TryParse(chosen, out var ink)) return new SolidColorBrush(ink, opacity);
+        if (AppServices.Settings.OverlayForegroundColor is { } text && Color.TryParse(text, out var color))
+            return new SolidColorBrush(color, opacity);
         if (CiPalette.TryResource("TextFillColorPrimaryBrush", out var brush))
         {
             if (opacity >= 1.0)
@@ -67,7 +95,7 @@ public abstract class WidgetBase
         return new SolidColorBrush(Colors.White, opacity);
     }
 
-    protected static TextBlock Text(
+    protected TextBlock Text(
         string text,
         double fontSize,
         IBrush? foreground = null,

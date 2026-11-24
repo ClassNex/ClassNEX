@@ -332,6 +332,9 @@ internal sealed partial class NativeDesktop
                 }, 4000);
             }
             finally { await Ui(() => { Settings.AppWindow.Resize(size); return true; }); }
+            await Act("set-transparent-classroom-background", () => Need<Slider>(Page, "Opacity").Value = 0);
+            await Check("zero-opacity-reaches-floating-window", () => SettingsService.Load().BackgroundOpacity == 0 &&
+                Avalonia.Controls.ControlExtensions.FindControl<Avalonia.Controls.Border>(host._overlay, "IslandBackground")?.Opacity == 0, 4000);
             await Act("edit-native-appearance", () => { Need<ComboBox>(Page, "Theme").SelectedIndex = 1; Need<Slider>(Page, "Opacity").Value = .65; });
             await Check("slider-and-light-theme-persisted", () => SettingsService.Load() is { ThemeMode: "light" } s && Math.Abs(s.BackgroundOpacity - .65) < .001 &&
                 ((FrameworkElement)Settings.Content).ActualTheme == ElementTheme.Light, 4000);
@@ -350,7 +353,7 @@ internal sealed partial class NativeDesktop
             {
                 var remote = SettingsService.Load();
                 remote.ThemeMode = "dark";
-                remote.BackgroundOpacity = .75;
+                remote.BackgroundOpacity = 0;
                 remote.UserName = "remote-fixture";
                 remote.Email = "remote@example.invalid";
                 remote.AccountEndpoint = "http://127.0.0.1:2";
@@ -361,7 +364,7 @@ internal sealed partial class NativeDesktop
                 AppServices.ApplyManagedSettings(remote, TestTimetable());
             });
             await Check("managed-theme-updates-live-controls", () => ((FrameworkElement)Settings.Content).ActualTheme == ElementTheme.Dark &&
-                Need<ComboBox>(Page, "Theme").SelectedIndex == 2 && Math.Abs(Need<Slider>(Page, "Opacity").Value - .75) < .001 && SettingsService.Load().ThemeMode == "dark", 4000);
+                Need<ComboBox>(Page, "Theme").SelectedIndex == 2 && Need<Slider>(Page, "Opacity").Value == 0 && SettingsService.Load() is { ThemeMode: "dark", BackgroundOpacity: 0 }, 4000);
             await Check("managed-settings-preserve-local-account", () => AppServices.Settings is { IsOobeCompleted: true, CentralManagement.IsEnabled: false } current &&
                 current.AccountEndpoint == local.AccountEndpoint && current.AccountClientId == local.AccountClientId && current.UserName == local.UserName && current.Email == local.Email &&
                 ReferenceEquals(local.CentralManagement, current.CentralManagement) && session is { IsLoggedIn: true } && ReferenceEquals(session, AccountService.Current) &&
@@ -375,7 +378,8 @@ internal sealed partial class NativeDesktop
         {
             var overlay = host._overlay;
             T Element<T>(string name) where T : Avalonia.Controls.Control => Avalonia.Controls.ControlExtensions.FindControl<T>(overlay, name)!;
-            var track = await Ui(() => Element<Avalonia.Controls.Panel>("NotificationTrack"));
+            var track = await Ui(() => Element<Avalonia.Controls.ProgressBar>("OverlayTimeProgressBar"));
+            var mask = await Ui(() => Element<Avalonia.Controls.Border>("NotificationMask"));
             var island = await Ui(() => Element<Avalonia.Controls.Border>("IslandBackground"));
             await Check("managed-timetable-rendered", () => overlay.IsVisible && host.ReadOverlay().Today.Current?.Subject == CourseName && island.Bounds.Width > 0, 5000);
             await Act("open-notification-settings", () => Settings.NavigateTo("reminder-rules"));
@@ -400,10 +404,10 @@ internal sealed partial class NativeDesktop
                 }
                 AppServices.ApplyManagedSettings(s, CsesCodec.Serialize(profile));
             });
-            await Check("scheduled-reminder-while-collapsed", () => track.IsVisible && Tree(Page).OfType<Expander>().All(x => !x.IsExpanded), 6000);
+            await Check("scheduled-mask-without-rail-while-collapsed", () => mask.IsEffectivelyVisible && !track.IsEffectivelyVisible && Tree(Page).OfType<Expander>().All(x => !x.IsExpanded), 6000);
             await Snapshot("native-reminders-collapsed.png", () => Settings.Content, true);
-            await Check("full-next-subject-on-classroom", () => Element<Avalonia.Controls.TextBlock>("NotificationOverlaySubject") is { Text: CourseName, IsEffectivelyVisible: true }, 6000);
-            await Check("notification-restores-course-and-bounds", () => !track.IsVisible && Element<Avalonia.Controls.Border>("CardContent") is { IsEffectivelyVisible: true } card && Math.Abs(island.Bounds.Width - Math.Ceiling(card.Bounds.Width + card.Margin.Left * 2)) <= 2, 16000);
+            await Check("full-next-subject-on-classroom", () => track.IsEffectivelyVisible && track.Value is > 0 and < 1 && Element<Avalonia.Controls.TextBlock>("NotificationOverlaySubject") is { Text: CourseName, IsEffectivelyVisible: true }, 6000);
+            await Check("notification-restores-course-and-bounds", () => !mask.IsEffectivelyVisible && !track.IsEffectivelyVisible && Element<Avalonia.Controls.Border>("CardContent") is { IsEffectivelyVisible: true, Opacity: >= .99 } card && Math.Abs(island.Bounds.Width - Math.Ceiling(card.Bounds.Width + card.Margin.Left * 2)) <= 2, 18000);
             await Act("restore-all-day-fixture", () => AppServices.ApplyManagedSettings(AppServices.Settings, TestTimetable()));
         }
 

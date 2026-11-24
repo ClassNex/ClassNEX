@@ -51,7 +51,7 @@ public partial class App
         try
         {
             await shot(window, "overlay-restored", mode, dpi);
-            var upcoming = AppServices.Day.Read(DateTime.Now).Next;
+            var upcoming = AppServices.Day.Read(AppServices.ClassroomNow).Next;
             if (upcoming != null)
                 check(host.GetVisualDescendants().OfType<Border>().Any(b => b.Tag is CourseSlot slot && slot == upcoming && b.Child is TextBlock text && text.Text == slot.DisplayName),
                     "Upcoming course uses the Alpha short chip; its tooltip retains the full title and time");

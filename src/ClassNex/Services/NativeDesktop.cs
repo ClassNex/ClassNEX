@@ -14,12 +14,12 @@ internal sealed partial class NativeDesktop : IDisposable
     private readonly Views.MainWindow _overlay;
     internal NativeSettingsWindow? Settings => _settings;
 
-    private sealed record Applied(string Theme, bool Startup, bool Protocol, bool Voice, bool Edge, string Side)
+    private sealed record Applied(string Theme, string? Accent, bool Startup, bool Protocol, bool Voice, bool Edge, string Side)
     {
         public static Applied Read()
         {
             var s = AppServices.Settings;
-            return new(s.ThemeMode, s.RunAtStartup, s.RegisterUrlProtocol, s.IsNexVoiceWakeEnabled, s.IsNexEdgeBarEnabled, s.NexEdgeBarSide);
+            return new(s.ThemeMode, s.ThemeAccentColor, s.RunAtStartup, s.RegisterUrlProtocol, s.IsNexVoiceWakeEnabled, s.IsNexEdgeBarEnabled, s.NexEdgeBarSide);
         }
     }
 
@@ -76,7 +76,7 @@ internal sealed partial class NativeDesktop : IDisposable
 
     private OverlaySnapshot ReadOverlay()
     {
-        var now = DateTime.Now;
+        var now = AppServices.ClassroomNow;
         var today = AppServices.Day.Read(now);
         return new(now, today, AppServices.Time.GetCountdownText(today.Slots, now.TimeOfDay), AppServices.Schedule.Profile.Schedules.Count > 0);
     }

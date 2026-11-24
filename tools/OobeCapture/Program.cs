@@ -16,28 +16,35 @@ if (fixture.Parent?.Name != "build" || !fixture.Name.StartsWith("oobe-review-", 
 using var process = Process.GetProcessById(pid);
 if (!StringComparer.OrdinalIgnoreCase.Equals(process.MainModule?.FileName, Path.Combine(fixture.FullName, "app", "ClassNex.exe"))) return 2;
 using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(fixture.FullName, "wizard.json")));
-if (args is [_, _, "--classroom"] && manifest.RootElement.GetProperty("pid").GetInt32() != pid)
+if (args is [_, _, "--classroom" or "--classroom-hidden"] && manifest.RootElement.GetProperty("pid").GetInt32() != pid)
 {
+    var expectHidden = args[2] == "--classroom-hidden";
     var timer = Stopwatch.StartNew();
+    var hidden = new Stopwatch();
     while (!process.HasExited && timer.Elapsed.TotalSeconds < 20)
     {
+        string? title = null;
+        bool visible = false;
         foreach (ProcessThread thread in process.Threads)
         {
-            string? name = null;
             Native.EnumThreadWindows((uint)thread.Id, (window, _) =>
             {
-                if (!Native.IsWindowVisible(window) || Native.GetWindowThreadProcessId(window, out var windowOwner) == 0 || windowOwner != pid) return true;
-                var title = new StringBuilder(100);
-                Native.GetWindowText(window, title, title.Capacity);
-                if (title.ToString() is not ("ClassNEX 主界面" or "ClassNEX 桌面课表")) return true;
-                name = title.ToString();
-                return false;
+                if (Native.GetWindowThreadProcessId(window, out var windowOwner) == 0 || windowOwner != pid) return true;
+                var text = new StringBuilder(100);
+                Native.GetWindowText(window, text, text.Capacity);
+                if (text.ToString() is not ("ClassNEX 主界面" or "ClassNEX 桌面课表")) return true;
+                title = text.ToString();
+                visible |= Native.IsWindowVisible(window);
+                return !visible;
             }, 0);
-            if (name is not null)
-            {
-                File.WriteAllText(Path.Combine(fixture.FullName, "classroom.json"), JsonSerializer.Serialize(new { pid, title = name, visible = true }));
-                return 0;
-            }
+            if (visible) break;
+        }
+        if (expectHidden && visible) return 3;
+        if (expectHidden && title is not null) hidden.Start(); else hidden.Reset();
+        if (title is not null && (expectHidden ? hidden.Elapsed.TotalSeconds >= 1.5 : visible))
+        {
+            File.WriteAllText(Path.Combine(fixture.FullName, "classroom.json"), JsonSerializer.Serialize(new { pid, title, visible, observedHiddenMs = hidden.ElapsedMilliseconds }));
+            return 0;
         }
         await Task.Delay(60);
         process.Refresh();

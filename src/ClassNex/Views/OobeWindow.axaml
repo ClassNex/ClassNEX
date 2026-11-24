@@ -33,6 +33,31 @@
             <Setter Property="FontSize" Value="15"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
+        <Style Selector="Button.SetupChoice">
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource ClassNexCardRadius}"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+            <Setter Property="MinHeight" Value="184"/>
+            <Setter Property="Padding" Value="22,18"/>
+        </Style>
+        <Style Selector="TextBlock.MigrationDetail">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style Selector="TextBlock.NextGlyph">
+            <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
+            <Setter Property="Text" Value="&#xE76C;"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
         
         <Style Selector="Button.Primary">
             <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
@@ -86,6 +111,76 @@
                 <Border x:Name="WelcomeImage" Grid.Column="0" Grid.ColumnSpan="2"
                         Margin="445,121,0,23" ClipToBounds="True" IsHitTestVisible="False"/>
             </Grid>
+
+            <Grid x:Name="PageData" IsVisible="False" Margin="56,50,56,16" VerticalAlignment="Center">
+                <StackPanel Spacing="22" MaxWidth="840" HorizontalAlignment="Stretch">
+                    <StackPanel Spacing="6">
+                        <TextBlock x:Name="DataTitle" Classes="OobeTitle" Text="数据与迁移"/>
+                        <TextBlock x:Name="DataBody" Classes="OobeBody" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+                        <Button x:Name="NewDeviceButton" Classes="SetupChoice" AutomationProperties.LabeledBy="{Binding #NewDeviceTitle}">
+                            <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+                                <Image Width="48" Height="48" HorizontalAlignment="Left" Source="/Assets/SettingsIcons/window.png"/>
+                                <TextBlock x:Name="NewDeviceTitle" Grid.Row="1" Margin="0,10,0,0" FontSize="19" VerticalAlignment="Bottom" TextWrapping="Wrap"/>
+                                <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                    <TextBlock x:Name="NewDeviceDetail" Classes="MigrationDetail"/>
+                                    <TextBlock Grid.Column="1" Classes="NextGlyph"/>
+                                </Grid>
+                            </Grid>
+                        </Button>
+                        <Button x:Name="ImportDeviceButton" Grid.Column="1" Classes="SetupChoice" AutomationProperties.LabeledBy="{Binding #ImportDeviceTitle}">
+                            <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+                                <Image Width="48" Height="48" HorizontalAlignment="Left" Source="/Assets/SettingsIcons/profile.png"/>
+                                <TextBlock x:Name="ImportDeviceTitle" Grid.Row="1" Margin="0,10,0,0" FontSize="19" VerticalAlignment="Bottom" TextWrapping="Wrap"/>
+                                <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                    <TextBlock x:Name="ImportDeviceDetail" Classes="MigrationDetail"/>
+                                    <TextBlock Grid.Column="1" Classes="NextGlyph"/>
+                                </Grid>
+                            </Grid>
+                        </Button>
+                    </Grid>
+                </StackPanel>
+            </Grid>
+
+            <ScrollViewer x:Name="PageImport" IsVisible="False" Margin="56,50,48,8" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <StackPanel MaxWidth="840" Margin="0,4,8,8" Spacing="14" VerticalAlignment="Center">
+                    <StackPanel Spacing="6" Margin="0,0,0,4">
+                        <TextBlock x:Name="ImportTitle" Classes="OobeTitle" Text="从 ClassIsland 迁移"/>
+                        <TextBlock x:Name="ImportBody" Classes="OobeBody" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                    </StackPanel>
+                    <Border Classes="sectionSurface">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
+                            <Image Width="36" Height="36" Source="/Assets/SettingsIcons/profile.png"/>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                                <TextBlock x:Name="ImportSourceLabel" FontSize="16" TextWrapping="Wrap"/>
+                                <SelectableTextBlock x:Name="ImportSourcePath" FontSize="13" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <Button x:Name="BrowseImportButton" Grid.Column="2" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+                    <Grid x:Name="ImportFeedback" RowDefinitions="Auto,Auto,Auto,Auto" IsVisible="False" Margin="2,0">
+                        <TextBlock x:Name="ImportStatus" FontSize="15" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+                        <Border x:Name="ImportProgressRow" Grid.Row="1" IsVisible="False" Margin="0,6,0,0" MinHeight="12" ClipToBounds="True">
+                            <ProgressBar x:Name="ImportProgress" Minimum="0" Maximum="100" Height="4" HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock x:Name="ImportDetails" Grid.Row="2" Classes="MigrationDetail" IsVisible="False" Margin="0,4,0,0"/>
+                        <Expander x:Name="ImportNotes" Grid.Row="3" Margin="0,6,0,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" IsVisible="False" IsExpanded="False">
+                            <TextBlock x:Name="ImportNotesText" Classes="MigrationDetail"/>
+                        </Expander>
+                    </Grid>
+                    <Expander x:Name="ImportAdvanced" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" IsExpanded="False">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16" Margin="0,3">
+                            <StackPanel Spacing="4" VerticalAlignment="Center">
+                                <TextBlock x:Name="CleanupLabel" FontSize="15" TextWrapping="Wrap"/>
+                                <TextBlock x:Name="CleanupDetail" Classes="MigrationDetail"/>
+                            </StackPanel>
+                            <ToggleSwitch x:Name="CleanupToggle" Grid.Column="1" IsChecked="True" VerticalAlignment="Center" AutomationProperties.LabeledBy="{Binding #CleanupLabel}"/>
+                        </Grid>
+                    </Expander>
+                    <TextBlock x:Name="CleanupSummary" Classes="MigrationDetail" Margin="2,0"/>
+                </StackPanel>
+            </ScrollViewer>
 
             
             <StackPanel x:Name="PagePreferences" IsVisible="False" Margin="56,16,56,0" Spacing="16" MaxWidth="620"

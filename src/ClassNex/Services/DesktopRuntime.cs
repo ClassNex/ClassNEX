@@ -22,7 +22,7 @@ internal sealed class DesktopRuntime : IDisposable
         _overlay = overlay;
         if (overlay.Screens.Primary is { } screen) _effects.UpdateWindowPos(screen, 1 / screen.Scaling, false);
         _reminderSound = new ReminderSound(settings);
-        Notifications = new NotificationService(new MainWindowNotificationSurface(overlay, _effects, _reminderSound), settings, time, schedule);
+        Notifications = new NotificationService(new MainWindowNotificationSurface(overlay, _effects, _reminderSound), settings, time, schedule, AppServices.ClassroomClock);
         var api = new PluginServiceProvider();
         api.Add(schedule); api.Add(time); api.Add(layout); api.Add(widgets); api.Add(ai); api.Add(store);
         api.Add<INotificationService>(Notifications);

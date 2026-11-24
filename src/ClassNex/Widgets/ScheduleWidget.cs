@@ -12,8 +12,6 @@ namespace ClassNex.Widgets;
 
 public sealed class ScheduleWidget : WidgetBase
 {
-    private const int CiCountdownSeconds = 60;
-
     private readonly StackPanel _root;
 
     private TextBlock? _timeText;
@@ -25,7 +23,7 @@ public sealed class ScheduleWidget : WidgetBase
     private List<CourseSlot>? _lastSlots;
     private (string Title, TimeSpan Start, TimeSpan End)? _current;
     private CourseSlot? _next;
-    private (double Font, double Spacing, bool Fade, int Width) _viewOptions;
+    private (double Font, double Spacing, bool Fade, int Width, bool OnlyCurrent, bool HideFinished, bool Details, int Seconds) _viewOptions;
     private TimeSpan _currentStart;
     private TimeSpan _currentEnd;
 
@@ -80,7 +78,8 @@ public sealed class ScheduleWidget : WidgetBase
         var slots = ctx.Today.Slots;
         var cur = FindCurrent(slots, now);
         var budget = double.IsFinite(ctx.ScheduleWidth) ? (int)Math.Max(100, Math.Floor(ctx.ScheduleWidth / 4) * 4) : 560;
-        var options = (Config.FontScale, Config.ScheduleSpacing, Config.FadeCompletedClasses, budget);
+        var options = (Config.FontScale, Config.ScheduleSpacing, Config.FadeCompletedClasses, budget,
+            Config.ShowCurrentLessonOnlyOnClass, Config.HideFinishedClass, Config.ShowTimeDetails, Config.CountdownSeconds);
         if (_state == "day" && _current == cur && _next == ctx.Today.Next && options == _viewOptions &&
             (_lastSlots == slots || _lastSlots is not null && slots.SequenceEqual(_lastSlots)))
         {
@@ -131,7 +130,7 @@ public sealed class ScheduleWidget : WidgetBase
 
             if (isCurrent)
                 AddExpanded(slot.Subject, slot.Start, slot.End, now);
-            else
+            else if (!(isFinished && Config.HideFinishedClass) && !(Config.ShowCurrentLessonOnlyOnClass && ctx.Today.Current is not null))
                 _root.Children.Add(BuildMinimized(slot, isFinished));
         }
         FitToViewport(slots, ctx.Today.Next, budget);
@@ -271,12 +270,12 @@ public sealed class ScheduleWidget : WidgetBase
 
         var left = LeftOf(_currentEnd, now);
         var text = "-" + FormatClock(left);
-        var showPill = left >= TimeSpan.Zero && left.TotalSeconds <= CiCountdownSeconds;
+        var showPill = Config.ShowTimeDetails && Config.CountdownSeconds > 0 && left >= TimeSpan.Zero && left.TotalSeconds <= Config.CountdownSeconds;
 
         if (_timeText is not null)
         {
             _timeText.Text = text;
-            _timeText.IsVisible = !showPill;
+            _timeText.IsVisible = Config.ShowTimeDetails && !showPill;
         }
 
         if (_countdownPill is not null && _pillText is not null)
@@ -338,8 +337,8 @@ public sealed class ScheduleWidget : WidgetBase
         var (pill, pillText) = BuildCountdownPill(remaining);
         pill.Margin = new Thickness(8, 0, 0, 0);
 
-        var showPill = left >= TimeSpan.Zero && left.TotalSeconds <= CiCountdownSeconds;
-        time.IsVisible = !showPill;
+        var showPill = Config.ShowTimeDetails && Config.CountdownSeconds > 0 && left >= TimeSpan.Zero && left.TotalSeconds <= Config.CountdownSeconds;
+        time.IsVisible = Config.ShowTimeDetails && !showPill;
         pill.IsVisible = showPill;
 
         var row = new Grid
@@ -401,7 +400,7 @@ public sealed class ScheduleWidget : WidgetBase
         return (mask, time, pill, pillText, track, fill);
     }
 
-    private static (Control Pill, TextBlock Text) BuildCountdownPill(string text)
+    private (Control Pill, TextBlock Text) BuildCountdownPill(string text)
     {
         var pillText = Text(text, CiBody - 5, CiPalette.OnAccentBrush());
         pillText.VerticalAlignment = VerticalAlignment.Center;

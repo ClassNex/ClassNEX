@@ -49,7 +49,7 @@ public sealed partial class NativeSettingsWindow
         string[] modes = ["system", "light", "dark"];
         Choice("Theme", "主题", ["跟随系统", "浅色", "深色"], s => Array.IndexOf(modes, s.ThemeMode), (s, i) => s.ThemeMode = modes[i]);
         Section("桌面课表");
-        Scale("Opacity", "主界面背景不透明度", .1, 1, .05, s => s.BackgroundOpacity, (s, v) => s.BackgroundOpacity = v, v => $"{v:P0}");
+        Scale("Opacity", "主界面背景不透明度", 0, 1, .01, s => s.BackgroundOpacity, (s, v) => s.BackgroundOpacity = v, v => $"{v:P0}");
         Scale("FontScale", "全局字号缩放", .8, 2.4, .05, s => s.FontScale, (s, v) => s.FontScale = v, v => $"{v:0.00}×");
         Scale("MainScale", "主界面缩放", .5, 4, .05, s => s.MainWindowScale, (s, v) => s.MainWindowScale = v, v => $"{v:0.00}×");
         ActionRow("StandardScale", "标准缩放", "恢复标准", () => { FlushSlider(); Edit(s => { s.FontScale = 1; s.MainWindowScale = 1.9; }); });

@@ -45,6 +45,8 @@ public sealed partial class NativeSettingsWindow : Window
     private readonly NavigationView _navigation = new();
     private readonly AutoSuggestBox _search = new() { PlaceholderText = "查找设置" };
     private readonly Grid _shell = new();
+    private string? _appliedAccent;
+    private ResourceDictionary? _accentPalette;
     private readonly TitleBar _titleBar = new() { Title = "ClassNEX", Subtitle = "应用设置", IsBackButtonVisible = true, IsPaneToggleButtonVisible = true };
     private readonly Dictionary<string, NavigationViewItem> _items = [];
     private readonly List<Action<AppSettings>> _bindings = [];
@@ -316,6 +318,7 @@ public sealed partial class NativeSettingsWindow : Window
         try
         {
             var theme = settings.ThemeMode switch { "light" => ElementTheme.Light, "dark" => ElementTheme.Dark, _ => ElementTheme.Default };
+            ApplyAccent(settings.ThemeAccentColor);
             if (_shell.RequestedTheme != theme) _shell.RequestedTheme = theme;
             _refreshIdentity?.Invoke();
             foreach (var apply in _bindings) apply(settings);
@@ -330,6 +333,19 @@ public sealed partial class NativeSettingsWindow : Window
         update(_bridge.ReadSettings());
         _bridge.SaveSettings();
         RefreshSettings();
+    }
+
+    private void ApplyAccent(string? text)
+    {
+        if (_appliedAccent == text) return;
+        _appliedAccent = text;
+        if (_accentPalette != null) { _shell.Resources.MergedDictionaries.Remove(_accentPalette); _accentPalette = null; }
+        if (text is not { Length: 7 or 9 } || text[0] != '#' || !uint.TryParse(text.AsSpan(1), System.Globalization.NumberStyles.HexNumber, null, out var value)) return;
+        var accent = Windows.UI.Color.FromArgb(255, (byte)(value >> 16), (byte)(value >> 8), (byte)value);
+        _accentPalette = new ResourceDictionary();
+        _accentPalette.ThemeDictionaries.Add("Light", new ColorPaletteResources { Accent = accent });
+        _accentPalette.ThemeDictionaries.Add("Dark", new ColorPaletteResources { Accent = accent });
+        _shell.Resources.MergedDictionaries.Add(_accentPalette);
     }
 
     private static void Identify(DependencyObject element, string id, string name)

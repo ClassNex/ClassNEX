@@ -52,6 +52,16 @@ public partial class App : Application
                 Environment.ExitCode = args.ApplicationExitCode;
                 Microsoft.UI.Xaml.Application.Current.Exit();
             };
+#if DEBUG
+            if (desktop.Args is ["--preview-migration"] && File.Exists(Path.Combine(AppContext.BaseDirectory, "..", ".classnex-review")))
+            {
+                desktop.ShutdownMode = ShutdownMode.OnMainWindowClose;
+                desktop.MainWindow = new OobeWindow(preview: true);
+                desktop.MainWindow.Show();
+                base.OnFrameworkInitializationCompleted();
+                return;
+            }
+#endif
             if (!AppServices.Settings.IsOobeCompleted)
             {
                 _oobeWindow = new Views.OobeWindow();
@@ -65,6 +75,10 @@ public partial class App : Application
                 base.OnFrameworkInitializationCompleted();
                 return;
             }
+#if DEBUG
+            if (desktop.Args is ["--review-ui", _] && File.Exists(Path.Combine(AppContext.BaseDirectory, "..", ".classnex-review")))
+                AppServices.UseReviewClock(new ClassroomReviewClock());
+#endif
             _mainWindow = new MainWindow();
             _desktop = new NativeDesktop(_mainWindow);
             desktop.MainWindow = _mainWindow;
@@ -472,15 +486,6 @@ public partial class App : Application
     
     private static void ApplyCiPalette()
     {
-        var theme = FluentTheme;
-        if (theme is not null)
-        {
-            
-            
-            theme.CustomAccentColor = null;
-            theme.PreferUserAccentColor = true;
-        }
-
         if (Current is null)
             return;
 
@@ -502,6 +507,10 @@ public partial class App : Application
         var theme = FluentTheme;
         if (theme is null || Current is null)
             return;
+
+        Color? accent = AppServices.Settings.ThemeAccentColor is { } text && Color.TryParse(text, out var color) ? color : null;
+        if (theme.PreferUserAccentColor == accent.HasValue) theme.PreferUserAccentColor = !accent.HasValue;
+        if (theme.CustomAccentColor != accent) theme.CustomAccentColor = accent;
 
         switch (mode)
         {
