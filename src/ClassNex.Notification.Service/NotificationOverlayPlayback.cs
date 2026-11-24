@@ -10,8 +10,9 @@ public sealed class NotificationOverlayPlayback : INotificationOverlayProgress
     private readonly TimeProvider _clock;
     private readonly NotificationPlayingSessionInfo _session = new();
     private readonly long _ticketTimestamp;
-    private readonly TimeSpan _duration;
     private double _leftProgress = 1.0;
+
+    internal TimeSpan Duration { get; }
 
     /// <summary>在当前时刻开始按有效播放时长倒数，供仅接收时长的旧展示端使用。</summary>
     public NotificationOverlayPlayback(TimeSpan duration) : this(TimeProvider.System, TimeProvider.System.GetLocalNow(), duration, null) { }
@@ -19,9 +20,9 @@ public sealed class NotificationOverlayPlayback : INotificationOverlayProgress
     internal NotificationOverlayPlayback(TimeProvider clock, DateTimeOffset now, TimeSpan duration, DateTimeOffset? endTime)
     {
         _clock = clock;
-        _duration = endTime.HasValue ? endTime.Value - now : duration;
-        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(_duration, TimeSpan.Zero);
-        _session.SessionStartTime = _session.CurrentTicketStartTime = now.DateTime;
+        Duration = endTime.HasValue ? endTime.Value - now : duration;
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(Duration, TimeSpan.Zero);
+        _session.SessionStartTime = _session.CurrentTicketStartTime = now.UtcDateTime;
         _session.IsExplicitEndTime = endTime.HasValue;
         _ticketTimestamp = clock.GetTimestamp();
         _session.TimingStopwatch.Restart();
@@ -43,9 +44,9 @@ public sealed class NotificationOverlayPlayback : INotificationOverlayProgress
     private TimeSpan TicketElapsed => ReferenceEquals(_clock, TimeProvider.System)
         ? _session.TimingStopwatch.Elapsed : _clock.GetElapsedTime(_ticketTimestamp);
 
-    private double Sample(TimeSpan elapsed) => _session.IsExplicitEndTime
-        ? 1 - (_clock.GetLocalNow().DateTime - _session.SessionStartTime) / _duration
-        : 1 - (_session.SessionPlayedTime + elapsed) / _duration;
+    private double Sample(TimeSpan elapsed) => Math.Clamp(_session.IsExplicitEndTime
+        ? 1 - (_clock.GetUtcNow().UtcDateTime - _session.SessionStartTime) / Duration
+        : 1 - (_session.SessionPlayedTime + elapsed) / Duration, 0, 1);
 
     internal void Stop()
     {

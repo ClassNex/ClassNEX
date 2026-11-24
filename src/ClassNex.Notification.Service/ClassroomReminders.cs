@@ -116,6 +116,9 @@ internal sealed class ClassroomReminders
         new(id, "放学", now.AddSeconds(35), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(35),
             Overlay: new("", "", "", "", Message: string.IsNullOrWhiteSpace(n.AfterSchoolText) ? NotificationSettings.DefaultAfterSchoolText : n.AfterSchoolText), RightGlyph: "\uED34");
 
-    public static CourseSlot SampleCourse(DateTimeOffset now) =>
-        new("演示课程", "演示", null, null, now.TimeOfDay + TimeSpan.FromMinutes(1), now.TimeOfDay + TimeSpan.FromMinutes(41));
+    public static CourseSlot SampleCourse(DateTimeOffset now, TimeSpan? startsIn = null)
+    {
+        var start = now.TimeOfDay + (startsIn ?? TimeSpan.FromMinutes(1));
+        return new("演示课程", "演示", null, null, start, start + TimeSpan.FromMinutes(40));
+    }
 }

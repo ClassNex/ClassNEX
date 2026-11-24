@@ -245,7 +245,7 @@ public sealed partial class NotificationTests
         f.Clock.Advance(3);
         var page = f.Screen.Overlays.Single();
         Assert.AreEqual($"距上课还剩 {timeToClass - 3} 秒", page.Caption);
-        Assert.AreEqual(TimeSpan.FromSeconds(previewLength - 3), page.Track);
+        Assert.AreEqual(TimeSpan.FromSeconds(timeToClass - 3), page.Track);
         f.Clock.Advance(previewLength - 4);
         Assert.AreEqual(0, f.Screen.Hides);
         f.Clock.Advance(1);

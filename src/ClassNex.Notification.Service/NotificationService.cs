@@ -5,6 +5,7 @@ namespace ClassNex.Services;
 
 public sealed class NotificationService : INotificationService, INotificationPublisher, IDisposable
 {
+    private static readonly TimeSpan PreparingPreviewLimit = TimeSpan.FromSeconds(23);
     private readonly Dictionary<string, INotificationSurface> _channels;
     private readonly Func<AppSettings> _settings;
     private readonly ITimeService _time;
@@ -18,7 +19,8 @@ public sealed class NotificationService : INotificationService, INotificationPub
     private bool _running, _disposed, _hasOverlay, _previewHasOverlayDeadline;
     private NotificationRequest? _active, _preview;
     private NotificationOverlayPlayback? _overlayPlayback;
-    private DateTimeOffset _overlayAt, _end, _nextScheduleCheck;
+    private DateTimeOffset _end, _nextScheduleCheck;
+    private long _presentationStart;
     private int _lastSeconds = -1;
 
     public NotificationService(INotificationSurface surface, Func<AppSettings> settings, ITimeService time, IScheduleService schedule,
@@ -191,7 +193,9 @@ public sealed class NotificationService : INotificationService, INotificationPub
             var currentChannel = _active?.Channel ?? "dispatch";
             try
             {
-                if (_active != null && (now >= _end || !_channels[_active.Channel].IsAvailable)) Finish();
+                if (_active is { } playing && (now >= _end ||
+                    (PreviewLimitFor(playing) is { } cap && _clock.GetElapsedTime(_presentationStart) >= cap) ||
+                    !_channels[playing.Channel].IsAvailable)) Finish();
                 if (_active == null)
                 {
                     if (_queue.Take(now) is not { } next) return;
@@ -201,21 +205,22 @@ public sealed class NotificationService : INotificationService, INotificationPub
                     _active = next;
                     _hasOverlay = false;
                     _lastSeconds = -1;
-                    var duration = next.ExpiresAt - now < next.Duration ? next.ExpiresAt - now : next.Duration;
+                    _presentationStart = _clock.GetTimestamp();
+                    var duration = Min(next.ExpiresAt - now, next.Duration);
                     _end = now + duration;
-                    _overlayAt = now + (next.MaskDuration < duration ? next.MaskDuration : duration);
-                    surface.ShowMask(next.Mask, next.LeftGlyph, next.RightGlyph, _settings().AllowNotificationEffect, duration);
+                    var visibleFor = PreviewLimitFor(next) is { } limit ? Min(duration, limit) : duration;
+                    surface.ShowMask(next.Mask, next.LeftGlyph, next.RightGlyph, _settings().AllowNotificationEffect, visibleFor);
                 }
-                if (_active is not { Overlay: { } overlay } request || now < _overlayAt) return;
+                if (_active is not { Overlay: { } overlay } request ||
+                    (!_hasOverlay && _clock.GetElapsedTime(_presentationStart) < request.MaskDuration)) return;
                 var channel = _channels[request.Channel];
                 var preparing = IsPreparingPresentation(request);
                 var seconds = overlay.CountdownTo is { } target ? CountdownSeconds(target - now, preparing) : -1;
                 if (!_hasOverlay)
                 {
                     _hasOverlay = true;
-                    var duration = _end - now;
-                    _overlayPlayback = new(_clock, now, duration, preparing ? _end : null);
-                    channel.ShowOverlay(overlay, seconds >= 0 ? seconds : null, duration, _overlayPlayback);
+                    _overlayPlayback = new(_clock, now, _end - now, preparing ? overlay.CountdownTo : null);
+                    channel.ShowOverlay(overlay, seconds >= 0 ? seconds : null, _overlayPlayback.Duration, _overlayPlayback);
                 }
                 else if (seconds >= 0 && seconds != _lastSeconds) channel.UpdateCountdown(seconds);
                 _lastSeconds = seconds;
@@ -233,6 +238,12 @@ public sealed class NotificationService : INotificationService, INotificationPub
         request.Id.StartsWith(ClassroomReminders.PreparingPrefix, StringComparison.Ordinal) ||
         (ReferenceEquals(request, _preview) && _previewHasOverlayDeadline);
 
+    private TimeSpan? PreviewLimitFor(NotificationRequest request) =>
+        ReferenceEquals(request, _preview) && _previewHasOverlayDeadline
+            ? (request.Overlay?.CountdownTo is null ? request.Duration : PreparingPreviewLimit) : null;
+
+    private static TimeSpan Min(TimeSpan a, TimeSpan b) => a < b ? a : b;
+
     private static int CountdownSeconds(TimeSpan remaining, bool preparing) =>
         (int)Math.Clamp(preparing ? Math.Round(remaining.TotalSeconds, MidpointRounding.AwayFromZero) :
             Math.Ceiling(remaining.TotalSeconds), 0, int.MaxValue);
@@ -244,7 +255,6 @@ public sealed class NotificationService : INotificationService, INotificationPub
         if (_active is not null)
         {
             if (_end < due) due = _end;
-            if (!_hasOverlay && _active.Overlay != null && _overlayAt < due) due = _overlayAt;
             if (_hasOverlay && _lastSeconds > 0 && _active.Overlay?.CountdownTo is { } target)
             {
                 var next = IsPreparingPresentation(_active)
@@ -254,6 +264,12 @@ public sealed class NotificationService : INotificationService, INotificationPub
             }
         }
         var delay = due - _clock.GetLocalNow();
+        if (_active is { } request)
+        {
+            var elapsed = _clock.GetElapsedTime(_presentationStart);
+            if (!_hasOverlay && request.Overlay is not null) delay = Min(delay, request.MaskDuration - elapsed);
+            if (PreviewLimitFor(request) is { } cap) delay = Min(delay, cap - elapsed);
+        }
         _timer?.Change(delay < TimeSpan.FromMilliseconds(1) ? TimeSpan.FromMilliseconds(1) : delay, Timeout.InfiniteTimeSpan);
     }
 
@@ -300,10 +316,9 @@ public sealed class NotificationService : INotificationService, INotificationPub
             var duration = TimeSpan.FromSeconds(3);
             return new(PreviewId, day.IsFinished ? "今天的课程已结束" : "当前是今天最后一节课", now + duration, duration, duration, NotificationPriority.Low);
         }
-        var next = day.Next ?? ClassroomReminders.SampleCourse(now);
-        var request = ClassroomReminders.Preparing(now, _settings().Notification, next, next.Start - now.TimeOfDay, PreviewId);
-        var limit = TimeSpan.FromSeconds(23);
-        return request.Duration <= limit ? request : request with { Duration = limit, ExpiresAt = now + limit };
+        var options = _settings().Notification;
+        var next = day.Next ?? ClassroomReminders.SampleCourse(now, TimeSpan.FromMinutes(Math.Clamp(options.ClassOnBreakReminderMinutes, 1, 60)));
+        return ClassroomReminders.Preparing(now, options, next, next.Start - now.TimeOfDay, PreviewId);
     }, hasOverlayDeadline: true);
 
     public void DebugTriggerClassOn() => Preview(now => ClassroomReminders.ClassOn(now, _settings().Notification, PreviewId));

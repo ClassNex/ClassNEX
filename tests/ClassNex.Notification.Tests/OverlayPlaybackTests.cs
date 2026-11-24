@@ -72,7 +72,7 @@ public sealed partial class NotificationTests
     }
 
     [TestMethod]
-    public void PreviewUsesItsOwnDeadlineAndReplacementCannotResumeIt()
+    public void AShortPreviewTracksTheRealLessonUntilReplaced()
     {
         var screen = new PlaybackSurface();
         using var f = new Fixture(new Clock(7, 20), primary: screen);
@@ -83,7 +83,8 @@ public sealed partial class NotificationTests
         Assert.AreEqual("距上课还剩 2397 秒", screen.Overlays.Single().Caption);
         var preview = screen.Sessions.Single();
         f.Clock.ShiftWall(10);
-        Assert.AreEqual(.5, preview.LeftProgress, 1e-9);
+        const double remaining = 2387d / 2397;
+        Assert.AreEqual(remaining, preview.LeftProgress, 1e-9);
         f.Service.DebugTriggerTestNotification();
         f.Clock.Advance(1.2);
         Assert.HasCount(2, screen.Sessions);
@@ -91,10 +92,175 @@ public sealed partial class NotificationTests
         Assert.AreEqual(1d, replacement.LeftProgress);
         f.Clock.Advance(3.4);
         Assert.AreEqual(.5, replacement.LeftProgress, 1e-9);
-        Assert.AreEqual(.5, preview.LeftProgress, 1e-9);
+        Assert.AreEqual(remaining, preview.LeftProgress, 1e-9);
         f.Clock.Advance(3.4);
         Assert.AreEqual(0d, replacement.LeftProgress);
-        Assert.AreEqual(.5, preview.LeftProgress, 1e-9);
+        Assert.AreEqual(remaining, preview.LeftProgress, 1e-9);
+    }
+
+    [TestMethod]
+    [DataRow(false, 57, 177)]
+    [DataRow(false, 59, 57)]
+    [DataRow(true, 50, 597)]
+    public void PreparingTextAndRailUseTheLessonDeadlineEvenWhenStartingLate(bool outdoor, int minute, int detailSeconds)
+    {
+        var screen = new PlaybackSurface();
+        using var f = new Fixture(new Clock(7, minute), primary: screen);
+        f.Lesson("体育", "体", "08:00", "08:45", outdoor);
+        f.Service.Start();
+        f.Clock.Advance(3);
+        var playback = screen.Sessions.Single();
+        var detail = screen.Overlays.Single();
+        Assert.AreEqual($"距上课还剩 {detailSeconds} 秒", detail.Caption);
+        Assert.AreEqual(TimeSpan.FromSeconds(detailSeconds), detail.Track);
+        Assert.AreEqual(1d, playback.LeftProgress);
+
+        f.Clock.Advance(10);
+        Assert.AreEqual($"距上课还剩 {detailSeconds - 10} 秒", screen.Countdowns.Last());
+        Assert.AreEqual(detailSeconds - 10, playback.LeftProgress * detailSeconds, 1e-8);
+        f.Clock.Advance(detailSeconds - 10);
+        Assert.AreEqual(0d, playback.LeftProgress);
+    }
+
+    [TestMethod]
+    public void EmptyTimetablePreviewUsesTheConfiguredLeadAndClosesWithoutDrainingTheRail()
+    {
+        var screen = new PlaybackSurface();
+        using var f = new Fixture(new Clock(23, 59), primary: screen);
+        f.Settings.Notification.ClassOnBreakReminderMinutes = 7;
+        f.Service.Start();
+        f.Service.DebugTriggerClassPreparing();
+        f.Clock.Advance(3);
+        var detail = screen.Overlays.Single();
+        var playback = screen.Sessions.Single();
+        Assert.AreEqual("距上课还剩 417 秒", detail.Caption);
+        Assert.AreEqual("00:06–00:46", detail.Time);
+        Assert.AreEqual(TimeSpan.FromSeconds(417), detail.Track);
+        f.Clock.Advance(10);
+        Assert.AreEqual("距上课还剩 407 秒", screen.Countdowns.Last());
+        Assert.AreEqual(407d / 417, playback.LeftProgress, 1e-9);
+        f.Clock.Advance(10);
+        Assert.AreEqual(1, screen.Hides);
+        f.Clock.Advance(60);
+        Assert.AreEqual(397d / 417, playback.LeftProgress, 1e-9);
+    }
+
+    [TestMethod]
+    public void ClockCorrectionsCannotPushTheVisibleRailOutsideItsRange()
+    {
+        var screen = new PlaybackSurface();
+        using var f = new Fixture(new Clock(7, 59), primary: screen);
+        f.Lesson("数学", "数", "08:00", "08:45");
+        f.Service.Start();
+        f.Clock.Advance(3);
+        var playback = screen.Sessions.Single();
+        f.Clock.ShiftWall(-15);
+        Assert.AreEqual(1d, playback.LeftProgress);
+        f.Clock.ShiftWall(83);
+        Assert.AreEqual(0d, playback.LeftProgress);
+        f.Service.RefreshSchedule();
+        f.Clock.ShiftWall(-30);
+        Assert.AreEqual(0d, playback.LeftProgress);
+    }
+
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public void AVisiblePreparingCountdownKeepsTickingAfterTheClockRewindsBeforeItsMask(bool refreshImmediately)
+    {
+        var screen = new PlaybackSurface();
+        using var f = new Fixture(new Clock(7, 59), primary: screen);
+        f.Lesson("数学", "数", "08:00", "08:45");
+        f.Service.Start();
+        f.Clock.Advance(13);
+        Assert.AreEqual("距上课还剩 47 秒", screen.Countdowns.Last());
+        f.Clock.ShiftWall(-60);
+        if (refreshImmediately)
+        {
+            f.Service.RefreshSchedule();
+            Assert.AreEqual("距上课还剩 107 秒", screen.Countdowns.Last());
+        }
+        f.Clock.Advance(5);
+        Assert.AreEqual("距上课还剩 102 秒", screen.Countdowns.Last());
+        Assert.HasCount(1, screen.Masks);
+        Assert.AreEqual(1d, screen.Sessions.Single().LeftProgress);
+        f.Clock.Advance(62);
+        Assert.AreEqual("距上课还剩 40 秒", screen.Countdowns.Last());
+        Assert.AreEqual(40d / 57, screen.Sessions.Single().LeftProgress, 1e-9);
+    }
+
+    [TestMethod]
+    [DataRow(-300)]
+    [DataRow(300)]
+    public void ClockChangesCannotShortenOrExtendThePreviewTitleOrItsTwentyThreeSecondLimit(int adjustment)
+    {
+        var screen = new PlaybackSurface();
+        using var f = new Fixture(new Clock(7, 20), primary: screen);
+        f.Lesson("数学", "数", "08:00", "08:45");
+        f.Service.Start();
+        f.Service.DebugTriggerClassPreparing();
+        Assert.AreEqual(TimeSpan.FromSeconds(23), screen.Lifetimes.Single());
+        f.Clock.Advance(1);
+        f.Clock.ShiftWall(adjustment);
+        f.Service.RefreshSchedule();
+        f.Clock.Advance(1.99);
+        Assert.IsEmpty(screen.Overlays);
+        f.Clock.Advance(.01);
+        var initialSeconds = 2397 - adjustment;
+        Assert.AreEqual($"距上课还剩 {initialSeconds} 秒", screen.Overlays.Single().Caption);
+        var rail = screen.Sessions.Single();
+        f.Clock.Advance(19.99);
+        Assert.AreEqual($"距上课还剩 {initialSeconds - 20} 秒", screen.Countdowns.Last());
+        Assert.AreEqual(0, screen.Hides);
+        f.Clock.Advance(.01);
+        Assert.AreEqual(1, screen.Hides);
+        Assert.AreEqual((initialSeconds - 20d) / initialSeconds, rail.LeftProgress, 1e-9);
+        f.Clock.Advance(30);
+        Assert.AreEqual(1, screen.Hides);
+    }
+
+    [TestMethod]
+    public void APreviewRewindsDuringTheDetailWithoutRestartingOrExtendingItsLifetime()
+    {
+        var screen = new PlaybackSurface();
+        using var f = new Fixture(new Clock(7, 20), primary: screen);
+        f.Lesson("数学", "数", "08:00", "08:45");
+        f.Service.Start();
+        f.Service.DebugTriggerClassPreparing();
+        f.Clock.Advance(8);
+        f.Clock.ShiftWall(-300);
+        f.Clock.Advance(5);
+        Assert.AreEqual("距上课还剩 2687 秒", screen.Countdowns.Last());
+        f.Clock.Advance(9.99);
+        Assert.AreEqual(0, screen.Hides);
+        f.Clock.Advance(.01);
+        Assert.AreEqual(1, screen.Hides);
+        Assert.AreEqual(1d, screen.Sessions.Single().LeftProgress);
+        f.Clock.Advance(27);
+        Assert.AreEqual(1, screen.Hides);
+    }
+
+    [TestMethod]
+    [DataRow(-20, 23)]
+    [DataRow(5, 10)]
+    public void APreviewOfAnImminentLessonEndsAtItsCorrectedStartOrTheElapsedCap(int adjustment, int visibleSeconds)
+    {
+        var screen = new PlaybackSurface();
+        using var f = new Fixture(new Clock(7, 59, 45), primary: screen);
+        f.Lesson("数学", "数", "08:00", "08:45");
+        f.Settings.Notification.IsClassOnPreparingNotificationEnabled = false;
+        f.Settings.Notification.IsClassOnNotificationEnabled = false;
+        f.Service.Start();
+        f.Service.DebugTriggerClassPreparing();
+        Assert.AreEqual(TimeSpan.FromSeconds(15), screen.Lifetimes.Single());
+        f.Clock.Advance(5);
+        f.Clock.ShiftWall(adjustment);
+        f.Service.RefreshSchedule();
+        f.Clock.Advance(visibleSeconds - 5.01);
+        Assert.AreEqual(0, screen.Hides);
+        f.Clock.Advance(.01);
+        Assert.AreEqual(1, screen.Hides);
+        Assert.AreEqual(adjustment < 0 ? 1d : 0d, screen.Sessions.Single().LeftProgress);
     }
 
     [TestMethod]
