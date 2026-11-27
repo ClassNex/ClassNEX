@@ -41,14 +41,46 @@ internal static class Program
         return uri;
     }
 
-    private sealed class FixtureTransport(Uri local) : DelegatingHandler(new HttpClientHandler { UseProxy = false, AllowAutoRedirect = false })
+    private sealed class FixtureWrites
     {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellation)
+        private TaskCompletionSource? _entered, _release;
+        public volatile bool Legacy;
+        public int UnsafePublishes;
+
+        public Task Pause()
+        {
+            _entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            Volatile.Write(ref _release, new(TaskCreationOptions.RunContinuationsAsynchronously));
+            return _entered.Task.WaitAsync(TimeSpan.FromSeconds(12));
+        }
+
+        public async Task EnterAsync(CancellationToken cancellation)
+        {
+            if (Volatile.Read(ref _release) is not { } pending) return;
+            _entered!.TrySetResult();
+            await pending.Task.WaitAsync(cancellation);
+        }
+
+        public void Resume() => Interlocked.Exchange(ref _release, null)?.TrySetResult();
+    }
+
+    private sealed class FixtureTransport(Uri local, FixtureWrites writes) : DelegatingHandler(new HttpClientHandler { UseProxy = false, AllowAutoRedirect = false })
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellation)
         {
             var uri = request.RequestUri!;
             Check(uri.GetLeftPart(UriPartial.Authority) + "/Control" == AppSettings.DefaultCentralEndpoint && uri.AbsolutePath.StartsWith("/Control/api/v1/", StringComparison.Ordinal), "Client did not use the built-in control route");
             request.RequestUri = new Uri(local, uri.PathAndQuery["/Control".Length..]);
-            return base.SendAsync(request, cancellation);
+            if (uri.AbsolutePath.EndsWith("/client/changes", StringComparison.Ordinal)) await writes.EnterAsync(cancellation);
+            if (uri.AbsolutePath.EndsWith("/client/publish", StringComparison.Ordinal)) Interlocked.Increment(ref writes.UnsafePublishes);
+            var response = await base.SendAsync(request, cancellation);
+            if (writes.Legacy && response.StatusCode == HttpStatusCode.OK && uri.AbsolutePath.EndsWith("/client/assignment", StringComparison.Ordinal))
+            {
+                var config = (await response.Content.ReadFromJsonAsync<JsonObject>(cancellation))!;
+                config.Remove("supportsResourceEdits");
+                response.Content.Dispose(); response.Content = JsonContent.Create(config);
+            }
+            return response;
         }
     }
 
@@ -59,7 +91,8 @@ internal static class Program
         File.WriteAllText(SettingsService.TimetableStoragePath, yaml);
         SettingsService.Save(new AppSettings { IsOobeCompleted = true, ThemeMode = "system", FontScale = 1.25, IsNexVoiceWakeEnabled = false, NexApiKey = "local-only-fixture" });
         AppServices.Initialize();
-        CentralManagementService Start() { var service = new CentralManagementService(new(new FixtureTransport(host))); service.Start(); return service; }
+        var writes = new FixtureWrites();
+        CentralManagementService Start() { var service = new CentralManagementService(new(new FixtureTransport(host, writes))); service.Start(); return service; }
         static async Task Until(Func<bool> condition, string reason)
         {
             using var limit = new CancellationTokenSource(TimeSpan.FromSeconds(12));
@@ -104,10 +137,76 @@ internal static class Program
         await Until(() => AppServices.Settings.CentralManagement.AppliedRevision > expected, "Local edits did not publish automatically");
         var published = (await www.GetFromJsonAsync<JsonObject>(classroom))!;
         Check(JsonNode.Parse(published["settingsJson"]!.ToString())!["themeMode"]!.ToString() == "light" && published["timetableYaml"]!.ToString().Contains("Chemistry"), "Local settings and timetable missing from paired class");
+        async Task WebPut(string resource, long baseline, object payload)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Put, classroom + "/" + resource) { Content = JsonContent.Create(payload) };
+            request.Headers.IfMatch.Add(new($"\"{baseline}\""));
+            using var response = await www.SendAsync(request); response.EnsureSuccessStatusCode();
+        }
+
+        var localWrite = writes.Pause();
+        AppServices.Settings.ThemeMode = "dark"; AppServices.SaveSettings();
+        await localWrite;
+        await WebPut("timetable", AppServices.Settings.CentralManagement.AppliedRevision,
+            new { subjects = new[] { new { name = "Geography" } }, schedules = Array.Empty<object>() });
+        writes.Resume();
+        await Until(() => AppServices.Schedule.Profile.Subjects.Any(s => s.Name == "Geography"), "A simultaneous classroom setting prevented the web timetable from reaching the desktop");
+        var merged = (await www.GetFromJsonAsync<JsonObject>(classroom))!;
+        Check(AppServices.Settings.ThemeMode == "dark" && JsonNode.Parse(merged["settingsJson"]!.ToString())!["themeMode"]!.ToString() == "dark" && merged["timetableYaml"]!.ToString().Contains("Geography"), "A cross-resource edit overwrote the other resource");
+
+        localWrite = writes.Pause();
+        AppServices.Settings.FontScale = 1.4; AppServices.SaveSettings();
+        await localWrite;
+        await WebPut("settings", AppServices.Settings.CentralManagement.AppliedRevision, new { settingsJson = "{\"themeMode\":\"light\",\"fontScale\":1.6}" });
+        writes.Resume();
+        await Until(() => AppServices.Settings.FontScale == 1.6 && AppServices.Settings.CentralManagement.LastConflictDraft != null, "An overlapping edit did not preserve the remote winner and a classroom draft");
+        var drafts = Path.Combine(SettingsService.DataDirectory, "CentralDrafts");
+        var archived = await File.ReadAllTextAsync(Path.Combine(drafts, AppServices.Settings.CentralManagement.LastConflictDraft!));
+        Check((double?)JsonNode.Parse(archived)?["fontScale"] == 1.4 && !archived.Contains("local-only-fixture") && AppServices.Settings.CentralManagement.LastStatus.Contains("CentralDrafts"), "The local conflict draft is incomplete or shares private preferences");
+
+        var binding = AppServices.Settings.CentralManagement;
+        var savedName = binding.LastConflictDraft!;
+        foreach (var invalid in new[] { "../Settings.json", ((savedName[0] == '0') ? "1" : "0") + savedName[1..] })
+        {
+            binding.LastConflictDraft = invalid;
+            var rejected = false;
+            try { await active.RestoreLastConflictAsync(); } catch (InvalidOperationException) { rejected = true; }
+            Check(rejected && AppServices.Settings.FontScale == 1.6, "A draft from outside this device and class was accepted");
+        }
+        binding.LastConflictDraft = savedName;
+        var cloudBeforeRestore = binding.AppliedRevision;
+        await active.RestoreLastConflictAsync();
+        await Until(() => AppServices.Settings.CentralManagement.AppliedRevision > cloudBeforeRestore && AppServices.Settings.FontScale == 1.4, "Explicit conflict restore did not publish a guarded edit");
+        Check(AppServices.Settings.CentralManagement.LastConflictDraft == null && File.Exists(Path.Combine(drafts, savedName)), "The original conflict archive disappeared after restoration");
+
+        writes.Legacy = true;
+        AppServices.Settings.FontScale = 1.35; AppServices.SaveSettings();
+        await Until(() => AppServices.Settings.CentralManagement.LastStatus.Contains("尚不支持分项同步"), "An older server did not show protected pending edits");
+        Check(Directory.GetFiles(drafts, "*.pending.json").Length == 1 && writes.UnsafePublishes == 0, "An older server received an unguarded snapshot or lost the draft");
+        using var legacyCourse = await www.PutAsJsonAsync(classroom + "/timetable", new { subjects = new[] { new { name = "Mathematics" } }, schedules = Array.Empty<object>() });
+        legacyCourse.EnsureSuccessStatusCode();
+        await Until(() => AppServices.Schedule.Profile.Subjects.Any(s => s.Name == "Mathematics"), "A pending setting blocked incoming timetables from older services");
+        Check(AppServices.Settings.FontScale == 1.35 && Directory.GetFiles(drafts, "*.pending.json").Length == 1, "A legacy downlink touched the pending classroom setting");
+        active.Dispose(); AppServices.Initialize(); writes.Legacy = false;
+        using var resumed = Start();
+        var beforeResume = AppServices.Settings.CentralManagement.AppliedRevision;
+        await Until(() => AppServices.Settings.CentralManagement.AppliedRevision > beforeResume && Directory.GetFiles(drafts, "*.pending.json").Length == 0, "An unsent edit was lost across a service restart");
+        var restored = (await www.GetFromJsonAsync<JsonObject>(classroom))!;
+        Check((double?)JsonNode.Parse(restored["settingsJson"]!.ToString())?["fontScale"] == 1.35 && AppServices.Settings.FontScale == 1.35 && restored["timetableYaml"]!.ToString().Contains("Mathematics") && writes.UnsafePublishes == 0, "Resumed pending edit did not reach the class");
+        writes.Legacy = true;
+        var secondProfile = Path.Combine(SettingsService.DataDirectory, "second-class-fixture.yaml");
+        await File.WriteAllTextAsync(secondProfile, yaml.Replace("Physics", "Biology", StringComparison.Ordinal));
+        AppServices.LoadTimetable(secondProfile);
+        await Until(() => AppServices.Settings.CentralManagement.LastStatus.Contains("尚不支持分项同步"), "Older service did not preserve pending timetable");
+        using var legacyAppearance = await www.PutAsJsonAsync(classroom + "/settings", new { settingsJson = "{\"themeMode\":\"system\"}" }); legacyAppearance.EnsureSuccessStatusCode();
+        await Until(() => AppServices.Settings.ThemeMode == "system", "A pending timetable blocked incoming settings from older services");
+        Check(AppServices.Schedule.Profile.Subjects.Any(s => s.Name == "Biology") && Directory.GetFiles(drafts, "*.pending.json").Length == 1 && writes.UnsafePublishes == 0, "Downstream legacy settings erased the pending timetable");
         using var removed = await www.DeleteAsync("api/v1/devices/" + (string)link["clientId"]!); removed.EnsureSuccessStatusCode();
         await Until(() => !AppServices.Settings.CentralManagement.IsEnabled, "Owner revocation did not stop automatic sync");
-        AppServices.Settings.ThemeMode = "system"; AppServices.SaveSettings();
-        Check(!File.Exists(secretPath) && SettingsService.Load().ThemeMode == "system" && AccountService.Current == null, "Revocation did not preserve local editing");
-        Console.WriteLine("PASS: real desktop service, built-in URL and no account, device cancellation, Windows-protected restart, initial timetable, automatic two-way edits, owner revoke and independent local settings");
+        AppServices.Settings.ThemeMode = "light"; AppServices.SaveSettings();
+        var revokedDraft = AppServices.Settings.CentralManagement.LastConflictDraft;
+        Check(!File.Exists(secretPath) && SettingsService.Load().ThemeMode == "light" && AccountService.Current == null && revokedDraft != null &&
+            File.ReadAllText(Path.Combine(drafts, revokedDraft)).Contains("Biology"), "Revocation did not preserve local editing and an accessible offline timetable");
+        Console.WriteLine("PASS: anonymous desktop pairing, automatic edits, independent concurrent changes, overlapping drafts, safe legacy negotiation, restart recovery, owner revoke and independent local settings");
     }
 }

@@ -43,6 +43,7 @@ public sealed partial class CentralManagementService
             _approved = false;
             s.ServerUrl = AppSettings.DefaultCentralEndpoint;
             s.ClientId = ticket.ClientId;
+            s.LastConflictDraft = null;
             s.IsEnabled = true;
             s.PairingCode = ticket.Code;
             s.SelectedClassId = s.SelectedClassName = "";
@@ -108,7 +109,7 @@ public sealed partial class CentralManagementService
         ResetConnection();
         AppServices.Settings.CentralManagement.ClientId = "";
         CentralPairingCredential.Forget();
-        SetStatus(expired ? "配对码已失效，请重新获取" : "集控端已解除绑定");
+        SetStatus((expired ? "配对码已失效，请重新获取" : "集控端已解除绑定") + DraftNotice(AppServices.Settings.CentralManagement));
     }
 
     public async Task DisconnectAsync()

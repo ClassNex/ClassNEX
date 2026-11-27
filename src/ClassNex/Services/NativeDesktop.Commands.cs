@@ -81,6 +81,9 @@ internal sealed partial class NativeDesktop
             case "central.unpair" when AppServices.Management is { } bound:
                 await bound.DisconnectAsync();
                 return s.CentralManagement.LastStatus;
+            case "central.restoreDraft" when AppServices.Management is { } management:
+                await management.RestoreLastConflictAsync();
+                return AppServices.Settings.CentralManagement.LastStatus;
             case NativeSettingsKeys.Models:
                 return string.Join('\n', await NexModelCatalog.FetchAsync(NexConfig.ResolveBaseUrl(s), NexConfig.ResolveApiKey(s)));
             case TestNex:

@@ -30,7 +30,12 @@ public sealed partial class CentralStore
         await using var stream = File.OpenRead(_statePath);
         _state = await JsonSerializer.DeserializeAsync<CentralState>(stream, JsonOptions)
                  ?? new CentralState();
-        foreach (var record in _state.Classes.Values) record.AwaitingFirstTimetable ??= !HasTimetable(record.TimetableYaml);
+        foreach (var record in _state.Classes.Values)
+        {
+            record.AwaitingFirstTimetable ??= !HasTimetable(record.TimetableYaml);
+            if (record.Revision > 0 && record.SettingsRevision == 0 && record.TimetableRevision == 0)
+                record.SettingsRevision = record.TimetableRevision = record.Revision;
+        }
     }
 
     public async Task RegisterDeviceAsync(CentralUser user, CentralDeviceRegistrationRequest request)
@@ -175,7 +180,7 @@ public sealed partial class CentralStore
                     record.TimetableYaml = report.TimetableYaml;
                     record.AwaitingFirstTimetable = false;
                 }
-                if (before != (record.SettingsJson, record.TimetableYaml)) { record.Revision++; record.UpdatedAt = DateTime.UtcNow; }
+                record.RecordChanges(before);
             }
 
             await SaveAsync();
@@ -211,11 +216,11 @@ public sealed partial class CentralStore
                 !string.Equals(record.TimetableYaml, timetable, StringComparison.Ordinal);
             if (changed)
             {
+                var before = (record.SettingsJson, record.TimetableYaml);
                 record.SettingsJson = settings;
                 record.TimetableYaml = timetable;
                 record.Message = "由客户端自动同步";
-                record.Revision++;
-                record.UpdatedAt = DateTime.UtcNow;
+                record.RecordChanges(before);
             }
 
             device.LastSeen = DateTime.UtcNow;
@@ -302,7 +307,8 @@ public sealed partial class CentralStore
         string ownerSubject,
         string? settingsJson,
         string? timetableYaml,
-        string message)
+        string message,
+        long? baseRevision = null)
     {
         if (!string.IsNullOrWhiteSpace(settingsJson)) settingsJson = CentralSettingsPayload.FilterIncoming(settingsJson);
         var hasTimetable = HasTimetable(timetableYaml);
@@ -314,19 +320,7 @@ public sealed partial class CentralStore
                 !string.Equals(record.OwnerSubject, ownerSubject, StringComparison.Ordinal))
                 return null;
 
-            var settings = settingsJson ?? record.SettingsJson;
-            var timetable = timetableYaml ?? record.TimetableYaml;
-            var changed = !string.Equals(record.SettingsJson, settings, StringComparison.Ordinal) ||
-                          !string.Equals(record.TimetableYaml, timetable, StringComparison.Ordinal);
-            record.SettingsJson = settings;
-            record.TimetableYaml = timetable;
-            if (hasTimetable) record.AwaitingFirstTimetable = false;
-            record.Message = message.Trim();
-            if (changed)
-            {
-                record.Revision++;
-                record.UpdatedAt = DateTime.UtcNow;
-            }
+            ApplyEdit(record, settingsJson, timetableYaml, hasTimetable, message, baseRevision);
             await SaveAsync();
             return record.Clone();
         }
@@ -424,6 +418,19 @@ public sealed class CentralClassRecord
     public string Name { get; set; } = "";
 
     public long Revision { get; set; }
+
+    public long SettingsRevision { get; set; }
+    public long TimetableRevision { get; set; }
+
+    internal void RecordChanges((string Settings, string Timetable) before)
+    {
+        var settingsChanged = before.Settings != SettingsJson;
+        var timetableChanged = before.Timetable != TimetableYaml;
+        if (!settingsChanged && !timetableChanged) return;
+        Revision++; UpdatedAt = DateTime.UtcNow;
+        if (settingsChanged) SettingsRevision = Revision;
+        if (timetableChanged) TimetableRevision = Revision;
+    }
 
     public DateTime UpdatedAt { get; set; }
 

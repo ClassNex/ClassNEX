@@ -26,7 +26,11 @@ public sealed record CentralConfigEnvelope(
     string SettingsJson,
     string TimetableYaml,
     string Message,
-    DateTime UpdatedAt);
+    DateTime UpdatedAt)
+{
+    /// <summary>此服务能够原子校验单项设置或课表的基准修订；旧服务不返回此标记。</summary>
+    public bool SupportsResourceEdits { get; init; }
+}
 
 /// <summary>设备上报最近同步状态时提交的本机版本和课堂配置。</summary>
 /// <param name="ClientId">本地安装生成的设备标识，不是 OAuth 客户端 ID。</param>
@@ -95,6 +99,14 @@ public sealed record CentralClientPublishRequest(
     string ClientId,
     string SettingsJson,
     string TimetableYaml);
+
+/// <summary>只提交一种资源，并声明修改时所见的班级及修订；未填写的资源绝不替换。</summary>
+/// <param name="ClientId">提交更改的已登记设备。</param>
+/// <param name="ClassId">编辑开始时该设备所属的班级；调班后不重放旧草稿。</param>
+/// <param name="BaseRevision">编辑该资源时已知的班级修订，而非发送时读到的新修订。</param>
+/// <param name="SettingsJson">课堂设置；与课表必须且只能提供一项。</param>
+/// <param name="TimetableYaml">工作课表的 CSES 文本；仅编辑设置时为 null。</param>
+public sealed record CentralResourceEdit(string ClientId, string ClassId, long BaseRevision, string? SettingsJson, string? TimetableYaml);
 
 /// <summary>发布后返回的班级修订标识，不重复携带完整配置。</summary>
 /// <param name="ClassId">班级的稳定标识。</param>

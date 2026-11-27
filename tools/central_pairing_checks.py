@@ -58,6 +58,9 @@ def exercise_pairing(request, port, provider_port, host, owner):
     api('DELETE', 'devices/' + t['clientId'], other, expect=404)
 
     seed = 'version: 1\nsubjects:\n  - name: Math\nschedules: []\n'
+    fresh = api('GET', read, d)[1]
+    api('POST', 'client/report', d, {'clientId':t['clientId'],'appVersion':'test','machineName':'fixture','settingsJson':'','timetableYaml':'','error':None})
+    assert api('GET', read, d)[1] == fresh
     api('PUT', room+'/timetable', owner, {'version':1,'subjects':[],'schedules':[]})
     assert not api('GET', read, d)[1]['timetableYaml']
     baseline = api('GET', read, d)[1]['revision']
@@ -80,9 +83,31 @@ def exercise_pairing(request, port, provider_port, host, owner):
     modified = api('GET', room, owner)[1]
     assert revision['revision'] > from_web['revision'] and json.loads(modified['settingsJson']) == {'themeMode':'light'} and modified['timetableYaml'] == change['timetableYaml']
 
+    assert api('GET', read, d)[1]['supportsResourceEdits'] is True
+    base = revision['revision']; guarded = {**owner, 'If-Match':f'"{base}"'}
+    curriculum = {'version':1,'subjects':[{'name':'Geography'}],'schedules':[]}
+    local = {'clientId':t['clientId'],'classId':linked['classId'],'baseRevision':base,'settingsJson':'{"themeMode":"system"}'}
+    _, course = api('PUT', room+'/timetable', guarded, curriculum)
+    _, revision = api('POST', 'client/changes', d, local)
+    assert revision['revision'] == base+2
+    together = api('GET', read, d)[1]
+    assert together['timetableYaml'] == course['timetableYaml'] and json.loads(together['settingsJson']) == {'themeMode':'system'}
+    assert api('POST','client/changes',d,local)[1]['revision'] == revision['revision']
+    assert api('PUT', room+'/timetable', guarded, curriculum)[1]['revision'] == revision['revision']
+    api('POST','client/changes', d, {**local,'settingsJson':'{}'}, 409)
+    api('POST','client/changes', d, {**local,'classId':other_class}, 409)
+    api('POST','client/changes', d, {**local,'timetableYaml':seed}, 400)
+    api('POST','client/changes', d, {**local,'settingsJson':None,'timetableYaml':'['}, 400)
+    api('PUT', room+'/settings',guarded, {'settingsJson':'{}'}, 409)
+    api('PUT', room, guarded, {'settingsJson':'{}','timetableYaml':seed}, 409)
+    api('PUT', room+'/timetable', {**owner,'If-Match':'garbage'}, curriculum, 400)
+    assert api('GET', read, d)[1] == together
+    change['timetableYaml'] = course['timetableYaml']
+
     second = start(); api('POST', 'pairing/claim', owner, {'code':second['code'], 'classId':linked['classId']})
     api('GET', read, device(second), expect=401)
     api('POST', 'client/publish', device(second), change, 401)
+    api('POST', 'client/changes', device(second), local, 401)
     api('DELETE', 'pairing/device?clientId='+second['clientId'], device(second), expect=204)
     status(second, 401)
     unclaimed = start(); api('DELETE', 'pairing/device?clientId='+unclaimed['clientId'], device(unclaimed), expect=204)
@@ -94,5 +119,6 @@ def exercise_pairing(request, port, provider_port, host, owner):
         assert api('GET', read, d)[1]['revision'] == revision['revision']
         api('DELETE', 'devices/'+t['clientId'], owner, expect=204); status(t, 401)
         api('GET', read, d, expect=401); api('POST','client/publish',d,change,401)
+        api('POST','client/changes', d, local, 401)
         assert api('GET', room, owner)[1]['timetableYaml'] == change['timetableYaml']
     return after_restart

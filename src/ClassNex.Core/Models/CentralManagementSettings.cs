@@ -25,6 +25,9 @@ public sealed class CentralManagementSettings
     /// <summary>本机已应用的班级配置修订号。</summary>
     public long AppliedRevision { get; set; }
 
+    /// <summary>最近一次同步冲突留下的本机草稿文件名，不上传给班级。</summary>
+    public string? LastConflictDraft { get; set; }
+
     /// <summary>最近完成同步的时间，未同步时为空。</summary>
     public DateTime? LastSyncTime { get; set; }
 

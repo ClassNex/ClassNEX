@@ -122,6 +122,14 @@ public sealed class CentralManagementClient : IDisposable
                ?? throw new InvalidOperationException("集控服务没有返回发布结果");
     }
 
+    /// <summary>按基准修订提交单种资源。旧服务不会收到完整快照作为后备写入。</summary>
+    public async Task<CentralClassRevision> PublishEditAsync(string serverUrl, string credential, CentralResourceEdit edit, CancellationToken cancellationToken)
+    {
+        using var response = await SendAsync(serverUrl, "/api/v1/client/changes", HttpMethod.Post, credential, JsonSerializer.Serialize(edit, JsonOptions), cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<CentralClassRevision>(JsonOptions, cancellationToken) ?? throw new InvalidDataException("未收到集控修订号");
+    }
+
     private async Task<HttpResponseMessage> SendAsync(
         string serverUrl,
         string path,

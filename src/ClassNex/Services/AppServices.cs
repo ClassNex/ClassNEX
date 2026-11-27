@@ -49,6 +49,7 @@ public static class AppServices
     public static event Action? SettingsChanged;
 
     public static event Action? LocalSettingsChanged;
+    internal static event Action? LocalTimetableSwitched;
 
     public static event Action? ManagedSettingsApplied;
 
@@ -103,6 +104,7 @@ public static class AppServices
     private static void FinishTimetableSwitch()
     {
         if (Schedule.Profile.ImportedTimeLayout is { } imported) Settings.TimeLayout = imported;
+        LocalTimetableSwitched?.Invoke();
         SaveSettings();
     }
 

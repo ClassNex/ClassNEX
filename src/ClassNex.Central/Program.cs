@@ -281,9 +281,10 @@ app.MapPut("/api/v1/classes/{classId}/timetable", async (
             user.Subject,
             null,
             CsesCodec.SerializeWorkingProfile(profile),
-            "由集控中心更新课程表");
+            "由集控中心更新课程表", ReadEditRevision(request));
         return updated is null ? Results.NotFound() : Results.Json(ToDetail(updated));
     }
+    catch (CentralEditConflict ex) { return Results.Conflict(new { message = ex.Message }); }
     catch (Exception ex)
     {
         return Results.BadRequest(new { message = ex.Message });
@@ -304,11 +305,12 @@ app.MapPut("/api/v1/classes/{classId}", async (
         var record = await store.UpdateClassAsync(
             classId,
             user.Subject,
-            update.SettingsJson ?? "",
-            update.TimetableYaml ?? "",
-            update.Message ?? "");
+            update.SettingsJson,
+            update.TimetableYaml,
+            update.Message ?? "", ReadEditRevision(request));
         return record is null ? Results.NotFound() : Results.Json(ToDetail(record));
     }
+    catch (CentralEditConflict ex) { return Results.Conflict(new { message = ex.Message }); }
     catch (Exception ex)
     {
         return Results.BadRequest(new { message = ex.Message });
@@ -332,9 +334,10 @@ app.MapPut("/api/v1/classes/{classId}/settings", async (
             user.Subject,
             update.SettingsJson,
             null,
-            "由集控中心更新客户端设置");
+            "由集控中心更新客户端设置", ReadEditRevision(request));
         return updated is null ? Results.NotFound() : Results.Json(ToDetail(updated));
     }
+    catch (CentralEditConflict ex) { return Results.Conflict(new { message = ex.Message }); }
     catch (Exception ex)
     {
         return Results.BadRequest(new { message = ex.Message });
@@ -373,7 +376,7 @@ app.MapGet("/api/v1/client/assignment", async (
         record.SettingsJson,
         record.TimetableYaml,
         record.Message,
-        record.UpdatedAt));
+        record.UpdatedAt) { SupportsResourceEdits = true });
 });
 
 app.MapPost("/api/v1/client/report", async (
@@ -417,12 +420,34 @@ app.MapPost("/api/v1/client/publish", async (
     }
 });
 
+app.MapPost("/api/v1/client/changes", async (CentralResourceEdit edit, HttpRequest request) =>
+{
+    var owner = await DeviceOwnerAsync(request, edit.ClientId);
+    if (owner is null) return Results.Unauthorized();
+    try
+    {
+        var updated = await store.PublishEditAsync(owner, edit);
+        return updated == null ? Results.NotFound() : Results.Json(updated);
+    }
+    catch (CentralEditConflict ex) { return Results.Conflict(new { message = ex.Message }); }
+    catch (Exception ex) when (ex is ArgumentException or InvalidDataException or System.Text.Json.JsonException or YamlDotNet.Core.YamlException) { return Results.BadRequest(new { message = ex.Message }); }
+});
+
 Console.WriteLine("ClassNEX Central");
 Console.WriteLine($"Casdoor: {casdoorUrl}");
 Console.WriteLine($"Public URL: {publicBaseUrl}");
 Console.WriteLine($"State file: {Path.Combine(dataDirectory, "central-state.json")}");
 
 app.Run();
+
+static long? ReadEditRevision(HttpRequest request)
+{
+    if (!request.Headers.TryGetValue("If-Match", out var value)) return null;
+    var tag = value.ToString().Trim();
+    if (tag.Length >= 3 && tag[0] == '"' && tag[^1] == '"' && long.TryParse(tag.AsSpan(1, tag.Length - 2), System.Globalization.NumberStyles.None,
+        System.Globalization.CultureInfo.InvariantCulture, out var revision)) return revision;
+    throw new ArgumentException("无效的班级基准修订。");
+}
 
 Task<CentralUser?> GetBrowserUserAsync(HttpRequest request) => request.Cookies.TryGetValue(SessionCookie, out var id) ? sessionStore.GetAsync(id) : Task.FromResult<CentralUser?>(null);
 

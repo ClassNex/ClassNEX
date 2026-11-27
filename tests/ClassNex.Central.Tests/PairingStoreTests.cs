@@ -104,6 +104,71 @@ public sealed class PairingStoreTests
     }
 
     [TestMethod]
+    public async Task DesktopAndBrowserMergeOnlyIndependentResourcesAndSurviveRestart()
+    {
+        var store = new CentralStore(_folder.FullName);
+        var ticket = (await store.StartPairingAsync(Info, "local", Start))!;
+        var (_, device) = await store.ClaimAsync(Owner, new(ticket.Code), "local", Start);
+        var id = device!.ClassId;
+        const string settings = "{\"themeMode\":\"light\"}";
+        const string yaml = "version: 1\nsubjects:\n  - name: History\nschedules: []\n";
+        var edit = new CentralResourceEdit(ticket.ClientId, id, 0, settings, null);
+        await Task.WhenAll(store.UpdateClassAsync(id, Owner.Subject, null, yaml, "网页", 0), store.PublishEditAsync(Owner.Subject, edit));
+        var result = (await store.GetClassAsync(id, Owner.Subject))!;
+        Assert.AreEqual(2L, result.Revision);
+        Assert.AreEqual(settings, result.SettingsJson); Assert.AreEqual(yaml, result.TimetableYaml);
+
+        store = new(_folder.FullName); await store.InitializeAsync();
+        var duplicate = await store.PublishEditAsync(Owner.Subject, edit);
+        Assert.AreEqual(result.Revision, duplicate!.Revision);
+        await Assert.ThrowsAsync<CentralEditConflict>(() => store.PublishEditAsync(Owner.Subject, edit with { SettingsJson = "{}" }));
+        await Assert.ThrowsAsync<CentralEditConflict>(() => store.UpdateClassAsync(id, Owner.Subject, null, yaml + "# stale\n", "", 0));
+        await Assert.ThrowsAsync<CentralEditConflict>(() => store.UpdateClassAsync(id, Owner.Subject, "{}", yaml + "# must not apply\n", "", 0));
+        await Assert.ThrowsAsync<CentralEditConflict>(() => store.PublishEditAsync(Owner.Subject, edit with { BaseRevision = 10 }));
+        await Assert.ThrowsAsync<ArgumentException>(() => store.PublishEditAsync(Owner.Subject, edit with { TimetableYaml = yaml }));
+        Assert.IsNull(await store.PublishEditAsync("different-owner", edit));
+        var next = await store.CreateClassAsync(Owner, new("另一间教室"));
+        await store.AssignDeviceClassAsync(ticket.ClientId, Owner.Subject, next.ClassId);
+        await Assert.ThrowsAsync<CentralEditConflict>(() => store.PublishEditAsync(Owner.Subject, edit));
+        Assert.AreEqual(0L, (await store.GetClassAsync(next.ClassId, Owner.Subject))!.Revision);
+        var unchanged = (await store.GetClassAsync(id, Owner.Subject))!;
+        Assert.AreEqual(result.Revision, unchanged.Revision); Assert.AreEqual(settings, unchanged.SettingsJson); Assert.AreEqual(yaml, unchanged.TimetableYaml);
+    }
+
+    [TestMethod]
+    public async Task LegacySeedAndLegacyPublishInvalidateOnlyTheResourceTheyModify()
+    {
+        var store = new CentralStore(_folder.FullName);
+        var t = (await store.StartPairingAsync(Info, "local", Start))!;
+        var (_, device) = await store.ClaimAsync(Owner, new(t.Code), "local", Start);
+        var id = device!.ClassId;
+        const string yaml = "version: 1\nsubjects:\n  - name: Math\nschedules: []\n";
+        await store.ReportDeviceAsync(Owner.Subject, new(t.ClientId, "fixture", "room", "{}", yaml, null));
+        var seed = (await store.GetClassAsync(id, Owner.Subject))!;
+        var stale = new CentralResourceEdit(t.ClientId, id, 0, "{\"themeMode\":\"light\"}", null);
+        await Assert.ThrowsAsync<CentralEditConflict>(() => store.PublishEditAsync(Owner.Subject, stale));
+        await Assert.ThrowsAsync<CentralEditConflict>(() => store.PublishEditAsync(Owner.Subject, stale with { SettingsJson = null, TimetableYaml = yaml + "# old\n" }));
+        await store.PublishDeviceConfigAsync(Owner.Subject, new(t.ClientId, "{}", yaml + "# newer\n"));
+        await store.PublishEditAsync(Owner.Subject, stale with { BaseRevision = seed.Revision });
+        await Assert.ThrowsAsync<CentralEditConflict>(() => store.UpdateClassAsync(id, Owner.Subject, null, yaml, "", seed.Revision));
+        await store.ReportDeviceAsync(Owner.Subject, new(t.ClientId, "fixture", "room", "{}", yaml, null));
+        var current = (await store.GetClassAsync(id, Owner.Subject))!;
+        Assert.AreEqual(yaml + "# newer\n", current.TimetableYaml); Assert.AreEqual(stale.SettingsJson, current.SettingsJson);
+    }
+
+    [TestMethod]
+    public async Task MissingPerResourceRevisionInLegacyFileRequiresCurrentBaseline()
+    {
+        var path = Path.Combine(_folder.FullName, "central-state.json");
+        await File.WriteAllTextAsync(path, """{"classes":{"room":{"classId":"room","ownerSubject":"owner-a","revision":7,"settingsJson":"{}","timetableYaml":""}}}""");
+        var store = new CentralStore(_folder.FullName); await store.InitializeAsync();
+        const string update = "{\"themeMode\":\"dark\"}";
+        await Assert.ThrowsAsync<CentralEditConflict>(() => store.UpdateClassAsync("room", Owner.Subject, update, null, "", 6));
+        var saved = await store.UpdateClassAsync("room", Owner.Subject, update, null, "", 7);
+        Assert.AreEqual(8L, saved!.Revision);
+    }
+
+    [TestMethod]
     public async Task NewClassNeverSendsEmptyScaffoldingOverTheFirstRealTimetable()
     {
         var store = new CentralStore(_folder.FullName);
