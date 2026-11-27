@@ -58,7 +58,20 @@ public partial class App
             if (!ReferenceEquals(account, AccountService.Current) || AppServices.Settings.NexApiKey != "local-test-value" ||
                 CentralSettingsPayload.Serialize(AppServices.Settings).Contains("local-test-value", StringComparison.Ordinal) ||
                 SettingsService.Load().ThemeMode != "dark") throw new InvalidOperationException("Managed settings lost account, local credentials or theme");
-            if (!File.Exists(Path.Combine(SettingsService.DataDirectory, "account.json"))) throw new InvalidOperationException("Account not persisted");
+            var accountFile = Path.Combine(SettingsService.DataDirectory, "account.json");
+            static bool ProtectedRecord(string path, AccountProfile expected)
+            {
+                using var document = JsonDocument.Parse(File.ReadAllBytes(path));
+                return !document.RootElement.TryGetProperty(nameof(AccountProfile.AccessToken), out _) &&
+                    document.RootElement.TryGetProperty("ProtectedAccessToken", out var encrypted) && encrypted.TryGetBytesFromBase64(out var bytes) && bytes.Length > 0 &&
+                    !File.ReadAllText(path).Contains(expected.AccessToken, StringComparison.Ordinal);
+            }
+            if (!ProtectedRecord(accountFile, account)) throw new InvalidOperationException("Account credential not protected on disk");
+            File.WriteAllText(accountFile, JsonSerializer.Serialize(account));
+            AccountService.Load();
+            if (!ProtectedRecord(accountFile, account) || AccountService.Current is not { } restored || restored.AccessToken != account.AccessToken)
+                throw new InvalidOperationException("Old account did not migrate without losing its session");
+            account = restored;
             await VerifyLiveSyncAsync(control, account.AccessToken);
             AppServices.Settings.NexApiBaseUrl = issuer;
             var agent = AppServices.Ai.CreateAgent(Services.NexIntelligence.NexPermission.ReadOnly);
@@ -115,6 +128,7 @@ public partial class App
                     var legacy = Path.Combine(SettingsService.DataDirectory, "account_avatar.png");
                     await File.WriteAllBytesAsync(legacy, pixels);
                     AccountService.Load();
+                    Require(AccountService.Current is { Name: "second", AccessToken: "fixture-second" }, "The protected credential did not survive reopening");
                     await VerifyIdentityAsync("课表测试乙", "", false);
                     Require(!File.Exists(legacy) && AccountService.AvatarImagePath is null, "Unowned legacy avatar was reused at cold load");
                     AppServices.Settings.UserName = "单独保存的本机名称";

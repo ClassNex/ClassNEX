@@ -33,12 +33,22 @@ using var auth = new CentralAuthService(
     publicBaseUrl);
 
 var loginStates = new ConcurrentDictionary<string, PendingLogin>();
+var publicPath = new Uri(auth.PublicBaseUrl).AbsolutePath.TrimEnd('/');
+if (publicPath.Length != 0) app.UsePathBase(publicPath);
+CookieOptions LoginCookie(HttpContext context) => new()
+{
+    HttpOnly = true,
+    SameSite = SameSiteMode.Lax,
+    Secure = auth.PublicBaseUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase) || IsHttps(context),
+    Path = publicPath + "/auth/callback",
+};
+static string LoginCookieName(string state) => "classnex_central_login_" + state;
 app.MapPairing(store, GetBrowserUserAsync, publicBaseUrl);
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-app.MapGet("/auth/login", () =>
+app.MapGet("/auth/login", (HttpContext context) =>
 {
     foreach (var expired in loginStates.Where(item =>
                  item.Value.ExpiresAt <= DateTimeOffset.UtcNow))
@@ -51,34 +61,38 @@ app.MapGet("/auth/login", () =>
         .TrimEnd('=')
         .Replace('+', '-')
         .Replace('/', '_');
-    loginStates[state] = new PendingLogin(
+    var proof = CreateToken();
+    var pending = new PendingLogin(
         DateTimeOffset.UtcNow.AddMinutes(10),
         verifier,
-        auth.PublicBaseUrl + "/auth/callback");
-    return Results.Redirect(auth.BuildLoginUrl(
-        state,
-        challenge,
-        loginStates[state].RedirectUri));
+        auth.PublicBaseUrl + "/auth/callback",
+        SHA256.HashData(Encoding.ASCII.GetBytes(proof)));
+    loginStates[state] = pending;
+    var options = LoginCookie(context);
+    options.Expires = pending.ExpiresAt;
+    context.Response.Headers.CacheControl = "no-store";
+    context.Response.Cookies.Append(LoginCookieName(state), proof, options);
+    return Results.Redirect(auth.BuildLoginUrl(state, challenge, pending.RedirectUri));
 });
 
 app.MapGet("/auth/callback", async (
     string? code,
     string? state,
     string? error,
-    string? error_description,
     HttpResponse response) =>
 {
-    if (!string.IsNullOrWhiteSpace(error))
-        return Results.BadRequest(
-            "登录未完成：" + (error_description ?? error));
+    response.Headers.CacheControl = "no-store";
+    response.Headers["Referrer-Policy"] = "no-referrer";
+    if (state is not { Length: 64 } || !loginStates.TryGetValue(state, out var pending) ||
+        !response.HttpContext.Request.Cookies.TryGetValue(LoginCookieName(state), out var proof) || proof.Length != 64 ||
+        !CryptographicOperations.FixedTimeEquals(pending.BrowserProofHash, SHA256.HashData(Encoding.ASCII.GetBytes(proof))) ||
+        !loginStates.TryRemove(state, out _))
+        return Results.BadRequest("请在发起登录的浏览器中完成授权，或返回集控中心重新登录。");
 
-    if (string.IsNullOrWhiteSpace(code) ||
-        string.IsNullOrWhiteSpace(state) ||
-        !loginStates.TryRemove(state, out var pending) ||
-        pending.ExpiresAt <= DateTimeOffset.UtcNow)
-    {
-        return Results.BadRequest("登录状态已失效，请重新登录");
-    }
+    response.Cookies.Delete(LoginCookieName(state), LoginCookie(response.HttpContext));
+    if (pending.ExpiresAt <= DateTimeOffset.UtcNow) return Results.BadRequest("登录状态已过期，请重新登录。");
+    if (!string.IsNullOrEmpty(error)) return Results.BadRequest("未完成账户授权，可返回集控中心重试。");
+    if (string.IsNullOrWhiteSpace(code)) return Results.BadRequest("账户服务未返回授权结果，请重新登录。");
 
     CentralUser? user;
     try
@@ -105,7 +119,7 @@ app.MapGet("/auth/callback", async (
     {
         HttpOnly = true,
         SameSite = SameSiteMode.Lax,
-        Secure = IsHttps(response.HttpContext),
+        Secure = auth.PublicBaseUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase) || IsHttps(response.HttpContext),
         Expires = DateTimeOffset.UtcNow.AddDays(7),
         Path = "/",
     });
@@ -455,7 +469,8 @@ static CentralClassDetail ToDetail(CentralClassRecord record) => new(
 public sealed record PendingLogin(
     DateTimeOffset ExpiresAt,
     string CodeVerifier,
-    string RedirectUri);
+    string RedirectUri,
+    byte[] BrowserProofHash);
 
 public sealed record CentralClassDetail(
     string ClassId,

@@ -71,7 +71,7 @@ internal static class Program
         var authorize = login.Headers.Location!; Check(login.StatusCode == HttpStatusCode.Redirect && authorize.GetLeftPart(UriPartial.Authority) == issuer.GetLeftPart(UriPartial.Authority), "Unexpected fixture issuer");
         using var redirect = await www.GetAsync(authorize); var callback = redirect.Headers.Location!;
         Check(redirect.StatusCode == HttpStatusCode.Redirect && callback.GetLeftPart(UriPartial.Authority) == host.GetLeftPart(UriPartial.Authority) && callback.AbsolutePath == "/Control/auth/callback", "Unexpected fixture callback");
-        using var completed = await www.GetAsync("auth/callback" + callback.Query); Check(completed.StatusCode == HttpStatusCode.Redirect, "Browser fixture login failed");
+        using var completed = await www.GetAsync(callback); Check(completed.StatusCode == HttpStatusCode.Redirect, "Browser fixture login failed");
         var secretPath = Path.Combine(SettingsService.DataDirectory, "central-device.bin");
         using (var first = Start())
         {

@@ -95,6 +95,7 @@ class Provider(http.server.BaseHTTPRequestHandler):
             'Bearer fixture-broken': {'sub': 'classnex-broken', 'name': '头像测试', 'preferred_username': 'broken', 'picture': '/fixture/bad-image'},
         }
         profile = profiles.get(self.headers.get('Authorization'))
+        if parsed.path == '/api/userinfo' and parsed.query: self.server.userinfo_query_seen = True
         if parsed.path != '/api/userinfo' or profile is None: return self.reply(401, {})
         self.reply(200, profile)
 
@@ -149,13 +150,24 @@ def run(central, desktop, paired_desktop=None):
             assert request(port,'GET','/api/v1/auth/me',headers={'Cookie':'classnex_central_session=fixture-current'})[0] == 200
             assert 'fixture-expired' not in json.loads(sessions_path.read_text(encoding='utf-8'))
             status, h, _ = request(port, 'GET', '/auth/login'); assert status == 302
+            proof = h['Set-Cookie'].split(';', 1)[0]
+            assert proof.startswith('classnex_central_login_') and 'httponly' in h['Set-Cookie'].lower() and 'samesite=lax' in h['Set-Cookie'].lower()
+            assert 'path=/Control/auth/callback' in h['Set-Cookie'] and h['Cache-Control'] == 'no-store'
             auth = url.urlsplit(h['Location']); assert auth.netloc == f'127.0.0.1:{provider_port}'
             args = url.parse_qs(auth.query); assert args['redirect_uri'] == [host+'/Control/auth/callback'] and 'prompt' not in args
             status, h, _ = request(provider_port, 'GET', auth.path+'?'+auth.query); assert status == 302
             callback = url.urlsplit(h['Location']); assert callback.path == '/Control/auth/callback'
-            status, h, _ = request(port, 'GET', '/auth/callback?'+callback.query)
+            callback_path = callback.path + '?' + callback.query
+            for absent_or_wrong in ({}, {'Cookie':proof.split('=',1)[0] + '=' + '0'*64}):
+                status, rejected, _ = request(port, 'GET', callback_path, headers=absent_or_wrong)
+                assert status == 400 and 'classnex_central_session=' not in rejected.get('Set-Cookie','')
+            status, h, _ = request(port, 'GET', callback_path, headers={'Cookie':proof})
             assert status == 302 and h['Location'] == host+'/Control/', (status,h.get('Location'))
             cookie = {'Cookie':h['Set-Cookie'].split(';')[0]}
+            assert request(port, 'GET', callback_path, headers={'Cookie':proof})[0] == 400
+            provider.userinfo_query_seen = False
+            assert request(port,'GET','/api/v1/auth/profile',headers={'Authorization':'Bearer invalid-fixture'})[0] == 401
+            assert not provider.userinfo_query_seen, 'userinfo credentials must not enter a URL'
             def api(path, method='GET', body=None, auth=cookie):
                 status, _, data = request(port, method, '/api/v1/'+path, body, auth)
                 assert status in (200,204), (path,status)
@@ -193,7 +205,7 @@ def run(central, desktop, paired_desktop=None):
             assert api('auth/me')['subject']=='classnex-fixture' and any(c['classId']==cls for c in api('classes'))
             status, h, _ = request(port,'GET','/auth/logout',headers=cookie)
             assert status==302 and h['Location']==host+'/Control/' and request(port,'GET','/api/v1/auth/me',headers=cookie)[0]==401
-            print('PASS: PKCE, /Control callback, profile, assignment, two-way settings/timetable, persisted session, logout, device pairing, owner isolation, scoped device sync, cancellation, restart and revocation' + (', desktop login, account switching/cancel/failure, avatar ownership/race/fallback, missing email, legacy identity, automatic bidirectional desktop sync, AI streaming' if desktop else ''))
+            print('PASS: browser-bound single-use PKCE callback, header-only userinfo, assignment, two-way settings/timetable, persisted session, logout, device pairing, owner isolation, scoped device sync, cancellation, restart and revocation' + (', desktop login, protected credential migration/reload, switching/cancel/failure, avatar ownership/race/fallback, missing email, legacy identity, automatic bidirectional desktop sync, AI streaming' if desktop else ''))
         finally:
             if central_process and central_process.poll() is None:
                 central_process.terminate(); central_process.wait(timeout=10)

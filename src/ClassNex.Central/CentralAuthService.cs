@@ -10,7 +10,7 @@ namespace ClassNex.Central;
 public sealed class CentralAuthService : IDisposable
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(20) };
+    private readonly HttpClient _http = new(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(20) };
     private readonly MemoryCache _cache = new(new MemoryCacheOptions { SizeLimit = 256 });
 
     public CentralAuthService(
@@ -95,17 +95,7 @@ public sealed class CentralAuthService : IDisposable
             CasdoorInternalUrl + "/api/userinfo");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         using var response = await _http.SendAsync(request);
-        if (!response.IsSuccessStatusCode)
-        {
-            using var fallback = await _http.GetAsync(
-                CasdoorInternalUrl + "/api/userinfo?access_token=" +
-                Uri.EscapeDataString(accessToken));
-            if (!fallback.IsSuccessStatusCode)
-                return null;
-            return ParseUser(
-                await fallback.Content.ReadAsStringAsync(),
-                key);
-        }
+        if (!response.IsSuccessStatusCode) return null;
 
         return ParseUser(
             await response.Content.ReadAsStringAsync(),

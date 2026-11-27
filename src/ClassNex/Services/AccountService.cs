@@ -38,9 +38,9 @@ public static partial class AccountService
         AccountProfile? profile = null;
         try
         {
-            if (File.Exists(FilePath)) profile = JsonSerializer.Deserialize<AccountProfile>(File.ReadAllText(FilePath), JsonOptions);
+            if (File.Exists(FilePath)) profile = ReadProfile();
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException) { }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException or FormatException or CryptographicException) { }
         ChangeProfile(profile is { IsLoggedIn: true } ? profile : null);
         RemoveCachedFile(Path.Combine(SettingsService.DataDirectory, "account_avatar.png"));
         if (_ownedAvatarPath is not null && AvatarImagePath is null) _ = RefreshAvatarAsync();
@@ -326,13 +326,42 @@ public static partial class AccountService
         return profile;
     }
 
+    private static AccountProfile? ReadProfile()
+    {
+        using var document = JsonDocument.Parse(File.ReadAllBytes(FilePath));
+        var root = document.RootElement;
+        var profile = root.Deserialize<AccountProfile>(JsonOptions);
+        if (profile is not { IsLoggedIn: true }) return null;
+        if (root.TryGetProperty("ProtectedAccessToken", out var stored))
+        {
+            if (stored.ValueKind != JsonValueKind.String || !stored.TryGetBytesFromBase64(out var encrypted) || encrypted.Length == 0) return null;
+            var clear = ProtectedData.Unprotect(encrypted, null, DataProtectionScope.CurrentUser);
+            try { profile.AccessToken = Encoding.UTF8.GetString(clear); }
+            finally { CryptographicOperations.ZeroMemory(clear); }
+        }
+        else if (!string.IsNullOrEmpty(profile.AccessToken))
+        {
+            try { SaveProfile(profile); }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException or CryptographicException) { }
+        }
+        return profile;
+    }
+
     private static void SaveProfile(AccountProfile profile)
     {
         SettingsService.EnsureDataDirectory();
         var temporary = FilePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
-            File.WriteAllText(temporary, JsonSerializer.Serialize(profile, JsonOptions));
+            var record = JsonSerializer.SerializeToNode(profile, JsonOptions)!.AsObject();
+            record.Remove(nameof(AccountProfile.AccessToken));
+            if (!string.IsNullOrEmpty(profile.AccessToken))
+            {
+                var clear = Encoding.UTF8.GetBytes(profile.AccessToken);
+                try { record["ProtectedAccessToken"] = Convert.ToBase64String(ProtectedData.Protect(clear, null, DataProtectionScope.CurrentUser)); }
+                finally { CryptographicOperations.ZeroMemory(clear); }
+            }
+            File.WriteAllText(temporary, record.ToJsonString(JsonOptions));
             File.Move(temporary, FilePath, true);
         }
         finally { RemoveCachedFile(temporary); }

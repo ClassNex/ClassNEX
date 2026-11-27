@@ -31,10 +31,11 @@ def exercise_pairing(request, port, provider_port, host, owner):
 
     assert request(provider_port, 'GET', '/fixture/second')[0] == 200
     s, h, _ = request(port, 'GET', '/auth/login'); assert s == 302
+    browser_proof = {'Cookie': h['Set-Cookie'].split(';', 1)[0]}
     link = url.urlsplit(h['Location']); assert link.netloc == f'127.0.0.1:{provider_port}'
     s, h, _ = request(provider_port, 'GET', link.path + '?' + link.query); assert s == 302
     callback = url.urlsplit(h['Location']); assert callback.netloc == url.urlsplit(host).netloc
-    s, h, _ = request(port, 'GET', '/auth/callback?' + callback.query); assert s == 302
+    s, h, _ = request(port, 'GET', callback.path + '?' + callback.query, headers=browser_proof); assert s == 302
     other = {'Cookie':h['Set-Cookie'].split(';', 1)[0]}
     assert request(provider_port, 'GET', '/fixture/session')[0] == 200
     assert api('GET', 'auth/me', other)[1]['subject'] == 'classnex-second'
