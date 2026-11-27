@@ -1,4 +1,3 @@
-using System.Globalization;
 using ClassNex.Core.Abstractions;
 using ClassNex.Models;
 
@@ -9,7 +8,7 @@ internal sealed class ClassroomReminders
     public const string Prefix = "classnex/lesson/";
     public const string PreparingPrefix = Prefix + "prepare/";
     private static readonly string DefaultBreakTitle = new NotificationSettings().ClassOffMaskText;
-    private (DateOnly Day, string? Course, TimeSpan Edge, TimeSpan ObservedAt)? _state;
+    private (DateOnly Day, string? Course, TimeSpan Edge, TimeSpan ObservedAt, bool MidnightDismissal)? _state;
     private (DateOnly Day, string Course, TimeSpan Start)? _prepared;
 
     public void Reset() { _state = null; _prepared = null; }
@@ -21,10 +20,13 @@ internal sealed class ClassroomReminders
         var last = day.Slots.LastOrDefault(slot => slot.End <= time);
         var edge = day.Current?.Start ?? last?.End ?? TimeSpan.Zero;
         var previous = _state;
-        _state = (date, day.Current?.Subject, edge, time);
+        _state = (date, day.Current?.Subject, edge, time, dismissal == TimeSpan.FromDays(1));
         if (!settings.AllowNotification) { _prepared = null; return; }
 
         var options = settings.Notification;
+        if (previous is { MidnightDismissal: true } prior && options.IsAfterSchoolNotificationEnabled &&
+            prior.Day.DayNumber + 1 == date.DayNumber && prior.ObservedAt >= TimeSpan.FromDays(1) - TimeSpan.FromSeconds(35) && time <= TimeSpan.FromSeconds(10))
+            publish(AfterSchool(now - time, options, $"{Prefix}end/{prior.Day.DayNumber}/{TimeSpan.TicksPerDay}"));
         if (previous is { } old && old.Day == date)
         {
             var changed = old.Course != day.Current?.Subject || old.Edge != edge;
@@ -34,7 +36,7 @@ internal sealed class ClassroomReminders
                 (dismissal is null || time < dismissal) && time - last.End <= TimeSpan.FromSeconds(5))
             {
                 var at = now - (time - last.End);
-                var request = ClassOff(at, options, day.Next, last.End, $"{Prefix}off/{date.DayNumber}/{last.End.Ticks}", settings.TimeLayout);
+                var request = ClassOff(at, options, day.Next, last.End, $"{Prefix}off/{date.DayNumber}/{last.End.Ticks}", day, settings.TimeLayout);
                 if (dismissal is { } finish && finish - last.End < request.Duration)
                 {
                     var duration = finish - last.End;
@@ -59,23 +61,24 @@ internal sealed class ClassroomReminders
 
     public static TimeSpan? DismissalTime(TodaySummary day, TimeLayout layout)
     {
+        if (day.IndependentTimeLayout is { } independent)
+        {
+            TimeSpan? finish = day.IsEmpty ? null : day.Slots.Max(s => s.End);
+            if (finish is null && !independent.Any(i => i.Kind == ClassTimeKind.Action && i.End > i.Start)) return null;
+            foreach (var item in independent)
+                if (item.End > item.Start && (finish is null || item.End > finish)) finish = item.End;
+            return finish;
+        }
         if (day.IsEmpty) return null;
         var lastLesson = day.Slots.Max(s => s.End);
         var endOfDay = lastLesson;
-        foreach (var item in layout.Times)
+        foreach (var item in day.ResolveTimeLayout(layout))
         {
-            if (item.Kind is not (ClassTimeKind.Class or ClassTimeKind.Break) || !TryPeriod(item, out var start, out var end) || start < lastLesson) continue;
+            if (item.Kind is not (ClassTimeKind.Class or ClassTimeKind.Break) || item.End <= item.Start || item.Start < lastLesson) continue;
             if (item.Kind == ClassTimeKind.Class) return lastLesson;
-            if (end > endOfDay) endOfDay = end;
+            if (item.End > endOfDay) endOfDay = item.End;
         }
         return endOfDay;
-    }
-
-    private static bool TryPeriod(ClassTime item, out TimeSpan start, out TimeSpan end)
-    {
-        end = default;
-        return TimeSpan.TryParse(item.Start, CultureInfo.InvariantCulture, out start) && TimeSpan.TryParse(item.End, CultureInfo.InvariantCulture, out end) &&
-            start >= TimeSpan.Zero && end > start && end <= TimeSpan.FromDays(1);
     }
 
     public static NotificationRequest Preparing(DateTimeOffset now, NotificationSettings n, CourseSlot next, TimeSpan remaining, string id)
@@ -90,15 +93,17 @@ internal sealed class ClassroomReminders
     public static NotificationRequest ClassOn(DateTimeOffset now, NotificationSettings n, string id) =>
         new(id, n.ClassOnMaskText, now.AddSeconds(5), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5), NotificationPriority.Important);
 
-    public static NotificationRequest ClassOff(DateTimeOffset now, NotificationSettings n, CourseSlot? next, TimeSpan breakStart, string id, TimeLayout layout)
+    public static NotificationRequest ClassOff(DateTimeOffset now, NotificationSettings n, CourseSlot? next, TimeSpan breakStart, string id, TodaySummary day, TimeLayout layout)
     {
-        var period = layout.Times.Find(t => t.Kind == ClassTimeKind.Break && TryPeriod(t, out var start, out var itemEnd) && start == breakStart && (next is null || itemEnd <= next.Start));
+        var eligible = day.ResolveTimeLayout(layout).Where(t => t.Start == breakStart && t.End > t.Start && (next is null || t.End <= next.Start));
+        var period = eligible.FirstOrDefault(t => t.Kind == ClassTimeKind.Break) ??
+            (day.IndependentTimeLayout.HasValue ? eligible.FirstOrDefault(t => t.Kind == ClassTimeKind.Action) : null);
         var breakName = string.IsNullOrWhiteSpace(period?.Name) ? null : period.Name.Trim();
         var mask = !string.IsNullOrWhiteSpace(n.ClassOffMaskText) && n.ClassOffMaskText.Trim() != DefaultBreakTitle
             ? n.ClassOffMaskText : breakName is null or "课间" ? DefaultBreakTitle : breakName;
         if (next is null)
             return new(id, mask, now.AddSeconds(5), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5), RightGlyph: "\uE250");
-        var end = period is not null && TryPeriod(period, out _, out var periodEnd) ? periodEnd : next.Start;
+        var end = period?.End ?? next.Start;
         var span = end - breakStart;
         var parts = new List<string>(3);
         if (span.Hours > 0) parts.Add($"{span.Hours} 小时");

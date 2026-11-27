@@ -44,7 +44,7 @@ public interface IScheduleService
     /// <summary>删除档案中的科目定义；操作不隐式删除引用其名称的课程。</summary>
     void RemoveSubject(Subject subject);
 
-    /// <summary>选择指定文件作为活动课表，同时更新本机档案路径。</summary>
+    /// <summary>验证并打开指定文件；读取失败时保留原档案和路径，由调用方报告原因。</summary>
     void ImportFrom(string path);
 
     /// <summary>将当前档案写到另一个位置，不切换活动档案。</summary>
@@ -59,7 +59,18 @@ public sealed class ScheduleService : IScheduleService
     private ScheduleProfile _profile = new();
 
     /// <summary>从访问器取得当前本机设置，以保持档案切换与上层配置一致。</summary>
-    public ScheduleService(Func<AppSettings> settingsAccessor) => _settings = settingsAccessor;
+    public ScheduleService(Func<AppSettings> settingsAccessor) : this(settingsAccessor, null, null) { }
+
+    /// <summary>指定本地调课目录和教学日时钟；未指定目录时，调课与基础文件相邻但独立保存。</summary>
+    public ScheduleService(Func<AppSettings> settingsAccessor, string? temporaryDirectory, Func<DateOnly>? today = null)
+    {
+        _settings = settingsAccessor;
+        TemporarySchedules = new TemporaryScheduleStore(_profile, temporaryDirectory,
+            today ?? (() => DateOnly.FromDateTime(DateTime.Today)), Raise);
+    }
+
+    /// <summary>当前基础档案对应的本地按日调课存储；切换或重新加载档案时自动切换。</summary>
+    public TemporaryScheduleStore TemporarySchedules { get; }
 
     /// <inheritdoc />
     public ScheduleProfile Profile => _profile;
@@ -79,16 +90,23 @@ public sealed class ScheduleService : IScheduleService
     /// <inheritdoc />
     public void Load(string path)
     {
-        FilePath = path;
+        ScheduleProfile profile;
         try
         {
-            _profile = File.Exists(path) ? CsesCodec.Load(path) : new ScheduleProfile();
+            profile = File.Exists(path) ? CsesCodec.Load(path) : new ScheduleProfile();
         }
         catch
         {
-            _profile = new ScheduleProfile();
+            profile = new ScheduleProfile();
         }
+        Activate(path, profile);
+    }
 
+    private void Activate(string path, ScheduleProfile profile)
+    {
+        FilePath = path;
+        _profile = profile;
+        TemporarySchedules.Bind(_profile, path);
         Raise();
     }
 
@@ -96,29 +114,23 @@ public sealed class ScheduleService : IScheduleService
     public void Reload() => Load(FilePath);
 
     /// <inheritdoc />
-    public void Save()
+    public void Save() => TrySave(out _);
+
+    /// <summary>保存工作文件并返回结果，供显式保存操作在写盘失败时给出反馈。</summary>
+    public bool TrySave(out string? error)
     {
         _profile.Invalidate();
-        if (string.IsNullOrWhiteSpace(FilePath))
-        {
-            Raise();
-            return;
-        }
-
-        var saved = false;
+        error = null;
         try
         {
-            AtomicFile.Write(FilePath, CsesCodec.SerializeWorkingProfile(_profile));
-            saved = true;
+            if (string.IsNullOrWhiteSpace(FilePath)) error = "尚未选择基础课表文件。";
+            else AtomicFile.Write(FilePath, CsesCodec.SerializeWorkingProfile(_profile));
         }
-        catch
-        {
-            
-        }
-
-        if (saved)
-            Saved?.Invoke();
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or YamlDotNet.Core.YamlException)
+        { error = e.Message; }
+        if (error is null) Saved?.Invoke();
         Raise();
+        return error is null;
     }
 
     /// <inheritdoc />
@@ -169,8 +181,9 @@ public sealed class ScheduleService : IScheduleService
     /// <inheritdoc />
     public void ImportFrom(string path)
     {
+        var profile = CsesCodec.Load(path);
         _settings().TimetablePath = path;
-        Load(path);
+        Activate(path, profile);
     }
 
     /// <inheritdoc />

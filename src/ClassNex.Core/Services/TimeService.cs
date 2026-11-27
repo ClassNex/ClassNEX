@@ -1,4 +1,5 @@
 using ClassNex.Models;
+using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using System.Globalization;
 
@@ -54,6 +55,28 @@ public sealed record TodaySummary(
 
     /// <summary>该日有课，但已无正在进行或尚待开始的课程。</summary>
     public bool IsFinished => Slots.Count > 0 && Current is null && Next is null;
+
+    /// <summary>指定日期的独立非课程作息；null 时保持原有基础作息。</summary>
+    public ImmutableArray<TemporaryTimeItem>? IndependentTimeLayout { get; init; }
+
+    /// <summary>解析当日生效的作息；旧档案或未单独指定的日期继续使用传入的基础模板。</summary>
+    public IEnumerable<TemporaryTimeItem> ResolveTimeLayout(TimeLayout fallback) =>
+        IndependentTimeLayout is { } items ? items : TemporaryTimeItem.FromBase(fallback);
+
+    /// <summary>取得独立作息中正在进行的非课程项目。活动优先于包含它的课间；定点项目不占屏。</summary>
+    public TemporaryTimeItem? GetActiveTimeItem(TimeSpan now)
+    {
+        if (IndependentTimeLayout is not { } items) return null;
+        TemporaryTimeItem? pause = null;
+        foreach (var item in items)
+        {
+            if (item.Start > now) break;
+            if (now >= item.End) continue;
+            if (item.Kind == ClassTimeKind.Action) return item;
+            if (item.Kind == ClassTimeKind.Break) pause = item;
+        }
+        return pause;
+    }
 }
 
 /// <summary>按档案修订、星期和周次缓存解析后的课表时段；缓存不延长档案生命周期。</summary>
@@ -68,7 +91,7 @@ public sealed class TimeService : ITimeService
     private sealed class DayCache
     {
         internal long Revision = -1;
-        internal readonly Dictionary<(int Day, string Parity), CourseSlot[]> Entries = [];
+        internal readonly Dictionary<(int Day, string Parity, DateOnly? Override), CourseSlot[]> Entries = [];
     }
 
     /// <summary>使用设置访问器以便下次查询立即反映单双周设置变更。</summary>
@@ -97,10 +120,9 @@ public sealed class TimeService : ITimeService
     /// <summary>Call after editing a standalone profile directly. ScheduleService.Save does this automatically.</summary>
     public void Invalidate(ScheduleProfile profile) => profile.Invalidate();
 
-    private CourseSlot[] GetSlots(ScheduleProfile profile, int enableDay, string parity)
+    private CourseSlot[] GetSlots(ScheduleProfile profile, int enableDay, string parity, DateOnly? date = null)
     {
         if (enableDay is < 1 or > 7) return [];
-        var key = (enableDay, parity is "odd" or "even" ? parity : "all");
         var cache = _days.GetOrCreateValue(profile);
         lock (cache)
         {
@@ -109,8 +131,12 @@ public sealed class TimeService : ITimeService
                 cache.Entries.Clear();
                 cache.Revision = profile.Revision;
             }
+            var temporary = date is { } day ? profile.TemporarySchedules.GetValueOrDefault(day) : null;
+            var key = (enableDay, parity is "odd" or "even" ? parity : "all", temporary?.Date);
             if (!cache.Entries.TryGetValue(key, out var slots))
-                cache.Entries[key] = slots = BuildSlots(profile, key.enableDay, key.Item2);
+                cache.Entries[key] = slots = temporary is null
+                    ? BuildSlots(profile, enableDay, key.Item2)
+                    : temporary.Lessons.Select(l => CreateSlot(profile, l.Subject, l.Start, l.End)).ToArray();
             return slots;
         }
     }
@@ -132,24 +158,22 @@ public sealed class TimeService : ITimeService
                 if (!TimeSpan.TryParse(course.EndTime, CultureInfo.InvariantCulture, out var end) || start < TimeSpan.Zero || end > TimeSpan.FromDays(1) || end <= start)
                     continue;
 
-                var subject = profile.FindSubject(course.Subject);
-                result.Add(new CourseSlot(
-                    course.Subject,
-                    subject?.DisplayName ?? course.Subject,
-                    subject?.Teacher,
-                    subject?.Room,
-                    start,
-                    end,
-                    subject?.IsOutDoor ?? false));
+                result.Add(CreateSlot(profile, course.Subject, start, end));
             }
         }
 
         return result.OrderBy(s => s.Start).ToArray();
     }
 
+    private static CourseSlot CreateSlot(ScheduleProfile profile, string name, TimeSpan start, TimeSpan end)
+    {
+        var subject = profile.FindSubject(name);
+        return new(name, subject?.DisplayName ?? name, subject?.Teacher, subject?.Room, start, end, subject?.IsOutDoor ?? false);
+    }
+
     /// <inheritdoc />
     public List<CourseSlot> GetTodaySlots(ScheduleProfile profile, DateTime now) =>
-        GetDaySlots(profile, DayNumberOf(now), GetCurrentParity(now));
+        new(GetSlots(profile, DayNumberOf(now), GetCurrentParity(now), DateOnly.FromDateTime(now)));
 
     /// <inheritdoc />
     public CourseSlot? GetCurrentCourse(IReadOnlyList<CourseSlot> slots, TimeSpan now)
@@ -202,7 +226,7 @@ public sealed class TimeService : ITimeService
     {
         var day = DayNumberOf(now);
         var parity = GetCurrentParity(now);
-        var slots = GetDaySlots(profile, day, parity);
+        var slots = new List<CourseSlot>(GetSlots(profile, day, parity, DateOnly.FromDateTime(now)));
 
         return new TodaySummary(
             day,
@@ -211,7 +235,8 @@ public sealed class TimeService : ITimeService
             parity,
             slots,
             GetCurrentCourse(slots, now.TimeOfDay),
-            GetNextCourse(slots, now.TimeOfDay));
+            GetNextCourse(slots, now.TimeOfDay))
+        { IndependentTimeLayout = profile.TemporarySchedules.GetValueOrDefault(DateOnly.FromDateTime(now))?.TimeLayout };
     }
 
     private static string Format(TimeSpan span)

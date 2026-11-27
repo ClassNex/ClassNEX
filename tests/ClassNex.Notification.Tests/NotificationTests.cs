@@ -308,9 +308,9 @@ public sealed partial class NotificationTests
     public void BreakKeepsNamedIntervalAndShowsCustomTextAsASecondTenSecondPage()
     {
         using var f = new Fixture(new Clock(8, 44, 59));
-        f.Settings.Notification.ClassOffOverlayText = "请收好实验器材。";
+        f.Settings.Notification.ClassOffOverlayText = "请收好课本，准备下节课。";
         f.Settings.TimeLayout.Times.Add(new() { Kind = ClassTimeKind.Break, Name = "眼保健操", Start = "08:45", End = "08:49:30" });
-        f.Lesson("科学实验", "科", "08:00", "08:45");
+        f.Lesson("道德与法治", "道", "08:00", "08:45");
         f.Lesson("历史与社会", "史", "09:00", "09:45");
         f.Service.Start();
         f.Clock.Advance(1);
@@ -320,7 +320,7 @@ public sealed partial class NotificationTests
         var detail = f.Screen.Overlays.Single();
         Assert.AreEqual("眼保健操 4 分 30 秒", detail.Caption);
         Assert.AreEqual("历史与社会", detail.Subject);
-        Assert.AreEqual("请收好实验器材。", detail.Message);
+        Assert.AreEqual("请收好课本，准备下节课。", detail.Message);
         Assert.IsTrue(detail.Vertical);
         Assert.AreEqual(TimeSpan.FromSeconds(20), detail.Track);
         f.Clock.Advance(19);

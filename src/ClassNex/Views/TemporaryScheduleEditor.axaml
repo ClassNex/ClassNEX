@@ -1,0 +1,99 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ClassNex.Views.TemporaryScheduleEditor">
+    <Grid RowDefinitions="*,Auto">
+        <ScrollViewer x:Name="DayScroll" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="22,6,22,16" Spacing="12">
+                <TextBlock Classes="muted" TextWrapping="Wrap" Text="调课只对所选日期生效，不会改动基础课表。"/>
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="调课日期"/>
+                        <CalendarDatePicker x:Name="TargetDate" HorizontalAlignment="Stretch" AutomationProperties.Name="调课日期"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="4">
+                        <TextBlock Text="已安排的日期"/>
+                        <ComboBox x:Name="Upcoming" PlaceholderText="暂无安排" HorizontalAlignment="Stretch" AutomationProperties.Name="已安排的临时课表"/>
+                    </StackPanel>
+                </Grid>
+                <TextBlock x:Name="DayStatus" TextWrapping="Wrap" Classes="muted"/>
+                <StackPanel Spacing="4">
+                    <TextBlock Text="安排名称"/>
+                    <TextBox x:Name="PlanName" Watermark="例如：校运动会周五调课" AutomationProperties.Name="临时课表名称"/>
+                </StackPanel>
+                <Expander x:Name="CopyPanel" Header="从其他教学日复制" HorizontalContentAlignment="Stretch">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" RowDefinitions="Auto,Auto" RowSpacing="6">
+                        <TextBlock Grid.ColumnSpan="2" Classes="muted" Text="使用来源日期的基础课程，按该日的单双周取课。" TextWrapping="Wrap"/>
+                        <CalendarDatePicker x:Name="SourceDate" Grid.Row="1" HorizontalAlignment="Stretch" AutomationProperties.Name="复制来源日期"/>
+                        <Button Grid.Row="1" Grid.Column="1" Content="复制到草稿" Click="OnCopy"/>
+                    </Grid>
+                </Expander>
+                <Expander x:Name="DayLayoutPanel" Header="当天作息" HorizontalContentAlignment="Stretch">
+                    <StackPanel Spacing="10">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <TextBlock VerticalAlignment="Center" TextWrapping="Wrap" Text="单独设置这一天的作息"/>
+                            <ToggleSwitch Grid.Column="1" x:Name="UseDayLayout" OnContent="开" OffContent="关" AutomationProperties.Name="单独设置这一天的作息"/>
+                        </Grid>
+                        <TextBlock x:Name="LayoutHint" Classes="muted" TextWrapping="Wrap" Text="沿用基础时间表。"/>
+                        <StackPanel x:Name="CustomLayoutBody" IsVisible="False" Spacing="8">
+                            <WrapPanel>
+                                <Button x:Name="AddBreakButton" Tag="Break" Content="添加课间" Margin="0,0,6,2" Click="OnAddTimeItem"/>
+                                <Button x:Name="AddActionButton" Tag="Action" Content="添加活动" Margin="0,0,6,2" Click="OnAddTimeItem"/>
+                                <Button x:Name="AddSeparatorButton" Tag="Separator" Content="添加分隔点" Margin="0,0,0,2" Click="OnAddTimeItem"/>
+                            </WrapPanel>
+                            <Grid ColumnDefinitions="42,*,76,76,54" ColumnSpacing="6">
+                                <TextBlock Text="类型" Classes="muted"/>
+                                <TextBlock Grid.Column="1" Text="名称" Classes="muted"/>
+                                <TextBlock Grid.Column="2" Text="开始" Classes="muted"/>
+                                <TextBlock Grid.Column="3" Text="结束" Classes="muted"/>
+                            </Grid>
+                            <ItemsControl x:Name="DayTimeItems">
+                                <ItemsControl.ItemTemplate><DataTemplate>
+                                    <Grid ColumnDefinitions="42,*,76,76,54" ColumnSpacing="6" Margin="0,0,0,6">
+                                        <TextBlock Text="{Binding KindLabel}" VerticalAlignment="Center"/>
+                                        <TextBox Grid.Column="1" Text="{Binding Name, Mode=TwoWay}" AutomationProperties.Name="作息名称"/>
+                                        <TextBox Grid.Column="2" Text="{Binding Start, Mode=TwoWay}" AutomationProperties.Name="作息开始"/>
+                                        <TextBox Grid.Column="3" IsVisible="{Binding HasEnd}" Text="{Binding End, Mode=TwoWay}" AutomationProperties.Name="作息结束"/>
+                                        <TextBlock Grid.Column="3" IsVisible="{Binding IsMarker}" Text="定点" Classes="muted" VerticalAlignment="Center"/>
+                                        <Button Grid.Column="4" Content="移除" AutomationProperties.Name="移除当天作息项" Click="OnRemoveTimeItem"/>
+                                    </Grid>
+                                </DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+                </Expander>
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Classes="sectionLabel" Text="当天的课程" VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" x:Name="AddLessonButton" Content="添加一节" Click="OnAddLesson"/>
+                </Grid>
+                <Grid ColumnDefinitions="*,84,84,54" ColumnSpacing="8">
+                    <TextBlock Text="科目" Classes="muted"/>
+                    <TextBlock Grid.Column="1" Text="开始" Classes="muted"/>
+                    <TextBlock Grid.Column="2" Text="结束" Classes="muted"/>
+                </Grid>
+                <ItemsControl x:Name="LessonsList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid ColumnDefinitions="*,84,84,54" ColumnSpacing="8" Margin="0,0,0,6">
+                                <TextBox Text="{Binding Subject, Mode=TwoWay}" Watermark="如：体育" AutomationProperties.Name="科目"/>
+                                <TextBox Grid.Column="1" Text="{Binding Start, Mode=TwoWay}" Watermark="08:00" AutomationProperties.Name="开始时间"/>
+                                <TextBox Grid.Column="2" Text="{Binding End, Mode=TwoWay}" Watermark="08:45" AutomationProperties.Name="结束时间"/>
+                                <Button Grid.Column="3" Content="移除" HorizontalContentAlignment="Center" AutomationProperties.Name="从草稿移除该节课" Click="OnRemoveLesson"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock x:Name="EmptyHint" Text="本日没有课程。应用空课表可安排停课。" Classes="muted" TextWrapping="Wrap"/>
+            </StackPanel>
+        </ScrollViewer>
+        <Border Grid.Row="1" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource ClassNexOutlineBrush}" Padding="22,10">
+            <StackPanel Spacing="6">
+                <TextBlock x:Name="Feedback" IsVisible="False" TextWrapping="Wrap"/>
+                <WrapPanel>
+                    <Button x:Name="ApplyButton" Classes="workPrimary" Content="应用到这一天" Click="OnApply" Margin="0,2,8,2"/>
+                    <Button x:Name="RestoreButton" Content="撤销当天调课" Click="OnRestore" Margin="0,2,8,2"/>
+                    <Button x:Name="DiscardButton" Content="放弃草稿" Click="OnDiscard" Margin="0,2,0,2"/>
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

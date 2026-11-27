@@ -42,6 +42,9 @@ public partial class ProfileEditorWindow : AppWindow
     private int _pageIndex = -1;
     private Control? _currentPageView;
     private bool _navigatingBack;
+    private bool _shellReady, _allowMica, _watchHighContrast, _discardOnClose, _confirmingClose;
+    private Windows.UI.ViewManagement.UISettings? _effects;
+    private Windows.UI.ViewManagement.AccessibilitySettings? _accessibility;
 
     private static readonly string[] PageNames =
         { "档案信息", "课表", "时间表", "科目", "调课" };
@@ -49,18 +52,20 @@ public partial class ProfileEditorWindow : AppWindow
     public ProfileEditorWindow()
     {
         InitializeComponent();
+        _shellReady = true;
         ProfileVersionText.Text = AppServices.ProductVersion;
         BackButton.IsVisible = false;
 
         
         ParityCombo.SelectedIndex = 0;
         AutoAdvanceCheck.IsChecked = true;
-        _weekStart = DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek);
+        var today = AppServices.ClassroomNow.Date;
+        _weekStart = today.AddDays(-(int)today.DayOfWeek);
         WeekGrid.ItemsSource = _weekRows;
 
         AppServices.ManagedSettingsApplied += ReloadManagedProfile;
         Closed += (_, _) => AppServices.ManagedSettingsApplied -= ReloadManagedProfile;
-        BuildCommandBar();
+        BindWorkspaceLayout();
         WireEvents();
         LoadAll();
 
@@ -78,40 +83,78 @@ public partial class ProfileEditorWindow : AppWindow
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
+        if (TryGetPlatformHandle()?.HandleDescriptor != "HWND") return;
+        if (TitleBar is { } bar) bar.TitleBarHitTestType = TitleBarHitTestType.Complex;
+        AppWindow.SetAllowInteractionInTitleBar(this, true);
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000)) return;
 
         try
         {
-            if (TitleBar is { } bar)
-                bar.TitleBarHitTestType = TitleBarHitTestType.Complex;
-
-            AppWindow.SetAllowInteractionInTitleBar(this, true);
+            _accessibility = new();
+            _effects = new();
+            RefreshBackdrop();
+            _effects.AdvancedEffectsEnabledChanged += OnEffectsChanged;
+            _effects.ColorValuesChanged += OnEffectsChanged;
+            _accessibility.HighContrastChanged += OnEffectsChanged;
+            _watchHighContrast = true;
         }
-        catch
-        {
-            
-        }
-
-        try
-        {
-            if (!OperatingSystem.IsWindows())
-                return;
-
-            
-            if (Environment.OSVersion.Version < new Version(10, 0, 22000))
-                return;
-
-            TransparencyLevelHint = new[]
-            {
-                WindowTransparencyLevel.Mica,
-                WindowTransparencyLevel.None,
-            };
-            Background = Brushes.Transparent;
-        }
-        catch
-        {
-            
-        }
+        catch (System.Runtime.InteropServices.COMException) { RefreshBackdrop(); }
     }
+
+    private void OnEffectsChanged(object sender, object args) => Avalonia.Threading.Dispatcher.UIThread.Post(RefreshBackdrop);
+
+    private void RefreshBackdrop()
+    {
+        if (_effects is null) return;
+        try { _allowMica = _effects.AdvancedEffectsEnabled && _accessibility?.HighContrast == false; }
+        catch (System.Runtime.InteropServices.COMException) { _allowMica = false; }
+        TransparencyLevelHint = _allowMica ? [WindowTransparencyLevel.Mica, WindowTransparencyLevel.None] : [WindowTransparencyLevel.None];
+        EditorShell.Classes.Set("mica", _allowMica && ActualTransparencyLevel == WindowTransparencyLevel.Mica);
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (_shellReady && change.Property == ActualTransparencyLevelProperty)
+            EditorShell.Classes.Set("mica", _allowMica && ActualTransparencyLevel == WindowTransparencyLevel.Mica);
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        if (_accessibility is not null)
+        {
+            if (_watchHighContrast) _accessibility.HighContrastChanged -= OnEffectsChanged;
+            _accessibility = null;
+        }
+        if (_effects is not null)
+        {
+            _effects.AdvancedEffectsEnabledChanged -= OnEffectsChanged;
+            _effects.ColorValuesChanged -= OnEffectsChanged;
+            _effects = null;
+        }
+        base.OnClosed(e);
+    }
+
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        base.OnClosing(e);
+        if (_discardOnClose || !PageSwap.HasPendingChanges || e.CloseReason is WindowCloseReason.ApplicationShutdown or WindowCloseReason.OSShutdown) return;
+        e.Cancel = true;
+        if (!_confirmingClose) _ = ConfirmCloseAsync();
+    }
+
+    private async Task ConfirmCloseAsync()
+    {
+        _confirmingClose = true;
+        try { if (await ConfirmDiscardAsync()) { _discardOnClose = true; Close(); } }
+        finally { _confirmingClose = false; }
+    }
+
+    private async Task<bool> ConfirmDiscardAsync() => await new ContentDialog
+    {
+        Title = "放弃未应用的调课草稿？", Content = "已应用的调课会保留。未应用的日期和课程修改不会保存。",
+        PrimaryButtonText = "放弃草稿", CloseButtonText = "继续编辑", DefaultButton = ContentDialogButton.Close
+    }.ShowAsync(this) == ContentDialogResult.Primary;
 
     
     public void SelectTab(int index)
@@ -129,31 +172,10 @@ public partial class ProfileEditorWindow : AppWindow
 
     
 
-    private void BuildCommandBar()
-    {
-        AddCommand("刷新", "\uE145", () => { AppServices.ReloadTimetable(); LoadAll(); });
-        AddCommand("删除", "\uE18E", DeleteSelectedCourse);
-    }
-
-    private void AddCommand(string label, string glyph, Action action)
-    {
-        var button = new AvaloniaFluentUI.Controls.CommandBarButton
-        {
-            Label = label,
-            IconSource = new AvaloniaFluentUI.Controls.FontIconSource
-            {
-                Glyph = glyph,
-                FontFamily = new Avalonia.Media.FontFamily("avares://ClassNex/Assets/Fonts/#lucide"),
-            },
-        };
-
-        button.Click += (_, _) => action();
-        ClassCommandBar.PrimaryCommands.Add(button);
-    }
-
     private void WireEvents()
     {
         NavView.SelectionChanged += (_, _) => SwitchPage();
+        DeleteSelectedCourseButton.Click += (_, _) => DeleteSelectedCourse();
 
         
         WeekGrid.SelectionChanged += (_, _) => UpdateSelectedCellFromGrid();
@@ -186,15 +208,22 @@ public partial class ProfileEditorWindow : AppWindow
         SaveNowButton.Click += OnSaveNow;
 
         
-        AddClassTimeButton.Click += (_, _) => AddTime(ClassTimeKind.Class);
-        AddBreakTimeButton.Click += (_, _) => AddTime(ClassTimeKind.Break);
-        AddSeparatorButton.Click += (_, _) => AddTime(ClassTimeKind.Separator);
-        AddActionButton.Click += (_, _) => AddTime(ClassTimeKind.Action);
-        DuplicateTimeButton.Click += (_, _) => DuplicateTime();
-        RemoveTimeButton.Click += (_, _) => RemoveTime();
+        if (AddTimeButton.Flyout is MenuFlyout add && add.Items is { Count: 4 } entries)
+        {
+            var kinds = new[] { ClassTimeKind.Class, ClassTimeKind.Break, ClassTimeKind.Separator, ClassTimeKind.Action };
+            for (var i = 0; i < kinds.Length; i++)
+                if (entries[i] is MenuItem command) { var kind = kinds[i]; command.Click += (_, _) => AddTime(kind); }
+        }
+        if (TimeOptionsButton.Flyout is MenuFlyout options && options.Items is { Count: 4 } commands)
+        {
+            _duplicateTime = (MenuItem)commands[0]!;
+            _removeTime = (MenuItem)commands[1]!;
+            _duplicateTime.Click += (_, _) => DuplicateTime();
+            _removeTime.Click += (_, _) => RemoveTime();
+            ((MenuItem)commands[3]!).Click += async (_, _) => await ConfirmRebuildTimeAsync();
+        }
         MoveUpButton.Click += (_, _) => MoveTime(-1);
         MoveDownButton.Click += (_, _) => MoveTime(1);
-        ResetTimeButton.Click += (_, _) => ResetTimeLayout();
         SaveTimeButton.Click += (_, _) => SaveTimeEdit();
         ClassMinutesBox.ValueChanged += (_, _) => SaveDefaultMinutes();
         BreakMinutesBox.ValueChanged += (_, _) => SaveDefaultMinutes();
@@ -203,7 +232,7 @@ public partial class ProfileEditorWindow : AppWindow
             if (_loading) return;
             var marker = TimeKindCombo.SelectedIndex >= 2;
             TimeEndPicker.IsEnabled = !marker;
-            TimeNameBox.IsEnabled = !marker;
+            TimeNameBox.IsEnabled = TimeKindCombo.SelectedIndex != 2;
         };
 
         
@@ -211,8 +240,7 @@ public partial class ProfileEditorWindow : AppWindow
         DeleteSubjectButton.Click += (_, _) => DeleteSubject();
         SaveSubjectsButton.Click += (_, _) =>
         {
-            AppServices.Schedule.Save();
-            PaletteHintText.Text = "科目已保存到课表文件。";
+            OnSaveNow(this, new RoutedEventArgs());
         };
 
         SubjectNameBox.TextChanged += (_, _) => PushSubjectEdit();
@@ -244,6 +272,9 @@ public partial class ProfileEditorWindow : AppWindow
         _currentSubject = null;
         _selectedCell = null;
 
+        ClearTimeEditor();
+        ClearSubjectEditor();
+        _loading = true;
         RefreshSubjectNames();
         RefreshPalette();
         RefreshSubjectTable();
@@ -251,12 +282,12 @@ public partial class ProfileEditorWindow : AppWindow
         RefreshInfo();
         RefreshNavigation();
 
-        _loading = false;
-
         ClassMinutesBox.Value = AppServices.Settings.DefaultOnClassTimePointMinutes;
         BreakMinutesBox.Value = AppServices.Settings.DefaultBreakingTimePointMinutes;
+        _loading = false;
 
         RenderTimetable();
+        if (_pageIndex == 4) RefreshDayEditor();
     }
 
     private void SwitchPage()
@@ -278,6 +309,8 @@ public partial class ProfileEditorWindow : AppWindow
         BackButton.IsVisible = _pageHistory.Count > 0;
         if (index == 0)
             RefreshInfo();
+        if (index == 4) RefreshDayEditor();
+        BaseCommands.IsVisible = index != 4;
         var title = PageNames[index];
 
         var page = index switch
@@ -322,10 +355,18 @@ public partial class ProfileEditorWindow : AppWindow
 
     private void OnNavigateBack(object? sender, RoutedEventArgs e) => NavigateBack();
 
-    private void OnSaveNow(object? sender, RoutedEventArgs e)
+    private void OnWorkspaceLink(object? sender, RoutedEventArgs e)
     {
-        AppServices.Schedule.Save();
-        PaletteHintText.Text = "课表已保存。";
+        if (sender is Button { Tag: string tag } && int.TryParse(tag, out var index)) SelectTab(index);
+    }
+
+    private void RefreshDayEditor() => PageSwap.Bind(AppServices.Schedule, AppServices.LocalSchedule.TemporarySchedules, AppServices.Time, AppServices.TimeLayout, () => AppServices.ClassroomNow);
+
+    private async void OnSaveNow(object? sender, RoutedEventArgs e)
+    {
+        if (_pageIndex == 4) { PageSwap.Apply(); return; }
+        if (AppServices.LocalSchedule.TrySave(out var error)) ProfileInfoText.Text = $"已保存 · {AppServices.TimetableFileName}";
+        else await new ContentDialog { Title = "基础课表未保存", Content = error, CloseButtonText = "关闭" }.ShowAsync(this);
     }
 
     private void OnReloadProfile(object? sender, RoutedEventArgs e)
@@ -340,16 +381,15 @@ public partial class ProfileEditorWindow : AppWindow
         var semester = AppServices.Settings.SemesterStartDate?.ToString("yyyy年M月d日") ?? "未设置";
         var courseCount = profile.Schedules.Sum(schedule => schedule.Classes.Count);
 
-        ProfileInfoText.Text = $"当前课表文件：{AppServices.TimetablePath}";
+        ProfileInfoText.Text = AppServices.TimetableFileName;
         ToolTip.SetTip(ProfileInfoText, AppServices.TimetablePath);
-        ProfileSummaryText.Text =
-            $"当前正在编辑「{profile.Name}」档案。课表修改会写入当前 CSES 文件，并通过左侧导航切换到其他编辑页面。";
-        ProfileNameValueText.Text = profile.Name;
+        ProfileSummaryText.Text = "基础课表按星期和单双周循环。考试、补课或停课等单日安排请在「调课」中编辑。";
+        ProfileNameValueText.Text = string.IsNullOrWhiteSpace(AppServices.TimetablePath) ? profile.Name : Path.GetFileNameWithoutExtension(AppServices.TimetablePath);
         ProfileFileValueText.Text = AppServices.TimetablePath;
         ProfileSemesterValueText.Text = semester;
-        ProfileCourseCountText.Text = courseCount.ToString();
-        ProfileSubjectCountText.Text = profile.Subjects.Count.ToString();
-        ProfileTimePointCountText.Text = AppServices.TimeLayout.Layout.Times.Count.ToString();
+        ProfileCourseCountText.Text = $"{courseCount} 节";
+        ProfileSubjectCountText.Text = $"{profile.Subjects.Count} 门";
+        ProfileTimePointCountText.Text = $"{AppServices.TimeLayout.Layout.Times.Count} 项";
     }
 
     private void RefreshSubjectNames()
@@ -643,6 +683,7 @@ public partial class ProfileEditorWindow : AppWindow
 
     private void RefreshPaletteHint()
     {
+        DeleteSelectedCourseButton.IsEnabled = _selectedCell is { } selected && FindCourse(selected.EnableDay, _parity, selected.Start) is not null;
         if (_selectedCell is { } cell)
         {
             PaletteHintText.Text =
@@ -663,11 +704,16 @@ public partial class ProfileEditorWindow : AppWindow
         TimeAxisPanel.Children.Clear();
 
         var times = AppServices.TimeLayout.Layout.Times;
+        var index = _selectedTime is null ? -1 : times.IndexOf(_selectedTime);
+        if (_duplicateTime is not null) _duplicateTime.IsEnabled = index >= 0;
+        if (_removeTime is not null) _removeTime.IsEnabled = index >= 0;
+        MoveUpButton.IsEnabled = index > 0;
+        MoveDownButton.IsEnabled = index >= 0 && index + 1 < times.Count;
         if (times.Count == 0)
         {
             TimeAxisPanel.Children.Add(new TextBlock
             {
-                Text = "时间表为空。点「从课表重建」按当前课表生成，或点「添加」。",
+                Text = "还没有时间点。可添加时间点，或在更多操作中从课表重建。",
                 TextWrapping = TextWrapping.Wrap,
                 Opacity = 0.7,
             });
@@ -687,7 +733,6 @@ public partial class ProfileEditorWindow : AppWindow
                 Text = time.Start,
                 FontSize = 12,
                 Opacity = 0.7,
-                Foreground = CiPalette.PrimaryTextBrush(),
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Top,
                 Margin = new Thickness(0, 8, 8, 0),
@@ -697,20 +742,21 @@ public partial class ProfileEditorWindow : AppWindow
 
             if (isMarker)
             {
+                var action = time.Kind == ClassTimeKind.Action;
                 var stripHost = new Border
                 {
-                    Height = 6,
+                    MinHeight = action ? 26 : 6,
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                     VerticalAlignment = VerticalAlignment.Top,
-                    Margin = new Thickness(0, 10, 0, 0),
+                    Margin = new Thickness(0, action ? 3 : 10, 0, 0),
                     CornerRadius = new CornerRadius(3),
-                    Background = time.Kind == ClassTimeKind.Separator
-                        ? CiPalette.TimeLineSeparatorBrush()
-                        : CiPalette.TimeLineActionBrush(),
+                    Classes = { "timelineItem", action ? "activity" : "marker" },
                     BorderThickness = isSelected ? new Thickness(2) : new Thickness(0),
-                    BorderBrush = CiPalette.FocusStrokeBrush(),
                     Cursor = new Cursor(StandardCursorType.Hand),
                 };
+                if (action)
+                    stripHost.Child = new TextBlock { Text = string.IsNullOrWhiteSpace(time.Name) ? "活动" : time.Name,
+                        Margin = new Thickness(10, 4), TextWrapping = TextWrapping.Wrap };
                 stripHost.PointerPressed += (_, _) => SelectTime(time);
                 Grid.SetColumn(stripHost, 1);
                 row.Children.Add(stripHost);
@@ -718,15 +764,10 @@ public partial class ProfileEditorWindow : AppWindow
                 continue;
             }
 
-            var foreground = isBreak ? CiPalette.PrimaryTextBrush() : CiPalette.OnAccentBrush();
-
             var block = new Border
             {
-                Background = isBreak
-                    ? CiPalette.TimeLineBreakBrush()
-                    : CiPalette.AccentBrush(),
-                BorderThickness = isSelected ? new Thickness(1) : new Thickness(0),
-                BorderBrush = CiPalette.FocusStrokeBrush(),
+                Classes = { "timelineItem", isBreak ? "break" : "lesson" },
+                BorderThickness = isBreak ? new Thickness(isSelected ? 1 : 0) : new Thickness(3, isSelected ? 1 : 0, isSelected ? 1 : 0, isSelected ? 1 : 0),
                 CornerRadius = new CornerRadius(4),
                 Padding = new Thickness(10, 5),
                 MinHeight = isBreak ? 26 : 40,
@@ -740,14 +781,13 @@ public partial class ProfileEditorWindow : AppWindow
                         {
                             Text = $"{time.Start} - {time.End}",
                             FontSize = 13,
-                            Foreground = foreground,
                         },
                         new TextBlock
                         {
                             Text = $"{time.Name}　{DurationText(time)}",
                             FontSize = 11,
                             Opacity = 0.85,
-                            Foreground = foreground,
+                            TextWrapping = TextWrapping.Wrap,
                         },
                     },
                 },
@@ -760,7 +800,7 @@ public partial class ProfileEditorWindow : AppWindow
                 var ringHost = new Border
                 {
                     BorderThickness = new Thickness(2),
-                    BorderBrush = CiPalette.FocusStrokeInnerBrush(),
+                    Classes = { "timelineFocus" },
                     CornerRadius = new CornerRadius(5),
                     Child = block,
                 };
@@ -789,6 +829,7 @@ public partial class ProfileEditorWindow : AppWindow
         _selectedTime = time;
         _loading = true;
 
+        TimeFieldHint.IsVisible = false;
         TimeEditorTitle.Text = $"编辑时间点 · {time.Name}";
         TimeNameBox.Text = time.Name;
         TimeStartPicker.SelectedTime = TimeSpan.TryParse(time.Start, out var s) ? s : TimeSpan.Zero;
@@ -802,7 +843,8 @@ public partial class ProfileEditorWindow : AppWindow
         };
         var marker = time.Kind is ClassTimeKind.Separator or ClassTimeKind.Action;
         TimeEndPicker.IsEnabled = !marker;
-        TimeNameBox.IsEnabled = !marker;
+        TimeNameBox.IsEnabled = time.Kind != ClassTimeKind.Separator;
+        TimeFields.IsEnabled = TimeFields.IsVisible = true;
 
         _loading = false;
         RefreshTimeline();
@@ -817,8 +859,6 @@ public partial class ProfileEditorWindow : AppWindow
             return;
         }
 
-        _selectedTime = added;
-        RefreshTimeline();
         SelectTime(added);
         RenderTimetable();
 
@@ -841,8 +881,6 @@ public partial class ProfileEditorWindow : AppWindow
             return;
         }
 
-        _selectedTime = copy;
-        RefreshTimeline();
         SelectTime(copy);
         RenderTimetable();
 
@@ -884,6 +922,8 @@ public partial class ProfileEditorWindow : AppWindow
     private void ClearTimeEditor()
     {
         _loading = true;
+        TimeFields.IsEnabled = TimeFields.IsVisible = false;
+        TimeFieldHint.IsVisible = true;
         TimeEditorTitle.Text = "时间点";
         TimeNameBox.Text = "";
         TimeStartPicker.SelectedTime = null;
@@ -896,6 +936,7 @@ public partial class ProfileEditorWindow : AppWindow
 
     private void SaveDefaultMinutes()
     {
+        if (_loading || !double.IsFinite(ClassMinutesBox.Value) || !double.IsFinite(BreakMinutesBox.Value)) return;
         AppServices.Settings.DefaultOnClassTimePointMinutes =
             (int)Math.Clamp(ClassMinutesBox.Value, 0, 36000);
         AppServices.Settings.DefaultBreakingTimePointMinutes =
@@ -929,13 +970,15 @@ public partial class ProfileEditorWindow : AppWindow
         };
         var marker = kind is ClassTimeKind.Separator or ClassTimeKind.Action;
         if (!marker && end <= start)
+        {
+            ShowTimeNotice("结束时间必须晚于开始时间。", true);
             return;
+        }
 
         var updated = new ClassTime
         {
-            Name = marker
-                ? kind == ClassTimeKind.Separator ? "分割线" : "行动"
-                : string.IsNullOrWhiteSpace(TimeNameBox.Text) ? "时间点" : TimeNameBox.Text!,
+            Name = kind == ClassTimeKind.Separator ? "分割线" : string.IsNullOrWhiteSpace(TimeNameBox.Text)
+                ? kind == ClassTimeKind.Action ? "活动" : "时间点" : TimeNameBox.Text.Trim(),
             Start = start.ToString(@"hh\:mm"),
             End = (marker ? start : end).ToString(@"hh\:mm"),
             Kind = kind,
@@ -1029,6 +1072,8 @@ public partial class ProfileEditorWindow : AppWindow
         _currentSubject = subject;
         _loading = true;
 
+        SubjectFields.IsEnabled = DeleteSubjectButton.IsEnabled = true;
+        SubjectFieldHint.IsVisible = false;
         SubjectNameBox.Text = subject.Name;
         SubjectSimplifiedBox.Text = subject.SimplifiedName ?? "";
         SubjectTeacherBox.Text = subject.Teacher ?? "";
@@ -1072,11 +1117,7 @@ public partial class ProfileEditorWindow : AppWindow
         AppServices.Schedule.RemoveSubject(_currentSubject);
         _currentSubject = null;
 
-        SubjectNameBox.Text = "";
-        SubjectSimplifiedBox.Text = "";
-        SubjectTeacherBox.Text = "";
-        OutdoorCheck.IsChecked = false;
-
+        ClearSubjectEditor();
         RefreshSubjectTable();
         RefreshSubjectNames();
         RefreshPalette();
@@ -1091,8 +1132,17 @@ public partial class ProfileEditorWindow : AppWindow
         if (path is null)
             return;
 
-        AppServices.LoadTimetable(path);
-        LoadAll();
+        if (PageSwap.HasPendingChanges && !await ConfirmDiscardAsync()) return;
+        try
+        {
+            AppServices.ImportTimetable(path);
+            PageSwap.ForgetDrafts();
+            LoadAll();
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or YamlDotNet.Core.YamlException or ArgumentException)
+        {
+            await new ContentDialog { Title = "未能打开课表", Content = error.Message, CloseButtonText = "关闭" }.ShowAsync(this);
+        }
     }
 
     private async void OnExport(object? sender, RoutedEventArgs e)

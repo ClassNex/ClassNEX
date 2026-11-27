@@ -327,7 +327,7 @@ public sealed class NotificationService : INotificationService, INotificationPub
     {
         var day = _time.GetTodaySummary(_schedule.Profile, now.DateTime);
         var start = day.Current?.End ?? day.Slots.LastOrDefault(slot => slot.End <= now.TimeOfDay)?.End ?? now.TimeOfDay;
-        return ClassroomReminders.ClassOff(now, _settings().Notification, day.IsEmpty ? ClassroomReminders.SampleCourse(now) : day.Next, start, PreviewId, _settings().TimeLayout);
+        return ClassroomReminders.ClassOff(now, _settings().Notification, day.IsEmpty ? ClassroomReminders.SampleCourse(now) : day.Next, start, PreviewId, day, _settings().TimeLayout);
     });
 
     public void DebugTriggerAfterSchool() => Preview(now => ClassroomReminders.AfterSchool(now, _settings().Notification, PreviewId));

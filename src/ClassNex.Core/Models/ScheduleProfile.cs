@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using YamlDotNet.Serialization;
 
 namespace ClassNex.Models;
@@ -5,9 +6,10 @@ namespace ClassNex.Models;
 /// <summary>包含科目字典和各日授课计划的整个 CSES 档案。</summary>
 public sealed class ScheduleProfile
 {
-    internal long Revision { get; private set; }
+    private long _revision;
+    internal long Revision => Volatile.Read(ref _revision);
 
-    internal void Invalidate() => Revision++;
+    internal void Invalidate() => Interlocked.Increment(ref _revision);
 
     /// <summary>档案声明的 CSES 版本。</summary>
     public int Version { get; set; } = 1;
@@ -21,6 +23,14 @@ public sealed class ScheduleProfile
 
     /// <summary>按星期和周次组合的课程计划。</summary>
     public List<Schedule> Schedules { get; set; } = new();
+
+    /// <summary>按本地日期生效的临时安排。由临时课表存储维护，不随 CSES 导出或集控上传。</summary>
+    [YamlIgnore]
+    public ImmutableSortedDictionary<DateOnly, TemporarySchedule> TemporarySchedules { get; internal set; }
+        = ImmutableSortedDictionary<DateOnly, TemporarySchedule>.Empty;
+
+    /// <summary>已有基础课表，或在该日期显式安排了课程（含当天停课），不再提示导入。</summary>
+    public bool IsTimetableConfigured(DateOnly date) => Schedules.Count != 0 || TemporarySchedules.ContainsKey(date);
 
     /// <summary>导入档案的原始作息模板，标准 CSES 导出不包含此扩展。</summary>
     [YamlMember(Alias = "x_classnex_time_layout", ApplyNamingConventions = false, DefaultValuesHandling = DefaultValuesHandling.OmitNull)]

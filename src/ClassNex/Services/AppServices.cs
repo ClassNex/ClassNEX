@@ -23,7 +23,8 @@ public static class AppServices
     private static bool _applyingRevision;
     public static AppSettings Settings { get; private set; } = new();
 
-    public static IScheduleService Schedule { get; private set; } = null!;
+    public static IScheduleService Schedule => LocalSchedule;
+    internal static ScheduleService LocalSchedule { get; private set; } = null!;
 
     public static ITimeService Time { get; private set; } = null!;
     internal static DayScheduleCache Day { get; private set; } = null!;
@@ -72,7 +73,8 @@ public static class AppServices
         }
 
         Time = new TimeService(() => Settings);
-        Schedule = new ScheduleService(() => Settings);
+        LocalSchedule = new ScheduleService(() => Settings, Path.Combine(SettingsService.DataDirectory, "TemporarySchedules"),
+            () => DateOnly.FromDateTime(ClassroomNow));
         Day = new(Time, Schedule);
         TimeLayout = new TimeLayoutService(() => Settings, Schedule, SaveSettings);
         Widgets = new WidgetService(() => Settings, SaveSettings);
@@ -89,6 +91,17 @@ public static class AppServices
     {
         Settings.TimetablePath = path;
         Schedule.Load(path);
+        FinishTimetableSwitch();
+    }
+
+    internal static void ImportTimetable(string path)
+    {
+        Schedule.ImportFrom(path);
+        FinishTimetableSwitch();
+    }
+
+    private static void FinishTimetableSwitch()
+    {
         if (Schedule.Profile.ImportedTimeLayout is { } imported) Settings.TimeLayout = imported;
         SaveSettings();
     }

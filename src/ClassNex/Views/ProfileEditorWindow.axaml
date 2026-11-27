@@ -4,18 +4,31 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:ui="using:AvaloniaFluentUI.Controls"
         xmlns:wd="using:AvaloniaFluentUI.Windowing"
+        xmlns:views="using:ClassNex.Views"
         mc:Ignorable="d" d:DesignWidth="1240" d:DesignHeight="760"
         x:Class="ClassNex.Views.ProfileEditorWindow"
-        Title="档案编辑器"
+        Title="编辑档案"
         Icon="/Assets/icon.ico"
         TitleBarHeight="48"
         IsTitleBarContentVisible="False"
         Width="1150" Height="730"
         MinWidth="700" MinHeight="510"
+        Background="Transparent" TransparencyBackgroundFallback="{DynamicResource ClassNexCanvasBrush}"
         WindowStartupLocation="CenterScreen">
 
     
-    <Grid RowDefinitions="48,*" Background="{DynamicResource ClassNexSurfaceBrush}">
+    <Grid x:Name="EditorShell" Classes="profileShell" RowDefinitions="48,*">
+        <Grid.Styles>
+            <Style Selector="Grid.profileShell"><Setter Property="Background" Value="{DynamicResource ClassNexCanvasBrush}"/></Style>
+            <Style Selector="Grid.profileShell.mica"><Setter Property="Background" Value="Transparent"/></Style>
+            <Style Selector="Border.editorCard">
+                <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="8"/>
+                <Setter Property="Padding" Value="12"/>
+            </Style>
+        </Grid.Styles>
         <Border Grid.Row="0" Height="48" BorderThickness="0">
             <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="14,0,0,0">
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
@@ -27,7 +40,7 @@
                     </Button>
                     <Image Source="/Assets/icon.ico" Width="18" Height="18"
                            IsHitTestVisible="False" RenderOptions.BitmapInterpolationMode="HighQuality"/>
-                    <TextBlock Text="档案编辑器" FontSize="12" VerticalAlignment="Center"
+                    <TextBlock Text="编辑档案" FontSize="12" VerticalAlignment="Center"
                                IsHitTestVisible="False"/>
                 </StackPanel>
 
@@ -94,7 +107,7 @@
                            Background="Transparent"
                            PaneDisplayMode="Auto" CompactModeThresholdWidth="540" ExpandedModeThresholdWidth="980"
                            OpenPaneLength="186"
-                           PaneTitle="档案编辑器"
+                           PaneTitle="编辑档案"
                            IsBackButtonVisible="False"
                            IsSettingsVisible="False"
                            IsPaneToggleButtonVisible="True">
@@ -136,18 +149,17 @@
                 </ui:NavigationViewItem>
             </ui:NavigationView.MenuItems>
 
-            <Grid RowDefinitions="Auto,Auto,*" Background="{DynamicResource ClassNexCanvasBrush}" ClipToBounds="True">
+            <Grid RowDefinitions="Auto,Auto,*" Background="{DynamicResource ControlFillColorDefaultBrush}" ClipToBounds="True">
                 <TextBlock x:Name="PageTitleText" Grid.Row="0" FontSize="28"
                            MinHeight="48" VerticalAlignment="Top"
                            Margin="22,16,22,0" HorizontalAlignment="Left"/>
 
-                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8"
-                            Margin="22,6,22,0">
-                    <Button x:Name="SaveNowButton" Content="保存"/>
-                    <Button x:Name="OpenButton" Content="打开课表…"/>
-                    <Button x:Name="ReloadButton" Content="重新加载"/>
-                    <Button x:Name="ExportButton" Content="导出 CSES…"/>
-                </StackPanel>
+                <WrapPanel x:Name="BaseCommands" Grid.Row="1" Margin="22,6,22,0">
+                    <Button x:Name="SaveNowButton" Content="保存基础课表" Margin="0,0,8,4"/>
+                    <Button x:Name="OpenButton" Content="打开课表…" Margin="0,0,8,4"/>
+                    <Button x:Name="ReloadButton" Content="重新加载" Margin="0,0,8,4"/>
+                    <Button x:Name="ExportButton" Content="导出 CSES…" Margin="0,0,0,4"/>
+                </WrapPanel>
 
                 <Grid Grid.Row="2">
                     <ScrollViewer x:Name="PageProfile" IsVisible="False" VerticalScrollBarVisibility="Auto">
@@ -182,87 +194,71 @@
                                 </Grid>
                             </Border>
 
-                            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
-                                <Border Grid.Column="0" Padding="18"
-                                        Background="{DynamicResource ClassNexSurfaceBrush}"
-                                        BorderBrush="{DynamicResource ClassNexOutlineBrush}"
-                                        BorderThickness="1" CornerRadius="8">
-                                    <StackPanel Spacing="6">
-                                        <TextBlock Text="课程"
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                        <TextBlock x:Name="ProfileCourseCountText" FontSize="24"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Column="1" Padding="18"
-                                        Background="{DynamicResource ClassNexSurfaceBrush}"
-                                        BorderBrush="{DynamicResource ClassNexOutlineBrush}"
-                                        BorderThickness="1" CornerRadius="8">
-                                    <StackPanel Spacing="6">
-                                        <TextBlock Text="科目"
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                        <TextBlock x:Name="ProfileSubjectCountText" FontSize="24"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Column="2" Padding="18"
-                                        Background="{DynamicResource ClassNexSurfaceBrush}"
-                                        BorderBrush="{DynamicResource ClassNexOutlineBrush}"
-                                        BorderThickness="1" CornerRadius="8">
-                                    <StackPanel Spacing="6">
-                                        <TextBlock Text="时间点"
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                        <TextBlock x:Name="ProfileTimePointCountText" FontSize="24"/>
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
-
-                            <TextBlock Text="使用左侧导航在课表、时间表、科目和调课页面之间切换。"
-                                       FontSize="12" TextWrapping="Wrap"
-                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                            <TextBlock Text="编辑内容" Classes="sectionLabel"/>
+                            <StackPanel Spacing="6">
+                                <Button Classes="homeLink" Tag="0" Click="OnWorkspaceLink">
+                                    <Grid ColumnDefinitions="*,Auto"><TextBlock Text="每周课表"/><TextBlock Grid.Column="1" x:Name="ProfileCourseCountText" Classes="muted"/></Grid>
+                                </Button>
+                                <Button Classes="homeLink" Tag="1" Click="OnWorkspaceLink">
+                                    <Grid ColumnDefinitions="*,Auto"><TextBlock Text="作息时间表"/><TextBlock Grid.Column="1" x:Name="ProfileTimePointCountText" Classes="muted"/></Grid>
+                                </Button>
+                                <Button Classes="homeLink" Tag="2" Click="OnWorkspaceLink">
+                                    <Grid ColumnDefinitions="*,Auto"><TextBlock Text="科目与任课老师"/><TextBlock Grid.Column="1" x:Name="ProfileSubjectCountText" Classes="muted"/></Grid>
+                                </Button>
+                                <Button Classes="homeLink" Tag="3" Click="OnWorkspaceLink">
+                                    <Grid ColumnDefinitions="*,Auto"><TextBlock Text="按日期调课"/><TextBlock Grid.Column="1" Text="单日生效" Classes="muted"/></Grid>
+                                </Button>
+                            </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
 
                     <Grid x:Name="PageSchedule" IsVisible="False" Margin="22,12,22,20"
-                          RowDefinitions="Auto,Auto,*" ColumnDefinitions="*,5,252">
+                          RowDefinitions="Auto,*">
 
-                    
-                    <StackPanel Grid.Row="0" Grid.ColumnSpan="3" Orientation="Horizontal" Spacing="8"
-                                Margin="0,0,4,8">
-                        <ui:CommandBar x:Name="ClassCommandBar" DefaultLabelPosition="Right"
-                                       Background="Transparent" VerticalAlignment="Center"/>
-                        <ComboBox x:Name="ParityCombo" Width="120" VerticalAlignment="Center">
+                    <WrapPanel Grid.Row="0" Margin="0,0,0,6">
+                        <Border Background="{DynamicResource ControlFillColorDefaultBrush}" Margin="0,0,8,6"
+                                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                BorderThickness="1" CornerRadius="4" Padding="10,4">
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <TextBlock x:Name="NavDateText" FontSize="13" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="NavWeekText" FontSize="13" Classes="muted" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <StackPanel Margin="0,0,8,6" Orientation="Horizontal" Spacing="4">
+                        <Button x:Name="PrevWeekButton" Padding="8,4" VerticalAlignment="Center" AutomationProperties.Name="上一周" ToolTip.Tip="上一周">
+                            <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE06E;" FontSize="14"/>
+                        </Button>
+                        <Button x:Name="NextWeekButton" Padding="8,4" VerticalAlignment="Center" AutomationProperties.Name="下一周" ToolTip.Tip="下一周">
+                            <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE06F;" FontSize="14"/>
+                        </Button>
+                        </StackPanel>
+                        <ComboBox x:Name="ParityCombo" Width="126" Margin="0,0,8,6" VerticalAlignment="Center" AutomationProperties.Name="课程周次">
                             <ComboBoxItem Content="全部课程"/>
                             <ComboBoxItem Content="单周"/>
                             <ComboBoxItem Content="双周"/>
                         </ComboBox>
-                    </StackPanel>
+                        <Button x:Name="DeleteSelectedCourseButton" Content="删除所选课程" Margin="0,0,0,6" VerticalAlignment="Center"/>
+                    </WrapPanel>
 
-                    
-                    <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Spacing="8" Margin="4,0,4,8">
-                        <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
-                                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                                BorderThickness="1" CornerRadius="4" Padding="10,4">
-                            <TextBlock x:Name="NavDateText" FontSize="13" VerticalAlignment="Center"/>
-                        </Border>
-                        <Button x:Name="PrevWeekButton" Padding="8,2" VerticalAlignment="Center">
-                            <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE06E;" FontSize="14"/>
-                        </Button>
-                        <Button x:Name="NextWeekButton" Padding="8,2" VerticalAlignment="Center">
-                            <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE06F;" FontSize="14"/>
-                        </Button>
-                        <TextBlock x:Name="NavWeekText" Text="第1周" FontSize="13" Opacity="0.8"
-                                   VerticalAlignment="Center"/>
-                    </StackPanel>
-
-                    
-                    <DataGrid x:Name="WeekGrid" Grid.Row="2" Grid.Column="0"
-                              Margin="0,0,4,0"
+                    <Grid x:Name="WeekWorkspace" Grid.Row="1" ColumnDefinitions="*,8,252" RowDefinitions="*,0">
+                    <DataGrid x:Name="WeekGrid" ClipToBounds="True"
                               AutoGenerateColumns="False"
                               CanUserSortColumns="False"
                               CanUserReorderColumns="False"
                               CanUserResizeColumns="False"
                               SelectionMode="Single"
+                              MinColumnWidth="60"
                               GridLinesVisibility="All"
-                              ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                              ScrollViewer.HorizontalScrollBarVisibility="Auto">
+                        <DataGrid.Resources>
+                            <x:Double x:Key="DataGridSortIconMinWidth">0</x:Double>
+                        </DataGrid.Resources>
+                        <DataGrid.Styles>
+                            <Style Selector="DataGridColumnHeader">
+                                <Setter Property="Padding" Value="6,5"/>
+                                <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                            </Style>
+                        </DataGrid.Styles>
                         <DataGrid.Columns>
                             <DataGridTemplateColumn Header="时间" Width="88">
                                 <DataGridTemplateColumn.CellTemplate>
@@ -275,7 +271,7 @@
                             <DataGridTemplateColumn Width="*">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding Sunday}" FontSize="13"
+                                        <TextBlock Text="{Binding Sunday}" FontSize="13" TextWrapping="Wrap"
                                                    VerticalAlignment="Center" Margin="6,4"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -283,7 +279,7 @@
                             <DataGridTemplateColumn Width="*">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding Monday}" FontSize="13"
+                                        <TextBlock Text="{Binding Monday}" FontSize="13" TextWrapping="Wrap"
                                                    VerticalAlignment="Center" Margin="6,4"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -291,7 +287,7 @@
                             <DataGridTemplateColumn Width="*">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding Tuesday}" FontSize="13"
+                                        <TextBlock Text="{Binding Tuesday}" FontSize="13" TextWrapping="Wrap"
                                                    VerticalAlignment="Center" Margin="6,4"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -299,7 +295,7 @@
                             <DataGridTemplateColumn Width="*">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding Wednesday}" FontSize="13"
+                                        <TextBlock Text="{Binding Wednesday}" FontSize="13" TextWrapping="Wrap"
                                                    VerticalAlignment="Center" Margin="6,4"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -307,7 +303,7 @@
                             <DataGridTemplateColumn Width="*">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding Thursday}" FontSize="13"
+                                        <TextBlock Text="{Binding Thursday}" FontSize="13" TextWrapping="Wrap"
                                                    VerticalAlignment="Center" Margin="6,4"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -315,7 +311,7 @@
                             <DataGridTemplateColumn Width="*">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding Friday}" FontSize="13"
+                                        <TextBlock Text="{Binding Friday}" FontSize="13" TextWrapping="Wrap"
                                                    VerticalAlignment="Center" Margin="6,4"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -323,7 +319,7 @@
                             <DataGridTemplateColumn Width="*">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding Saturday}" FontSize="13"
+                                        <TextBlock Text="{Binding Saturday}" FontSize="13" TextWrapping="Wrap"
                                                    VerticalAlignment="Center" Margin="6,4"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -331,27 +327,22 @@
                         </DataGrid.Columns>
                     </DataGrid>
 
-                    <GridSplitter Grid.Row="2" Grid.Column="1" HorizontalAlignment="Stretch"
-                                  VerticalAlignment="Stretch" Background="Transparent"/>
+                    <GridSplitter x:Name="WeekSplitter" Grid.Column="1" HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Stretch" ResizeDirection="Columns" Background="Transparent"/>
 
-                    
-                    <DockPanel Grid.Row="2" Grid.Column="2" Margin="12,0,0,0">
-                        <TextBlock DockPanel.Dock="Top" Text="编辑科目" FontSize="15" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,10,0,0">
-                            <TextBlock Text="自动选中下一节课" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                    <Border x:Name="WeekInspector" Grid.Column="2" Classes="editorCard">
+                        <Grid RowDefinitions="Auto,Auto,*" RowSpacing="6">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <TextBlock Text="选科排课" FontSize="15" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="自动下一节" VerticalAlignment="Center"/>
                             <ToggleSwitch Grid.Column="1" x:Name="AutoAdvanceCheck" AutomationProperties.Name="自动选中下一节课"/>
+                            </StackPanel>
                         </Grid>
-                        <TextBlock DockPanel.Dock="Bottom" x:Name="PaletteHintText" FontSize="11" TextWrapping="Wrap"
-                                   Margin="0,6,0,0"
+                        <TextBlock Grid.Row="1" x:Name="PaletteHintText" FontSize="12" TextWrapping="Wrap"
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                        <Border Margin="0,10,0,0"
-                                Background="{DynamicResource ClassNexSurfaceBrush}"
-                                BorderBrush="{DynamicResource ClassNexOutlineBrush}"
-                                BorderThickness="1" CornerRadius="8" Padding="10">
-                            
-                            <ListBox x:Name="SubjectPaletteList" Background="Transparent" BorderThickness="0"
-                                     SelectionMode="Single">
+                            <ListBox x:Name="SubjectPaletteList" Grid.Row="2" Background="Transparent" BorderThickness="0"
+                                     SelectionMode="Single" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                                 <ListBox.ItemsPanel>
                                     <ItemsPanelTemplate>
                                         <WrapPanel/>
@@ -366,33 +357,111 @@
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
-                        </Border>
-                    </DockPanel>
+                        </Grid>
+                    </Border>
+                    </Grid>
                 </Grid>
 
                     <DockPanel x:Name="PageTime" IsVisible="False" Margin="22,12,22,20">
                     <ui:InfoBar x:Name="TimeInfoBar" DockPanel.Dock="Top" Severity="Informational"
                                 IsOpen="False" IsClosable="True" Margin="0,0,0,8"/>
 
-                    <Grid ColumnDefinitions="*,260">
-                        <DockPanel Grid.Column="0">
-                            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,10">
-                                <Button x:Name="AddClassTimeButton" Content="上课"/>
-                                <Button x:Name="AddBreakTimeButton" Content="课间"/>
-                                <Button x:Name="AddSeparatorButton" Content="分割线"/>
-                                <Button x:Name="AddActionButton" Content="行动"/>
-                                <Button x:Name="DuplicateTimeButton" Content="创建副本"/>
-                                <Button x:Name="RemoveTimeButton" Content="删除"/>
-                                <Button x:Name="MoveUpButton" Content="上移"/>
-                                <Button x:Name="MoveDownButton" Content="下移"/>
-                                <Button x:Name="ResetTimeButton" Content="从课表重建"/>
+                    <WrapPanel DockPanel.Dock="Top" x:Name="TimeToolbar" Margin="0,0,0,6">
+                        <Button x:Name="AddTimeButton" Margin="0,0,8,6" AutomationProperties.Name="添加时间点">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="添加时间点"/>
+                                <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE06D;" FontSize="12" VerticalAlignment="Center"/>
                             </StackPanel>
+                            <Button.Flyout>
+                                <MenuFlyout>
+                                    <MenuItem x:Name="AddClassTimeButton" Header="上课"/>
+                                    <MenuItem x:Name="AddBreakTimeButton" Header="课间"/>
+                                    <MenuItem x:Name="AddSeparatorButton" Header="分割线"/>
+                                    <MenuItem x:Name="AddActionButton" Header="活动"/>
+                                </MenuFlyout>
+                            </Button.Flyout>
+                        </Button>
+                        <Button x:Name="MoveUpButton" Content="上移" Margin="0,0,4,6"/>
+                        <Button x:Name="MoveDownButton" Content="下移" Margin="0,0,8,6"/>
+                        <Button x:Name="TimeOptionsButton" Margin="0,0,0,6" AutomationProperties.Name="更多时间表操作" ToolTip.Tip="更多时间表操作">
+                            <ui:FontIcon FontFamily="avares://ClassNex/Assets/Fonts/#lucide" Glyph="&#xE0B6;" FontSize="16"/>
+                            <Button.Flyout>
+                                <MenuFlyout>
+                                    <MenuItem x:Name="DuplicateTimeButton" Header="创建副本"/>
+                                    <MenuItem x:Name="RemoveTimeButton" Header="删除选中的时间点"/>
+                                    <Separator/>
+                                    <MenuItem x:Name="ResetTimeButton" Header="从课表重建…"/>
+                                </MenuFlyout>
+                            </Button.Flyout>
+                        </Button>
+                    </WrapPanel>
 
-                            <Expander DockPanel.Dock="Bottom" HorizontalAlignment="Stretch" Margin="0,8,8,0"
-                                      ExpandDirection="Up" Header="时间点时长" Padding="12,10">
+                    <Grid x:Name="TimeWorkspace" ColumnDefinitions="*,12,284" RowDefinitions="*,0">
+                        <ScrollViewer x:Name="TimeAxisScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel x:Name="TimeAxisPanel" Spacing="4" Margin="0,0,8,0">
+                                <StackPanel.Styles>
+                                    <Style Selector="TextBlock">
+                                        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    </Style>
+                                    <Style Selector="Border.timelineItem">
+                                        <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
+                                        <Setter Property="BorderBrush" Value="{DynamicResource FocusStrokeColorOuterBrush}"/>
+                                    </Style>
+                                    <Style Selector="Border.timelineItem.lesson">
+                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+                                    </Style>
+                                    <Style Selector="Border.timelineItem.marker">
+                                        <Setter Property="Background" Value="{DynamicResource DividerStrokeColorDefaultBrush}"/>
+                                    </Style>
+                                    <Style Selector="Border.timelineFocus">
+                                        <Setter Property="BorderBrush" Value="{DynamicResource FocusStrokeColorInnerBrush}"/>
+                                    </Style>
+                                </StackPanel.Styles>
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <ScrollViewer x:Name="TimeInspector" Grid.Column="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="8">
+                        <Border Classes="editorCard">
+                            <StackPanel Spacing="12">
+                                <TextBlock x:Name="TimeEditorTitle" Text="时间点" FontSize="15" TextWrapping="Wrap"/>
+                                <StackPanel x:Name="TimeFields" IsEnabled="False" IsVisible="False" Spacing="10">
+
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="名称" Classes="muted"/>
+                                    <TextBox x:Name="TimeNameBox" AutomationProperties.Name="时间点名称"/>
+                                </StackPanel>
+
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="开始时间" Classes="muted"/>
+                                    <TimePicker x:Name="TimeStartPicker" ClockIdentifier="24HourClock" HorizontalAlignment="Stretch" AutomationProperties.Name="开始时间"/>
+                                </StackPanel>
+
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="结束时间" Classes="muted"/>
+                                    <TimePicker x:Name="TimeEndPicker" ClockIdentifier="24HourClock" HorizontalAlignment="Stretch" AutomationProperties.Name="结束时间"/>
+                                </StackPanel>
+
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="类型" Classes="muted"/>
+                                    <ComboBox x:Name="TimeKindCombo" HorizontalAlignment="Stretch" AutomationProperties.Name="时间点类型">
+                                        <ComboBoxItem Content="上课"/>
+                                        <ComboBoxItem Content="课间"/>
+                                        <ComboBoxItem Content="分割线"/>
+                                        <ComboBoxItem Content="活动"/>
+                                    </ComboBox>
+                                </StackPanel>
+
+                                <Button x:Name="SaveTimeButton" Content="应用修改" HorizontalAlignment="Left"/>
+                                </StackPanel>
+                                <TextBlock x:Name="TimeFieldHint" Text="选择一个时间点进行编辑。上课时间调整后，引用该节次的课程会一起调整。"
+                                           Classes="muted" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+                            <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Header="默认时间长度" Padding="10">
                                 <StackPanel Spacing="4">
                                     <Grid ColumnDefinitions="*,Auto">
-                                        <TextBlock Text="默认上课时间点时长" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <TextBlock Text="上课" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,8,0"/>
                                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
                                             <ui:NumberBox x:Name="ClassMinutesBox" Maximum="36000" Minimum="0"
                                                           Width="120" SpinButtonPlacementMode="Inline"/>
@@ -400,7 +469,7 @@
                                         </StackPanel>
                                     </Grid>
                                     <Grid ColumnDefinitions="*,Auto">
-                                        <TextBlock Text="默认课间时间点时长" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <TextBlock Text="课间" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,8,0"/>
                                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
                                             <ui:NumberBox x:Name="BreakMinutesBox" Maximum="36000" Minimum="0"
                                                           Width="120" SpinButtonPlacementMode="Inline"/>
@@ -409,121 +478,64 @@
                                     </Grid>
                                 </StackPanel>
                             </Expander>
-
-                            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                <StackPanel x:Name="TimeAxisPanel" Spacing="2" Margin="0,0,8,0"/>
-                            </ScrollViewer>
-                        </DockPanel>
-
-                        <Border Grid.Column="1" Margin="12,0,0,0"
-                                Background="{DynamicResource ClassNexSurfaceBrush}"
-                                BorderBrush="{DynamicResource ClassNexOutlineBrush}"
-                                BorderThickness="1" CornerRadius="8" Padding="14">
-                            <StackPanel Spacing="12">
-                                <TextBlock x:Name="TimeEditorTitle" Text="时间点" FontSize="15" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="名称" FontSize="12"
-                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                    <TextBox x:Name="TimeNameBox"/>
-                                </StackPanel>
-
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="开始时间" FontSize="12"
-                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                    <TimePicker x:Name="TimeStartPicker" HorizontalAlignment="Stretch"/>
-                                </StackPanel>
-
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="结束时间" FontSize="12"
-                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                    <TimePicker x:Name="TimeEndPicker" HorizontalAlignment="Stretch"/>
-                                </StackPanel>
-
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="类型" FontSize="12"
-                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                    <ComboBox x:Name="TimeKindCombo" HorizontalAlignment="Stretch">
-                                        <ComboBoxItem Content="上课"/>
-                                        <ComboBoxItem Content="课间"/>
-                                        <ComboBoxItem Content="分割线"/>
-                                        <ComboBoxItem Content="行动"/>
-                                    </ComboBox>
-                                </StackPanel>
-
-                                <Button x:Name="SaveTimeButton" Content="保存修改" HorizontalAlignment="Left"/>
-
-                                <TextBlock Text="课程的时间跟随其所在节次；修改时间会同步更新课表中使用该时段的课程。"
-                                           FontSize="11" TextWrapping="Wrap"
-                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                            </StackPanel>
-                        </Border>
+                        </StackPanel>
+                        </ScrollViewer>
                     </Grid>
                     </DockPanel>
 
                     <Grid x:Name="PageSubject" IsVisible="False" Margin="22,12,22,20"
-                          ColumnDefinitions="*,330">
+                          ColumnDefinitions="*,12,284" RowDefinitions="*,0">
 
-                    <DockPanel Grid.Column="0">
+                    <DockPanel x:Name="SubjectListPane" Grid.Column="0">
                         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,10">
-                            <Button x:Name="AddSubjectButton" Content="添加"/>
-                            <Button x:Name="DeleteSubjectButton" Content="删除"/>
+                            <Button x:Name="AddSubjectButton" Content="添加科目"/>
+                            <Button x:Name="DeleteSubjectButton" Content="删除所选科目" IsEnabled="False"/>
                         </StackPanel>
 
-                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                        <ScrollViewer x:Name="SubjectTableScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                             <Grid x:Name="SubjectTableGrid" Margin="0,0,8,0"/>
                         </ScrollViewer>
                     </DockPanel>
 
-                    <Border Grid.Column="1" Margin="12,0,0,0"
-                            Background="{DynamicResource ClassNexSurfaceBrush}"
-                            BorderBrush="{DynamicResource ClassNexOutlineBrush}"
-                            BorderThickness="1" CornerRadius="8" Padding="14">
-                        <ScrollViewer>
+                    <ScrollViewer x:Name="SubjectInspector" Grid.Column="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <Border Classes="editorCard">
                             <StackPanel Spacing="12">
-                                <TextBlock Text="编辑科目信息" FontSize="15" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <TextBlock Text="编辑科目信息" FontSize="15"/>
+                                <TextBlock x:Name="SubjectFieldHint" Text="选择一个现有科目，或先添加科目。" Classes="muted" TextWrapping="Wrap"/>
+                                <StackPanel x:Name="SubjectFields" IsEnabled="False" Spacing="10">
 
                                 <StackPanel Spacing="4">
                                     <TextBlock Text="科目名" FontSize="12"
                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                    <TextBox x:Name="SubjectNameBox"/>
+                                    <TextBox x:Name="SubjectNameBox" AutomationProperties.Name="科目名"/>
                                 </StackPanel>
 
                                 <StackPanel Spacing="4">
                                     <TextBlock Text="简称" FontSize="12"
                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                    <TextBox x:Name="SubjectSimplifiedBox"/>
+                                    <TextBox x:Name="SubjectSimplifiedBox" AutomationProperties.Name="简称"/>
                                 </StackPanel>
 
                                 <StackPanel Spacing="4">
                                     <TextBlock Text="科任老师" FontSize="12"
                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                    <TextBox x:Name="SubjectTeacherBox"/>
+                                    <TextBox x:Name="SubjectTeacherBox" AutomationProperties.Name="科任老师"/>
                                 </StackPanel>
 
                                 <Grid ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="该科目是户外课程"
+                                    <TextBlock Text="该科目是户外课程" TextWrapping="Wrap"
                                                VerticalAlignment="Center"/>
-                                    <ToggleSwitch Grid.Column="1" x:Name="OutdoorCheck"/>
+                                    <ToggleSwitch Grid.Column="1" x:Name="OutdoorCheck" AutomationProperties.Name="户外课程"/>
                                 </Grid>
 
-                                <Button x:Name="SaveSubjectsButton" Content="保存" HorizontalAlignment="Left"/>
-
-                                <TextBlock Text="修改会写回 CSES 课表文件。"
-                                           FontSize="11" TextWrapping="Wrap"
-                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                <Button x:Name="SaveSubjectsButton" Content="保存科目信息" HorizontalAlignment="Left"/>
+                                </StackPanel>
                             </StackPanel>
-                        </ScrollViewer>
-                    </Border>
+                        </Border>
+                    </ScrollViewer>
                     </Grid>
 
-                    <StackPanel x:Name="PageSwap" IsVisible="False" Margin="22,12,22,20" Spacing="12">
-                    <TextBlock Text="临时调课（不改动基础课表，只覆盖某一天）功能开发中。"
-                               TextWrapping="Wrap"
-                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                    </StackPanel>
+                    <views:TemporaryScheduleEditor x:Name="PageSwap" IsVisible="False"/>
                 </Grid>
             </Grid>
         </ui:NavigationView>
