@@ -113,6 +113,16 @@ public partial class TemporaryScheduleEditor : UserControl
         if (IsEdited) _drafts[date] = Snapshot(); else _drafts.Remove(date);
     }
 
+    internal void RenameDraftSubject(string from, string to)
+    {
+        if (_profile is null || _profile.FindSubject(to) is null) return;
+        RememberDraft();
+        foreach (var draft in _drafts.Values)
+            foreach (var row in draft.Rows)
+                if (row.Subject.Trim() == from) row.Subject = to;
+        ShowDate(_date);
+    }
+
     private void ShowDate(DateOnly? date)
     {
         _syncing = true;

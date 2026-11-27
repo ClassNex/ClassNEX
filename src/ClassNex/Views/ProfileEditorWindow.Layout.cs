@@ -55,6 +55,8 @@ public partial class ProfileEditorWindow
         SubjectFieldHint.IsVisible = true;
         SubjectNameBox.Text = SubjectSimplifiedBox.Text = SubjectTeacherBox.Text = "";
         OutdoorCheck.IsChecked = false;
+        SaveSubjectsButton.IsEnabled = false;
+        SubjectSaveStatus.Text = null;
     }
 
     private async Task ConfirmRebuildTimeAsync()

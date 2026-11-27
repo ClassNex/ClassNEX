@@ -528,7 +528,8 @@
                                     <ToggleSwitch Grid.Column="1" x:Name="OutdoorCheck" AutomationProperties.Name="户外课程"/>
                                 </Grid>
 
-                                <Button x:Name="SaveSubjectsButton" Content="保存科目信息" HorizontalAlignment="Left"/>
+                                <Button x:Name="SaveSubjectsButton" Content="保存科目信息" HorizontalAlignment="Left" IsEnabled="False"/>
+                                <TextBlock x:Name="SubjectSaveStatus" Classes="muted" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
                                 </StackPanel>
                             </StackPanel>
                         </Border>

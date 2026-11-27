@@ -165,10 +165,50 @@ public sealed class ScheduleService : IScheduleService
     /// <inheritdoc />
     public Subject AddSubject(string name)
     {
+        var root = name;
+        for (var suffix = 2; _profile.FindSubject(name) is not null; suffix++) name = $"{root} {suffix}";
         var subject = new Subject { Name = name };
         _profile.Subjects.Add(subject);
         Save();
         return subject;
+    }
+
+    /// <summary>保存科目信息，并在名称变化时更新本档案的常规课程和已应用的单日课程。</summary>
+    public bool TryUpdateSubject(Subject subject, string name, string? shortName, string? teacher, bool isOutdoor, out string? error)
+    {
+        name = name.Trim();
+        if (!_profile.Subjects.Contains(subject)) { error = "该科目已经不在当前档案中。"; return false; }
+        if (name.Length == 0) { error = "请填写科目名。"; return false; }
+        if (string.IsNullOrWhiteSpace(FilePath)) { error = "尚未选择基础课表文件。"; return false; }
+        var original = (subject.Name, subject.SimplifiedName, subject.Teacher, subject.IsOutDoor);
+        var rename = name != original.Name;
+        if (rename && _profile.Subjects.Any(s => !ReferenceEquals(s, subject) && (s.Name == name || s.Name == original.Name)))
+        { error = "科目重名。请先给重复的科目分配不同名称。"; return false; }
+        var courses = rename ? _profile.Schedules.SelectMany(s => s.Classes).Where(c => c.Subject == original.Name).ToArray() : [];
+        (subject.Name, subject.SimplifiedName, subject.Teacher, subject.IsOutDoor) =
+            (name, Normalize(shortName), Normalize(teacher), isOutdoor);
+        foreach (var course in courses) course.Subject = name;
+        try
+        {
+            void WriteProfile() => AtomicFile.Write(FilePath, CsesCodec.SerializeWorkingProfile(_profile));
+            if (rename) TemporarySchedules.SaveRenamedSubject(original.Name, name, WriteProfile);
+            else WriteProfile();
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or NotSupportedException or YamlDotNet.Core.YamlException)
+        {
+            (subject.Name, subject.SimplifiedName, subject.Teacher, subject.IsOutDoor) = original;
+            foreach (var course in courses) course.Subject = original.Name;
+            _profile.Invalidate();
+            error = e.Message;
+            return false;
+        }
+        _profile.Invalidate();
+        error = null;
+        Saved?.Invoke();
+        Raise();
+        return true;
+
+        static string? Normalize(string? text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim();
     }
 
     /// <inheritdoc />

@@ -90,6 +90,42 @@ public sealed class TemporaryScheduleStore
         _profile.Invalidate();
     }
 
+    internal void SaveRenamedSubject(string from, string to, Action saveBase)
+    {
+        lock (_gate)
+        {
+            if (LoadError is not null) throw new InvalidOperationException(LoadError);
+            var original = _profile.TemporarySchedules;
+            var updated = original;
+            foreach (var (date, plan) in original)
+            {
+                if (!plan.Lessons.Any(l => l.Subject == from)) continue;
+                updated = updated.SetItem(date, plan with
+                {
+                    Lessons = plan.Lessons.Select(l => l.Subject == from ? l with { Subject = to } : l).ToImmutableArray()
+                });
+            }
+            if (!ReferenceEquals(original, updated) && _path is { } path)
+            {
+                var previous = File.ReadAllText(path);
+                AtomicFile.Write(path, JsonSerializer.Serialize(updated.Values));
+                try { saveBase(); }
+                catch
+                {
+                    try { AtomicFile.Write(path, previous); }
+                    catch (Exception restoreError) when (restoreError is IOException or UnauthorizedAccessException)
+                    {
+                        LoadError = "基础课表未保存，且无法还原本地调课文件。请检查文件权限后重新加载。";
+                        throw new IOException(LoadError, restoreError);
+                    }
+                    throw;
+                }
+            }
+            else saveBase();
+            _profile.TemporarySchedules = updated;
+        }
+    }
+
     private static TemporarySchedule Normalize(TemporarySchedule plan)
     {
         if (string.IsNullOrWhiteSpace(plan.Name)) throw new ArgumentException("请填写这份临时课表的名称。");

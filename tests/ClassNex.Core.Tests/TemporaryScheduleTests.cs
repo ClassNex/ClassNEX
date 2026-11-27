@@ -85,6 +85,62 @@ public sealed class TemporaryScheduleTests
     }
 
     [TestMethod]
+    public void SubjectRenameKeepsLessonMetadataAndOnlyUpdatesTheActiveProfile()
+    {
+        using var f = new Fixture();
+        var otherPath = Path.Combine(f.Directory.FullName, "八年级课表.yaml");
+        var other = new ScheduleService(() => f.Settings, f.Overrides, () => f.Today);
+        other.Load(otherPath);
+        other.AddSubject("体育");
+        other.TemporarySchedules.Apply(SportsDay());
+        f.Schedule.AddCourse(1, "even", new() { Subject = "体育", StartTime = "09:00", EndTime = "09:45" });
+        f.Schedule.TemporarySchedules.Apply(SportsDay() with
+        {
+            TimeLayout = [new(ClassTimeKind.Action, "体育", TimeSpan.FromHours(10), TimeSpan.FromHours(10))]
+        });
+        var subject = f.Schedule.Profile.FindSubject("体育")!;
+        using var cache = new DayScheduleCache(f.Time, f.Schedule);
+        Assert.AreEqual("体育", cache.Read(Monday).Next?.Subject);
+        var saved = 0;
+        f.Schedule.Saved += () => saved++;
+        Assert.IsTrue(f.Schedule.TryUpdateSubject(subject, " 体育与健康 ", "体", "陈老师", true, out var error), error);
+        Assert.AreEqual(1, saved);
+        Assert.AreEqual("体育与健康", cache.Read(Monday).Next?.Subject);
+        var restarted = f.Open();
+        Assert.IsNull(restarted.Profile.FindSubject("体育"));
+        Assert.IsTrue(restarted.Profile.FindSubject("体育与健康")!.IsOutDoor);
+        Assert.AreEqual("体育与健康", restarted.Profile.GetCourses(1, "even").Last().Subject);
+        Assert.AreEqual("陈老师", f.Time.GetTodaySummary(restarted.Profile, Monday).Next?.Teacher);
+        Assert.AreEqual("体育", restarted.Profile.TemporarySchedules[Day()].TimeLayout!.Value[0].Name);
+        other.Reload();
+        Assert.AreEqual("体育", other.Profile.TemporarySchedules[Day()].Lessons.Single().Subject);
+        Assert.IsNotNull(other.Profile.FindSubject("体育"));
+    }
+
+    [TestMethod]
+    public void SubjectRenameRejectsDuplicatesAndRestoresTemporaryFileWhenBaseSaveFails()
+    {
+        using var f = new Fixture();
+        f.Schedule.AddSubject("信息科技");
+        var subject = f.Schedule.Profile.FindSubject("体育")!;
+        f.Schedule.TemporarySchedules.Apply(SportsDay());
+        var path = Directory.GetFiles(f.Overrides).Single();
+        var original = File.ReadAllText(path);
+        Assert.IsFalse(f.Schedule.TryUpdateSubject(subject, " 信息科技 ", null, null, true, out _));
+        Assert.AreEqual(original, File.ReadAllText(path));
+        using (File.Open(f.FileName, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            if (!OperatingSystem.IsWindows()) return;
+            Assert.IsFalse(f.Schedule.TryUpdateSubject(subject, "体育与健康", null, null, true, out var error));
+            Assert.IsNotNull(error);
+        }
+        Assert.AreEqual("体育", subject.Name);
+        Assert.AreEqual("体育", f.Schedule.Profile.TemporarySchedules[Day()].Lessons.Single().Subject);
+        Assert.AreEqual(original, File.ReadAllText(path));
+        Assert.IsNotNull(f.Open().Profile.FindSubject("体育"));
+    }
+
+    [TestMethod]
     public void AnEmptyProfileRecognizesOnlyItsExplicitSchoolDays()
     {
         using var f = new Fixture();

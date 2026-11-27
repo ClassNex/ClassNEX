@@ -138,7 +138,7 @@ public partial class ProfileEditorWindow : AppWindow
     protected override void OnClosing(WindowClosingEventArgs e)
     {
         base.OnClosing(e);
-        if (_discardOnClose || !PageSwap.HasPendingChanges || e.CloseReason is WindowCloseReason.ApplicationShutdown or WindowCloseReason.OSShutdown) return;
+        if (_discardOnClose || !(PageSwap.HasPendingChanges || HasSubjectDraft) || e.CloseReason is WindowCloseReason.ApplicationShutdown or WindowCloseReason.OSShutdown) return;
         e.Cancel = true;
         if (!_confirmingClose) _ = ConfirmCloseAsync();
     }
@@ -152,7 +152,7 @@ public partial class ProfileEditorWindow : AppWindow
 
     private async Task<bool> ConfirmDiscardAsync() => await new ContentDialog
     {
-        Title = "放弃未应用的调课草稿？", Content = "已应用的调课会保留。未应用的日期和课程修改不会保存。",
+        Title = "放弃尚未保存的编辑？", Content = "已保存的课表和已应用的调课会保留。未保存的科目信息和调课草稿不会保留。",
         PrimaryButtonText = "放弃草稿", CloseButtonText = "继续编辑", DefaultButton = ContentDialogButton.Close
     }.ShowAsync(this) == ContentDialogResult.Primary;
 
@@ -236,21 +236,13 @@ public partial class ProfileEditorWindow : AppWindow
         };
 
         
-        AddSubjectButton.Click += (_, _) => AddSubject();
-        DeleteSubjectButton.Click += (_, _) => DeleteSubject();
-        SaveSubjectsButton.Click += (_, _) =>
-        {
-            OnSaveNow(this, new RoutedEventArgs());
-        };
-
-        SubjectNameBox.TextChanged += (_, _) => PushSubjectEdit();
-        SubjectSimplifiedBox.TextChanged += (_, _) => PushSubjectEdit();
-        SubjectTeacherBox.TextChanged += (_, _) => PushSubjectEdit();
-        OutdoorCheck.PropertyChanged += (_, e) =>
-        {
-            if (!_loading && e.Property == ToggleSwitch.IsCheckedProperty)
-                PushSubjectEdit();
-        };
+        AddSubjectButton.Click += async (_, _) => { if (!HasSubjectDraft || await ConfirmSubjectDiscardAsync()) AddSubject(); };
+        DeleteSubjectButton.Click += async (_, _) => { if (!HasSubjectDraft || await ConfirmSubjectDiscardAsync()) DeleteSubject(); };
+        SaveSubjectsButton.Click += OnSaveNow;
+        SubjectNameBox.TextChanged += (_, _) => UpdateSubjectSaveState();
+        SubjectSimplifiedBox.TextChanged += (_, _) => UpdateSubjectSaveState();
+        SubjectTeacherBox.TextChanged += (_, _) => UpdateSubjectSaveState();
+        OutdoorCheck.IsCheckedChanged += (_, _) => UpdateSubjectSaveState();
 
         OpenButton.Click += OnOpenTimetable;
         ExportButton.Click += OnExport;
@@ -365,12 +357,32 @@ public partial class ProfileEditorWindow : AppWindow
     private async void OnSaveNow(object? sender, RoutedEventArgs e)
     {
         if (_pageIndex == 4) { PageSwap.Apply(); return; }
+        if (HasSubjectDraft && _currentSubject is { } subject)
+        {
+            var originalName = subject.Name;
+            if (!AppServices.LocalSchedule.TryUpdateSubject(subject, SubjectNameBox.Text ?? "", SubjectSimplifiedBox.Text,
+                SubjectTeacherBox.Text, OutdoorCheck.IsChecked == true, out var subjectError))
+            {
+                SubjectSaveStatus.Text = subjectError;
+                if (_pageIndex != 3) SelectTab(2);
+                return;
+            }
+            if (subject.Name != originalName) PageSwap.RenameDraftSubject(originalName, subject.Name);
+            SelectSubjectRow(subject);
+            RefreshSubjectNames();
+            RefreshPalette();
+            RenderTimetable();
+            SubjectSaveStatus.Text = "已保存科目信息。";
+            ProfileInfoText.Text = $"已保存 · {AppServices.TimetableFileName}";
+            return;
+        }
         if (AppServices.LocalSchedule.TrySave(out var error)) ProfileInfoText.Text = $"已保存 · {AppServices.TimetableFileName}";
         else await new ContentDialog { Title = "基础课表未保存", Content = error, CloseButtonText = "关闭" }.ShowAsync(this);
     }
 
-    private void OnReloadProfile(object? sender, RoutedEventArgs e)
+    private async void OnReloadProfile(object? sender, RoutedEventArgs e)
     {
+        if (HasSubjectDraft && !await ConfirmSubjectDiscardAsync()) return;
         AppServices.ReloadTimetable();
         LoadAll();
     }
@@ -1058,7 +1070,10 @@ public partial class ProfileEditorWindow : AppWindow
                     },
                 };
 
-                cell.PointerPressed += (_, _) => SelectSubjectRow(subject);
+                cell.PointerPressed += async (_, _) =>
+                {
+                    if (!ReferenceEquals(_currentSubject, subject) && (!HasSubjectDraft || await ConfirmSubjectDiscardAsync())) SelectSubjectRow(subject);
+                };
 
                 Grid.SetRow(cell, i + 1);
                 Grid.SetColumn(cell, c);
@@ -1080,24 +1095,25 @@ public partial class ProfileEditorWindow : AppWindow
         OutdoorCheck.IsChecked = subject.IsOutDoor;
 
         _loading = false;
+        UpdateSubjectSaveState();
         RefreshSubjectTable();
     }
 
-    private void PushSubjectEdit()
+    private bool HasSubjectDraft => _currentSubject is { } subject &&
+        ((SubjectNameBox.Text ?? "") != subject.Name || (SubjectSimplifiedBox.Text ?? "") != (subject.SimplifiedName ?? "") ||
+         (SubjectTeacherBox.Text ?? "") != (subject.Teacher ?? "") || (OutdoorCheck.IsChecked == true) != subject.IsOutDoor);
+
+    private void UpdateSubjectSaveState()
     {
-        if (_loading || _currentSubject is null)
-            return;
-
-        _currentSubject.Name = SubjectNameBox.Text ?? "";
-        _currentSubject.SimplifiedName = string.IsNullOrWhiteSpace(SubjectSimplifiedBox.Text) ? null : SubjectSimplifiedBox.Text;
-        _currentSubject.Teacher = string.IsNullOrWhiteSpace(SubjectTeacherBox.Text) ? null : SubjectTeacherBox.Text;
-        _currentSubject.IsOutDoor = OutdoorCheck.IsChecked == true;
-
-        RefreshSubjectTable();
-        RefreshSubjectNames();
-        RefreshPalette();
-        RenderTimetable();
+        if (_loading) return;
+        SaveSubjectsButton.IsEnabled = HasSubjectDraft;
+        SubjectSaveStatus.Text = HasSubjectDraft ? "有未保存的更改。" : null;
     }
+
+    private async Task<bool> ConfirmSubjectDiscardAsync() => await new ContentDialog
+    {
+        Title = "放弃未保存的科目信息？", PrimaryButtonText = "放弃", CloseButtonText = "继续编辑", DefaultButton = ContentDialogButton.Close
+    }.ShowAsync(this) == ContentDialogResult.Primary;
 
     private void AddSubject()
     {
@@ -1132,7 +1148,7 @@ public partial class ProfileEditorWindow : AppWindow
         if (path is null)
             return;
 
-        if (PageSwap.HasPendingChanges && !await ConfirmDiscardAsync()) return;
+        if ((PageSwap.HasPendingChanges || HasSubjectDraft) && !await ConfirmDiscardAsync()) return;
         try
         {
             AppServices.ImportTimetable(path);
