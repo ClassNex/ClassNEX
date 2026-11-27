@@ -39,6 +39,9 @@ function Attributes($reference,$candidate,[string[]]$names) {
     if (!$reference -or !$candidate) { throw 'A provider element was not found' }
     foreach ($att in $names) { if (!$reference.HasAttribute($att)) { throw "Missing reference attribute: $att" }; Same $reference.GetAttribute($att) $candidate.GetAttribute($att) "$($candidate.LocalName).$att" }
 }
+function RequireAttribute($node,[string]$name,[string]$expected) {
+    if (!$node -or !$node.HasAttribute($name) -or $node.GetAttribute($name) -cne $expected) { throw "Unexpected provider layout: expected $name='$expected'" }
+}
 function InlineLayout($caption) {
     $parts = @(); $separator = ''
     foreach ($child in $caption.ChildNodes) {
@@ -50,9 +53,14 @@ function InlineLayout($caption) {
     if (!$parts.Count) { throw 'Expected a caption composed of runs' }
     $parts -join ';'
 }
+$coursePage = Named $nex 'NotificationOverlayCoursePage'
+RequireAttribute $coursePage 'ColumnDefinitions' 'Auto,Auto'
+RequireAttribute $coursePage 'HorizontalAlignment' 'Center'
+RequireAttribute $coursePage 'VerticalAlignment' 'Center'
+RequireAttribute (Named $nex 'NotificationOverlayTime') 'Margin' '2 0 0 0'
 foreach ($provider in 'ClassPrepareNotifyOverlay','ClassOffOverlay') {
     $grid = $ref.SelectSingleNode("//*[@*[local-name()='Key']='$provider']")
-    Attributes $grid (Named $nex 'NotificationOverlayCoursePage') 'ColumnDefinitions'
+    RequireAttribute $grid 'ColumnDefinitions' '*,*'
     $caption = $grid.SelectSingleNode("./*[local-name()='TextBlock']")
     $candidateCaption = Named $nex $(if ($provider -eq 'ClassOffOverlay') { 'NotificationBreakCaption' } else { 'NotificationOverlayLeft' })
     Attributes $caption $candidateCaption @('Grid.Column','Margin','HorizontalAlignment','VerticalAlignment')
@@ -63,7 +71,8 @@ foreach ($provider in 'ClassPrepareNotifyOverlay','ClassOffOverlay') {
     Attributes $labels[0] (Named $nex 'NotificationOverlayPrefix') @('Classes','VerticalAlignment')
     Attributes $labels[1] (Named $nex 'NotificationOverlaySubject') @('FontSize','FontWeight','VerticalAlignment')
     Attributes $labels[2] (Named $nex 'NotificationOverlayTeacher') @('FontSize','Margin','VerticalAlignment','Classes')
-    Attributes $labels[3] (Named $nex 'NotificationOverlayTime') @('FontSize','Margin','VerticalAlignment','Classes')
+    RequireAttribute $labels[3] 'Margin' '2 0 0 0'
+    Attributes $labels[3] (Named $nex 'NotificationOverlayTime') @('FontSize','VerticalAlignment','Classes')
 }
 [xml]$dismiss = Original 'ClassIsland/Controls/NotificationProviders/AfterSchoolNotificationProvider.axaml'
 Attributes ($dismiss.SelectSingleNode("//*[local-name()='TextBlock']")) (Named $nex 'NotificationSimpleMessage') @('Margin','VerticalAlignment','HorizontalAlignment','TextTrimming')
@@ -109,4 +118,5 @@ function MotionStatements([string]$originalFile,[string]$candidateFile,[string]$
 }
 MotionStatements 'ClassIsland/Controls/NotificationEffects/RippleEffect.axaml.cs' 'src/ClassNex/Controls/NotificationEffects/RippleEffect.axaml.cs' 'animation(?:Scale|Opacity)\.(?:InsertKeyFrame\(|Duration=)[^;]+;|awaitTask\.Delay\([^;]+;|varr(?:11|12|21|22)=[^;]+;' 'full-screen ripple coordinates, keyframes and lifetime'
 MotionStatements 'ClassIsland/Controls/SlantedMaskControl.cs' 'src/ClassNex/Controls/SlantedMaskControl.cs' 'animation\.Children\.AddRange\([^;]+;|varp[1-4]=newPoint\([^;]+;|doublefullW=[^;]+;' 'five masks, segment timing and edges'
-"PASS: $checked direct comparisons against $pin (templates, fonts, geometry, text and motion)"
+"PASS: $checked direct comparisons against $pin (templates, fonts, shared geometry, text and motion)."
+'Separate layout contract: upstream uses equal columns; ClassNEX centers a content-sized row. The time margin is 2 DIP in XAML; the rendered 2/6 DIP policy is checked separately by compare_ci_notification_provider.ps1 -LayoutContract Compact.'

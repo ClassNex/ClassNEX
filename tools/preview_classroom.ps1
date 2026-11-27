@@ -9,10 +9,15 @@ dotnet publish (Join-Path $repo 'src/ClassNex/ClassNex.csproj') -c Debug --no-bu
 if ($LASTEXITCODE) { throw 'Build the Debug desktop client before opening a preview.' }
 $exe = Get-Item -LiteralPath (Join-Path $app 'ClassNex.exe')
 if ($exe.VersionInfo.ProductVersion -cne $ExpectedVersion) { throw "Preview build is $($exe.VersionInfo.ProductVersion), expected $ExpectedVersion." }
+if ($ExpectedVersion -cge '26w48b' -and !(Test-Path -LiteralPath (Join-Path $app 'Assets/app-mark.png') -PathType Leaf)) { throw 'Preview is missing the ClassNEX product icon.' }
 $prefs = [ordered]@{ IsOobeCompleted=$true; SampleSeedVersion=3; IsMainWindowVisible=$true; IsClickThrough=$false; Topmost=$true;
     ThemeMode='dark'; MainWindowScale=1.45; RunAtStartup=$false; RegisterUrlProtocol=$false; IsNexVoiceWakeEnabled=$false; IsNexEdgeBarEnabled=$false;
-    AccountEndpoint='http://127.0.0.1:9'; CentralManagement=@{IsEnabled=$false; ServerUrl='http://127.0.0.1:9'} }
-if ($Migration) { $prefs['IsNexIntelligenceEnabled'] = $false }
+    CentralManagement=@{IsEnabled=$false} }
+if ($Migration) {
+    $prefs['IsNexIntelligenceEnabled'] = $false
+    $prefs['AccountEndpoint'] = 'http://127.0.0.1:9'
+    $prefs.CentralManagement['ServerUrl'] = 'http://127.0.0.1:9'
+}
 $utf8 = [Text.UTF8Encoding]::new($false)
 [IO.File]::WriteAllText((Join-Path $data.FullName 'Settings.json'), ($prefs | ConvertTo-Json), $utf8)
 $now = Get-Date

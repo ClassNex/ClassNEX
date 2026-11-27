@@ -31,6 +31,7 @@ public partial class App
         var initialLeft = AppServices.Settings.MainWindowLeft;
         var initialTop = AppServices.Settings.MainWindowTop;
         var initialPassthrough = AppServices.Settings.IsClickThrough;
+        var initialHover = AppServices.Settings.HoverOpacity;
         var mode = window.ActualThemeVariant == ThemeVariant.Dark ? "dark" : "light";
         var dpi = (int)Math.Round(96 * window.RenderScaling);
         var moment = new DateTime(2026, 11, 22, 23, 59, 0);
@@ -88,6 +89,7 @@ public partial class App
             await Inspect("swapped", "clock", "date");
             window.ResetPlacement();
             AppServices.Settings.IsClickThrough = false;
+            AppServices.Settings.HoverOpacity = 1;
             AppServices.SaveSettings();
             await Settle();
             var work = window.Screens.Primary!.WorkingArea;
@@ -117,13 +119,16 @@ public partial class App
                 new(RawInputModifiers.None, PointerUpdateKind.LeftButtonReleased), KeyModifiers.None, MouseButton.Left));
             Press(); Move(new PixelPoint(press.X + 1, press.Y + 1)); Release(press);
             check(AppServices.Settings.MainWindowLeft == 80 && AppServices.Settings.MainWindowTop == 80 && At(initial.Position), "A click with one pixel of jitter does not move the island");
-            Press(); Move(end);
-            check(AppServices.Settings.MainWindowLeft == 80 && AppServices.Settings.MainWindowTop == 80 && At(target), "Dragging moves the visible island without committing intermediate positions");
-            Release(end); await Settle();
-            check(AppServices.Settings.MainWindowLeft == target.X && AppServices.Settings.MainWindowTop == target.Y && At(target), "Releasing the pointer commits its screen-pixel anchor once");
+            Press(); Move(end); Release(end); await Settle();
+            check(AppServices.Settings.MainWindowLeft == 80 && AppServices.Settings.MainWindowTop == 80 && At(initial.Position), "An ordinary classroom drag never moves the island, even when classroom shortcuts are enabled");
+            var settingsWindow = ((App)Current!)._desktop!.Settings!;
+            await FromGeneral();
+            await MoveClassroomInEditorAsync(window, target, island =>
+                check(SettingsService.Load() is { MainWindowLeft: 80, MainWindowTop: 80 } && island.Position == target,
+                    "The explicit editing handle moves the window without writing intermediate positions"));
+            check(AppServices.Settings.MainWindowLeft == target.X && AppServices.Settings.MainWindowTop == target.Y && At(target), "Releasing the edit handle saves the screen-pixel anchor; leaving edit mode keeps it");
             CheckIslandRegion(window, check);
             await shot(window, "overlay-dragged", mode, dpi);
-            var settingsWindow = ((App)Current!)._desktop!.Settings!;
             async Task<bool> Reached(string key)
             {
                 var elapsed = Stopwatch.StartNew();
@@ -156,15 +161,10 @@ public partial class App
                 finally { window.RemoveHandler(InputElement.DoubleTappedEvent, Observed); }
             }
             string Details() => $"route={settingsWindow.CurrentPageKey}, source={source.GetType().Name}#{source.Name}, attached={TopLevel.GetTopLevel(source) == window}, at={press}, island={window.GetIslandScreenRect()}, capture={pointer.Captured}, passthrough={AppServices.Settings.IsClickThrough}";
-            await FromGeneral();
-            source = Hit(end);
-            var trailing = new TappedEventArgs(InputElement.DoubleTappedEvent, new PointerReleasedEventArgs(source, pointer, window, window.PointToClient(end), ++timestamp,
-                new(RawInputModifiers.None, PointerUpdateKind.LeftButtonReleased), KeyModifiers.None, MouseButton.Left));
-            source.RaiseEvent(trailing); await Settle();
-            check(!trailing.Handled && settingsWindow.CurrentPageKey == "basic", "Dragging does not trigger a settings shortcut on release");
+            check(settingsWindow.CurrentPageKey == "basic", "Releasing the edit handle does not open a classroom shortcut");
             var actual = DoubleClick();
             var home = await Reached("home");
-            check(actual is (1, true, true) && home, $"Double-tapping the classroom routes to the real settings home: events={actual.Seen}, handled={actual.Handled}, capturedOnPress={actual.Captured}; {Details()}");
+            check(actual is (1, true, false) && home, $"Explicitly interactive classroom double-taps open settings without capturing a move gesture: events={actual.Seen}, handled={actual.Handled}, capturedOnPress={actual.Captured}; {Details()}");
             AppServices.Settings.IsClickThrough = true; AppServices.SaveSettings(); await Settle();
             await FromGeneral(); NewGesture(); Press(); Move(new(press.X + 30, press.Y + 30)); Release(press);
             var ignored = DoubleClick(); await Settle();
@@ -183,6 +183,7 @@ public partial class App
             var result = await File.ReadAllTextAsync(resultFile);
             using var proof = JsonDocument.Parse(result);
             check(other.ExitCode == 0 && proof.RootElement.GetProperty("Passed").GetBoolean(), "Separate client process reopened saved clock, date order and visible island location: " + result);
+            await ReviewEdgePlacementAsync(window, work, check);
             window.ResetPlacement(); await Settle();
             check(At(MainWindow.ClampIsland(work, window.GetIslandScreenRect()!.Value.Size, null)) && AppServices.Settings.MainWindowLeft == 80 && AppServices.Settings.MainWindowTop == 80,
                 "Reset placement restores and saves top center without changing the component order");
@@ -195,12 +196,89 @@ public partial class App
             AppServices.Settings.MainWindowLeft = initialLeft;
             AppServices.Settings.MainWindowTop = initialTop;
             AppServices.Settings.IsClickThrough = initialPassthrough;
+            AppServices.Settings.HoverOpacity = initialHover;
             widgets.Save();
             window.ApplySettings();
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
         }
         double MeasureClock() { var text = Text("ClockValue")!; text.Measure(Size.Infinity); return text.DesiredSize.Width; }
         async Task Settle() { window.UpdateLayout(); await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background); }
+    }
+
+    private static async Task ReviewEdgePlacementAsync(MainWindow window, PixelRect work, Action<bool, string> check)
+    {
+        var corner = new PixelPoint(work.Right - 1, work.Bottom - 1);
+        PixelPoint requested = default, shown = default;
+        await MoveClassroomInEditorAsync(window, (island, down) =>
+        {
+            requested = island.Position + (corner - down);
+            return corner;
+        }, island =>
+        {
+            shown = island.Position;
+            var islandOnly = MainWindow.ClampIsland(work, island.Size, requested);
+            var toolbar = window.FindControl<Panel>("EditBarHost")!;
+            var toolbarEnd = toolbar.PointToScreen(new Point(toolbar.Bounds.Width, toolbar.Bounds.Height));
+            check(shown.Y < islandOnly.Y && toolbarEnd.X <= work.Right && toolbarEnd.Y <= work.Bottom,
+                $"Bottom-right drag keeps the editor toolbar on-screen: island-only={islandOnly}, displayed={shown}, toolbar-end={toolbarEnd}, work-area={work}");
+        });
+        var stored = SettingsService.Load();
+        var after = window.GetIslandScreenRect()?.Position;
+        check(stored.MainWindowLeft == shown.X && stored.MainWindowTop == shown.Y && after == shown,
+            $"After a bottom-right drag, the visible island keeps its released position when edit mode closes: released={shown}, saved={stored.MainWindowLeft},{stored.MainWindowTop}, after={after}");
+    }
+
+    private static Task MoveClassroomInEditorAsync(MainWindow window, PixelPoint target, Action<PixelRect>? moved = null) =>
+        MoveClassroomInEditorAsync(window, (island, down) => down + (target - island.Position), moved);
+
+    private static async Task MoveClassroomInEditorAsync(MainWindow window, Func<PixelRect, PixelPoint, PixelPoint> destination, Action<PixelRect>? moved)
+    {
+        window.EnterEditMode();
+        try
+        {
+            var began = Stopwatch.GetTimestamp();
+            var handle = window.GetVisualDescendants().OfType<Control>().Single(c => c.Name == "MoveIslandHandle");
+            PixelPoint down;
+            Control hit;
+            while (true)
+            {
+                await Dispatcher.UIThread.InvokeAsync(window.UpdateLayout, DispatcherPriority.Background);
+                down = handle.PointToScreen(new Point(handle.Bounds.Width / 2, handle.Bounds.Height / 2));
+                var local = window.PointToClient(down);
+                var candidate = window.InputHitTest(local) as Control;
+                if (handle.IsEffectivelyVisible && candidate?.GetSelfAndVisualAncestors().Contains(handle) == true)
+                {
+                    hit = candidate;
+                    break;
+                }
+                if (Stopwatch.GetElapsedTime(began).TotalSeconds >= 2)
+                    throw new InvalidOperationException($"Edit handle missed at {down}, client={local}/{window.ClientSize}, hit={candidate?.GetType().Name}#{candidate?.Name}, handle={handle.Bounds}, island={window.GetIslandScreenRect()}, dpi={window.RenderScaling}");
+                await Task.Delay(16);
+            }
+            var island = window.GetIslandScreenRect() ?? throw new InvalidOperationException("The edit island has no screen position");
+            var up = destination(island, down);
+            var pointer = new Pointer(Pointer.GetNextFreeId(), PointerType.Mouse, true);
+            hit.RaiseEvent(new PointerPressedEventArgs(hit, pointer, window, window.PointToClient(down), 1,
+                new(RawInputModifiers.LeftMouseButton, PointerUpdateKind.LeftButtonPressed), KeyModifiers.None, 1));
+            try
+            {
+                if (pointer.Captured is not InputElement captured) throw new InvalidOperationException("Edit handle did not capture its pointer");
+                captured.RaiseEvent(new PointerEventArgs(InputElement.PointerMovedEvent, captured, pointer, window, window.PointToClient(up), 2,
+                    new(RawInputModifiers.LeftMouseButton, PointerUpdateKind.Other), KeyModifiers.None));
+                moved?.Invoke(window.GetIslandScreenRect()!.Value);
+            }
+            finally
+            {
+                var recipient = pointer.Captured as InputElement ?? hit;
+                recipient.RaiseEvent(new PointerReleasedEventArgs(recipient, pointer, window, window.PointToClient(up), 3,
+                    new(RawInputModifiers.None, PointerUpdateKind.LeftButtonReleased), KeyModifiers.None, MouseButton.Left));
+            }
+        }
+        finally
+        {
+            window.ExitEditMode();
+            await Dispatcher.UIThread.InvokeAsync(window.UpdateLayout, DispatcherPriority.Background);
+        }
     }
 
     private static string? ClockContent(TextBlock? clock) => clock is null ? null :

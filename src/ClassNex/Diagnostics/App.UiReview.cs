@@ -29,6 +29,7 @@ public partial class App
     private async Task ReviewWindowsAsync(string directory, IClassicDesktopStyleApplicationLifetime desktop)
     {
         var captures = new List<Capture>();
+        var deferredFrames = new List<(RenderTargetBitmap Image, string Path)>();
         var checks = new List<string>();
         var ticket = Stopwatch.StartNew();
         var exitCode = 0;
@@ -45,12 +46,29 @@ public partial class App
             Check(AppServices.Settings.SampleSeedVersion == 3 && Math.Abs(AppServices.Settings.BackgroundOpacity - .55) < .001 &&
                 AppServices.Schedule.Profile.Schedules.Any(s => s.Name == "教学日"), "Alpha settings and edited portable timetable survive first startup");
             var overlay = _mainWindow ?? throw new InvalidOperationException("No classroom window");
-            if (Environment.GetEnvironmentVariable("CLASSNEX_REVIEW_REMINDERS_ONLY") == "1")
+            if (Environment.GetEnvironmentVariable("CLASSNEX_REVIEW_SUBJECT") == "1")
+            {
+                await ReviewSubjectRenameAsync(Check);
+                return;
+            }
+            if (Environment.GetEnvironmentVariable("CLASSNEX_REVIEW_DESKTOP_POINTER") == "1")
+            {
+                await ReviewDesktopPointerAsync(overlay, Check);
+                return;
+            }
+            if (Environment.GetEnvironmentVariable("CLASSNEX_REVIEW_REMINDER_GEOMETRY") == "1")
+            {
+                await ReviewReminderGeometryAsync(overlay, Shot, Check);
+                return;
+            }
+            var inputOnly = Environment.GetEnvironmentVariable("CLASSNEX_REVIEW_REMINDER_INPUT") == "1";
+            if (inputOnly || Environment.GetEnvironmentVariable("CLASSNEX_REVIEW_REMINDERS_ONLY") == "1")
             {
                 SetReviewDpi(overlay, 144);
                 await Dispatcher.UIThread.InvokeAsync(() => overlay.UpdateLayout(), DispatcherPriority.Background);
                 overlay.ResetPlacement();
-                await ReviewRemindersAsync(overlay, Shot, Check);
+                if (inputOnly) await ReviewReminderWheelAsync(overlay, Check, Environment.GetEnvironmentVariable("CLASSNEX_REVIEW_NATIVE_WHEEL") == "1");
+                else await ReviewRemindersAsync(overlay, Shot, CaptureFrame, Check);
                 return;
             }
             await ReviewVoiceLifecycleAsync(Check);
@@ -79,9 +97,10 @@ public partial class App
                 }
             }
             login.Close(); editor.Close();
+            await ReviewSubjectRenameAsync(Check);
             await ReviewClockLayoutAsync(overlay, Shot, Check);
             settings.NavigateTo("notification");
-            await ReviewRemindersAsync(overlay, Shot, Check);
+            await ReviewRemindersAsync(overlay, Shot, CaptureFrame, Check);
             settings.NavigateTo("home");
             settings.Activate();
             Check(_loginWindow is null && _profileEditor is null, "Auxiliary window references released on close");
@@ -89,21 +108,31 @@ public partial class App
             {
                 await Task.Delay(220);
                 await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
+                RenderCapture(window, name, mode, dpi, false);
+            }
+            void CaptureFrame(Window window, string name, string mode, int dpi) => RenderCapture(window, name, mode, dpi, true);
+            void RenderCapture(Window window, string name, string mode, int dpi, bool deferEncoding)
+            {
                 var bounds = window.Bounds;
                 var scale = window.RenderScaling;
                 var size = PixelSize.FromSize(bounds.Size, scale);
                 if (!window.IsVisible || size.Width < 24 || size.Height < 24) throw new InvalidOperationException($"No live content: {name}");
-                using var bitmap = new RenderTargetBitmap(size, new Vector(dpi, dpi));
-                bitmap.Render(window);
-                bitmap.Save(Path.Combine(directory, $"{name}-{mode}-{dpi}.png"));
                 var text = window.GetVisualDescendants().OfType<TextBlock>().Count(b => b.IsEffectivelyVisible && !string.IsNullOrWhiteSpace(b.Text));
                 if (text == 0) throw new InvalidOperationException($"No readable text: {name}");
+                var bitmap = new RenderTargetBitmap(size, new Vector(dpi, dpi));
+                var path = Path.Combine(directory, $"{name}-{mode}-{dpi}.png");
+                if (deferEncoding) deferredFrames.Add((bitmap, path));
+                try { bitmap.Render(window); if (!deferEncoding) bitmap.Save(path); }
+                finally { if (!deferEncoding) bitmap.Dispose(); }
                 captures.Add(new Capture(name, mode, scale, size.Width, size.Height, text));
             }
         }
         catch (Exception ex) { checks.Add(ex.ToString()); exitCode = 1; }
         finally
         {
+            try { foreach (var (image, path) in deferredFrames) image.Save(path); }
+            catch (Exception ex) { checks.Add(ex.ToString()); exitCode = 1; }
+            finally { foreach (var (image, _) in deferredFrames) image.Dispose(); }
             using var process = Process.GetCurrentProcess();
             var report = new { Passed = exitCode == 0, Checks = checks, Captures = captures,
                 ElapsedMs = ticket.ElapsedMilliseconds, WorkingSetBytes = process.WorkingSet64, ManagedBytes = GC.GetTotalMemory(false) };

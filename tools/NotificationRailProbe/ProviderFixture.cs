@@ -132,11 +132,27 @@ internal static class ProviderFixture
                     var matte = new SolidColorBrush(Color.Parse(variant == "dark" ? "#202020" : "#F4F4F4"));
                     panel.Background = matte;
                     var text = surface.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible)
-                        .Select(t =>
+                        .Select((t, index) =>
                         {
                             var origin = t.TranslatePoint(default, surface) ?? throw new InvalidDataException("Detached provider text");
                             var runs = t.Inlines?.OfType<Run>().Select(r => new { r.Text, Weight = r.FontWeight.ToString(), Brush = r.Foreground?.ToString() }).ToArray();
-                            return new { Text = runs is { Length: > 0 } ? string.Concat(runs.Select(r => r.Text)) : t.Text,
+                            var value = runs is { Length: > 0 } ? string.Concat(runs.Select(r => r.Text)) : t.Text;
+                            var labelImage = $"{id}-label-{index}.png";
+                            if (!string.IsNullOrEmpty(value))
+                            {
+                                if (t.Bounds.Width <= 0 || t.Bounds.Height <= 0) throw new InvalidDataException($"{id}: empty bounds for {value}");
+                                using var glyphs = new RenderTargetBitmap(new PixelSize((int)Math.Ceiling(t.Bounds.Width), (int)Math.Ceiling(t.Bounds.Height)), new Vector(96, 96));
+                                var background = t.Background;
+                                try
+                                {
+                                    // LCD text needs the same opaque backdrop as the original row, including in the light theme.
+                                    t.SetCurrentValue(TextBlock.BackgroundProperty, matte);
+                                    glyphs.Render(t);
+                                }
+                                finally { t.SetCurrentValue(TextBlock.BackgroundProperty, background); }
+                                glyphs.Save(Path.Combine(output, labelImage));
+                            }
+                            return new { Text = value, LabelImage = labelImage,
                                 origin.X, origin.Y, t.Bounds.Width, t.Bounds.Height, Size = t.FontSize, Weight = t.FontWeight.ToString(),
                                 Font = t.FontFamily.ToString(), Brush = t.Foreground?.ToString(), Margin = t.Margin.ToString(), Runs = runs };
                         }).Where(t => !string.IsNullOrEmpty(t.Text)).ToArray();
@@ -159,7 +175,15 @@ internal static class ProviderFixture
                         .Select(c => new { Type=c.GetType().Name, c.Name, c.Bounds.X, c.Bounds.Y, c.Bounds.Width, c.Bounds.Height,
                             Margin=c.Margin.ToString(), VerticalScroll=(c as ScrollViewer)?.VerticalScrollBarVisibility.ToString(),
                             Size=TextElement.GetFontSize(c), Weight=TextElement.GetFontWeight(c).ToString() }).ToArray();
-                    shots.Add(new { Id = id, data.Width, Height = 40, Body = new { bounds.X, bounds.Y, bounds.Width, bounds.Height }, Text = text, Hierarchy = hierarchy });
+                    var lessonPanel = course ? ((Grid)surface).Children.OfType<Panel>().Single() : null;
+                    var lessonLayout = lessonPanel is null ? null : new
+                    {
+                        Panel = lessonPanel.GetType().Name, lessonPanel.Bounds.Width, lessonPanel.Bounds.Height,
+                        MaxWidth = double.IsFinite(lessonPanel.MaxWidth) ? (double?)lessonPanel.MaxWidth : null,
+                        MeasuredWidth = lessonPanel.DesiredSize.Width, ColumnWidths = ((Grid)surface).ColumnDefinitions.Select(x => x.ActualWidth).ToArray(),
+                        Children = lessonPanel.Children.OfType<TextBlock>().Where(x => x.IsVisible).Select(x => new { x.Name, MeasuredWidth = x.DesiredSize.Width, x.Bounds.Width, x.Bounds.Height, Margin = x.Margin.ToString() }).ToArray()
+                    };
+                    shots.Add(new { Id = id, data.Width, Height = 40, Body = new { bounds.X, bounds.Y, bounds.Width, bounds.Height }, Text = text, LessonLayout = lessonLayout, Hierarchy = hierarchy });
                 }
                 var model = reference ? Assembly.Load("ClassIsland.Core") : appType.Assembly;
                 File.WriteAllText(Path.Combine(output, "result.json"), JsonSerializer.Serialize(new
@@ -178,7 +202,7 @@ internal static class ProviderFixture
         var times = new LessonTimes(new TimeSpan(9, 5, 0), new TimeSpan(9, 50, 0), "大课间");
         foreach (var (id, key, width, subject, teacher) in new[] {
             ("prepare", "prepare", 560, "数学", false), ("prepare-teacher", "prepare", 860, "信息技术与人工智能", true),
-            ("break", "break", 560, "语文", false), ("break-teacher", "break", 860, "科学与实验", true),
+            ("break", "break", 560, "语文", false), ("break-teacher", "break", 860, "体育与健康", true),
             ("dismissal", "simple", 560, "", false) })
             yield return (id, new(key, width, new(TimeSpan.FromSeconds(179), new(subject, "周老师"), times), teacher, "请带好随身物品，明天见。", "10 分钟"));
     }

@@ -25,6 +25,7 @@ class Process(ct.Structure):
 
 user = ct.WinDLL('user32', use_last_error=True)
 kernel = ct.WinDLL('kernel32', use_last_error=True)
+CREATE_SUSPENDED, CREATE_NO_WINDOW, BELOW_NORMAL_PRIORITY_CLASS = 0x4, 0x08000000, 0x4000
 
 
 def api(lib, name, result, *args):
@@ -55,7 +56,7 @@ def run(command, timeout):
             for handle in (info.stdin, info.stdout): os.set_handle_inheritable(handle, True)
             argv = ct.create_unicode_buffer(subprocess.list2cmdline([executable, *command[1:]]))
             checked(api(kernel, 'CreateProcessW', w.BOOL, w.LPCWSTR, w.LPWSTR, ct.c_void_p, ct.c_void_p, w.BOOL, w.DWORD, ct.c_void_p, w.LPCWSTR, ct.POINTER(Startup), ct.POINTER(Process))(
-                executable, argv, None, None, True, 0x08000004, None, str(pathlib.Path.cwd()), ct.byref(info), ct.byref(proc)))
+                executable, argv, None, None, True, CREATE_SUSPENDED | CREATE_NO_WINDOW | BELOW_NORMAL_PRIORITY_CLASS, None, str(pathlib.Path.cwd()), ct.byref(info), ct.byref(proc)))
             checked(api(kernel, 'AssignProcessToJobObject', w.BOOL, w.HANDLE, w.HANDLE)(job, proc.process))
             if api(kernel, 'ResumeThread', w.DWORD, w.HANDLE)(proc.thread) == 0xffffffff: raise ct.WinError(ct.get_last_error())
             result = api(kernel, 'WaitForSingleObject', w.DWORD, w.HANDLE, w.DWORD)(proc.process, timeout * 1000)
