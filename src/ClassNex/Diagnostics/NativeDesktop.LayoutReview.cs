@@ -46,10 +46,14 @@ internal sealed partial class NativeDesktop
             for (var i = 0; i < 60 && !ready(); i++) await Task.Delay(40);
             return ready();
         }
-        T Element<T>(DependencyObject parent, string id) where T : FrameworkElement =>
-            Tree(parent).OfType<T>().Single(el => AutomationProperties.GetAutomationId(el) == id);
+        T Element<T>(DependencyObject parent, string id) where T : FrameworkElement
+        {
+            var matches = Tree(parent).OfType<T>().Where(el => AutomationProperties.GetAutomationId(el) == id).ToArray();
+            return matches.Length == 1 ? matches[0] : throw new InvalidOperationException($"Expected one {typeof(T).Name} with ID '{id}', found {matches.Length}.");
+        }
         static Rect Box(FrameworkElement element, UIElement relativeTo) =>
             element.TransformToVisual(relativeTo).TransformBounds(new Rect(0, 0, element.ActualWidth, element.ActualHeight));
+        (double Icon, double Text)? notificationColumns = null;
         void ReviewCategories(ScrollViewer page, string key, int expected, int width)
         {
             var list = Element<StackPanel>(page, "Categories_" + key);
@@ -62,11 +66,56 @@ internal sealed partial class NativeDesktop
                 var chevron = Element<FontIcon>(card, "CategoryChevron_" + id);
                 var frame = Box(card, list);
                 var arrow = Box(chevron, card);
+                var content = (Grid)card.Content;
+                var icon = Box(content.Children.OfType<FontIcon>().First(), card);
+                var labels = Box(content.Children.OfType<StackPanel>().Single(), card);
+                if (key == "notification") notificationColumns = (icon.Left, labels.Left);
                 var inset = frame.Width - arrow.Right;
-                check(Shown(card) && card.IsTabStop && frame.Height >= 63 && Math.Abs(frame.Width - list.ActualWidth) <= 1 &&
+                check(Shown(card) && card.IsTabStop && frame.Height >= 67 && Math.Abs(frame.Width - list.ActualWidth) <= 1 &&
+                    Math.Abs(labels.Top + labels.Height / 2 - frame.Height / 2) <= 2 && Math.Abs(icon.Top + icon.Height / 2 - frame.Height / 2) <= 2 &&
                     Math.Abs(frame.Top - previousBottom - 4) <= 1.1 && inset is >= 14 and <= 20 && !string.IsNullOrWhiteSpace(AutomationProperties.GetHelpText(card)),
                     $"{id}: full-width keyboard link; height {frame.Height:0.#}, chevron inset {inset:0.#} DIP ({width} DIP)");
                 previousBottom = frame.Bottom;
+            }
+        }
+        void ReviewReminderHeaders(ScrollViewer page, int width)
+        {
+            double? lastBottom = null;
+            foreach (var id in new[] { "PrepareDetails", "ClassOnDetails", "ClassOffDetails" })
+            {
+                var row = Element<Expander>(page, id);
+                var button = Element<Microsoft.UI.Xaml.Controls.Primitives.ToggleButton>(row, "ExpanderToggleButton");
+                var header = (Grid)row.Header;
+                var icon = Box(header.Children.OfType<FontIcon>().Single(), row);
+                var labels = Box(header.Children.OfType<StackPanel>().Single(), row);
+                var bounds = Box(row, page);
+                var h = button.ActualHeight;
+                check(!row.IsExpanded && Shown(button) && h >= 67 && h <= Math.Max(70, labels.Height + 28) &&
+                    Math.Abs(icon.Top + icon.Height / 2 - h / 2) <= 2 && Math.Abs(labels.Top + labels.Height / 2 - h / 2) <= 2 &&
+                    notificationColumns is { } reference && Math.Abs(icon.Left - reference.Icon) <= 2 && Math.Abs(labels.Left - reference.Text) <= 2 &&
+                    (lastBottom is null || Math.Abs(bounds.Top - lastBottom.Value - 4) <= 1.1),
+                    $"{id}: native expander {h:0.#} DIP, icon/text at {icon.Left:0.#}/{labels.Left:0.#}, vertically centered and aligned with category cards ({width} DIP)");
+                lastBottom = bounds.Bottom;
+            }
+        }
+        void ReviewHomeShortcuts(ScrollViewer page, int width)
+        {
+            var tiles = Element<Grid>(page, "HomeCards");
+            var cards = tiles.Children.OfType<Button>().ToArray();
+            var cols = tiles.ActualWidth >= 608 ? 2 : 1;
+            check(cards.Length == 4 && tiles.ColumnDefinitions.Count == cols && Shown(Element<ToggleSwitch>(page, "HomeReminders")) &&
+                Shown(Element<ComboBox>(page, "HomeTheme")), $"Home: four classroom actions and two editable preferences, {cols} columns ({width} DIP)");
+            for (var i = 0; i < cards.Length; i++)
+            {
+                var bounds = Box(cards[i], tiles);
+                var aligned = bounds.Height >= 67 && Grid.GetRow(cards[i]) == i / cols && Grid.GetColumn(cards[i]) == i % cols;
+                if (i % cols > 0)
+                {
+                    var previous = Box(cards[i - 1], tiles);
+                    aligned &= Math.Abs(bounds.Top - previous.Top) <= 1 && Math.Abs(bounds.Bottom - previous.Bottom) <= 1 && Math.Abs(bounds.Left - previous.Right - 8) <= 1.1;
+                }
+                if (i >= cols) aligned &= Math.Abs(bounds.Top - Box(cards[i - cols], tiles).Bottom - tiles.RowSpacing) <= 1.1;
+                check(aligned, $"{AutomationProperties.GetAutomationId(cards[i])}: aligned row, matching keyboard and reading order ({width} DIP)");
             }
         }
         void ReviewTrailingEdges(ScrollViewer page, int width, params string[] ids)
@@ -103,12 +152,13 @@ internal sealed partial class NativeDesktop
             var frame = Element<Frame>(root, "SettingsFrame");
             var titleButton = Tree(root).OfType<Button>().Single(x => x.Name == "PART_PaneToggleButton" && Shown(x));
             var togglePane = new ButtonAutomationPeer(titleButton);
-            var row = Element<Grid>(page, "Row_CentralUrl");
-            var field = Element<TextBox>(row, "CentralUrl");
-            var control = Element<ToggleSwitch>(page, "CentralEnabled");
+            var row = Element<Grid>(page, "Row_CentralConnect");
+            var connect = Element<Button>(row, "CentralConnect");
+            var codeRow = Element<Grid>(page, "Row_CentralCode");
+            var code = Element<TextBlock>(codeRow, "CentralCode");
             var route = frame.Content;
             var selected = nav.SelectedItem;
-            var url = field.Text;
+            var displayedCode = code.Text;
             var wide = nav.DisplayMode == NavigationViewDisplayMode.Expanded;
             async Task Verify(bool open, string step)
             {
@@ -116,14 +166,14 @@ internal sealed partial class NativeDesktop
                 var left = wide && open ? nav.OpenPaneLength : nav.CompactPaneLength;
                 bool Aligned(Rect r) => Math.Abs(r.Left - left) <= 3 && Math.Abs(r.Right - root.ActualWidth) <= 3;
                 var fits = await Until(() => nav.IsPaneOpen == open && Aligned(Box(frame, root)) && Aligned(Box(page, root)));
-                var (f, p, r, edit, on) = (Box(frame, root), Box(page, root), Box(row, root), Box(field, root), Box(control, root));
+                var (f, p, r, action, codeCard, label) = (Box(frame, root), Box(page, root), Box(row, root), Box(connect, root), Box(codeRow, root), Box(code, root));
                 var body = Box((StackPanel)page.Content, root);
                 var middleInset = Math.Max(0, (p.Width - 1080) / 2) + (p.Width < 550 ? 16 : 28);
                 check(fits && Math.Abs(body.Left - p.Left) <= 2 && Math.Abs(body.Width - page.ViewportWidth) <= 2 && page.HorizontalOffset <= 1 &&
                     Math.Abs(r.Left - p.Left - middleInset) < 6 && Math.Abs(p.Right - r.Right - middleInset) < 6 &&
-                    r.Left <= edit.Left && edit.Right <= r.Right && r.Left <= on.Left && on.Right <= r.Right &&
-                    ReferenceEquals(route, frame.Content) && ReferenceEquals(selected, nav.SelectedItem) && field.Text == url,
-                    $"Sidebar {step}, {width} DIP {theme}: frame {f.Left:0.#}–{f.Right:0.#}, page {p.Left:0.#}–{p.Right:0.#}, body {body.Left:0.#}–{body.Right:0.#}, viewport {page.ViewportWidth:0.#}, offset {page.HorizontalOffset:0.#}, card {r.Left:0.#}–{r.Right:0.#}, URL {edit.Left:0.#}–{edit.Right:0.#}, switch ends {on.Right:0.#}, client ends {root.ActualWidth:0.#}");
+                    Shown(connect) && Shown(code) && r.Left <= action.Left && action.Right <= r.Right && codeCard.Left <= label.Left && label.Right <= codeCard.Right &&
+                    ReferenceEquals(route, frame.Content) && ReferenceEquals(selected, nav.SelectedItem) && code.Text == displayedCode,
+                    $"Sidebar {step}, {width} DIP {theme}: frame {f.Left:0.#}–{f.Right:0.#}, page {p.Left:0.#}–{p.Right:0.#}, body {body.Left:0.#}–{body.Right:0.#}, viewport {page.ViewportWidth:0.#}, offset {page.HorizontalOffset:0.#}, card {r.Left:0.#}–{r.Right:0.#}, connect button {action.Left:0.#}–{action.Right:0.#}, code ends {label.Right:0.#}, client ends {root.ActualWidth:0.#}");
             }
             async Task<string?> Observe(Func<Task> exercise)
             {
@@ -184,7 +234,7 @@ internal sealed partial class NativeDesktop
             togglePane.Invoke();
             await Verify(wide, "final");
         }
-        async Task ReviewEditedCentralUrl()
+        async Task ReviewSidebarDraft()
         {
             var marker = Path.Combine(SettingsService.DataDirectory, "..", ".classnex-review");
             if (!File.Exists(marker) || File.ReadAllText(marker) != "isolated desktop review" ||
@@ -192,29 +242,32 @@ internal sealed partial class NativeDesktop
                 throw new InvalidOperationException("Sidebar edit review requires the signed-out, disconnected desktop fixture.");
             var nav = Element<NavigationView>(root, "SettingsNavigation");
             var frame = Element<Frame>(root, "SettingsFrame");
-            var field = Element<TextBox>((Page)frame.Content, "CentralUrl");
+            window.NavigateTo("nex-assistant");
+            if (!await Until(() => Tree((Page)frame.Content).OfType<TextBox>().Any(x => AutomationProperties.GetAutomationId(x) == "SystemPrompt" && Shown(x))))
+                throw new InvalidOperationException("The assistant settings text editor did not load.");
+            var field = Element<TextBox>((Page)frame.Content, "SystemPrompt");
             var toggle = Tree(root).OfType<Button>().Single(x => x.Name == "PART_PaneToggleButton" && Shown(x));
             var wasOpen = nav.IsPaneOpen;
-            var saved = AppServices.Settings.CentralManagement.ServerUrl;
-            var edited = $"http://127.0.0.1:1/sidebar-{Guid.NewGuid():N}";
+            var saved = AppServices.Settings.NexSystemPrompt;
+            var edited = $"离屏设置验收 {Guid.NewGuid():N}";
             bool editedWithFocus = false;
             void OnTextChanged(object sender, TextChangedEventArgs args) => editedWithFocus = field.Text == edited && field.FocusState != FocusState.Unfocused;
             field.TextChanged += OnTextChanged;
             try
             {
                 window.Activate();
-                check(field.Focus(FocusState.Keyboard) && await Until(() => field.FocusState != FocusState.Unfocused), "Sidebar edit: the URL editor receives keyboard focus");
+                check(field.Focus(FocusState.Keyboard) && await Until(() => field.FocusState != FocusState.Unfocused), "Sidebar edit: the assistant settings text editor receives keyboard focus");
                 field.Text = edited;
-                check(await Until(() => editedWithFocus), "Sidebar edit: the URL change is delivered while its editor still has focus");
+                check(await Until(() => editedWithFocus), "Sidebar edit: the text change is delivered while its editor still has focus");
                 check(toggle.Focus(FocusState.Keyboard) && await Until(() => field.FocusState == FocusState.Unfocused), "Sidebar edit: moving to the title-bar toggle blurs the unfinished field without Enter");
                 new ButtonAutomationPeer(toggle).Invoke();
-                check(await Until(() => nav.IsPaneOpen != wasOpen && AppServices.Settings.CentralManagement.ServerUrl == edited) &&
-                    SettingsService.Load().CentralManagement.ServerUrl == edited, "Sidebar edit: collapsing commits the loopback URL to the fixture settings file");
+                check(await Until(() => nav.IsPaneOpen != wasOpen && AppServices.Settings.NexSystemPrompt == edited) &&
+                    SettingsService.Load().NexSystemPrompt == edited, "Sidebar edit: keyboard blur and collapse save the draft in the fixture");
                 window.NavigateTo("basic");
-                window.NavigateTo("central");
+                window.NavigateTo("nex-assistant");
                 var returned = (Page)frame.Content;
-                check(await Until(() => Tree(returned).OfType<TextBox>().Any(x => AutomationProperties.GetAutomationId(x) == "CentralUrl" &&
-                    !ReferenceEquals(field, x) && x.IsLoaded && x.Text == edited)), "Sidebar edit: the fresh management page restores the saved URL");
+                check(await Until(() => Tree(returned).OfType<TextBox>().Any(x => AutomationProperties.GetAutomationId(x) == "SystemPrompt" &&
+                    !ReferenceEquals(field, x) && x.IsLoaded && x.Text == edited)), "Sidebar edit: a fresh assistant settings page restores the saved draft");
             }
             finally
             {
@@ -222,7 +275,7 @@ internal sealed partial class NativeDesktop
                 try { window.NavigateTo("basic"); }
                 finally
                 {
-                    AppServices.Settings.CentralManagement.ServerUrl = saved;
+                    AppServices.Settings.NexSystemPrompt = saved;
                     AppServices.SaveSettings();
                     if (nav.IsPaneOpen != wasOpen) new ButtonAutomationPeer(toggle).Invoke();
                 }
@@ -324,7 +377,7 @@ internal sealed partial class NativeDesktop
             {
                 window.NavigateTo("privacy");
                 check(transition is Microsoft.UI.Xaml.Media.Animation.SuppressNavigationTransitionInfo, "Reduced motion suppresses top-level navigation");
-                window.NavigateTo("schedule");
+                window.NavigateTo("privacy-storage");
                 check(transition is Microsoft.UI.Xaml.Media.Animation.SuppressNavigationTransitionInfo, "Reduced motion suppresses detail navigation");
             }
             finally { frame.Navigated -= Navigated; window.SetSystemEffectsForReview(); }
@@ -335,7 +388,7 @@ internal sealed partial class NativeDesktop
             window.NavigateTo("central");
             await Task.Delay(450);
             await ReviewPanePlacement(Element<ScrollViewer>(root, "Page_central"), 1240, AppServices.Settings.ThemeMode, takeShot: true);
-            await ReviewEditedCentralUrl();
+            await ReviewSidebarDraft();
             await ReviewPaneBreakpointChoice();
             foreach (var (width, theme) in new[] { (1080, "light"), (720, "dark"), (1080, "dark"), (620, "light") })
             {
@@ -347,7 +400,7 @@ internal sealed partial class NativeDesktop
                 window.Activate();
                 await ReviewSidebarSearch(width);
                 double? headingTop = null;
-                foreach (var route in new[] { "home", "basic", "startup", "schedule", "runtime", "widgets", "widget-layout", "appearance", "window",
+                foreach (var route in new[] { "home", "basic", "startup", "runtime", "widgets", "widget-layout", "appearance", "window",
                     "notification", "reminder-display", "reminder-rules", "reminder-after-school", "account", "plugins", "central", "nex", "nex-assistant", "nex-wake",
                     "privacy", "privacy-storage", "privacy-services", "update", "about", "debug" })
                 {
@@ -358,7 +411,9 @@ internal sealed partial class NativeDesktop
                         root.ActualTheme == (theme == "dark" ? ElementTheme.Dark : ElementTheme.Light), $"{route}: no horizontal clipping at {width} DIP, {theme}");
                     switch (route)
                     {
-                        case "basic": case "widgets": ReviewCategories(page, route, 3, width); break;
+                        case "home": ReviewHomeShortcuts(page, width); break;
+                        case "basic": ReviewCategories(page, route, 2, width); ReviewTrailingEdges(page, width, "SemesterStart"); break;
+                        case "widgets": ReviewCategories(page, route, 3, width); break;
                         case "nex": case "privacy": ReviewCategories(page, route, 2, width); break;
                         case "notification":
                             ReviewCategories(page, route, 3, width);
@@ -368,10 +423,10 @@ internal sealed partial class NativeDesktop
                         case "reminder-after-school": ReviewTrailingEdges(page, width, "AfterSchoolEnabled"); break;
                         case "startup": ReviewTrailingEdges(page, width, "RunAtStartup", "StartupSplash", "UrlProtocol"); break;
                         case "runtime": ReviewTrailingEdges(page, width, "TeachingSafeMode", "CrashHandling"); break;
-                        case "schedule": ReviewTrailingEdges(page, width, "SemesterStart", "ProfileWeek"); break;
+                        case "reminder-rules": ReviewReminderHeaders(page, width); break;
                         case "window": ReviewTrailingEdges(page, width, "Orientation", "Topmost"); break;
                         case "central":
-                            ReviewTrailingEdges(page, width, "CentralEnabled", "CentralUrl", "CentralAccount");
+                            ReviewTrailingEdges(page, width, "CentralCode", "CentralConnect", "CentralState", "CentralDisconnect");
                             await ReviewPanePlacement(page, width, theme);
                             break;
                     }
@@ -392,6 +447,7 @@ internal sealed partial class NativeDesktop
                         check(Math.Abs(headingTop.Value - top) < 3, $"{route}: settled page heading aligned at {top:0.#} DIP ({width}, {theme})");
                         await Shot($"settings-{route}-{width}-{theme}");
                     }
+                    if (width == 1080 && route is ("reminder-rules" or "update" or "about")) await Shot($"settings-{route}-{width}-{theme}");
                 }
             }
             foreach (var (percent, clientWidth, clientHeight) in new[] { (125, 864, 720), (150, 720, 600) })
@@ -410,7 +466,7 @@ internal sealed partial class NativeDesktop
                     $"XamlRoot {actual.Width:0.#}×{actual.Height:0.#}, content {root.ActualWidth:0.#}×{root.ActualHeight:0.#}; actual rasterization remains {scale:P0}");
                 window.NavigateTo("basic");
                 await Task.Delay(420);
-                ReviewCategories(Element<ScrollViewer>(root, "Page_basic"), "basic", 3, clientWidth);
+                ReviewCategories(Element<ScrollViewer>(root, "Page_basic"), "basic", 2, clientWidth);
                 window.NavigateTo("runtime");
                 await Task.Delay(420);
                 ReviewTrailingEdges(Element<ScrollViewer>(root, "Page_runtime"), clientWidth, "TeachingSafeMode", "CrashHandling");

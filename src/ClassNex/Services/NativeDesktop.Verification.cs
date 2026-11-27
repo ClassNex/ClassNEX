@@ -44,10 +44,10 @@ internal sealed partial class NativeDesktop
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
     }
 
-    private sealed class NativeVerification(NativeDesktop host, StreamWriter log)
+    private sealed partial class NativeVerification(NativeDesktop host, StreamWriter log)
     {
-        private const string CourseName = "原生验收课程";
-        private const string AccountName = "原生验收账户";
+        private const string CourseName = "道德与法治";
+        private const string AccountName = "班级管理员";
         private static readonly string AccountFile = Path.Combine(SettingsService.DataDirectory, "account.json");
         private readonly string? _expectedVersion = Environment.GetEnvironmentVariable("CLASSNEX_VERIFY_PRODUCT_VERSION");
         private string _step = "fixture";
@@ -68,8 +68,12 @@ internal sealed partial class NativeDesktop
                     AccountService.Current is null && !File.Exists(AccountFile) && !File.Exists(Path.Combine(SettingsService.DataDirectory, "account_avatar.png")));
                 await VerifyNavigation();
                 await VerifySettings();
+                await VerifyCentralDrafts();
                 await VerifyHomeFeatureCards();
                 await VerifyCategoryNavigation();
+                await VerifyDeferredBreadcrumbFocus();
+                await VerifyDesktopQuickAppearance();
+                await VerifyWidgetList();
                 await VerifyProductVersion();
                 await VerifyOverlay();
                 await VerifyDayCache();
@@ -113,8 +117,8 @@ internal sealed partial class NativeDesktop
             try
             {
                 await InvokeMeasuredHomeEntry();
-                await Check("winui-page-transition", () => Settings.CurrentPageKey == "basic" && navigations == 1 &&
-                    (new UISettings().AnimationsEnabled ? transition is EntranceNavigationTransitionInfo : transition is SuppressNavigationTransitionInfo), 5000);
+                await Check("winui-page-transition", () => Settings.CurrentPageKey == "reminder-rules" && navigations == 1 &&
+                    (new UISettings().AnimationsEnabled ? transition is DrillInNavigationTransitionInfo : transition is SuppressNavigationTransitionInfo), 5000);
                 string[] destinations = ["widgets", "appearance", "notification", "basic", "window", "basic", "appearance"];
                 var depth = await Ui(() => Frame.BackStackDepth);
                 await Act("repeat-navigation", () => { foreach (var key in destinations) { Settings.NavigateTo(key); Settings.NavigateTo(key); } });
@@ -136,14 +140,35 @@ internal sealed partial class NativeDesktop
         {
             (string Card, string Route, string Title, string Parent)[] cards =
             [
-                ("profile", "schedule", "课表与档案", "basic"), ("widgets", "widgets", "组件与主界面", "widgets"),
-                ("notification", "notification", "通知服务", "notification"), ("basic", "basic", "通用", "basic")
+                ("widgets", "widget-layout", "组件布局", "widgets"), ("notification", "reminder-rules", "上下课提醒", "notification")
             ];
             await Act("open-feature-card-home", () => Settings.NavigateTo("home"));
             await Check("four-default-feature-cards", () => AtPage("home", "主页", "home") && Find<Grid>(Page, "HomeCards") is { } grid &&
-                Tree(grid).OfType<Button>().Count(b => Id(b)?.StartsWith("Feature_", StringComparison.Ordinal) == true) == cards.Length &&
+                Tree(grid).OfType<Button>().Count(b => Id(b)?.StartsWith("Feature_", StringComparison.Ordinal) == true) == cards.Length + 2 &&
+                Find<Button>(grid, "Feature_profile") is { IsEnabled: true } profile && Shown(profile) &&
+                Find<Button>(grid, "Feature_swap") is { IsEnabled: true } swap && Shown(swap) &&
                 cards.All(c => Find<Button>(grid, "Feature_" + c.Card) is { IsEnabled: true } b && Shown(b)), 4000);
             var homeDepth = await Ui(() => Frame.BackStackDepth);
+            var original = await Ui(() => (Need<ToggleSwitch>(Page, "HomeReminders").IsOn, Need<ComboBox>(Page, "HomeTheme").SelectedIndex));
+            var newTheme = original.SelectedIndex == 2 ? 1 : 2;
+            try
+            {
+                await Act("change-classroom-preferences-in-place", () =>
+                {
+                    new ToggleSwitchAutomationPeer(Need<ToggleSwitch>(Page, "HomeReminders")).Toggle();
+                    Need<ComboBox>(Page, "HomeTheme").SelectedIndex = newTheme;
+                });
+                await Check("home-preferences-apply-without-navigation", () =>
+                {
+                    var saved = SettingsService.Load();
+                    return AtPage("home", "主页", "home") && Frame.BackStackDepth == homeDepth && SwitchShows("HomeReminders", !original.IsOn) &&
+                        saved.AllowNotification == !original.IsOn && saved.ThemeMode == (newTheme == 2 ? "dark" : "light");
+                }, 4000);
+            }
+            finally
+            {
+                await Ui(() => { Need<ToggleSwitch>(Page, "HomeReminders").IsOn = original.IsOn; Need<ComboBox>(Page, "HomeTheme").SelectedIndex = original.SelectedIndex; return true; });
+            }
             foreach (var (card, route, title, parent) in cards)
             {
                 await Act("invoke-feature-" + card, () => new ButtonAutomationPeer(Need<Button>(Need<Grid>(Page, "HomeCards"), "Feature_" + card)).Invoke());
@@ -152,11 +177,11 @@ internal sealed partial class NativeDesktop
                 await Check("feature-returns-home-" + card, () => AtPage("home", "主页", "home") && Frame.BackStackDepth == homeDepth &&
                     Find<Grid>(Page, "HomeCards") is { } grid && Find<Button>(grid, "Feature_" + card) is { } tile && Shown(tile), 4000);
             }
-            await Act("open-profile-deep-link", () => new ButtonAutomationPeer(Need<Button>(Page, "Feature_profile")).Invoke());
-            await Check("home-deep-link-opens-detail", () => AtPage("schedule", "课表与档案", "basic") && BreadcrumbParent("通用") is not null, 4000);
-            await Act("ascend-from-deep-link", () => new BreadcrumbBarItemAutomationPeer(BreadcrumbParent("通用")!).Invoke());
-            await Check("deep-link-breadcrumb-opens-parent", () => AtPage("basic", "通用", "basic") && Frame.BackStackDepth == homeDepth + 1 &&
-                Equals(Frame.BackStack.LastOrDefault()?.Parameter, "home") && Find<Button>(Page, "Category_schedule") is { } row && ContainsFocus(row), 4000);
+            await Act("open-reminder-deep-link", () => new ButtonAutomationPeer(Need<Button>(Page, "Feature_notification")).Invoke());
+            await Check("home-deep-link-opens-detail", () => AtPage("reminder-rules", "上下课提醒", "notification") && BreadcrumbParent("通知服务") is not null, 4000);
+            await Act("ascend-from-deep-link", () => new BreadcrumbBarItemAutomationPeer(BreadcrumbParent("通知服务")!).Invoke());
+            await Check("deep-link-breadcrumb-opens-parent", () => AtPage("notification", "通知服务", "notification") && Frame.BackStackDepth == homeDepth + 1 &&
+                Equals(Frame.BackStack.LastOrDefault()?.Parameter, "home") && Find<Button>(Page, "Category_reminder-rules") is { } row && ContainsFocus(row), 4000);
             await Act("back-from-deep-link-parent", () => Frame.GoBack());
             await Check("deep-link-back-skips-child", () => AtPage("home", "主页", "home") && Frame.BackStackDepth == homeDepth, 4000);
         }
@@ -193,7 +218,7 @@ internal sealed partial class NativeDesktop
         {
             (string Key, string Title, (string Key, string Title)[] Details)[] categories =
             [
-                ("basic", "通用", [("startup", "启动与托盘"), ("schedule", "课表与档案"), ("runtime", "运行与恢复")]),
+                ("basic", "通用", [("startup", "启动与托盘"), ("runtime", "运行与恢复")]),
                 ("widgets", "组件与主界面", [("widget-layout", "组件布局"), ("appearance", "外观与主题"), ("window", "窗口行为")]),
                 ("notification", "通知服务", [("reminder-rules", "上下课提醒"), ("reminder-after-school", "放学提醒"), ("reminder-display", "提醒方式")]),
                 ("nex", "NEX Intelligence与NEX AI", [("nex-assistant", "课堂助手"), ("nex-wake", "唤醒方式")]),
@@ -246,7 +271,7 @@ internal sealed partial class NativeDesktop
                         new BreadcrumbBarItemAutomationPeer(BreadcrumbParent(parentTitle) ?? throw new InvalidOperationException("Missing parent breadcrumb")).Invoke();
                     });
                     await Check("breadcrumb-returns-" + child, () => AtPage(parent, parentTitle, parent) && Frame.BackStackDepth == depth &&
-                        Find<Button>(Page, "Category_" + child) is { } row && ContainsFocus(row), 5000);
+                        Find<Button>(Page, "Category_" + child) is { } row && ContainsFocus(row), 5000, () => BreadcrumbState(child, depth));
                     if (child == "reminder-after-school")
                         await Check("dismissal-saved-through-navigation", () => AppServices.Settings.Notification.AfterSchoolText == "明天见。" &&
                             SettingsService.Load().Notification is { IsAfterSchoolNotificationEnabled: true, AfterSchoolText: "明天见。" });
@@ -261,6 +286,48 @@ internal sealed partial class NativeDesktop
             }
         }
 
+        private string BreadcrumbState(string child, int depth)
+        {
+            var row = Find<Button>(Page, "Category_" + child);
+            var focus = Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(Page.XamlRoot) as DependencyObject;
+            return $"route={Settings.CurrentPageKey}; selected={(Navigation.SelectedItem as NavigationViewItem)?.Tag}; depth={Frame.BackStackDepth}/{depth}; " +
+                $"row loaded={row?.IsLoaded}, width={row?.ActualWidth:0}, focused={row != null && ContainsFocus(row)}; focus={focus?.GetType().Name}/{(focus == null ? null : Id(focus))}";
+        }
+
+        private async Task VerifyDeferredBreadcrumbFocus()
+        {
+            const string parent = "NEX Intelligence与NEX AI", child = "nex-wake";
+            await Act("open-wake-focus-fixture", () => Settings.NavigateTo("nex"));
+            await Check("wake-focus-fixture-index-ready", () => AtPage("nex", parent, "nex"), 4000);
+            var depth = await Ui(() => Frame.BackStackDepth);
+            await Act("enter-wake-focus-fixture", () => new ButtonAutomationPeer(Need<Button>(Page, "Category_" + child)).Invoke());
+            await Check("wake-focus-fixture-breadcrumb-ready", () => AtPage(child, "唤醒方式", "nex") && BreadcrumbParent(parent) != null, 4000);
+            StackPanel? list = null;
+            Button? card = null;
+            var index = -1;
+            var dispatcherPassed = false;
+            void HoldCard(object sender, NavigationEventArgs args)
+            {
+                if (!Equals(args.Parameter, "nex") || args.Content is not Page { Content: ScrollViewer { Content: StackPanel body } }) return;
+                list = body.Children.OfType<StackPanel>().Single(p => Id(p) == "Categories_nex");
+                card = list.Children.OfType<Button>().Single(b => Id(b) == "Category_" + child);
+                index = list.Children.IndexOf(card);
+                list.Children.RemoveAt(index);
+                host._queue.TryEnqueue(DispatcherQueuePriority.Low, () => dispatcherPassed = true);
+            }
+            await Act("arm-delayed-category-realization", () => Frame.Navigated += HoldCard);
+            try
+            {
+                await Act("return-before-wake-card-loads", () => new BreadcrumbBarItemAutomationPeer(BreadcrumbParent(parent)!).Invoke());
+                await Check("parent-navigates-before-wake-card-loads", () => AtPage("nex", parent, "nex") && Frame.BackStackDepth == depth && dispatcherPassed && card is { IsLoaded: false }, 5000,
+                    () => BreadcrumbState(child, depth));
+                await Act("attach-returned-wake-card", () => list!.Children.Insert(index, card));
+                await Check("breadcrumb-focus-follows-loaded-wake-card", () => card != null && Shown(card) && ContainsFocus(card) && Frame.BackStackDepth == depth, 3500,
+                    () => BreadcrumbState(child, depth));
+            }
+            finally { await Ui(() => { Frame.Navigated -= HoldCard; if (card != null && list != null && !list.Children.Contains(card)) list.Children.Insert(index, card); return true; }); }
+        }
+
         private async Task VerifyProductVersion()
         {
             await Check("exact-desktop-product-version", () => !string.IsNullOrEmpty(_expectedVersion) && AppServices.ProductVersion == _expectedVersion &&
@@ -269,8 +336,19 @@ internal sealed partial class NativeDesktop
                 FileVersionInfo.GetVersionInfo(typeof(AppServices).Assembly.Location).ProductVersion == _expectedVersion);
             await Act("open-about-version", () => Settings.NavigateTo("about"));
             await Check("about-shows-exact-product-version", () => Find<Button>(Page, "Version") is { } version && Shown(version) && Equals(version.Content, _expectedVersion), 5000);
+            await Check("about-displays-decoded-product-mark", () => Find<Image>(Page, "AboutProductMark") is { Source: BitmapImage { PixelWidth: > 0, PixelHeight: > 0 } } mark && Shown(mark), 5000);
+            ContentDialog? License() => VisualTreeHelper.GetOpenPopupsForXamlRoot(Page.XamlRoot)
+                .SelectMany(p => Tree(p.Child)).OfType<ContentDialog>().FirstOrDefault(d => Equals(d.Title, "开源许可"));
+            await Act("open-offline-licenses", () => new ButtonAutomationPeer(Need<Button>(Page, "AboutLicense")).Invoke());
+            await Check("read-packaged-project-license", () => License() is { } d && Find<TextBlock>(d, "LicenseText")?.Text.Contains("GNU GENERAL PUBLIC LICENSE") == true, 4000);
+            await Act("choose-classroom-notices", () => Need<ComboBox>(License()!, "LicenseSelection").SelectedIndex = 1);
+            await Check("read-packaged-classroom-notices", () => License() is { } d && Find<TextBlock>(d, "LicenseText")?.Text.Contains("classroom notification providers") == true, 4000);
+            await Act("close-offline-licenses", () => License()!.Hide());
+            await Check("return-to-about-after-license", () => License() is null && Settings.CurrentPageKey == "about", 4000);
             await Act("open-update-from-about", () => new ButtonAutomationPeer(Need<Button>(Page, "AboutUpdate")).Invoke());
             await Check("update-shows-exact-product-version", () => Settings.CurrentPageKey == "update" && Find<TextBlock>(Page, "InstalledVersion") is { } value && value.Text == _expectedVersion && Shown(value), 4000);
+            await Check("update-idle-without-an-unsolicited-check", () => Need<TextBlock>(Page, "UpdateResult").Text == "尚未检查更新" &&
+                Need<Button>(Page, "CheckUpdate").IsEnabled && Need<Button>(Page, "OpenReleases").IsEnabled);
         }
 
         private async Task InvokeMeasuredHomeEntry()
@@ -290,7 +368,7 @@ internal sealed partial class NativeDesktop
             {
                 await Act("invoke-home-entry", () =>
                 {
-                    var peer = new ButtonAutomationPeer(Need<Button>(Page, "Home_basic"));
+                    var peer = new ButtonAutomationPeer(Need<Button>(Page, "Feature_notification"));
                     CompositionTarget.Rendering += FrameDrawn;
                     process.Refresh();
                     cpu = process.TotalProcessorTime;
@@ -306,7 +384,7 @@ internal sealed partial class NativeDesktop
                 var elapsed = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
                 var allocated = GC.GetAllocatedBytesForCurrentThread() - bytes;
                 process.Refresh();
-                return new { route = "home->basic", animationsEnabled = new UISettings().AnimationsEnabled, observedMs = elapsed,
+                return new { route = "home->reminder-rules", animationsEnabled = new UISettings().AnimationsEnabled, observedMs = elapsed,
                     xamlRenderingCallbacks = frames, processCpuMs = (process.TotalProcessorTime - cpu).TotalMilliseconds, uiThreadManagedAllocatedBytes = allocated };
             });
             try
@@ -338,7 +416,7 @@ internal sealed partial class NativeDesktop
             await Act("edit-native-appearance", () => { Need<ComboBox>(Page, "Theme").SelectedIndex = 1; Need<Slider>(Page, "Opacity").Value = .65; });
             await Check("slider-and-light-theme-persisted", () => SettingsService.Load() is { ThemeMode: "light" } s && Math.Abs(s.BackgroundOpacity - .65) < .001 &&
                 ((FrameworkElement)Settings.Content).ActualTheme == ElementTheme.Light, 4000);
-            var account = new AccountProfile { Id = "fixture/local", Name = "native-fixture", DisplayName = AccountName, Email = "native@example.invalid" };
+            var account = new AccountProfile { Id = "fixture/local", Name = "classroom", DisplayName = AccountName, Email = "classroom@example.invalid" };
             await Act("load-disposable-identity", () =>
             {
                 using (var file = new FileStream(AccountFile, FileMode.CreateNew, FileAccess.Write)) { _ownsAccount = true; JsonSerializer.Serialize(file, account); }
@@ -372,6 +450,61 @@ internal sealed partial class NativeDesktop
             await Act("open-account", () => Settings.NavigateTo("account"));
             await Check("native-account-shows-same-user", () => Find<TextBlock>(Page, "AccountName") is { Text: AccountName } &&
                 Find<TextBlock>(Page, "AccountEmail")?.Text == account.Email && Find<Button>(Page, "AccountAction")?.Content as string == "退出登录", 3000);
+        }
+
+        private async Task VerifyCentralDrafts()
+        {
+            var original = await Ui(() => (AppServices.Settings.CentralManagement, Settings.AppWindow.Size));
+            var local = new CentralManagementSettings { ServerUrl = original.CentralManagement.ServerUrl };
+            const string draft = "other-class-settings.json";
+            const string status = "班级课表和本机设置同时发生了更改。为保留两边的内容，未同步的本机设置已单独保存为草稿。请核对当前班级、课表和组件设置后，再决定是否恢复。";
+            ContentDialog? Dialog() => VisualTreeHelper.GetOpenPopupsForXamlRoot(Page.XamlRoot).Where(p => p.Child != null)
+                .SelectMany(p => Tree(p.Child)).OfType<ContentDialog>().FirstOrDefault();
+            void Answer(string button) => new ButtonAutomationPeer(Tree(Dialog()!).OfType<Button>().Single(b => b.Name == button)).Invoke();
+            void Restore() => new ButtonAutomationPeer(Need<Button>(Page, "CentralRestoreDraft")).Invoke();
+            try
+            {
+                await Act("open-central-draft-fixture", () =>
+                {
+                    AppServices.Settings.CentralManagement = local;
+                    Settings.AppWindow.Resize(new SizeInt32((int)Math.Round(630 * Page.XamlRoot.RasterizationScale), original.Size.Height));
+                    Settings.NavigateTo("central");
+                });
+                await Check("central-no-empty-draft-card", () => Find<Grid>(Page, "Row_CentralDrafts") is { Visibility: Visibility.Collapsed } &&
+                    !Shown(Need<Button>(Page, "CentralDrafts")) && Shown(Need<TextBlock>(Page, "CentralState")), 4000);
+                var line = await Ui(() => Need<TextBlock>(Page, "CentralState").ActualHeight);
+                await Act("show-anonymous-conflict", () => { local.LastStatus = status; local.LastConflictDraft = draft; Settings.RefreshSettings(); });
+                await Check("central-long-status-wraps-with-browse-only-draft", () =>
+                {
+                    var text = Need<TextBlock>(Page, "CentralState");
+                    var row = Need<Grid>(Page, "Row_CentralState");
+                    var corner = text.TransformToVisual(row).TransformPoint(new Windows.Foundation.Point());
+                    return Page.XamlRoot.Size.Width <= 635 && text.Text == status && !text.IsTextTrimmed && text.ActualHeight > line * 2 &&
+                        corner.X >= 0 && corner.Y >= 0 && corner.X + text.ActualWidth <= row.ActualWidth + 1 && corner.Y + text.ActualHeight <= row.ActualHeight + 1 &&
+                        Shown(Need<Button>(Page, "CentralDrafts")) && !Shown(Need<Button>(Page, "CentralRestoreDraft"));
+                }, 4000);
+                await Act("bind-draft-fixture", () => { local.ClientId = "fixture-device"; local.SelectedClassId = "fixture-class"; local.IsEnabled = true; Settings.RefreshSettings(); });
+                await Check("central-bound-draft-can-request-restore", () => Shown(Need<Button>(Page, "CentralRestoreDraft")), 4000);
+                await Act("open-draft-confirmation", Restore);
+                bool Confirming() => Dialog() is { Title: "将草稿恢复到本机？", DefaultButton: ContentDialogButton.Close } d &&
+                    Tree(d).OfType<Button>().Any(b => b.Name == "CloseButton" && b.IsEnabled && Shown(b));
+                await Check("central-restore-defaults-to-cancel", Confirming, 4000);
+                await Act("cancel-draft-restore", () => Answer("CloseButton"));
+                await Check("central-cancel-keeps-draft-and-class", () => Dialog() == null && Need<Button>(Page, "CentralRestoreDraft").IsEnabled &&
+                    local.LastConflictDraft == draft && local.LastStatus == status, 4000);
+                await Act("request-draft-restore-again", Restore);
+                await Check("central-second-restore-requires-confirmation", Confirming, 4000);
+                await Act("confirm-foreign-test-draft", () => Answer("PrimaryButton"));
+                await Check("central-confirmed-restore-rejects-foreign-draft", () => Dialog() is { Title: "未能完成操作", Content: string error } &&
+                    error.Contains("当前设备和班级", StringComparison.Ordinal) && local.LastConflictDraft == draft && local.LastStatus == status, 4000);
+                await Act("close-draft-rejection", () => Answer("CloseButton"));
+                await Act("clear-anonymous-conflict", () => { local.LastConflictDraft = null; Settings.RefreshSettings(); });
+                await Check("central-draft-card-disappears-when-cleared", () => Dialog() == null && Need<Grid>(Page, "Row_CentralDrafts").Visibility == Visibility.Collapsed, 4000);
+            }
+            finally
+            {
+                await Ui(() => { Dialog()?.Hide(); AppServices.Settings.CentralManagement = original.CentralManagement; Settings.AppWindow.Resize(original.Size); Settings.RefreshSettings(); return true; });
+            }
         }
 
         private async Task VerifyOverlay()
@@ -481,13 +614,15 @@ internal sealed partial class NativeDesktop
             _step = "open-auxiliary-profile-editor";
             var path = SettingsService.TimetableStoragePath;
             var original = await File.ReadAllBytesAsync(path);
-            await Act("open-schedule-settings", () => Settings.NavigateTo("schedule"));
-            await Check("profile-management-entry-visible", () => Find<Button>(Page, "ProfileInfo") is { } button && Shown(button), 4000);
-            await Act("invoke-profile-information", () => new ButtonAutomationPeer(Need<Button>(Page, "ProfileInfo")).Invoke());
-            await Check("profile-information-opened-from-settings", () =>
+            await Act("open-home-for-editor", () => Settings.NavigateTo("home"));
+            var depth = await Ui(() => Frame.BackStackDepth);
+            await Check("profile-management-entry-visible", () => Find<Button>(Page, "Feature_profile") is { } button && Shown(button), 4000);
+            await Act("invoke-profile-shortcut", () => new ButtonAutomationPeer(Need<Button>(Page, "Feature_profile")).Invoke());
+            await Check("home-opens-independent-editor-without-settings-navigation", () =>
                 Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime d &&
                 d.Windows.OfType<Views.ProfileEditorWindow>().SingleOrDefault() is { IsVisible: true } w &&
-                Avalonia.Controls.ControlExtensions.FindControl<Avalonia.Controls.ScrollViewer>(w, "PageProfile") is { IsVisible: true }, 5000);
+                Avalonia.Controls.ControlExtensions.FindControl<Avalonia.Controls.Control>(w, "PageSchedule") is { IsEffectivelyVisible: true } &&
+                Settings.CurrentPageKey == "home" && Frame.BackStackDepth == depth, 5000);
             var (window, page, editor) = await Ui(() =>
             {
                 var lifetime = Avalonia.Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime
@@ -499,6 +634,22 @@ internal sealed partial class NativeDesktop
             nint editorHwnd = 0;
             try
             {
+                await Act("invoke-home-temporary-schedule", () => new ButtonAutomationPeer(Need<Button>(Page, "Feature_swap")).Invoke());
+                await Check("home-opens-temporary-schedule-directly", () => editor.IsVisible && Frame.BackStackDepth == depth && Settings.CurrentPageKey == "home" &&
+                    Avalonia.Controls.ControlExtensions.FindControl<Avalonia.Controls.Control>(editor, "PageSwap") is { IsEffectivelyVisible: true }, 4000);
+                await Act("open-search-with-editor-present", () => Navigation.IsPaneOpen = true);
+                var search = await Ui(() => Need<AutoSuggestBox>(window.Content, "SettingsSearch"));
+                await Check("editor-search-available", () => Shown(search) && Tree(search).OfType<Button>().Any(b => b.Name == "QueryButton" && Shown(b)), 4000);
+                await Act("search-for-timetable-and-breaks", () =>
+                {
+                    search.Text = "时间表与课间";
+                    new ButtonAutomationPeer(Tree(search).OfType<Button>().Single(b => b.Name == "QueryButton" && Shown(b))).Invoke();
+                });
+                await Check("search-opens-timeplan-in-same-editor", () => editor.IsVisible && Frame.BackStackDepth == depth && Settings.CurrentPageKey == "home" &&
+                    Avalonia.Controls.ControlExtensions.FindControl<Avalonia.Controls.Control>(editor, "PageTime") is { IsEffectivelyVisible: true }, 4000);
+                await Act("open-legacy-schedule-alias", () => window.NavigateTo("schedule"));
+                await Check("legacy-schedule-link-reuses-editor", () => editor.IsVisible && Frame.BackStackDepth == depth && Settings.CurrentPageKey == "home" &&
+                    Avalonia.Controls.ControlExtensions.FindControl<Avalonia.Controls.Control>(editor, "PageSchedule") is { IsEffectivelyVisible: true }, 4000);
                 await Check("profile-editor-exact-product-version", () =>
                     Avalonia.Controls.ControlExtensions.FindControl<Avalonia.Controls.TextBlock>(editor, "ProfileVersionText") is { IsEffectivelyVisible: true } version && version.Text == _expectedVersion, 4000);
                 await Check("bridge-profile-editor-shares-visible-sta", () =>

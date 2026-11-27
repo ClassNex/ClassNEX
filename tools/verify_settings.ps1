@@ -153,11 +153,35 @@ $requiredNativeChecks = @(
     'general-shows-saved-startup-values', 'exact-desktop-product-version', 'about-shows-exact-product-version',
     'update-shows-exact-product-version', 'profile-editor-exact-product-version', 'deep-link-breadcrumb-opens-parent', 'deep-link-back-skips-child'
     foreach ($category in 'basic', 'widgets', 'notification', 'nex', 'privacy') { "category-list-$category" }
-    foreach ($detail in 'startup', 'schedule', 'runtime', 'widget-layout', 'appearance', 'window', 'reminder-rules', 'reminder-display', 'nex-assistant', 'nex-wake', 'privacy-storage', 'privacy-services') {
+    foreach ($detail in 'startup', 'runtime', 'widget-layout', 'appearance', 'window', 'reminder-rules', 'reminder-display', 'nex-assistant', 'nex-wake', 'privacy-storage', 'privacy-services') {
         "option-opens-$detail"
         "breadcrumb-returns-$detail"
     }
 ) + $RequiredCheck
+if ($ExpectedProductVersion -ceq '26w48a') {
+    $requiredNativeChecks += 'option-opens-schedule', 'breadcrumb-returns-schedule'
+} else {
+    $requiredNativeChecks += 'about-displays-decoded-product-mark', 'quick-appearance-previews-before-saving-and-keeps-its-anchor', 'desktop-moving-back-removes-empty-row', 'home-preferences-apply-without-navigation', 'home-opens-independent-editor-without-settings-navigation',
+        'search-opens-timeplan-in-same-editor', 'legacy-schedule-link-reuses-editor', 'home-opens-temporary-schedule-directly', 'update-idle-without-an-unsolicited-check',
+        'widgets-start-in-horizontal-desktop-order', 'horizontal-selection-opens-matching-instance', 'separate-rows-have-separate-visible-strips',
+        'merged-horizontal-row-drops-empty-strip', 'row-add-opens-component-library', 'row-returns-from-library-to-clock',
+        'widget-list-and-selected-inspector', 'widget-library-has-add-and-drag', 'new-widget-selected-in-place', 'editing-one-widget-preserves-its-neighbor',
+        'widget-copy-keeps-text-and-selection', 'hiding-copy-leaves-original-visible', 'widget-move-keeps-selected-instance', 'widget-remove-preserves-original', 'widget-list-switches-properties-without-navigation',
+        'moving-widget-to-new-row-preserves-its-inspector', 'empty-widget-row-is-removed-without-changing-other-instances',
+        'widget-appearance-is-optional', 'widget-width-margin-alignment-opacity-reach-live-classroom', 'widget-radius-and-background-update-without-recreating-clock',
+        'reset-appearance-keeps-original-clock-control-and-settings', 'desktop-gear-and-grips-are-real-hit-targets', 'desktop-gear-opens-selected-clock-drawer',
+        'drawer-edit-updates-same-clock-without-closing', 'closing-drawer-preserves-desktop-editor', 'pointer-drag-reorders-live-desktop-and-disk',
+        'preset-picker-does-not-materialize-a-legacy-install', 'preset-dialog-rejects-existing-name', 'saving-preset-copy-leaves-current-desktop',
+        'preset-copy-loads-original-values', 'switching-preset-flushes-both-field-and-slider', 'new-preset-starts-with-date-clock-and-schedule',
+        'renaming-active-preset-keeps-layout', 'cancel-preset-delete-keeps-all-layouts', 'deleting-inactive-preset-preserves-edited-original',
+        'reentering-page-restores-preset-selection', 'damaged-presets-leave-the-widget-editor-available', 'recovered-presets-retain-damaged-bytes-and-live-desktop',
+        'widget-period-selector-starts-unrestricted', 'widget-period-selection-persists-and-reaches-live-clock', 'break-shows-clock-and-adjoining-date-divider',
+        'activity-replaces-clock-and-collapses-empty-rows', 'clock-returns-at-end-of-activity', 'next-lesson-restores-classroom-row',
+        'empty-day-shows-only-its-conditional-row', 'same-day-timetable-edits-update-widget-periods', 'edit-mode-reveals-widgets-outside-their-period',
+        'leaving-edit-mode-reapplies-periods', 'all-filtered-widgets-remove-surface-and-release-pointer', 'reminder-can-use-otherwise-empty-classroom',
+        'dismissed-reminder-leaves-no-empty-surface', 'nex-panel-can-use-otherwise-empty-classroom', 'hidden-nex-releases-empty-classroom-pointer',
+        'break-restores-previously-empty-classroom-and-input'
+}
 if ($ExpectedProductVersion -ceq '26w48b') {
     $requiredNativeChecks += 'option-opens-reminder-after-school', 'breadcrumb-returns-reminder-after-school', 'dismissal-opt-in-default', 'dismissal-saved-through-navigation'
 }

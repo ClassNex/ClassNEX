@@ -65,6 +65,7 @@ public sealed partial class NativeSettingsWindow : Window
     private UIElement? _pageHeading;
     private string? _requestedTarget;
     private long _navigationTicket;
+    private Action? _cancelFocusWait;
     private bool _widePaneOpen = true;
     private bool _refreshing, _closed;
     private int _versionClicks;
@@ -155,7 +156,7 @@ public sealed partial class NativeSettingsWindow : Window
         ObserveSystemEffects();
         RefreshSettings();
         Activated += (_, _) => { if (!_closed && _page is null) NavigateTo("home"); };
-        Closed += (_, _) => { CommitInputs(); _closed = true; StopObservingSystemEffects(); SetHomeClock(false); LeavePageServices(); _bindings.Clear(); _targets.Clear(); _fieldCommits.Clear(); };
+        Closed += (_, _) => { CommitInputs(); _closed = true; _cancelFocusWait?.Invoke(); _cancelFocusWait = null; StopObservingSystemEffects(); SetHomeClock(false); LeavePageServices(); _bindings.Clear(); _targets.Clear(); _fieldCommits.Clear(); };
     }
 
     public void NavigateTo(string key) => Navigate(key, null);
@@ -238,22 +239,44 @@ public sealed partial class NativeSettingsWindow : Window
     private void FocusDestination(string? target, double restore = 0)
     {
         var ticket = ++_navigationTicket;
+        _cancelFocusWait?.Invoke();
+        _cancelFocusWait = null;
         if (target != null && _detailOwners.TryGetValue(target, out var detail)) detail.IsExpanded = true;
-        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+        var element = target == null ? null : _targets.GetValueOrDefault(target);
+        var scroll = restore > 0 ? _page?.Content as ScrollViewer : null;
+        var destination = element ?? (FrameworkElement?)scroll ?? _pageHeading as FrameworkElement;
+        if (destination == null) return;
+
+        void Loaded(object sender, RoutedEventArgs args)
+        {
+            destination.Loaded -= Loaded;
+            if (_closed || ticket != _navigationTicket) return;
+            _cancelFocusWait = null;
+            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, Apply);
+        }
+
+        void Apply()
         {
             if (_closed || ticket != _navigationTicket) return;
-            if (target != null && _targets.TryGetValue(target, out var element))
+            if (!destination.IsLoaded)
+            {
+                destination.Loaded += Loaded;
+                _cancelFocusWait = () => destination.Loaded -= Loaded;
+                return;
+            }
+            if (element != null)
             {
                 element.StartBringIntoView(new BringIntoViewOptions { AnimationDesired = false });
                 if (element.IsTabStop) element.Focus(FocusState.Programmatic);
             }
-            else if (restore > 0 && _page?.Content is ScrollViewer scroll)
+            else if (scroll != null)
             {
                 scroll.Focus(FocusState.Programmatic);
                 scroll.ChangeView(null, restore, null, true);
             }
-            else _pageHeading?.Focus(FocusState.Programmatic);
-        });
+            else destination.Focus(FocusState.Programmatic);
+        }
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, Apply);
     }
 
     private void RenderPage()
