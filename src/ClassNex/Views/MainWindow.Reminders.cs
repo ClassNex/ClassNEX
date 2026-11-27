@@ -7,14 +7,17 @@ using Avalonia.Threading;
 using ClassNex.Core.Abstractions;
 using ClassNex.Services;
 using ClassNex.Styles;
+using System.Diagnostics;
 using System.Globalization;
 
 namespace ClassNex.Views;
 
 public partial class MainWindow
 {
-    private DispatcherTimer? _messageTimer;
-    private readonly DispatcherTimer _progressTimer = new(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(50) };
+    private static readonly TimeSpan PageInterval = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan RailInterval = TimeSpan.FromMilliseconds(50);
+    private readonly DispatcherTimer _progressTimer = new(DispatcherPriority.Render);
+    private long? _pageStartedAt;
     private INotificationOverlayProgress? _overlayProgress;
     private readonly Transitions? _hoverTransitions, _railTransitions, _maskShadowTransitions;
 #if DEBUG
@@ -122,7 +125,6 @@ public partial class MainWindow
         ++_presentation;
         StopClassroomReturn();
         StopOverlayProgress();
-        StopNotificationOverlayMessageTicker();
         _overlayExiting = _hasCoursePage = false;
         CardContent.Classes.Set("reminder-fade", DesktopMotion.IsEnabled);
         SetStaticSlides(!DesktopMotion.IsEnabled);
@@ -162,7 +164,7 @@ public partial class MainWindow
     internal void ShowNotificationOverlay(NotificationOverlay detail, int? seconds, INotificationOverlayProgress? progress)
     {
         if (!CanPresentReminder || !_showingNotification || _overlayExiting) return;
-        StopNotificationOverlayMessageTicker();
+        StopOverlayProgress();
         NotificationOverlayLeft.IsVisible = seconds.HasValue;
         NotificationBreakCaption.IsVisible = !seconds.HasValue && detail.Break.HasValue;
         NotificationPlainCaption.IsVisible = !seconds.HasValue && !detail.Break.HasValue;
@@ -189,18 +191,15 @@ public partial class MainWindow
         ArrangeNotification();
         _overlayProgress = progress;
         ProgressContainer.IsVisible = progress is not null;
-        if (progress is not null)
+        if (progress is not null) CountdownProgressValue = progress.LeftProgress;
+        if (_hasCoursePage && detail.Vertical && !string.IsNullOrWhiteSpace(detail.Message))
+            _pageStartedAt = Stopwatch.GetTimestamp();
+        if (progress is not null || _pageStartedAt.HasValue)
         {
-            CountdownProgressValue = progress.LeftProgress;
+            _progressTimer.Interval = progress is not null ? RailInterval : PageInterval;
             _progressTimer.Start();
         }
         _ = RetreatMaskAsync(_presentation, finish: false);
-        if (_hasCoursePage && detail.Vertical && !string.IsNullOrWhiteSpace(detail.Message))
-        {
-            _messageTimer ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
-            _messageTimer.Tick += AdvanceMessage;
-            _messageTimer.Start();
-        }
     }
 
     private void ApplyNotificationBackdrop(bool active)
@@ -239,36 +238,29 @@ public partial class MainWindow
         }
     }
 
-    private void AdvanceMessage(object? sender, EventArgs e)
-    {
-        NotificationSlides.SelectedIndex = NotificationSlides.SelectedIndex == 0 ? 1 : 0;
-        SetStaticSlides(!DesktopMotion.IsEnabled);
-        NotificationBodyViewport.Offset = default;
-        if (_oversizeSlidePair) ArrangeNotification();
-    }
-
     private static void ResetPage(Control view, bool visible)
     {
         view.IsVisible = visible;
         view.Opacity = visible ? 1 : 0;
     }
 
-    private void StopNotificationOverlayMessageTicker()
-    {
-        if (_messageTimer is not { } timer) return;
-        timer.Stop();
-        timer.Tick -= AdvanceMessage;
-    }
-
     private void SampleOverlayProgress(object? sender, EventArgs args)
     {
         if (_overlayProgress is { } progress) CountdownProgressValue = progress.LeftProgress;
+        if (_pageStartedAt is not { } start) return;
+        var page = (int)((Stopwatch.GetElapsedTime(start).Ticks / PageInterval.Ticks) % 2);
+        if (NotificationSlides.SelectedIndex == page) return;
+        SetStaticSlides(!DesktopMotion.IsEnabled);
+        NotificationSlides.SelectedIndex = page;
+        NotificationBodyViewport.Offset = default;
+        if (_oversizeSlidePair) ArrangeNotification();
     }
 
     private void StopOverlayProgress()
     {
         _progressTimer.Stop();
         _overlayProgress = null;
+        _pageStartedAt = null;
     }
 
     public void UpdateNotificationOverlayCountdown(string text)
@@ -299,9 +291,8 @@ public partial class MainWindow
             return;
         }
         if (_overlayExiting) return;
-        SampleOverlayProgress(null, EventArgs.Empty);
+        if (_overlayProgress is { } progress) CountdownProgressValue = progress.LeftProgress;
         StopOverlayProgress();
-        StopNotificationOverlayMessageTicker();
         _overlayExiting = true;
         RefreshReminderInput();
         BeginClassroomReturn();
@@ -318,7 +309,6 @@ public partial class MainWindow
         ++_presentation;
         StopClassroomReturn();
         StopOverlayProgress();
-        StopNotificationOverlayMessageTicker();
         ClearNotificationPages();
         _showingNotification = false;
         ApplyNotificationBackdrop(false);

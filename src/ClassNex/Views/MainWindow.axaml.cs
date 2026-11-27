@@ -160,7 +160,6 @@ public partial class MainWindow : Window
         _readingOverflow = false;
         FinishIslandDrag(false);
         UpdateRunningState();
-        StopNotificationOverlayMessageTicker();
         StopOverlayProgress();
         _progressTimer.Tick -= SampleOverlayProgress;
         ++_presentation;
