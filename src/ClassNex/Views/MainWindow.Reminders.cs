@@ -18,6 +18,7 @@ public partial class MainWindow
     private static readonly TimeSpan RailInterval = TimeSpan.FromMilliseconds(50);
     private readonly DispatcherTimer _progressTimer = new(DispatcherPriority.Render);
     private long? _pageStartedAt;
+    private long _lastRailSample;
     private INotificationOverlayProgress? _overlayProgress;
     private readonly Transitions? _hoverTransitions, _railTransitions, _maskShadowTransitions;
 #if DEBUG
@@ -191,7 +192,11 @@ public partial class MainWindow
         ArrangeNotification();
         _overlayProgress = progress;
         ProgressContainer.IsVisible = progress is not null;
-        if (progress is not null) CountdownProgressValue = progress.LeftProgress;
+        if (progress is not null)
+        {
+            _lastRailSample = Stopwatch.GetTimestamp();
+            CountdownProgressValue = progress.LeftProgress;
+        }
         if (_hasCoursePage && detail.Vertical && !string.IsNullOrWhiteSpace(detail.Message))
             _pageStartedAt = Stopwatch.GetTimestamp();
         if (progress is not null || _pageStartedAt.HasValue)
@@ -246,7 +251,16 @@ public partial class MainWindow
 
     private void SampleOverlayProgress(object? sender, EventArgs args)
     {
-        if (_overlayProgress is { } progress) CountdownProgressValue = progress.LeftProgress;
+        if (_overlayProgress is { } progress)
+        {
+            var now = Stopwatch.GetTimestamp();
+            var transitions = OverlayTimeProgressBar.Transitions;
+            var catchUp = transitions is not null && Stopwatch.GetElapsedTime(_lastRailSample, now) > RailInterval * 4;
+            if (catchUp) OverlayTimeProgressBar.Transitions = null;
+            CountdownProgressValue = progress.LeftProgress;
+            if (catchUp) OverlayTimeProgressBar.Transitions = transitions;
+            _lastRailSample = now;
+        }
         if (_pageStartedAt is not { } start) return;
         var page = (int)((Stopwatch.GetElapsedTime(start).Ticks / PageInterval.Ticks) % 2);
         if (NotificationSlides.SelectedIndex == page) return;
