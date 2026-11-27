@@ -31,23 +31,61 @@ public sealed partial class NativeSettingsWindow
 
     private void CentralPage()
     {
-        Switch("CentralEnabled", "启用集控", s => s.CentralManagement.IsEnabled, (s, v) => s.CentralManagement.IsEnabled = v,
-            "在集控后台登录同一个 ClassNEX ID，然后选择要管理的设备。");
-        Field("CentralUrl", "集控服务地址", s => s.CentralManagement.ServerUrl, (s, v) => s.CentralManagement.ServerUrl = v.Trim());
-        StatusRow("CentralIdentity", "设备身份", s => Or(s.CentralManagement.ClientId, "尚未登记"));
-        StatusRow("CentralState", "同步状态", s => Or(s.CentralManagement.LastStatus, "未配置"));
-        ActionRow("CentralAccount", "ClassNEX ID", "查看账户", () => NavigateTo("account"));
-        AsyncRow("CentralConnect", "连接并检查同步", "连接集控", CentralConnect, before: () =>
+        StatusRow("CentralCode", "本机配对码", s => Or(s.CentralManagement.PairingCode, "—"));
+        AsyncRow("CentralConnect", "连接此设备", "获取配对码", CentralConnect, "在集控网页登录后输入配对码。仅将配对码交给获准管理课堂的人。");
+        StatusRow("CentralState", "同步状态", s => Or(s.CentralManagement.LastStatus, "未连接"));
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        var restoring = false;
+        var drafts = ActionButton("CentralDrafts", "查看本机草稿", () => RunUserAction(() => OpenFolder(Path.Combine(SettingsService.DataDirectory, "CentralDrafts"))));
+        var restore = ActionButton("CentralRestoreDraft", "恢复到本机…", () => RunUserAction(RestoreDraft));
+        actions.Children.Add(drafts);
+        actions.Children.Add(restore);
+        var draftRow = MakeSettingRow("同步冲突", "本机未同步的更改已保存为草稿。", actions);
+        Identify(draftRow, "Row_CentralDrafts", "同步冲突");
+        draftRow.Visibility = Visibility.Collapsed;
+        _body.Children.Add(draftRow);
+        _bindings.Add(s =>
         {
-            if (!_bridge.ReadSettings().CentralManagement.IsEnabled) Edit(s => s.CentralManagement.IsEnabled = true);
+            draftRow.Visibility = string.IsNullOrWhiteSpace(s.CentralManagement.LastConflictDraft) ? Visibility.Collapsed : Visibility.Visible;
+            restore.Visibility = CanRestore(s.CentralManagement) ? Visibility.Visible : Visibility.Collapsed;
+            restore.IsEnabled = !restoring;
         });
-        CommandRow("CentralDisconnect", "结束当前连接", "断开集控", "central.disconnect");
+        AsyncRow("CentralDisconnect", "停止同步并解除设备绑定", "解除绑定", "central.unpair");
+
+        static bool CanRestore(CentralManagementSettings s) => s.IsEnabled && !string.IsNullOrWhiteSpace(s.ClientId) &&
+            !string.IsNullOrWhiteSpace(s.SelectedClassId) && !string.IsNullOrWhiteSpace(s.LastConflictDraft);
+
+        static (string, string, string, long, string?) TargetDraft(CentralManagementSettings s) =>
+            (s.ServerUrl, s.ClientId, s.SelectedClassId, s.AppliedRevision, s.LastConflictDraft);
+
+        async Task RestoreDraft()
+        {
+            var page = _page;
+            var before = _bridge.ReadSettings().CentralManagement;
+            if (!CanRestore(before)) return;
+            var target = TargetDraft(before);
+            restoring = true;
+            RefreshSettings();
+            try
+            {
+                if (!await Confirm("将草稿恢复到本机？", "这会将草稿中的课表或设置应用到本机，并向当前班级重新同步。原草稿文件会保留。", "恢复到本机") || _page != page) return;
+                var current = _bridge.ReadSettings().CentralManagement;
+                if (!CanRestore(current) || target != TargetDraft(current)) throw new InvalidOperationException("班级、同步版本或草稿已变化。请核对同步状态后重试。");
+                await _bridge.ExecuteAsync("central.restoreDraft");
+            }
+            catch (Exception e) when (e is System.Net.Http.HttpRequestException or TimeoutException or OperationCanceledException)
+            { throw new InvalidOperationException("无法完成班级同步。请检查网络连接，并查看同步状态后再试。", e); }
+            catch (Exception e) when (e is InvalidDataException or System.Text.Json.JsonException or YamlDotNet.Core.YamlException or FormatException)
+            { throw new InvalidOperationException("草稿格式无效，不能恢复。请查看本机草稿并核对文件。", e); }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            { throw new InvalidOperationException("无法读取或保存本机草稿。请检查数据目录中的文件、磁盘空间和访问权限。", e); }
+            finally { restoring = false; if (!_closed && _page == page) RefreshSettings(); }
+        }
     }
 
     private void AppearancePage()
     {
-        string[] modes = ["system", "light", "dark"];
-        Choice("Theme", "主题", ["跟随系统", "浅色", "深色"], s => Array.IndexOf(modes, s.ThemeMode), (s, i) => s.ThemeMode = modes[i]);
+        ThemeChoice("Theme", "主题");
         Section("桌面课表");
         Scale("Opacity", "主界面背景不透明度", 0, 1, .01, s => s.BackgroundOpacity, (s, v) => s.BackgroundOpacity = v, v => $"{v:P0}");
         Scale("FontScale", "全局字号缩放", .8, 2.4, .05, s => s.FontScale, (s, v) => s.FontScale = v, v => $"{v:0.00}×");
@@ -133,21 +171,68 @@ public sealed partial class NativeSettingsWindow
 
     private void AboutPage()
     {
-        var identity = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
-        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "icon.ico");
-        if (File.Exists(iconPath)) identity.Children.Add(new Image { Width = 48, Height = 48, Source = new BitmapImage(new Uri(iconPath)) });
-        identity.Children.Add(Text("ClassNEX", "SubtitleTextBlockStyle"));
-        _body.Children.Add(identity);
+        var identity = new StackPanel { Spacing = 2 };
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "app-mark.png");
+        FrameworkElement icon = File.Exists(iconPath) ? new Image { Width = 48, Height = 48, Source = new BitmapImage(new Uri("ms-appx:///Assets/app-mark.png")) }
+            : new FontIcon { FontSize = 36, Glyph = "\uE787" };
+        Identify(icon, "AboutProductMark", "ClassNEX 图标");
+        var name = Text("ClassNEX", "SubtitleTextBlockStyle");
+        name.VerticalAlignment = VerticalAlignment.Center;
         var version = ActionButton("Version", "当前版本", OnVersionClicked);
+        version.Style = ButtonStyle("SubtleButtonStyle");
+        version.Padding = new Thickness(8, 2, 8, 2);
+        ToolTipService.SetToolTip(version, "本机桌面版本");
         _bindings.Add(_ => { var value = Or(_bridge.Status(NativeSettingsKeys.Version), "未提供版本号"); if (!Equals(version.Content, value)) version.Content = value; });
-        Row("当前版本", "ClassNEX 桌面客户端", version);
-        CommandRow("AboutRepo", "项目主页", "打开 GitHub", Repo);
-        CommandRow("AboutIssues", "反馈与建议", "反馈问题", Issues);
-        CommandRow("AboutLicense", "开放源代码许可", "查看许可", License, "GNU General Public License v3.0");
-        ActionRow("AboutPrivacy", "隐私与安全性", "查看", () => NavigateTo("privacy"));
-        ActionRow("AboutUpdate", "版本更新", "打开更新", () => NavigateTo("update"));
-        CommandRow("OobePreview", "首次启动向导", "预览 OOBE", Oobe, "不会重置你的账户、课表或偏好。");
+        var title = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        title.Children.Add(name); title.Children.Add(version);
+        identity.Children.Add(title);
+        identity.Children.Add(SettingCaption("面向班级的桌面课表与上下课提醒"));
+        var update = ActionButton("AboutUpdate", "查看更新", () => NavigateTo("update"));
+        _body.Children.Add(SummaryCard(icon, identity, update));
+        Section("支持与许可");
+        _body.Children.Add(NavigationCard("AboutRepo", "项目主页", "\uE774", SettingCaption("在 GitHub 查看 ClassNEX 项目"), () => _bridge.Command(Repo), true));
+        _body.Children.Add(NavigationCard("AboutIssues", "反馈问题", "\uE939", SettingCaption("报告问题或提出功能建议"), () => _bridge.Command(Issues), true));
+        _body.Children.Add(NavigationCard("AboutLicense", "开源许可", "\uE8A5", SettingCaption("ClassNEX 与随附资源的许可说明，可离线查看"), ShowLicenses));
+        _body.Children.Add(NavigationCard("AboutPrivacy", "隐私与安全性", "\uE72E", SettingCaption("查看本机数据和联网权限"), () => NavigateTo("privacy")));
+        Section("使用帮助");
+        CommandRow("OobePreview", "首次启动向导", "查看向导", Oobe, "不会重置账户、课表或偏好。");
         if (_bridge.ReadSettings().IsDebugOptionsEnabled) ActionRow("AboutDebug", "开发者选项", "打开", () => NavigateTo("debug"));
+    }
+
+    private ContentDialog? _licenseDialog;
+
+    private async void ShowLicenses()
+    {
+        if (_licenseDialog is not null || _closed) return;
+        (string Label, string File)[] notices =
+        [
+            ("ClassNEX · GNU GPL v3", "ThirdParty/ClassIsland/GPL-3.0.txt"),
+            ("课堂提醒 · 移植说明", "ThirdParty/ClassIsland/NOTICE.md"),
+            ("FluentAvalonia", "ThirdParty/FluentAvalonia/LICENSE.txt"),
+            ("Fluent System Icons", "Licenses/Fluent-LICENSE.txt"),
+            ("Lucide", "ThirdParty/ClassIsland/Lucide-LICENSE.txt"),
+            ("HarmonyOS Sans", "Assets/Fonts/HarmonyOS-Sans-LICENSE.txt")
+        ];
+        var selection = new ComboBox { ItemsSource = notices.Select(n => n.Label).ToArray(), HorizontalAlignment = HorizontalAlignment.Stretch };
+        var text = new TextBlock { IsTextSelectionEnabled = true, TextWrapping = TextWrapping.Wrap };
+        var scroll = new ScrollViewer { Content = text, Height = Math.Clamp(_shell.ActualHeight * .4, 100, 360) };
+        var content = new StackPanel { Spacing = 12 }; content.Children.Add(selection); content.Children.Add(scroll);
+        Identify(selection, "LicenseSelection", "选择许可"); Identify(text, "LicenseText", "许可正文");
+        var dialog = new ContentDialog { XamlRoot = _shell.XamlRoot, Title = "开源许可", Content = content, CloseButtonText = "关闭" };
+        _licenseDialog = dialog;
+        selection.SelectionChanged += async (_, _) =>
+        {
+            var index = selection.SelectedIndex;
+            if (index < 0) return;
+            string notice;
+            try { notice = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, notices[index].File)); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { notice = "未能读取本机随附的许可文件。可从「项目主页」查看源码与许可。"; }
+            if (_licenseDialog != dialog || selection.SelectedIndex != index) return;
+            text.Text = notice; scroll.ChangeView(null, 0, null, true);
+        };
+        selection.SelectedIndex = 0;
+        try { await dialog.ShowAsync(); }
+        finally { _licenseDialog = null; }
     }
 
     private void StoragePage()

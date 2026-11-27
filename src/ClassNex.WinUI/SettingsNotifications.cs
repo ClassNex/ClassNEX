@@ -1,7 +1,6 @@
 using ClassNex.Models;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
-using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
 using static ClassNex.WinUI.NativeSettingsKeys;
 
@@ -33,7 +32,8 @@ public sealed partial class NativeSettingsWindow
 
     private void ReminderRulesPage()
     {
-        ReminderDetail("PrepareDetails", "课前准备", "\uE823", s => !s.Notification.IsClassOnPreparingNotificationEnabled ? "已关闭" : !s.AllowMinorNotification ? "次要提醒已关闭" : $"室内提前 {s.Notification.ClassOnBreakReminderMinutes} 分钟 · 室外提前 {s.Notification.OutDoorClassPreparingDeltaTime} 秒", () =>
+        static string LeadTime(int seconds) => seconds > 0 && seconds % 60 == 0 ? $"{seconds / 60} 分钟" : $"{seconds} 秒";
+        ReminderDetail("PrepareDetails", "课前准备", "\uE823", s => !s.Notification.IsClassOnPreparingNotificationEnabled ? "已关闭" : !s.AllowMinorNotification ? "次要提醒已关闭" : $"室内提前 {s.Notification.ClassOnBreakReminderMinutes} 分钟 · 室外提前 {LeadTime(s.Notification.OutDoorClassPreparingDeltaTime)}", () =>
         {
             Switch("ClassPrepare", "课前提醒", s => s.Notification.IsClassOnPreparingNotificationEnabled, (s, value) => s.Notification.IsClassOnPreparingNotificationEnabled = value,
                 "在下一节课开始前，交替显示课程信息和准备提示。");
@@ -116,19 +116,11 @@ public sealed partial class NativeSettingsWindow
     private void ReminderDetail(string id, string title, string glyph, Func<AppSettings, string> describe, Action fill)
     {
         var body = new StackPanel { Spacing = 6 };
-        var header = new Grid { ColumnSpacing = 16, MinHeight = 42 };
-        header.ColumnDefinitions.Add(new() { Width = new GridLength(22) });
-        header.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
-        var icon = new FontIcon { FontSize = 19, Glyph = glyph };
-        AutomationProperties.SetAccessibilityView(icon, AccessibilityView.Raw);
-        header.Children.Add(icon);
-        var labels = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
-        labels.Children.Add(Text(title));
         var summary = SettingCaption("");
-        labels.Children.Add(summary);
-        Grid.SetColumn(labels, 1);
-        header.Children.Add(labels);
-        var expander = Target(id, title, new Expander { Header = header, Content = body, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch });
+        var header = CardHeader(glyph, title, summary);
+        header.Margin = new Thickness(0, 12, 0, 12);
+        var expander = Target(id, title, new Expander { Header = header, Content = body, MinHeight = SettingsCardHeight,
+            HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch });
         _bindings.Add(settings =>
         {
             var value = describe(settings);

@@ -1,8 +1,7 @@
 using System.Text.Json;
-using ClassNex.Core.Abstractions;
-using ClassNex.Models;
-using ClassNex.Services;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
 using static ClassNex.WinUI.NativeSettingsKeys;
 
@@ -12,30 +11,8 @@ public sealed partial class NativeSettingsWindow
 {
     private Action? _leavePlugins;
     private CancellationTokenSource? _releaseCheck;
-    private static readonly HttpClient Releases = new() { Timeout = TimeSpan.FromSeconds(12) };
-
-    private void SchedulePage()
-    {
-        Date("SemesterStart", "单周起始日期", s => new DateTimeOffset(s.SingleWeekStartTime.Date), (s, v) => { if (v.HasValue) s.SingleWeekStartTime = v.Value.Date; });
-        StatusRow("ScheduleFile", "当前档案", _ => Or(_bridge.Status(NativeSettingsKeys.Schedule), "尚未选择档案"));
-        StatusRow("SchedulePath", "文件位置", s => Or(s.TimetablePath, SettingsService.TimetableStoragePath));
-        var today = Target("TodayCourses", "今日课程", Text(""));
-        Section("今天的课表"); _body.Children.Add(today);
-        _bindings.Add(_ =>
-        {
-            var day = _bridge.ReadOverlay().Today;
-            var summary = day.IsEmpty ? "今天没有安排课程。" : string.Join('\n', day.Slots.Select(slot => $"{slot.TimeRange}　{Or(slot.Subject, slot.DisplayName)}{(string.IsNullOrWhiteSpace(slot.Detail) ? "" : "　" + slot.Detail)}"));
-            if (today.Text != summary) today.Text = summary;
-        });
-        Section("编辑档案");
-        CommandRow("ProfileInfo", "档案信息", "管理档案", ProfileTab(-1));
-        CommandRow("ProfileWeek", "周课表", "编辑课程", ProfileTab(0));
-        CommandRow("ProfileTimes", "时间表与课间", "编辑时间表", ProfileTab(1));
-        CommandRow("ProfileSubjects", "科目", "管理科目", ProfileTab(2));
-        CommandRow("ProfileSwap", "临时调课", "调课", ProfileTab(3));
-        AsyncRow("ProfileOpenFile", "切换档案", "打开课表文件…", PickTimetable);
-        ActionRow("ProfileFolder", "本机数据", "打开数据目录", () => RunUserAction(() => OpenFolder(SettingsService.DataDirectory)));
-    }
+    private (DateTimeOffset Time, string Status)? _lastReleaseCheck;
+    private static readonly HttpClient Releases = new() { Timeout = TimeSpan.FromSeconds(12), MaxResponseContentBufferSize = 2 * 1024 * 1024 };
 
     private void PluginsPage()
     {
@@ -102,38 +79,54 @@ public sealed partial class NativeSettingsWindow
 
     private void UpdatePage()
     {
-        StatusRow("InstalledVersion", "当前版本", _ => Or(_bridge.Status(NativeSettingsKeys.Version), "未提供版本号"));
-        var check = Target("CheckUpdate", "检查更新", new Button { Content = "检查更新" });
-        var result = Target("UpdateResult", "版本检查结果", Text(""));
-        result.Visibility = Visibility.Collapsed;
-        Row("GitHub 发布记录", "手动检查时连接 ClassNEX 官方仓库，不会自动安装。", check);
-        _body.Children.Add(result);
-        CommandRow("OpenReleases", "发布包与更新说明", "打开发布页", ReleasePage);
+        var check = Target("CheckUpdate", "检查更新", new Button { Content = "检查更新", Style = ButtonStyle("AccentButtonStyle") });
+        var result = Target("UpdateResult", "版本检查结果", Text(_lastReleaseCheck?.Status ?? "尚未检查更新"));
+        AutomationProperties.SetName(result, "");
+        AutomationProperties.SetLiveSetting(result, AutomationLiveSetting.Polite);
+        var detail = SettingCaption(_lastReleaseCheck is { } last ? $"上次检查：{last.Time.LocalDateTime:g}" : "手动连接 ClassNEX 官方发布页，不会自动安装。");
+        var labels = new StackPanel { Spacing = 4 }; labels.Children.Add(result); labels.Children.Add(detail);
+        var symbol = new FontIcon { Glyph = "\uE895", FontSize = 34 };
+        var progress = new ProgressRing { Width = 32, Height = 32, IsActive = false, Visibility = Visibility.Collapsed };
+        var icon = new Grid(); icon.Children.Add(symbol); icon.Children.Add(progress);
+        _body.Children.Add(SummaryCard(icon, labels, check));
+        Section("本机版本");
+        StatusRow("InstalledVersion", "已安装版本", _ => Or(_bridge.Status(NativeSettingsKeys.Version), "未提供版本号"));
+        Section("发布记录");
+        _body.Children.Add(NavigationCard("OpenReleases", "更新说明与下载", "\uE896", SettingCaption("在浏览器查看官方发布记录和安装包"), () => _bridge.Command(ReleasePage), true));
         var page = _page;
         check.Click += async (_, _) =>
         {
             if (_releaseCheck != null || _closed) return;
             using var cts = new CancellationTokenSource();
             _releaseCheck = cts;
-            check.IsEnabled = false; result.Text = "正在检查…"; result.Visibility = Visibility.Visible;
+            check.IsEnabled = false; symbol.Visibility = Visibility.Collapsed; progress.Visibility = Visibility.Visible; progress.IsActive = true;
+            result.Text = "正在检查更新…"; detail.Text = "正在连接 GitHub 官方发布页。";
             try
             {
-                using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/repos/ClassNex/ClassNEX/releases?per_page=1");
                 var installed = _bridge.Status(NativeSettingsKeys.Version);
-                request.Headers.UserAgent.ParseAdd(string.IsNullOrEmpty(installed) ? "ClassNEX-Desktop" : $"ClassNEX-Desktop/{installed}");
-                using var response = await Releases.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token);
-                response.EnsureSuccessStatusCode();
-                using var json = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(cts.Token), cancellationToken: cts.Token);
+                var tag = await DesktopRelease.LatestTagAsync(Releases, installed, cts.Token);
                 if (_closed || _page != page) return;
-                var entries = json.RootElement;
-                var tag = entries.ValueKind == JsonValueKind.Array && entries.GetArrayLength() > 0 && entries[0].TryGetProperty("tag_name", out var value) ? value.GetString() : null;
                 result.Text = DesktopRelease.Describe(installed, tag);
+                var now = DateTimeOffset.Now;
+                _lastReleaseCheck = (now, result.Text);
+                detail.Text = $"上次检查：{now.LocalDateTime:g}";
             }
             catch (Exception ex) when (ex is HttpRequestException or IOException or OperationCanceledException or JsonException or InvalidOperationException)
             {
-                if (!_closed && _page == page && !cts.IsCancellationRequested) result.Text = "未能获取发布记录。可以重试，或打开官方发布页。";
+                if (!_closed && _page == page && !cts.IsCancellationRequested)
+                {
+                    result.Text = "暂时无法检查更新";
+                    detail.Text = "请检查网络后重试，也可以打开下方的官方发布页。";
+                }
             }
-            finally { if (ReferenceEquals(_releaseCheck, cts)) _releaseCheck = null; if (!_closed && _page == page) check.IsEnabled = true; }
+            finally
+            {
+                if (ReferenceEquals(_releaseCheck, cts)) _releaseCheck = null;
+                if (!_closed && _page == page)
+                {
+                    check.IsEnabled = true; progress.IsActive = false; progress.Visibility = Visibility.Collapsed; symbol.Visibility = Visibility.Visible;
+                }
+            }
         };
     }
 }

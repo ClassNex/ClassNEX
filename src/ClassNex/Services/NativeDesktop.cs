@@ -67,7 +67,7 @@ internal sealed partial class NativeDesktop : IDisposable
         var picker = new FileOpenPicker();
         picker.FileTypeFilter.Add(".yaml");
         picker.FileTypeFilter.Add(".yml");
-        if (_settings is null && !_overlay.IsVisible) OpenSettings("schedule");
+        if (_settings is null && !_overlay.IsVisible) OpenSettings("home");
         var owner = _settings is { } settings ? WinRT.Interop.WindowNative.GetWindowHandle(settings) : _overlay.TryGetPlatformHandle()?.Handle ?? 0;
         if (owner == 0) return;
         WinRT.Interop.InitializeWithWindow.Initialize(picker, owner);
@@ -78,6 +78,7 @@ internal sealed partial class NativeDesktop : IDisposable
     {
         var now = AppServices.ClassroomNow;
         var today = AppServices.Day.Read(now);
-        return new(now, today, AppServices.Time.GetCountdownText(today.Slots, now.TimeOfDay), AppServices.Schedule.Profile.Schedules.Count > 0);
+        return new(now, today, AppServices.Time.GetCountdownText(today.Slots, now.TimeOfDay),
+            AppServices.Schedule.Profile.IsTimetableConfigured(DateOnly.FromDateTime(now)));
     }
 }

@@ -1,9 +1,28 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace ClassNex.WinUI;
 
 internal static class DesktopRelease
 {
+    internal static async Task<string?> LatestTagAsync(HttpClient client, string installed, CancellationToken token)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/repos/ClassNex/ClassNEX/releases?per_page=1");
+        request.Headers.UserAgent.ParseAdd(string.IsNullOrEmpty(installed) ? "ClassNEX-Desktop" : $"ClassNEX-Desktop/{installed}");
+        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseContentRead, token).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        await using var stream = await response.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
+        using var document = await JsonDocument.ParseAsync(stream, cancellationToken: token).ConfigureAwait(false);
+        var releases = document.RootElement;
+        if (releases.ValueKind == JsonValueKind.Array)
+        {
+            if (releases.GetArrayLength() == 0) return null;
+            if (releases[0].ValueKind == JsonValueKind.Object && releases[0].TryGetProperty("tag_name", out var tag) &&
+                tag.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(tag.GetString())) return tag.GetString();
+        }
+        throw new JsonException("发布记录缺少版本标签。");
+    }
+
     internal static string Describe(string installed, string? tag)
     {
         if (string.IsNullOrWhiteSpace(tag)) return "仓库还没有发布记录。";

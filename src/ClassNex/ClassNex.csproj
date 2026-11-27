@@ -29,6 +29,8 @@
           CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <AvaloniaResource Include="Assets\NexAi.png" />
     <AvaloniaResource Include="Assets\NexWake.wav" />
+    <None Remove="Assets\app-mark.png" />
+    <None Include="Assets\app-mark.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Update="Assets\icon.ico;Assets\Fonts\HarmonyOS_Sans_SC_Regular.ttf"
           CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Update="Assets\Fonts\HarmonyOS-Sans-LICENSE.txt"

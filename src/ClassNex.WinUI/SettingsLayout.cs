@@ -1,6 +1,5 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media.Imaging;
 using static ClassNex.WinUI.NativeSettingsKeys;
 
@@ -116,35 +115,55 @@ public sealed partial class NativeSettingsWindow
         }
     }
 
-    private static Border Card(StackPanel content)
+    private static Grid SummaryCard(FrameworkElement icon, StackPanel text, Button action)
     {
-        var border = (Border)XamlReader.Load("""
-            <Border xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" CornerRadius="8" Padding="16" BorderThickness="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" VerticalAlignment="Top"/>
-            """);
-        border.Child = content;
-        return border;
+        var grid = new Grid { Style = SettingSurface, Padding = new Thickness(18), ColumnSpacing = 16 };
+        grid.ColumnDefinitions.Add(new() { Width = new GridLength(48) });
+        grid.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+        grid.RowDefinitions.Add(new() { Height = GridLength.Auto });
+        grid.RowDefinitions.Add(new() { Height = GridLength.Auto });
+        text.VerticalAlignment = icon.VerticalAlignment = action.VerticalAlignment = VerticalAlignment.Center;
+        action.HorizontalAlignment = HorizontalAlignment.Right;
+        grid.Children.Add(icon);
+        Grid.SetColumn(text, 1); grid.Children.Add(text);
+        Grid.SetColumn(action, 2); grid.Children.Add(action);
+        bool? previous = null;
+        void Arrange(double width)
+        {
+            var stacked = width < 440;
+            if (stacked == previous) return;
+            previous = stacked;
+            Grid.SetColumnSpan(text, stacked ? 2 : 1);
+            Grid.SetRow(action, stacked ? 1 : 0);
+            Grid.SetColumn(action, stacked ? 1 : 2);
+            Grid.SetColumnSpan(action, stacked ? 2 : 1);
+            action.HorizontalAlignment = stacked ? HorizontalAlignment.Left : HorizontalAlignment.Right;
+            grid.RowSpacing = stacked ? 12 : 0;
+        }
+        grid.SizeChanged += (_, args) => Arrange(args.NewSize.Width);
+        return grid;
     }
 
     private static void SetCards(Grid grid, IReadOnlyList<FrameworkElement> cards, double columnMinimum = 300)
     {
-        var left = new StackPanel { Spacing = 12 };
-        var right = new StackPanel { Spacing = 12 };
-        grid.ColumnSpacing = 12;
-        grid.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
-        grid.Children.Add(left);
-        Grid.SetColumn(right, 1);
-        grid.Children.Add(right);
+        foreach (var card in cards) grid.Children.Add(card);
         bool? layout = null;
         void Arrange(double width)
         {
-            var wide = cards.Count > 1 && width >= 2 * columnMinimum + 12;
+            var wide = cards.Count > 1 && width >= 2 * columnMinimum + 8;
             if (layout == wide) return;
             layout = wide;
-            left.Children.Clear(); right.Children.Clear();
-            grid.ColumnDefinitions[1].Width = wide ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
-            grid.ColumnSpacing = wide ? 12 : 0;
-            for (var i = 0; i < cards.Count; i++) (wide && i % 2 == 1 ? right : left).Children.Add(cards[i]);
+            var columns = wide ? 2 : 1;
+            grid.ColumnDefinitions.Clear(); grid.RowDefinitions.Clear();
+            grid.ColumnSpacing = wide ? 8 : 0;
+            grid.RowSpacing = wide ? 8 : 4;
+            for (var i = 0; i < columns; i++) grid.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
+            for (var i = 0; i < cards.Count; i++)
+            {
+                if (i % columns == 0) grid.RowDefinitions.Add(new() { Height = GridLength.Auto });
+                Grid.SetRow(cards[i], i / columns); Grid.SetColumn(cards[i], i % columns);
+            }
         }
         grid.SizeChanged += (_, args) => Arrange(args.NewSize.Width);
         Arrange(0);

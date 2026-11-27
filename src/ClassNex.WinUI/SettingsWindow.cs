@@ -17,7 +17,7 @@ public sealed partial class NativeSettingsWindow : Window
 
     private static readonly Destination[] Destinations =
     [
-        new("home", "主页", "\uE80F", ""), new("basic", "通用", "\uE713", "启动方式、课堂偏好与本地档案。"),
+        new("home", "主页", "\uE80F", ""), new("basic", "通用", "\uE713", "启动方式、运行恢复和学期安排。"),
         new("widgets", "组件与主界面", "\uECA5", "调整桌面课表的内容、顺序和窗口行为。"),
         new("notification", "通知服务", "\uEA8F", "管理课堂提醒的时机和内容。"), new("account", "账户", "\uE77B", "ClassNEX ID 与浏览器登录。"),
         new("plugins", "插件市场", "\uE74C", "管理安装在这台电脑上的插件。"), new("central", "集控与自动化", "\uE968", "连接设备，查看课表与设置的同步状态。"),
@@ -25,7 +25,6 @@ public sealed partial class NativeSettingsWindow : Window
         new("privacy", "隐私与安全性", "\uE72E", "查看本地数据和联网功能的使用方式。"), new("update", "更新", "\uE895", "查看已安装版本及公开发布记录。"),
         new("about", "关于", "\uE946", ""),
         new("startup", "启动与托盘", "\uE7E8", "开机自启、启动画面、URL 协议和托盘菜单。", "basic"),
-        new("schedule", "课表与档案", "\uE787", "单周起始日、今日课表和本机课程档案。", "basic"),
         new("runtime", "运行与恢复", "\uE9D9", "教学安全模式和发生异常时的处理方式。", "basic"),
         new("widget-layout", "组件布局", "\uECA5", "编辑桌面布局，添加、移除和排列组件。", "widgets"),
         new("appearance", "外观与主题", "\uE790", "主题、透明度、字号和桌面课表缩放。", "widgets"),
@@ -172,7 +171,7 @@ public sealed partial class NativeSettingsWindow : Window
         "overview" or "总览" or "设置主页" or "settings" => "home", "general" or "system" or "基本" => "basic",
         "system-startup" or "系统与启动" => "startup", "widget-settings" or "编辑主界面" => "widget-layout",
         "interface" => "appearance", "theme" => "appearance", "components" => "widgets", "plugin" => "plugins", "notifications" or "reminders" or "提醒通知" => "notification",
-        "ai" => "nex", "management" => "central", "profiles" or "profile" or "timetable" or "档案管理" or "课表与课程" => "schedule", "developer" or "调试" => "debug", "updates" => "update",
+        "ai" => "nex", "management" => "central", "schedule" or "profiles" or "profile" or "timetable" or "档案管理" or "课表与课程" or "课表与档案" => "profile", "developer" or "调试" => "debug", "updates" => "update",
         var value => Destinations.FirstOrDefault(d => d.Key == value || d.Title.Equals(value, StringComparison.OrdinalIgnoreCase))?.Key ?? "home"
     };
 
@@ -180,6 +179,14 @@ public sealed partial class NativeSettingsWindow : Window
     {
         if (_closed) return;
         key = ResolveKey(key);
+        if (key == "profile")
+        {
+            CommitInputs();
+            if (_navigation.DisplayMode == NavigationViewDisplayMode.Compact) _navigation.IsPaneOpen = false;
+            var tab = target switch { "ProfileInfo" => -1, "ProfileTimes" => 1, "ProfileSubjects" => 2, "ProfileSwap" => 3, _ => 0 };
+            DispatcherQueue.TryEnqueue(() => { if (!_closed) _bridge.Command(NativeSettingsKeys.ProfileTab(tab)); });
+            return;
+        }
         if (key == "debug" && !_bridge.ReadSettings().IsDebugOptionsEnabled) key = "about";
         _requestedTarget = target;
         if (CurrentPageKey == key)
@@ -220,7 +227,7 @@ public sealed partial class NativeSettingsWindow : Window
         if (_navigation.DisplayMode == NavigationViewDisplayMode.Compact) _navigation.IsPaneOpen = false;
         TrimBackStack();
         RenderPage();
-        SetHomeClock(key == "home");
+        if (key != "home") SetHomeClock(false);
         var restore = args.NavigationMode is NavigationMode.Back or NavigationMode.Forward && _scrollPositions.TryGetValue(key, out var offset) ? offset : 0;
         var target = _requestedTarget;
         if (target == null && args.NavigationMode == NavigationMode.Back && _targets.ContainsKey("Category_" + previous)) target = "Category_" + previous;
@@ -278,7 +285,11 @@ public sealed partial class NativeSettingsWindow : Window
         switch (key)
         {
             case "home": HomePage(); break;
-            case "basic": case "widgets": case "nex": case "privacy": CategoryList(info); break;
+            case "basic":
+                CategoryList(info); Section("学期");
+                Date("SemesterStart", "单周起始日期", s => new DateTimeOffset(s.SingleWeekStartTime.Date), (s, value) => { if (value.HasValue) s.SingleWeekStartTime = value.Value.Date; });
+                break;
+            case "widgets": case "nex": case "privacy": CategoryList(info); break;
             case "notification": NotificationOverview(info); break;
             case "startup": StartupPage(); break;
             case "runtime": RuntimePage(); break;
@@ -286,7 +297,6 @@ public sealed partial class NativeSettingsWindow : Window
             case "window": WindowPage(); break;
             case "widget-layout": WidgetLayoutPage(); break;
             case "plugins": PluginsPage(); break;
-            case "schedule": SchedulePage(); break;
             case "central": CentralPage(); break;
             case "privacy-storage": StoragePage(); break;
             case "privacy-services": PermissionsPage(); break;
@@ -356,14 +366,14 @@ public sealed partial class NativeSettingsWindow : Window
 
     private sealed record SearchHit(string Title, string Key, string? Target = null)
     {
-        public string Label => Target is null ? Title : $"{Title} · {Destinations.Single(d => d.Key == Key).Title}";
+        public string Label => Target is null ? Title : $"{Title} · {(Key == "profile" ? "编辑档案" : Destinations.Single(d => d.Key == Key).Title)}";
     }
 
     private static readonly SearchHit[] SearchDetails =
     [
-        new("系统与启动", "startup", "RunAtStartup"), new("基本设置", "basic"), new("总览", "home"), new("开机自启", "startup", "RunAtStartup"), new("显示启动画面", "startup", "StartupSplash"), new("注册 URL 协议", "startup", "UrlProtocol"), new("托盘图标", "startup", "TrayMenu"), new("集控服务地址", "central", "CentralUrl"),
-        new("周课表", "schedule", "ProfileWeek"), new("时间表与课间", "schedule", "ProfileTimes"), new("档案管理", "schedule", "ProfileInfo"), new("临时调课", "schedule", "ProfileSwap"),
-        new("学期开始日期", "schedule", "SemesterStart"), new("单周起始日期", "schedule", "SemesterStart"), new("教学安全模式", "runtime", "TeachingSafeMode"), new("异常处理", "runtime", "CrashHandling"), new("主题（深色 / 浅色 / 系统）", "appearance", "Theme"),
+        new("系统与启动", "startup", "RunAtStartup"), new("基本设置", "basic"), new("总览", "home"), new("开机自启", "startup", "RunAtStartup"), new("显示启动画面", "startup", "StartupSplash"), new("注册 URL 协议", "startup", "UrlProtocol"), new("托盘图标", "startup", "TrayMenu"), new("设备配对码", "central", "CentralConnect"),
+        new("编辑课表", "profile", "ProfileWeek"), new("周课表", "profile", "ProfileWeek"), new("时间表与课间", "profile", "ProfileTimes"), new("档案管理", "profile", "ProfileInfo"), new("科目", "profile", "ProfileSubjects"), new("临时调课", "profile", "ProfileSwap"),
+        new("单周起始日期", "basic", "SemesterStart"), new("单双周设置", "basic", "SemesterStart"), new("教学安全模式", "runtime", "TeachingSafeMode"), new("异常处理", "runtime", "CrashHandling"), new("主题（深色 / 浅色 / 系统）", "appearance", "Theme"),
         new("主界面背景不透明度", "appearance", "Opacity"), new("全局字号缩放", "appearance", "FontScale"), new("主界面缩放", "appearance", "MainScale"),
         new("窗口置顶", "window", "Topmost"), new("鼠标穿透", "window", "ClickThrough"), new("组件库", "widget-layout", "WidgetLibrary"),
         new("允许课堂提醒", "notification", "Notifications"), new("课前准备提醒", "reminder-rules", "ClassPrepare"), new("课间剩余分钟", "reminder-rules", "PrepareMinutes"),

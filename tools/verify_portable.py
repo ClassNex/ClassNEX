@@ -123,6 +123,8 @@ def inspect(path, release_version=None):
                     "ClassNex.WinUI.dll", "ClassNex.pri", "Licenses/ClassNex.txt", "Licenses/lucide-LICENSE.txt", "Licenses/HarmonyOS-Sans-LICENSE.txt"}
         if release_version is not None:
             required.update({"Licenses/Fluent-LICENSE.txt", "Microsoft.UI.Xaml.dll", "Assets/icon.ico", "Assets/Fonts/HarmonyOS_Sans_SC_Regular.ttf"})
+            if re.fullmatch(r"\d{2}w\d{2}[a-z]", release_version) and release_version >= "26w48b":
+                required.add("Assets/app-mark.png")
         else:
             required.add("BuildInfo.json")
         missing = sorted(name for name in required if name.lower() not in app_paths)

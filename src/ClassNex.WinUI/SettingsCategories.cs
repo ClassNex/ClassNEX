@@ -57,43 +57,62 @@ public sealed partial class NativeSettingsWindow
         TrimBackStack();
     }
 
-    private void CategoryList(Destination parent)
-    {
-        _categoryStyle ??= (Style)XamlReader.Load("""
+    private const double SettingsCardHeight = 68;
+
+    private Style NavigationCardStyle => _categoryStyle ??= (Style)XamlReader.Load("""
             <Style xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
                 <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}"/>
                 <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}"/>
                 <Setter Property="CornerRadius" Value="{ThemeResource ControlCornerRadius}"/>
-                <Setter Property="MinHeight" Value="64"/>
-                <Setter Property="Padding" Value="16,10"/>
+                <Setter Property="Padding" Value="16,12"/>
                 <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                <Setter Property="VerticalAlignment" Value="Stretch"/>
                 <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                 <Setter Property="VerticalContentAlignment" Value="Center"/>
             </Style>
             """);
+
+    private static Grid CardHeader(string glyph, string title, TextBlock secondary, FontIcon? trailing = null)
+    {
+        var grid = new Grid { ColumnSpacing = 16 };
+        grid.ColumnDefinitions.Add(new() { Width = new GridLength(24) });
+        grid.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
+        var icon = new FontIcon { Glyph = glyph, FontSize = 20, VerticalAlignment = VerticalAlignment.Center };
+        AutomationProperties.SetAccessibilityView(icon, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
+        grid.Children.Add(icon);
+        var labels = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
+        labels.Children.Add(Text(title));
+        labels.Children.Add(secondary);
+        Grid.SetColumn(labels, 1);
+        grid.Children.Add(labels);
+        if (trailing != null)
+        {
+            grid.ColumnDefinitions.Add(new() { Width = new GridLength(16) });
+            AutomationProperties.SetAccessibilityView(trailing, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
+            Grid.SetColumn(trailing, 2);
+            grid.Children.Add(trailing);
+        }
+        return grid;
+    }
+
+    private Button NavigationCard(string id, string title, string glyph, TextBlock caption, Action open, bool external = false)
+    {
+        var chevron = new FontIcon { Glyph = external ? "\uE8A7" : "\uE76C", FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
+        if (id.StartsWith("Category_", StringComparison.Ordinal)) Identify(chevron, "CategoryChevron_" + id[9..], "");
+        var control = Target(id, title, new Button { Style = NavigationCardStyle, MinHeight = SettingsCardHeight, Content = CardHeader(glyph, title, caption, chevron) });
+        AutomationProperties.SetHelpText(control, caption.Text);
+        control.Click += (_, _) => open();
+        return control;
+    }
+
+    private void CategoryList(Destination parent)
+    {
         var list = new StackPanel { Spacing = 4 };
         Identify(list, "Categories_" + parent.Key, parent.Title);
         foreach (var destination in Destinations.Where(item => item.Parent == parent.Key))
         {
-            var grid = new Grid { ColumnSpacing = 16 };
-            grid.ColumnDefinitions.Add(new() { Width = new GridLength(22) });
-            grid.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
-            grid.Children.Add(new FontIcon { Glyph = destination.Glyph, FontSize = 20, VerticalAlignment = VerticalAlignment.Center });
-            var labels = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
-            labels.Children.Add(Text(destination.Title));
-            labels.Children.Add(SettingCaption(destination.Description));
-            Grid.SetColumn(labels, 1);
-            grid.Children.Add(labels);
-            var next = new FontIcon { Glyph = "\uE76C", FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
-            Identify(next, "CategoryChevron_" + destination.Key, "");
-            AutomationProperties.SetAccessibilityView(next, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
-            Grid.SetColumn(next, 2);
-            grid.Children.Add(next);
-            var button = Target("Category_" + destination.Key, destination.Title, new Button { Style = _categoryStyle, Content = grid });
-            AutomationProperties.SetHelpText(button, destination.Description);
-            button.Click += (_, _) => NavigateTo(destination.Key);
-            list.Children.Add(button);
+            list.Children.Add(NavigationCard("Category_" + destination.Key, destination.Title, destination.Glyph,
+                SettingCaption(destination.Description), () => NavigateTo(destination.Key)));
         }
         _body.Children.Add(list);
     }
