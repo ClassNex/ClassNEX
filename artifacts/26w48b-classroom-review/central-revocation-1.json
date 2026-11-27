@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "loopbackOnly": true,
+  "centralAssemblySha256": "f1c0587c96297ea544f534578285035ed9413e7aab96261e4a5537df190f057b",
+  "pairedDesktopAssemblySha256": "bc0037dc42e305b23a44ba2f7e7d80fcc059862eb6076f7aa762103e79691191",
+  "pairedDesktopExercisesCompleted": true,
+  "desktopAccountExercisesCompleted": false
+}

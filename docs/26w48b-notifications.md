@@ -17,11 +17,23 @@
 
 ### 通知底部滑轨
 
-课前和课间直接使用原版 `SlidingListBox.axaml`，不是手写同曲线的近似动画：每页 10 秒，换页 250 ms，透明度线性、上下位移 40 DIP 的末帧使用 `0.65, 0, 0.35, 1`。正文两等分，内边距 16 + 12 DIP；正文/次要/标题/课程为 16/14/18/20 DIP。常规提醒行高 40 DIP、圆角 8 DIP；在屏幕确实容不下完整课名时允许课程换行。放学用独立的单行模板，左右各 24 DIP，不经过课程页。通知用到的五枚图标保留原字形，包括放学右侧的 Fluent 奔跑者，不影响软件其它 Lucide 图标。
+课前和课间使用原版 `SlidingListBox.axaml`：每页 10 秒，换页 250 ms，透明度线性、上下位移 40 DIP 的末帧使用 `0.65, 0, 0.35, 1`。正文沿用 16 + 12 DIP 边距及 16/14/18/20 DIP 的字号层级。常规提醒行高 40 DIP、圆角 8 DIP。课程信息按文本实际宽度排列，不再把倒计时和课程强制分成等宽两栏。没有教师名时，课名和时段间保留 6 DIP。放学使用独立的消息模板，左右各 24 DIP。通知图标沿用原字形，不影响软件其它 Lucide 图标。
 
-开场遮罩上没有滑轨。课前、下课和放学切入正文时，滑轨才从满格开始缩短。只有五秒标题的上课提醒不会出现滑轨。课前的时间基准是上课时刻；下课、放学按正文已播放的时长计算。十秒一翻的课程页与文案页使用同一个进度，不会重播。手动课前预览仍在预览窗口结束时收起，不改变上课时间。
+开场遮罩上没有滑轨。课前、下课和放学切入正文时，滑轨才从满格开始缩短。只有五秒标题的上课提醒不会出现滑轨。课前的时间基准是上课时刻；下课、放学按正文已播放的时长计算。翻页由底轨的同一次刷新驱动，以正文开始后的实际经过时间选择每十秒该显示哪一页；系统忙过一帧不会令后面的翻页一直迟到。渲染取样停顿超过 200 ms 时，滑轨下一帧直接追上当前进度，再恢复正常过渡。手动课前预览仍在预览窗口结束时收起，不改变上课时间。
+
+例如，课前正文出现时距上课还有 120 秒，显示「还剩 60 秒」时，轨道约为一半。若手动预览的下一节课在 40 分钟后，23 秒预览结束时轨道就应当仍接近满格：它表示距离上课的时间，不是关闭预览的进度。
 
 这里直接移入了 ClassIsland `235914a` 主题内的 `ProgressContainer` / `OverlayTimeProgressBar`，以及它实际使用的 FluentAvalonia 2.4.1 单控件模板。背景轨为 1 DIP，指示条为 3 DIP，可用宽度取自整行，端部由浮窗圆角裁剪。仅在显示正文时按渲染优先级每 50 ms 取样，`Value` 做 50 ms 线性过渡，不再叠加宿主默认模板的 500 ms 宽度动画。底轨不跟随文字位移，随正文淡出。以前的“从遮罩开始按整条提醒寿命缩放”已移除。来源、依赖与许可在[移植清单](../third_party/ClassIsland/NOTICE.md)。
+
+## 长通知与回到课表
+
+拖过的课表保存的是左上角，不是通知的起点。提醒宽度变化时，以该位置上的常态课表中心向两侧展开，贴到工作区边界则向内收；收起后仍用原保存位置。默认顶部居中、从 CI 导入的左/中/右停靠与偏移不变。
+
+日常提醒沿用 CI 的 40 DIP 行高。标题或课名变长时，浮窗先用当前显示器能提供的宽度，再换行、增高；教师、时段、提示语也在测量范围内。翻页共用容得下两页的高度，避免普通课间来回跳动。若一页比整个工作区还高，则按当前页排版；只有这一页可以滚动时，鼠标移上去才不淡化，且只在圆角轮廓里接收输入。换回短页、通知结束或 NEX 接管后恢复用户原有的鼠标穿透设置，不改变已保存的偏好。
+
+提醒正文用 125 ms 淡出。旧字完全消失后，课表再用 150 ms 显出；圆角底板一直保留，不让课程和通知叠在一起。底板按当时的课表收回，不沿用开场前的尺寸。即使在退场时修改组件、收到另一条提醒或唤醒 NEX，旧动画也不能把新内容收走。NEX 返回课表时直接使用最新布局，包括在对话框显示期间改成的纵排。
+
+托盘菜单快速重开会从当前透明度返回；NEX 连续唤醒共用同一扇窗口。即使已经在读某条提醒，关闭 Windows 动画也会立即停止移动，仍按原来的十秒节奏翻页。重新开启动画不会重播当前页。关闭动画不改动通知时长或上课时间。
 
 ## 侧栏错位的原因
 
@@ -35,6 +47,14 @@
 - [通知服务](../artifacts/26w48b-notifications/notification-preview.jpg)：在「预览」行选择事件并播放，不改动真实课表。
 - 透明桌面浮窗：[完整课程名](../artifacts/26w48b-notifications/prepare-full-course.png) / [放学文案](../artifacts/26w48b-notifications/after-school.png)。
 
+## 2026-11-27：课前倒计时、换行与退场
+
+在独立 Windows 桌面重跑了[正常动画](../artifacts/26w48b-notifications/motion/normal-review.json)（128 项报告条目、18 次捕获）和[减少动画](../artifacts/26w48b-notifications/motion/reduced-review.json)（124 项、16 次捕获）。用例从短标题切到七年级信息科技长课名，检查[课名换行](../artifacts/26w48b-notifications/motion/wrapped-course.png)、[旧字退场](../artifacts/26w48b-notifications/motion/handoff-outgoing.png)与[课表还原](../artifacts/26w48b-notifications/motion/restored.png)。这是应用运行时的截图，不是手工绘制或桌面帧率测试。
+
+[定位专测](../artifacts/26w48b-classroom-review/notification-position.review.json)另有 67 项：同时量系统窗口、圆角底板、字幕和课名边界，检查拖动后播放、贴边与收起。最新版紧凑布局通过 112 项固定上游源码核对；下列 116 项和 26 帧零差是早先等宽布局的结果，不适用于新正文的横坐标。
+
+重新渲染两端的[浅色](../artifacts/26w48b-classroom-review/reminder-typography-light.json)和[深色](../artifacts/26w48b-classroom-review/reminder-typography-dark.json)正文，每种主题 5 个场景都通过独立字形与行内纵向位置核对。两种主题均只有放学文案（1/5）整行未平移时逐像素相同；四个课程场景的水平留白有意不同。报告也保留了原坐标的像素差异。
+
 ## 2026-11-24：通知原件对照
 
 对照使用固定 CI 源码 `235914a`、CI 2.1.0.1 Windows 发行包与 26w48b 的实际渲染结果。移入的模板、字体、布局、文字与关键帧通过 116 项静态核对。下面是相同输入下两端分别渲染的结果，每份报告都保留逐场景的像素差异，而不是截图的相似度评分。
@@ -45,9 +65,9 @@
 | 底部滑轨 | [3 帧](../artifacts/26w48b-notifications/parity/rail-dark.json) | [3 帧](../artifacts/26w48b-notifications/parity/rail-light.json) | 320 × 40，进度 100%、50%、25%；轨道、填充范围和颜色 |
 | 完整正文行 | [5 个场景](../artifacts/26w48b-notifications/parity/provider-dark.json) | [5 个场景](../artifacts/26w48b-notifications/parity/provider-light.json) | 560 或 860 × 40，课前、课间各含短课名和长课名＋教师，另有放学文案 |
 
-26 张采样画面均为零像素差异。在强调色 `#459BAC` 的对照中，开场与滑轨使用原版的深色 `#73B9C7`、浅色 `#3B8492`，没有更改 ClassNEX 其他页面的配色。这项结果不等同于所有设备、所有系统强调色、外侧阴影或连续播放的每一帧都已经比对。
+这 26 张旧版采样画面均为零像素差异，不是 11 月 27 日紧凑正文的对照结果。在强调色 `#459BAC` 的对照中，开场与滑轨使用原版的深色 `#73B9C7`、浅色 `#3B8492`。这项结果不包含所有设备、系统强调色、外侧阴影或连续播放的每一帧。
 
-### 本轮客户端与桌面验收
+### 上一版通知原件的客户端与桌面验收
 
 - Windows 客户端 Debug、Release 完整重建和集控服务 Release 构建均为 0 警告 / 0 错误。106 项单元测试通过（Core 66、通知 34、插件 6），[原生设置的 91 项交互验证](../artifacts/26w48b-notifications/parity/native-checks.txt)全部通过。此次没有部署集控。
 - [桌面实窗报告](../artifacts/26w48b-notifications/parity/desktop-review.json)记录 37 个渲染画面、465 项通过的行为和布局断言，另有 1 项侧栏 UI 队列响应采样，不是合成器帧率。覆盖 100%、125%、150% 缩放，含真实浮窗的[课前长课名](../artifacts/26w48b-notifications/parity/reminder-subject-dark-144.png)和[课间下一节课](../artifacts/26w48b-notifications/parity/reminder-break-dark-144.png)，以及结束后恢复正常课表宽度。
@@ -71,11 +91,19 @@ dotnet build src/ClassNex.Central/ClassNex.Central.csproj -c Debug
 foreach ($theme in 'light','dark') {
     ./tools/compare_ci_notification_mask.ps1 -Theme $theme
     ./tools/compare_ci_notification_rail.ps1 -Theme $theme
-    ./tools/compare_ci_notification_provider.ps1 -Theme $theme
+    ./tools/compare_ci_notification_provider.ps1 -Theme $theme -LayoutContract Compact
 }
 ./tools/review_desktop.ps1 -Round w48b-local-review -EnabledReminders
 ./tools/review_desktop.ps1 -Round w48b-classroom-only -EnabledReminders -RemindersOnly
+./tools/review_desktop.ps1 -Round w48b-classroom-geometry -ReminderGeometryOnly
+./tools/review_desktop.ps1 -Round w48b-classroom-reduced -EnabledReminders -RemindersOnly -ReducedMotion
+./tools/review_desktop.ps1 -Round w48b-wheel -ReminderInputOnly
+./tools/review_desktop.ps1 -Round w48b-external-wheel -InteractiveWheel
 ./tools/preview_classroom.ps1 -ExpectedVersion 26w48b
 ```
 
-窗口回归和交互预览使用不同的匿名目录；再次运行 `review_desktop` 须更换 `-Round`，防止覆盖证据。预览不会使用真实账户、生产集控或已有课表。
+窗口回归和手动交互预览使用不同的匿名目录；再次运行 `review_desktop` 须更换 `-Round`，防止覆盖证据。自动回归不会使用真实账户、生产集控或已有课表。普通手动预览不复制原有数据，但允许用户主动登录正式账户或获取配对码；`-Migration` 预览仍隔离账户和集控。
+
+`Compact` 比较文字内容、字形、纵向位置和紧凑布局，同时保留未平移的整行像素差异；不应把水平位置有意变化后的课程行报告为与旧版逐像素相同。
+
+`-ReminderInputOnly` 会检查窗口命中、原生穿透标志、实际滚动偏移，以及最后一个字有没有进入视区。在 Windows 启用 pointer 输入时，这个自动检查从命中的 Avalonia 控件派发事件，并不等同于系统滚轮测试。`-InteractiveWheel` 则只接受外部滚轮：匿名放学通知会临时出现在任务栏，鼠标停在正文内往下滚，直到看到第 60 项。测试不会自己改滚动位置，也不会改 Windows 的输入或动画设置。

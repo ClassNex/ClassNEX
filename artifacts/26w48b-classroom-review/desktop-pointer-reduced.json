@@ -1,0 +1,29 @@
+{
+  "Passed": true,
+  "Checks": [
+    "Anonymous fixture, no production account or management connection",
+    "Alpha settings and edited portable timetable survive first startup",
+    "The anonymous classroom starts in normal mode with hover fading enabled, permanent pass-through disabled",
+    "Non-input review desktop: HWND Z-order and overlap, direct WindowFromPoint, child hit tests and native button state are checked for every click",
+    "At 100% hover opacity the interactive classroom intercepts the click; the native button behind it stays unchanged",
+    "Dragging the classroom surface does not move the real window in normal mode",
+    "Releasing an ordinary classroom drag leaves the saved anchor untouched",
+    "First click after enabling the default hover fade changes the button behind the classroom before any hover sample",
+    "The native button behind the visibly faded classroom receives the click",
+    "Leaving the island restores full visual opacity without changing the permanent pass-through preference",
+    "Permanent pass-through allows the native button to be clicked even at 100% hover opacity",
+    "In edit mode the real editing handle intercepts the click even though both pass-through preferences are still enabled",
+    "The editor drag target is distinguishable from the starting window position",
+    "Moving the real editing handle relocates the window while its pointer is held",
+    "Releasing the editing handle saves its new location; leaving editing preserves permanent pass-through",
+    "After leaving editing, the native button behind the relocated classroom can be clicked again",
+    "An overflowing reminder intercepts input for scrolling instead of clicking the native button underneath",
+    "Replacing the overflowing reminder with a short one restores the button behind the notice",
+    "Dismissing the reminder also keeps the desktop clickable",
+    "Editing, reading and dismissing never overwrite either saved pointer preference"
+  ],
+  "Captures": [],
+  "ElapsedMs": 644,
+  "WorkingSetBytes": 319602688,
+  "ManagedBytes": 8695688
+}

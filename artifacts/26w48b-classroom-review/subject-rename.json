@@ -1,0 +1,15 @@
+{
+  "Passed": true,
+  "Checks": [
+    "Anonymous fixture, no production account or management connection",
+    "Alpha settings and edited portable timetable survive first startup",
+    "The independent subject editor rejects duplicate names without touching the current course",
+    "Entering a subject name keeps all live lesson references unchanged before save: subject=\u65B0\u79D1\u76EE, save enabled=True",
+    "Saving the independent editor applies the rename and shows success inline",
+    "Reloading the fixture preserves the renamed subject, its teacher, the base course and the applied day course"
+  ],
+  "Captures": [],
+  "ElapsedMs": 1597,
+  "WorkingSetBytes": 336297984,
+  "ManagedBytes": 12730232
+}

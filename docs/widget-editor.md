@@ -10,6 +10,22 @@
 
 桌面进入编辑模式后，拖动组件名称可将它放到另一组件所在的位置；组件齿轮就地打开该实例的属性面板。面板提供常用的字号、透明度与该类型的选项，「全部组件设置」打开同一实例的设置页。编辑栏的「桌面外观」可就地预览整个浮窗的缩放和底色透明度；各组件「更多」中的所在行操作可以移到现有行或新建一行。无法拖动时，设置里的上下移动和所在行选择器也可完成排序。
 
+### 上课时点击课表后面的内容
+
+普通显示时，拖动课名、日期或时钟不会移动主界面。需要挪动整条课表，可从托盘进入「编辑主界面」，拖编辑栏的「拖动主界面」手柄，再点「完成」。松手保存的是屏幕上看得见的浮窗左上角；靠近屏幕边缘时也给编辑栏留出空间。这与在编辑区拖动单个组件来换顺序是两件事。进入编辑后，浮窗菜单里的「恢复顶部居中」仍可重置位置。
+
+在「组件与主界面 → 窗口行为」开启鼠标穿透，或将「鼠标移入时不透明度」调到低于 100%，课表下方的课件、浏览器仍可直接点。后者在指针离开时恢复所设外观；不是把点击模拟转发到课件。如果需要直接双击课表开设置，关闭永久穿透并把移入不透明度设为 100%。编辑控件和内容超过一屏的提醒有自己的输入需求；退出编辑或读完通知不会改写用户的穿透设置。
+
+行为依据为 ClassIsland `235914a` 的 `MainWindow.UpdateWindowFeatures` 及 Windows `WindowPlatformService.SetWindowFeature`：桌面展示与窗口编辑分开，视觉淡化不能代替系统命中透传。ClassNEX 保留明确启用的课表快捷操作与超长通知滚动。
+
+使用独立桌面复验，不需要移动真实鼠标：
+
+```powershell
+py -3 tools/run_review_offscreen.py --timeout 180 -- pwsh -NoProfile -File tools/review_desktop.ps1 -Round pointer-new -DesktopPointerOnly
+```
+
+[正常动画](../artifacts/26w48b-classroom-review/desktop-pointer.json)与[减少动画](../artifacts/26w48b-classroom-review/desktop-pointer-reduced.json)各有 20 项记录。测试把一个真正的 Windows 按钮放在课表后面，先确认两个窗口的顺序、位置和命中区域，再用 `WindowFromPoint` 找到目标，向命中的本进程窗口发送按下和松开，读取后方按钮是否改变。覆盖第一下点击、编辑手柄、可滚动提醒和退出后的穿透；不代表已经在实体触屏上测试。
+
 ## 与 ClassIsland 2.x 的对应范围
 
 核对本地 ClassIsland `235914a2fac1` 的 `ComponentsSettingsPage`、`EditModeView`、`EditableComponentsListBox` 和 `ComponentSettings`。仅对照流程和数据含义；编辑器仍为 ClassNEX 原生 WinUI 和 Avalonia 控件。

@@ -1,6 +1,6 @@
 # ClassNEX 续作指南（HANDOFF）
 
-> 最后更新：2026-11-24　｜　工作分支桌面预览 **26w48b**（未打标签）　｜　最近已发布版本 **26w48a_Alpha**，上一版 **26w46d_Alpha**。
+> 最后更新：2026-11-27　｜　工作分支桌面预览 **26w48b**（未打标签）　｜　最近已发布版本 **26w48a_Alpha**，上一版 **26w46d_Alpha**。
 > 上线以 GitHub Release 中实际出现 Windows ZIP 为准；推送版本标签只会启动构建。`26w46d_Alpha` 及以前的发布保留。
 > 恢复未发布的现有标签：`gh workflow run build-release.yml --ref main -f release_tag=26w48a_Alpha`。工作流从原标签编译并取发布说明，只在压缩之后读取派发提交中的 ZIP 校验器；不填标签只构建。已有发布不会被覆盖。
 > 这份文档的目的：**第二天打开新会话，照着它就能无缝继续写。**
@@ -11,15 +11,27 @@
 
 日常开发分支是 `main`。26w48a 的入口、托盘手势和版本复测见 [设置与托盘验收](docs/26w48a-settings.md)。主线此前从 `2949eff` 与 `aaba73d` 按功能合并，记录见 [主线验收](docs/mainline-desktop-acceptance.md) 与 [26.0 归档](docs/26.0-acceptance.md)。不用重置分支，下文各节保留历史记录。
 
-26w48b 课堂通知与设置侧栏在 `codex/26w48b-notifications`，从 `09a6ada` 开始。运行 `./tools/preview_classroom.ps1 -ExpectedVersion 26w48b` 可打开匿名便携预览，详见[提醒规则与窗口验收](docs/26w48b-notifications.md)。不要因为版本号已更新就在 `main` 上打标签；本轮未要求发布或部署集控。
+26w48b 教室端在 `codex/26w48b-notifications`，从 `09a6ada` 开始。运行 `./tools/preview_classroom.ps1 -ExpectedVersion 26w48b` 可打开独立便携预览，详见[本轮入口、预览与验收](docs/26w48b-classroom.md)。桌面未发版，不要在 `main` 上打标签。集控网页已单独部署到 `https://classnex.tech/Control/`；教室端取码，管理员在网页选班配对。无需改 DNS、Casdoor 或再部署服务来测试客户端。
 
-本分支的[首次设置与 CI 2.x 迁移](docs/26w48b-migration.md)支持同窗只读预检、导入后回读，以及可关闭的独立便携目录回收。经典便携版和安装版只导入，不回收；用上条预览命令加 `-Migration` 可直接查看，不会修改原数据。不要在真正使用的安装上试验回收。通知对照使用固定源码 `235914a`，见[移植清单与许可](third_party/ClassIsland/NOTICE.md)和[本轮桌面报告](artifacts/26w48b-notifications/parity/desktop-review.json)；视图、计时和测试均未引入 TTS。
+**当前线上与分支不同。** 上线记录对应的是配对版载荷，其源文件收录于 `7dd4ddb`；公开首页、CSS 已与保存的载荷核对。后续登录保护、班级设置与基础课表的分项修订、离线草稿及恢复界面只在预览分支。新版客户端能从该旧服务配对、接收班级改动；碰到旧服务，不会退回整份覆盖上传，本机编辑会保留到重启后。升级到支持分项同步的服务才能上传。第 3 节关于“客户端必须登录”和“整份自动发布”的说明属于旧版本，不能用作排障步骤。参见[兼容表与认证方式](docs/CENTRAL_MANAGEMENT.md)。
+
+桌面主页保留四个可自定义的教室快捷入口。设置不再维护第二套课表页，课表和临时调课均路由到独立档案窗口。指定日可调整课、课间与活动，基础档案不变；组件布局、桌面齿轮和当前实现与 CI 的差异见[单日调课](docs/profile-day-plans.md)和[组件编辑](docs/widget-editor.md)。
+
+本分支的[首次设置与 CI 2.x 迁移](docs/26w48b-migration.md)支持同窗只读预检、导入后回读，以及可关闭的独立便携目录回收。经典便携版和安装版只导入，不回收；用上条预览命令加 `-Migration` 可直接查看，不会修改原数据。不要在真正使用的安装上试验回收。通知对照使用固定源码 `235914a`，见[移植清单与许可](third_party/ClassIsland/NOTICE.md)和[11 月 24 日旧版桌面报告](artifacts/26w48b-notifications/parity/desktop-review.json)；视图、计时和测试均未引入 TTS。
+
+首次设置不再退出后重启。`App.Onboarding.cs` 只在完成后把托盘、主窗口和运行时交给同一进程；正式新设备显示课表，迁入的隐藏课表可从托盘唤回。`--preview-migration` 仅用于 Debug 的匿名预览目录；从设置重看向导不会更改配置或重复启动服务。课前文字和底轨共享上课时刻，23 秒只约束手动预览的占屏时长；校时不能延长预览。过长的通知先扩宽再换行，仅实际溢出的页临时接收滚轮。正文收起时先退旧字再显课表；关闭系统动画可就地完成交接。复测看[通知与桌面动效](docs/26w48b-notifications.md)及[向导交接](docs/26w48b-migration.md)，不要用上一轮同模板截图代替本轮交互验证。
+
+拖动后保存的是常态课表左上角。通知播放时围绕课表中心定位，不能用通知自己的宽度改写坐标；按钮试播和自然触发走同一窗口。排查文字错位先跑 `tools/review_desktop.ps1 -Round <新名称> -ReminderGeometryOnly`。当前课程行按内容宽度排列，核对 CI 字形与纵向基线使用 `compare_ci_notification_provider.ps1 -LayoutContract Compact`；整行水平位置不再与旧版相同。
+
+**常态课表不可拖动。** 从托盘进「编辑主界面」，拖编辑栏最左边的移动手柄再点「完成」；贴边时以松手前实际可见坐标保存。将移入不透明度调到 100% 以下，系统从第一下点击就允许点到后方窗口，不等淡化完成。永久穿透只关闭时还需将移入不透明度恢复 100%，才可双击常态课表。编辑控件与确实需要滚动的超长提醒会暂时接收输入。使用独立桌面执行 `tools/review_desktop.ps1 -Round <新名称> -DesktopPointerOnly` 验证真实 HWND 和后方按钮；正常与减少动画各 20 项。没有发送物理鼠标事件。
+
+档案的科目输入只在「保存科目信息」或「保存基础课表」时提交。改名同时维护本档案的常规和单日课程引用；不改变活动名称、其他档案，空名与重名拒绝提交。基础档案保存失败时尝试回滚调课文件。`-SubjectOnly` 可单独复现，完整解决方案 182 项单测通过。集控侧仅 `7dd4ddb` 对应的配对版已经部署，后续协议和身份变更仍仅在预览分支。
 
 ```powershell
 cd E:\ClassNex
 dotnet restore ClassNex.sln
 dotnet build src\ClassNex\ClassNex.csproj -c Debug -t:Rebuild
-./tools/review_desktop.ps1 -Round my-review
+py -3 tools/run_review_offscreen.py --timeout 450 -- pwsh -NoProfile -File tools/review_desktop.ps1 -Round my-review
 ```
 
 - 仓库：https://github.com/ClassNex/ClassNEX （GPL-3.0，分支 `main`）
@@ -359,15 +371,15 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 | 优先级 | 功能 | 说明 |
 | --- | --- | --- |
 | P0 | **🖼 首次启动向导的插图换掉** | 现在用的是希沃白板那张照片（用户 2026-10-11 明确：**下个版本替换掉**）。位置在「欢迎」页右侧（`OobeWindow.axaml` 里 `Border + ImageBrush`，`Margin="445,121,0,23"`），换成官方设备渲染图或插画 |
-| P0 | **设置/组件页继续对齐 CI** | 现在结构已照 CI（SettingsExpander 行 + 横向组件条 + 组件库/组件设置标签），还差 CI 的「高级设置 / 行设置」两个标签、拖拽排序 |
-| P0 | **调课 / 临时调课** | CI 的 `IsSwapMode: true`；只覆盖某一天，不动基础课表 |
+| P0 | **继续核对组件编辑的高级能力** | 横向行条、跨行排序、独立属性、桌面快捷编辑和命名方案见 [组件编辑](docs/widget-editor.md)；不把这些等同于嵌套容器、通用规则和完整的行主题。 |
+| 已实现 | **按日期调课** | 在独立档案编辑器里调整课程、课间、活动和分隔点，不改基础 YAML；不是 CI 的临时课表组，见[单日作息](docs/profile-day-plans.md)。 |
 | P0 | **明日课表** | CI `TomorrowScheduleShowType`；能顺带把主界面宽度拉到 CI 的水平 |
 | P1 | **档案编辑器：双击单元格弹窗改课** | CI `ScheduleDataGridCellControl` 的 `IsEditPopupOpen` + 格内 Popup |
 | P1 | **容器类组件** | CI 组件库有 轮播容器 / 滚动容器 / 分组容器 / 堆叠容器 |
 | P1 | **天气简报组件** | CI 有；需要接天气数据源 |
-| P1 | **多套组件「配置方案」** | CI `CurrentComponentConfig` / `ComponentLayouts\*.json` |
+| 已实现 | **多套组件配置方案** | 本机可新建、保存副本、重命名和切换；损坏时先备份再恢复。见[组件编辑](docs/widget-editor.md)。 |
 | P2 | **全面审查文字溢出** | 已修「关于页 header / 组件卡片 / 搜索框」；还需逐页过一遍（界面页 Description、课表页长路径、编辑器长科目名） |
-| P2 | 主界面编辑模式 | CI `HasEditModeTutorialShown` / 编辑模式 |
+| 已实现 | 主界面编辑模式 | 托盘进入，按实例拖动，齿轮就地修改，Esc 退出。未照搬 CI 的新手教程。 |
 | P2 | 多显示器支持 | 目前固定主屏 |
 | P3 | 提醒音效/铃声 | 当前已支持遮罩、浮层和三类课堂事件；项目禁用 TTS，自定义音效与音量仍待补齐 |
 
@@ -380,7 +392,7 @@ E:\ci-app\ClassIsland_app_windows_x64_full_folder\
 # 代理已持久化在仓库级配置里，确保 VPN 开着即可
 git config http.proxy    # → http://127.0.0.1:7890
 git config https.proxy   # → http://127.0.0.1:7890
-git push origin main
+git branch --show-current   # 先核对获准分支；本轮仅可正常推送预览分支
 ```
 直连 github.com:443 会超时（curl 28）。
 

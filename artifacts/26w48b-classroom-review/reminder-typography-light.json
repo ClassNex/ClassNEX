@@ -1,0 +1,873 @@
+{
+  "Passed": true,
+  "LayoutContract": "Compact",
+  "ExactPassed": false,
+  "CompactPassed": true,
+  "Commit": "235914a2fac1733cc2a169457c7bad4edb2ca2f6",
+  "Sources": [
+    "ClassIsland/Controls/NotificationProviders/ClassNotificationProviderControl.axaml",
+    "ClassIsland.Core/Controls/NotificationTemplates/SimpleTextOverlayTemplate.axaml",
+    "ClassIsland.Core/Themes/SlidingListBox.axaml",
+    "ClassIsland.Core/Themes/Layers.axaml",
+    "ClassIsland.Core/Themes/TextBaselineFixes.axaml",
+    "ClassIsland/Themes/LightTheme.axaml",
+    "ClassIsland/Themes/DarkTheme.axaml"
+  ],
+  "Reference": "2.1.0.1+15273f82c9d2d55929df83b5fb806e68ee4547c0",
+  "Candidate": "26w48b",
+  "CandidateSha256": "852974f7323acdd01136d3e076ee5103052d5eeda78a6c757cf16fdcdf16b6ac",
+  "ReferenceRuntime": "11.3.17+ceff994585e783ebb7602aac28337db1b222fdbb",
+  "CandidateRuntime": "11.3.12+37fbd9655cc581ff5b1c6b1fb1be4e3118c889d0",
+  "Theme": "light",
+  "Accent": "#459BAC",
+  "Scope": "Unshifted whole-row ARGB pixels and raw layout differences are always preserved. Isolated glyphs are separate unscaled renders of the actual arranged text controls at their own origins, not pixel comparisons at their row positions. Shared vertical positions are measured from the row top. Excludes screen placement, mask, rail and temporal transitions.",
+  "Captures": [
+    {
+      "Scene": "prepare",
+      "Match": false,
+      "ExactFullRowPixels": false,
+      "DifferentPixels": 5308,
+      "TotalPixels": 22400,
+      "ReferenceInk": 2799,
+      "CandidateInk": 4122,
+      "SameLabelStyles": true,
+      "SameIsolatedGlyphs": true,
+      "SameLabelRowY": true,
+      "CompactLayoutMatch": true,
+      "Geometry": {
+        "GroupGapDip": 24.0,
+        "ExpectedGroupGapDip": 24,
+        "OutsideInsetDifferenceDip": 2.842170943040401E-14,
+        "LayoutPixelDip": 0.8,
+        "ReferenceTimeMargin": "2,0,0,0",
+        "CandidateTimeMargin": "6,0,0,0",
+        "ExpectedTimeMargin": "6,0,0,0",
+        "MarginsMatch": true,
+        "LessonGaps": [
+          {
+            "Before": "数学",
+            "Reference": 0.0,
+            "Candidate": 0.0,
+            "Expected": 0.0,
+            "Match": true
+          },
+          {
+            "Before": "09:05-09:50",
+            "Reference": 1.599999999999966,
+            "Candidate": 6.400000000000034,
+            "Expected": 6.4,
+            "Match": true
+          }
+        ],
+        "TextBoxInsetDifferenceDip": -2.842170943040401E-14,
+        "Centered": true,
+        "TextGroupCentered": true,
+        "ContentSizedGap": true
+      },
+      "Labels": [
+        {
+          "Text": "距上课还剩 179 秒",
+          "CandidateText": "距上课还剩 179 秒",
+          "IsolatedGlyph": {
+            "Equal": true,
+            "SameSize": true,
+            "Width": 135,
+            "Height": 20,
+            "Different": 0,
+            "ReferenceInk": 1127,
+            "CandidateInk": 1127
+          },
+          "ReferenceRowY": 10.4,
+          "CandidateRowY": 10.4,
+          "SameRowY": true
+        },
+        {
+          "Text": "下节课是：",
+          "CandidateText": "下节课是：",
+          "IsolatedGlyph": {
+            "Equal": true,
+            "SameSize": true,
+            "Width": 80,
+            "Height": 20,
+            "Different": 0,
+            "ReferenceInk": 570,
+            "CandidateInk": 570
+          },
+          "ReferenceRowY": 12,
+          "CandidateRowY": 12.0,
+          "SameRowY": true
+        },
+        {
+          "Text": "数学",
+          "CandidateText": "数学",
+          "IsolatedGlyph": {
+            "Equal": true,
+            "SameSize": true,
+            "Width": 40,
+            "Height": 24,
+            "Different": 0,
+            "ReferenceInk": 533,
+            "CandidateInk": 533
+          },
+          "ReferenceRowY": 9.6,
+          "CandidateRowY": 9.6,
+          "SameRowY": true
+        },
+        {
+          "Text": "09:05-09:50",
+          "CandidateText": "09:05-09:50",
+          "IsolatedGlyph": {
+            "Equal": true,
+            "SameSize": true,
+            "Width": 80,
+            "Height": 18,
+            "Different": 0,
+            "ReferenceInk": 620,
+            "CandidateInk": 620
+          },
+          "ReferenceRowY": 12.8,
+          "CandidateRowY": 12.8,
+          "SameRowY": true
+        }
+      ],
+      "Layout": [
+        {
+          "Label": 0,
+          "Property": "X",
+          "Reference": 64.8,
+          "Candidate": 12
+        },
+        {
+          "Label": 0,
+          "Property": "Y",
+          "Reference": 10.4,
+          "Candidate": 0.8
+        },
+        {
+          "Label": 1,
+          "Property": "X",
+          "Reference": 295.2,
+          "Candidate": 170.4
+        },
+        {
+          "Label": 1,
+          "Property": "Y",
+          "Reference": 12,
+          "Candidate": 2.4
+        },
+        {
+          "Label": 2,
+          "Property": "X",
+          "Reference": 375.2,
+          "Candidate": 250.4
+        },
+        {
+          "Label": 2,
+          "Property": "Y",
+          "Reference": 9.6,
+          "Candidate": 0
+        },
+        {
+          "Label": 3,
+          "Property": "X",
+          "Reference": 416.79999999999995,
+          "Candidate": 296.8
+        },
+        {
+          "Label": 3,
+          "Property": "Y",
+          "Reference": 12.8,
+          "Candidate": 3.2
+        },
+        {
+          "Label": 3,
+          "Property": "Margin",
+          "Reference": "2,0,0,0",
+          "Candidate": "6,0,0,0"
+        },
+        {
+          "Label": "Body",
+          "Property": "X",
+          "Reference": 16,
+          "Candidate": 85.6
+        },
+        {
+          "Label": "Body",
+          "Property": "Y",
+          "Reference": 0,
+          "Candidate": 9.6
+        },
+        {
+          "Label": "Body",
+          "Property": "Width",
+          "Reference": 528,
+          "Candidate": 388.8
+        },
+        {
+          "Label": "Body",
+          "Property": "Height",
+          "Reference": 40,
+          "Candidate": 20.8
+        }
+      ]
+    },
+    {
+      "Scene": "prepare-teacher",
+      "Match": false,
+      "ExactFullRowPixels": false,
+      "DifferentPixels": 7721,
+      "TotalPixels": 34400,
+      "ReferenceInk": 4744,
+      "CandidateInk": 6042,
+      "SameLabelStyles": true,
+      "SameIsolatedGlyphs": true,
+      "SameLabelRowY": true,
+      "CompactLayoutMatch": true,
+      "Geometry": {
+        "GroupGapDip": 24.0,
+        "ExpectedGroupGapDip": 24,
+        "OutsideInsetDifferenceDip": 0.7999999999999545,
+        "LayoutPixelDip": 0.8,
+        "ReferenceTimeMargin": "2,0,0,0",
+        "CandidateTimeMargin": "2,0,0,0",
+        "ExpectedTimeMargin": "2,0,0,0",
+        "MarginsMatch": true,
+        "LessonGaps": [
+          {
+            "Before": "信息技术与人工智能",
+            "Reference": 0.0,
+            "Candidate": 0.0,
+            "Expected": 0.0,
+            "Match": true
+          },
+          {
+            "Before": "周老师",
+            "Reference": 5.600000000000023,
+            "Candidate": 5.600000000000023,
+            "Expected": 5.600000000000023,
+            "Match": true
+          },
+          {
+            "Before": "09:05-09:50",
+            "Reference": 2.3999999999999773,
+            "Candidate": 2.3999999999999773,
+            "Expected": 2.3999999999999773,
+            "Match": true
+          }
+        ],
+        "TextBoxInsetDifferenceDip": 0.7999999999999545,
+        "Centered": true,
+        "TextGroupCentered": true,
+        "ContentSizedGap": true
+      },
+      "Labels": [
+        {
+          "Text": "距上课还剩 179 秒",
+          "CandidateText": "距上课还剩 179 秒",
+          "IsolatedGlyph": {
+            "Equal": true,
+            "SameSize": true,
+            "Width": 135,
+            "Height": 20,
+            "Different": 0,
+            "ReferenceInk": 1127,
+            "CandidateInk": 1127
+          },
+          "ReferenceRowY": 10.4,
+          "CandidateRowY": 10.4,
+          "SameRowY": true
+        },
+        {
+          "Text": "下节课是：",
+          "CandidateText": "下节课是：",
+          "IsolatedGlyph": {
+            "Equal": true,
+            "SameSize": true,
+            "Width": 80,
+            "Height": 20,
+            "Different": 0,
+            "ReferenceInk": 570,
+            "CandidateInk": 570
+          },
+          "ReferenceRowY": 12,
+          "CandidateRowY": 12.0,
+          "SameRowY": true
+        },
+        {
+          "Text": "信息技术与人工智能",
+          "CandidateText": "信息技术与人工智能",
+          "IsolatedGlyph": {
+            "Equal": true,
+            "SameSize": true,
+            "Width": 180,
+            "Height": 24,
+            "Different": 0,
+            "ReferenceInk": 2112,
+            "CandidateInk": 2112
+          },
+          "ReferenceRowY": 9.6,
+          "CandidateRowY": 9.6,
+          "SameRowY": true
+        },
+        {
+          "Text": "周老师",
+          "CandidateText": "周老师",
+          "IsolatedGlyph": {
+            "Equal": true,
+            "SameSize": true,
+            "Width": 43,
+            "Height": 18,
+            "Different": 0,
+            "ReferenceInk": 460,
+            "CandidateInk": 460
+          },
+          "ReferenceRowY": 12.8,
+          "CandidateRowY": 12.8,
+          "SameRowY": true
+        },
+        {
+          "Text": "09:05-09:50",
+          "CandidateText": "09:05-09:50",
+          "IsolatedGlyph": {
+            "Equal": true,
+            "SameSize": true,
+            "Width": 80,
+            "Height": 18,
+            "Different": 0,
+            "ReferenceInk": 620,
+            "CandidateInk": 620
+          },
+          "ReferenceRowY": 12.8,
+          "CandidateRowY": 12.8,
+          "SameRowY": true
+        }
+      ],
+      "Layout": [
+        {
+          "Label": 0,
+          "Property": "X",
+          "Reference": 140,
+          "Candidate": 12
+        },
+        {
+          "Label": 0,
+          "Property": "Y",
+          "Reference": 10.4,
+          "Candidate": 0.8
+        },
+        {
+          "Label": 1,
+          "Property": "X",
+          "Reference": 425.6,
+          "Candidate": 170.4
+        },
+        {
+          "Label": 1,
+          "Property": "Y",
+          "Reference": 12,
+          "Candidate": 2.4
+        },
+        {
+          "Label": 2,
+          "Property": "X",
+          "Reference": 505.6,
+          "Candidate": 250.4
+        },
+        {
+          "Label": 2,
+          "Property": "Y",
+          "Reference": 9.6,
+          "Candidate": 0
+        },
+        {
+          "Label": 3,
+          "Property": "X",
+          "Reference": 691.2,
+          "Candidate": 436
+        },
+        {
+          "Label": 3,
+          "Property": "Y",
+          "Reference": 12.8,
+          "Candidate": 3.2
+        },
+        {
+          "Label": 4,
+          "Property": "X",
+          "Reference": 736,
+          "Candidate": 480.79999999999995
+        },
+        {
+          "Label": 4,
+          "Property": "Y",
+          "Reference": 12.8,
+          "Candidate": 3.2
+        },
+        {
+          "Label": "Body",
+          "Property": "X",
+          "Reference": 16,
+          "Candidate": 144
+        },
+        {
+          "Label": "Body",
+          "Property": "Y",
+          "Reference": 0,
+          "Candidate": 9.6
+        },
+        {
+          "Label": "Body",
+          "Property": "Width",
+          "Reference": 828,
+          "Candidate": 572.8
+        },
+        {
+          "Label": "Body",
+          "Property": "Height",
+          "Reference": 40,
+          "Candidate": 20.8
+        }
+      ]
+    },
+    {
+      "Scene": "break",
+      "Match": false,
+      "ExactFullRowPixels": false,
+      "DifferentPixels": 5467,
+      "TotalPixels": 22400,
+      "ReferenceInk": 2901,
+      "CandidateInk": 4334,
+      "SameLabelStyles": true,
+      "SameIsolatedGlyphs": true,
+      "SameLabelRowY": true,
+      "CompactLayoutMatch": true,
+      "Geometry": {
+        "GroupGapDip": 24,
+        "ExpectedGroupGapDip": 24,
+        "OutsideInsetDifferenceDip": 0.7999999999999687,
+        "LayoutPixelDip": 0.8,
+        "ReferenceTimeMargin": "2,0,0,0",
+        "CandidateTimeMargin": "6,0,0,0",
+        "ExpectedTimeMargin": "6,0,0,0",
+        "MarginsMatch": true,
+        "LessonGaps": [
+          {
+            "Before": "语文",
+            "Reference": 0.0,
+            "Candidate": 0,
+            "Expected": 0.0,
+            "Match": true
+          },
+          {
+            "Before": "09:05-09:50",
+            "Reference": 1.599999999999966,
+            "Candidate": 6.399999999999977,
+            "Expected": 6.4,
+            "Match": true
+          }
+        ],
+        "TextBoxInsetDifferenceDip": 0.7999999999999687,
+        "Centered": true,
+        "TextGroupCentered": true,
+        "ContentSizedGap": true
+      },
+      "Labels": [
+        {
+          "Text": "本节大课间长 10 分钟",
+          "CandidateText": "本节大课间长 10 分钟",
+          "IsolatedGlyph": {
+            "Equal": true,
+            "SameSize": true,
+            "Width": 156,
+            "Height": 20,
+            "Different": 0,
+            "ReferenceInk": 1333,
+            "CandidateInk": 1333
+          },
+          "ReferenceRowY": 10.4,
+          "CandidateRowY": 10.4,
+          "SameRowY": true
+        },
+        {
+          "Text": "下节课是：",
+          "CandidateText": "下节课是：",
+          "IsolatedGlyph": {
+            "Equal": true,
+            "SameSize": true,
+            "Width": 80,
+            "Height": 20,
+            "Different": 0,
+            "ReferenceInk": 570,
+            "CandidateInk": 570
+          },
+          "ReferenceRowY": 12,
+          "CandidateRowY": 12.0,
+          "SameRowY": true
+        },
+        {
+          "Text": "语文",
+          "CandidateText": "语文",
+          "IsolatedGlyph": {
+            "Equal": true,
+            "SameSize": true,
+            "Width": 40,
+            "Height": 24,
+            "Different": 0,
+            "ReferenceInk": 481,
+            "CandidateInk": 481
+          },
+          "ReferenceRowY": 9.6,
+          "CandidateRowY": 9.6,
+          "SameRowY": true
+        },
+        {
+          "Text": "09:05-09:50",
+          "CandidateText": "09:05-09:50",
+          "IsolatedGlyph": {
+            "Equal": true,
+            "SameSize": true,
+            "Width": 80,
+            "Height": 18,
+            "Different": 0,
+            "ReferenceInk": 620,
+            "CandidateInk": 620
+          },
+          "ReferenceRowY": 12.8,
+          "CandidateRowY": 12.8,
+          "SameRowY": true
+        }
+      ],
+      "Layout": [
+        {
+          "Label": 0,
+          "Property": "X",
+          "Reference": 54.4,
+          "Candidate": 12
+        },
+        {
+          "Label": 0,
+          "Property": "Y",
+          "Reference": 10.4,
+          "Candidate": 0.8
+        },
+        {
+          "Label": 1,
+          "Property": "X",
+          "Reference": 295.2,
+          "Candidate": 192
+        },
+        {
+          "Label": 1,
+          "Property": "Y",
+          "Reference": 12,
+          "Candidate": 2.4
+        },
+        {
+          "Label": 2,
+          "Property": "X",
+          "Reference": 375.2,
+          "Candidate": 272
+        },
+        {
+          "Label": 2,
+          "Property": "Y",
+          "Reference": 9.6,
+          "Candidate": 0
+        },
+        {
+          "Label": 3,
+          "Property": "X",
+          "Reference": 416.79999999999995,
+          "Candidate": 318.4
+        },
+        {
+          "Label": 3,
+          "Property": "Y",
+          "Reference": 12.8,
+          "Candidate": 3.2
+        },
+        {
+          "Label": 3,
+          "Property": "Margin",
+          "Reference": "2,0,0,0",
+          "Candidate": "6,0,0,0"
+        },
+        {
+          "Label": "Body",
+          "Property": "X",
+          "Reference": 16,
+          "Candidate": 75.2
+        },
+        {
+          "Label": "Body",
+          "Property": "Y",
+          "Reference": 0,
+          "Candidate": 9.6
+        },
+        {
+          "Label": "Body",
+          "Property": "Width",
+          "Reference": 528,
+          "Candidate": 410.4
+        },
+        {
+          "Label": "Body",
+          "Property": "Height",
+          "Reference": 40,
+          "Candidate": 20.8
+        }
+      ]
+    },
+    {
+      "Scene": "break-teacher",
+      "Match": false,
+      "ExactFullRowPixels": false,
+      "DifferentPixels": 7988,
+      "TotalPixels": 34400,
+      "ReferenceInk": 4165,
+      "CandidateInk": 5949,
+      "SameLabelStyles": true,
+      "SameIsolatedGlyphs": true,
+      "SameLabelRowY": true,
+      "CompactLayoutMatch": true,
+      "Geometry": {
+        "GroupGapDip": 24,
+        "ExpectedGroupGapDip": 24,
+        "OutsideInsetDifferenceDip": -5.684341886080802E-14,
+        "LayoutPixelDip": 0.8,
+        "ReferenceTimeMargin": "2,0,0,0",
+        "CandidateTimeMargin": "2,0,0,0",
+        "ExpectedTimeMargin": "2,0,0,0",
+        "MarginsMatch": true,
+        "LessonGaps": [
+          {
+            "Before": "体育与健康",
+            "Reference": 0.0,
+            "Candidate": 0,
+            "Expected": 0.0,
+            "Match": true
+          },
+          {
+            "Before": "周老师",
+            "Reference": 5.600000000000023,
+            "Candidate": 5.600000000000023,
+            "Expected": 5.600000000000023,
+            "Match": true
+          },
+          {
+            "Before": "09:05-09:50",
+            "Reference": 2.3999999999999773,
+            "Candidate": 2.3999999999999773,
+            "Expected": 2.3999999999999773,
+            "Match": true
+          }
+        ],
+        "TextBoxInsetDifferenceDip": 5.684341886080802E-14,
+        "Centered": true,
+        "TextGroupCentered": true,
+        "ContentSizedGap": true
+      },
+      "Labels": [
+        {
+          "Text": "本节大课间长 10 分钟",
+          "CandidateText": "本节大课间长 10 分钟",
+          "IsolatedGlyph": {
+            "Equal": true,
+            "SameSize": true,
+            "Width": 156,
+            "Height": 20,
+            "Different": 0,
+            "ReferenceInk": 1333,
+            "CandidateInk": 1333
+          },
+          "ReferenceRowY": 10.4,
+          "CandidateRowY": 10.4,
+          "SameRowY": true
+        },
+        {
+          "Text": "下节课是：",
+          "CandidateText": "下节课是：",
+          "IsolatedGlyph": {
+            "Equal": true,
+            "SameSize": true,
+            "Width": 80,
+            "Height": 20,
+            "Different": 0,
+            "ReferenceInk": 570,
+            "CandidateInk": 570
+          },
+          "ReferenceRowY": 12,
+          "CandidateRowY": 12.0,
+          "SameRowY": true
+        },
+        {
+          "Text": "体育与健康",
+          "CandidateText": "体育与健康",
+          "IsolatedGlyph": {
+            "Equal": true,
+            "SameSize": true,
+            "Width": 100,
+            "Height": 24,
+            "Different": 0,
+            "ReferenceInk": 1350,
+            "CandidateInk": 1350
+          },
+          "ReferenceRowY": 9.6,
+          "CandidateRowY": 9.6,
+          "SameRowY": true
+        },
+        {
+          "Text": "周老师",
+          "CandidateText": "周老师",
+          "IsolatedGlyph": {
+            "Equal": true,
+            "SameSize": true,
+            "Width": 43,
+            "Height": 18,
+            "Different": 0,
+            "ReferenceInk": 460,
+            "CandidateInk": 460
+          },
+          "ReferenceRowY": 12.8,
+          "CandidateRowY": 12.8,
+          "SameRowY": true
+        },
+        {
+          "Text": "09:05-09:50",
+          "CandidateText": "09:05-09:50",
+          "IsolatedGlyph": {
+            "Equal": true,
+            "SameSize": true,
+            "Width": 80,
+            "Height": 18,
+            "Different": 0,
+            "ReferenceInk": 620,
+            "CandidateInk": 620
+          },
+          "ReferenceRowY": 12.8,
+          "CandidateRowY": 12.8,
+          "SameRowY": true
+        }
+      ],
+      "Layout": [
+        {
+          "Label": 0,
+          "Property": "X",
+          "Reference": 129.6,
+          "Candidate": 12
+        },
+        {
+          "Label": 0,
+          "Property": "Y",
+          "Reference": 10.4,
+          "Candidate": 0.8
+        },
+        {
+          "Label": 1,
+          "Property": "X",
+          "Reference": 465.6,
+          "Candidate": 192
+        },
+        {
+          "Label": 1,
+          "Property": "Y",
+          "Reference": 12,
+          "Candidate": 2.4
+        },
+        {
+          "Label": 2,
+          "Property": "X",
+          "Reference": 545.6,
+          "Candidate": 272
+        },
+        {
+          "Label": 2,
+          "Property": "Y",
+          "Reference": 9.6,
+          "Candidate": 0
+        },
+        {
+          "Label": 3,
+          "Property": "X",
+          "Reference": 651.2,
+          "Candidate": 377.6
+        },
+        {
+          "Label": 3,
+          "Property": "Y",
+          "Reference": 12.8,
+          "Candidate": 3.2
+        },
+        {
+          "Label": 4,
+          "Property": "X",
+          "Reference": 696,
+          "Candidate": 422.4
+        },
+        {
+          "Label": 4,
+          "Property": "Y",
+          "Reference": 12.8,
+          "Candidate": 3.2
+        },
+        {
+          "Label": "Body",
+          "Property": "X",
+          "Reference": 16,
+          "Candidate": 172.8
+        },
+        {
+          "Label": "Body",
+          "Property": "Y",
+          "Reference": 0,
+          "Candidate": 9.6
+        },
+        {
+          "Label": "Body",
+          "Property": "Width",
+          "Reference": 828,
+          "Candidate": 514.4
+        },
+        {
+          "Label": "Body",
+          "Property": "Height",
+          "Reference": 40,
+          "Candidate": 20.8
+        }
+      ]
+    },
+    {
+      "Scene": "dismissal",
+      "Match": true,
+      "ExactFullRowPixels": true,
+      "DifferentPixels": 0,
+      "TotalPixels": 22400,
+      "ReferenceInk": 1651,
+      "CandidateInk": 1651,
+      "SameLabelStyles": true,
+      "SameIsolatedGlyphs": true,
+      "SameLabelRowY": true,
+      "CompactLayoutMatch": true,
+      "Geometry": null,
+      "Labels": [
+        {
+          "Text": "请带好随身物品，明天见。",
+          "CandidateText": "请带好随身物品，明天见。",
+          "IsolatedGlyph": {
+            "Equal": true,
+            "SameSize": true,
+            "Width": 192,
+            "Height": 20,
+            "Different": 0,
+            "ReferenceInk": 1651,
+            "CandidateInk": 1651
+          },
+          "ReferenceRowY": 10.4,
+          "CandidateRowY": 10.4,
+          "SameRowY": true
+        }
+      ],
+      "Layout": []
+    }
+  ]
+}

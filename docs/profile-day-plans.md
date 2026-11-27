@@ -26,9 +26,13 @@
 
 「课表」在宽窗把科目池放在课表右侧，窄窗放到七天课表下方。星期和日期在两种宽度下均保留完整文字。「时间表」把时间轴和编辑区分开：未选中时间点时只显示提示；选中后显示该时间点的 24 小时制输入。切换主题时，时间轴跟随当前窗体的主题资源。
 
+「科目」中点「保存科目信息」后，名称、简称、教师和户外标记才生效。改名会更新当前档案的基础课表及单日调课中的课程引用，不会更改同名活动或其他档案；空名和重名不会写入。若写入基础档案失败，会尝试还原本地调课文件，并向用户报告失败。
+
 ## 隔离验收
 
 Core 测试：`dotnet test tests/ClassNex.Core.Tests --filter 'FullyQualifiedName~TemporaryScheduleTests|FullyQualifiedName~TemporaryTimeLayoutTests'`。通知服务测试：`dotnet test tests/ClassNex.Notification.Tests`。
+
+科目改名的[独立实窗报告](../artifacts/26w48b-classroom-review/subject-rename.json)可通过 `tools/run_review_offscreen.py` 运行 `tools/review_desktop.ps1 -Round <新名称> -SubjectOnly` 复验，检查重名拒绝、输入期间未修改、保存和读回。
 
 同一套控件用例支持 Avalonia.Headless 和真实 Windows 两种后端；测试专用依赖不进入客户端。以下 PowerShell 从仓库根目录运行，给每次验收分配一个新的匿名目录。测试不发送系统输入、不读取真实账户；任何截图都只取本进程的窗口，不截屏幕或其他应用：
 
