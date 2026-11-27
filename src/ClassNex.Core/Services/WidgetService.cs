@@ -20,6 +20,9 @@ public interface IWidgetService
     /// <summary>以默认参数追加启用的实例，并返回其可编辑配置。</summary>
     WidgetConfig Add(string type);
 
+    /// <summary>在原组件之后插入独立副本；已移除的实例不会被复制。</summary>
+    WidgetConfig? Duplicate(WidgetConfig config);
+
     /// <summary>移除指定实例，并使剩余实例的顺序编号连续。</summary>
     void Remove(WidgetConfig config);
 
@@ -62,22 +65,38 @@ public sealed class WidgetService : IWidgetService
     /// <inheritdoc />
     public WidgetConfig Add(string type)
     {
+        var list = InDisplayOrder();
         var config = new WidgetConfig
         {
             Type = type,
             IsEnabled = true,
-            Order = _settings().Widgets.Count,
+            Order = list.Count,
+            Row = list.LastOrDefault()?.Row ?? 0,
         };
 
-        _settings().Widgets.Add(config);
+        list.Add(config);
+        Reindex();
         Save();
         return config;
     }
 
     /// <inheritdoc />
+    public WidgetConfig? Duplicate(WidgetConfig config)
+    {
+        var list = InDisplayOrder();
+        var index = list.IndexOf(config);
+        if (index < 0) return null;
+        var copy = config.Copy();
+        list.Insert(index + 1, copy);
+        Reindex();
+        Save();
+        return copy;
+    }
+
+    /// <inheritdoc />
     public void Remove(WidgetConfig config)
     {
-        _settings().Widgets.Remove(config);
+        if (!InDisplayOrder().Remove(config)) return;
         Reindex();
         Save();
     }
@@ -85,13 +104,15 @@ public sealed class WidgetService : IWidgetService
     /// <inheritdoc />
     public void Move(WidgetConfig config, int delta)
     {
-        var list = _settings().Widgets;
+        var list = InDisplayOrder();
         var index = list.IndexOf(config);
         var target = index + delta;
         if (index < 0 || target < 0 || target >= list.Count)
             return;
 
-        (list[index], list[target]) = (list[target], list[index]);
+        config.Row = list[target].Row;
+        list.RemoveAt(index);
+        list.Insert(target, config);
         Reindex();
         Save();
     }
@@ -116,5 +137,11 @@ public sealed class WidgetService : IWidgetService
         var list = _settings().Widgets;
         for (var i = 0; i < list.Count; i++)
             list[i].Order = i;
+    }
+
+    private List<WidgetConfig> InDisplayOrder()
+    {
+        var settings = _settings();
+        return settings.Widgets = WidgetConfig.InDisplayOrder(settings.Widgets).ToList();
     }
 }

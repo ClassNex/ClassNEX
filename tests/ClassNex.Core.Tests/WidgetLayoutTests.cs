@@ -9,6 +9,43 @@ namespace ClassNex.Core.Tests;
 public sealed class WidgetLayoutTests
 {
     [TestMethod]
+    public void ReorderingAndDuplicatingUseDisplayOrderAndKeepIndependentSettings()
+    {
+        var a = new WidgetConfig { Type = "text", Order = 5, Text = "值日", Presentation = new(Margin: [1, 2, 3, 4]) };
+        var b = new WidgetConfig { Type = "text", Order = 2, IsEnabled = false, Text = "课代表" };
+        var c = new WidgetConfig { Type = "clock", Order = 9, ShowSeconds = true };
+        var settings = new AppSettings { Widgets = [a, c, b] };
+        var writes = 0; var service = new WidgetService(() => settings, () => writes++);
+        service.Move(c, -2);
+        CollectionAssert.AreEqual(new[] { c, b, a }, settings.Widgets);
+        var copy = service.Duplicate(a)!;
+        Assert.AreEqual(a.Text, copy.Text);
+        Assert.AreNotSame(a.Presentation!.Margin, copy.Presentation!.Margin);
+        CollectionAssert.AreEqual(new[] { c, b, a, copy }, settings.Widgets);
+        service.Remove(a); service.Move(c, -1);
+        Assert.IsNull(service.Duplicate(a));
+        CollectionAssert.AreEqual(new[] { 0, 1, 2 }, settings.Widgets.Select(w => w.Order).ToArray());
+        Assert.AreEqual(3, writes);
+    }
+
+    [TestMethod]
+    public void MovingAcrossRowsAndSyncKeepTheSameClassroomLayout()
+    {
+        var a=new WidgetConfig { Type="date", Row=0, Order=7 };
+        var b=new WidgetConfig { Type="schedule", Row=1, Order=0 };
+        var c=new WidgetConfig { Type="clock", Row=1, Order=1 };
+        var settings=new AppSettings { Widgets=[c,a,b] };
+        CollectionAssert.AreEqual(new[]{a,b,c}, WidgetConfig.InDisplayOrder(settings.Widgets).ToArray());
+        var service=new WidgetService(()=>settings,()=>{}); service.Move(a,1);
+        Assert.AreEqual(1,a.Row); CollectionAssert.AreEqual(new[]{b,a,c},settings.Widgets);
+        var copy=service.Duplicate(a)!; Assert.AreEqual(1,copy.Row);
+        string wire=CentralSettingsPayload.Serialize(settings);
+        var again=JsonSerializer.Deserialize<AppSettings>(wire,JsonSerializerOptions.Web)!;
+        CollectionAssert.AreEqual(new[]{"schedule","date","date","clock"},WidgetConfig.InDisplayOrder(again.Widgets).Select(w=>w.Type).ToArray());
+        Assert.IsTrue(again.Widgets.All(w=>w.Row==1));
+    }
+
+    [TestMethod]
     public void LegacyCombinedWidgetsSplitAtTheirDisplayedPositionsOnce()
     {
         var dir = Directory.CreateTempSubdirectory("classnex-clock-");
@@ -54,6 +91,27 @@ public sealed class WidgetLayoutTests
         using var json = JsonDocument.Parse(wire);
         Assert.AreEqual(local.WidgetLayoutVersion, json.RootElement.GetProperty("widgetLayoutVersion").GetInt32());
         Assert.AreEqual(expected, string.Join(',', JsonSerializer.Deserialize<AppSettings>(wire, JsonSerializerOptions.Web)!.Widgets.Select(w => w.Type)));
+    }
+
+    [TestMethod]
+    public void RowCommandsShareStableOrderAndLeaveStaleSelectionsUntouched()
+    {
+        var clock = new WidgetConfig { Type = "clock", Row = 4, Order = 1, ShowSeconds = true };
+        var label = new WidgetConfig { Type = "text", Row = 4, Order = 0, Text = "今日值日" };
+        var date = new WidgetConfig { Type = "date", Row = 8, Order = 2 };
+        List<WidgetConfig> widgets = [date, clock, label];
+        Assert.AreEqual(-1, WidgetConfig.MoveToRowEnd(widgets, clock, 7));
+        Assert.AreEqual(-1, WidgetConfig.MoveToRowEnd(widgets, new(), null));
+        Assert.AreEqual(2, WidgetConfig.MoveToRowEnd(widgets, clock, 8));
+        CollectionAssert.AreEqual(new[] { label, date, clock }, widgets);
+        Assert.AreEqual(2, WidgetConfig.MoveToRowEnd(widgets, clock, null));
+        Assert.IsGreaterThan(date.Row, clock.Row);
+        Assert.IsTrue(clock.ShowSeconds);
+        clock.Row = int.MaxValue;
+        Assert.AreEqual(2, WidgetConfig.MoveToRowEnd(widgets, label, null));
+        CollectionAssert.AreEqual(new[] { date, clock, label }, widgets);
+        CollectionAssert.AreEqual(new[] { 0, 1, 2 }, widgets.Select(w => w.Order).ToArray());
+        Assert.IsGreaterThan(clock.Row, label.Row);
     }
 
     [TestMethod]

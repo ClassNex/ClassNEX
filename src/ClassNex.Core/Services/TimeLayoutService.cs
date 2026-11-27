@@ -299,6 +299,7 @@ public sealed class TimeLayoutService : ITimeLayoutService
     /// <inheritdoc />
     public void Save()
     {
+        Layout.InvalidateClassroomPeriods();
         if (_schedule.Profile.ImportedTimeLayout != null && !string.IsNullOrEmpty(_schedule.FilePath))
         {
             _schedule.Profile.ImportedTimeLayout = Layout;

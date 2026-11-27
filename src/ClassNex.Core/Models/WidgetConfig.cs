@@ -3,14 +3,56 @@ namespace ClassNex.Models;
 /// <summary>一个桌面组件的持久化实例配置，类型不适用的可选项会被忽略。</summary>
 public sealed class WidgetConfig
 {
+    /// <summary>复制此组件的设置，包括独立的外观间距。</summary>
+    public WidgetConfig Copy()
+    {
+        var instance = (WidgetConfig)MemberwiseClone();
+        if (Presentation is { } style) instance.Presentation = style with { Margin = style.Margin?.ToArray() };
+        return instance;
+    }
+
     /// <summary>组件注册表中的稳定类型键，如 schedule。</summary>
     public string Type { get; set; } = "";
 
     /// <summary>关闭后保留该实例及参数，但不在浮窗中显示。</summary>
     public bool IsEnabled { get; set; } = true;
 
+    /// <summary>将已启用的实例限制在指定课堂时段；旧配置默认始终显示。</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public WidgetDisplayWhen DisplayWhen { get; set; }
+
     /// <summary>在当前桌面布局中的顺序。</summary>
     public int Order { get; set; }
+
+    /// <summary>从零开始的桌面行号；旧版单行配置默认为第一行。</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public int Row { get; set; }
+
+    /// <summary>先按行、再按行内顺序枚举，不改变原有实例。</summary>
+    public static IOrderedEnumerable<WidgetConfig> InDisplayOrder(IEnumerable<WidgetConfig> widgets) =>
+        widgets.OrderBy(w => w.Row).ThenBy(w => w.Order);
+
+    /// <summary>将一个实例放到已有行的末尾，传入空行号则在最后新建一行。返回新的显示序号，目标已失效时返回 -1。</summary>
+    public static int MoveToRowEnd(List<WidgetConfig> widgets, WidgetConfig instance, int? destination)
+    {
+        if (!widgets.Contains(instance) || destination is int id && !widgets.Any(w => w.Row == id)) return -1;
+        var ordered = InDisplayOrder(widgets).ToList();
+        if (destination == instance.Row || destination is null && ordered[^1] == instance && ordered.Count(w => w.Row == instance.Row) == 1)
+            return ordered.IndexOf(instance);
+        if (destination is null && ordered[^1].Row == int.MaxValue)
+        {
+            var rows = ordered.GroupBy(w => w.Row).ToArray();
+            for (var r = 0; r < rows.Length; r++) foreach (var w in rows[r]) w.Row = r;
+        }
+        var row = destination ?? (ordered[^1].Row + 1);
+        ordered.Remove(instance);
+        var at = ordered.FindLastIndex(w => w.Row <= row) + 1;
+        instance.Row = row;
+        ordered.Insert(at, instance);
+        for (var i = 0; i < ordered.Count; i++) ordered[i].Order = i;
+        widgets.Clear(); widgets.AddRange(ordered);
+        return at;
+    }
 
     /// <summary>仅应用于该组件内容的字号倍率。</summary>
     public double FontScale { get; set; } = 1.0;

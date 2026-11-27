@@ -3,6 +3,14 @@ namespace ClassNex.Models;
 /// <summary>独立于科目的每日作息模板，可同时包含课时、课间和定点项目。</summary>
 public sealed class TimeLayout
 {
+    private IReadOnlyList<TemporaryTimeItem>? _classroomPeriods;
+
+    /// <summary>供课堂组件共用的有时长课间与活动；修改模板后由时间表服务保存并使快照失效。</summary>
+    public IReadOnlyList<TemporaryTimeItem> GetClassroomPeriods() => _classroomPeriods ??= Array.AsReadOnly(
+        TemporaryTimeItem.FromBase(this).Where(p => p.Kind is ClassTimeKind.Break or ClassTimeKind.Action && p.End > p.Start).ToArray());
+
+    internal void InvalidateClassroomPeriods() => _classroomPeriods = null;
+
     /// <summary>编辑器中的时间表名称。</summary>
     public string Name { get; set; } = "默认时间表";
 

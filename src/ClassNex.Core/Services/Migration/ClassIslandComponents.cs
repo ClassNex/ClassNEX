@@ -73,14 +73,14 @@ public static partial class ClassIslandImporter
     {
         if (layout.Field("Lines").ValueKind != JsonValueKind.Array) throw new InvalidDataException("无法识别组件布局（缺少 Lines）。");
         var lines = layout.Items("Lines");
-        if (lines.Length > 1) plan.Warn("多行布局会按行从上到下排列到 ClassNEX 的组件栏。");
-        foreach (var line in lines)
+        for (var row = 0; row < lines.Length; row++)
         {
+            var line = lines[row];
             if (line.Field("Children").ValueKind != JsonValueKind.Array) throw new InvalidDataException("无法读取组件行。");
-            foreach (var child in line.Items("Children")) Add(child, line.Flag("IsVisible", true));
+            foreach (var child in line.Items("Children")) Add(child, line.Flag("IsVisible", true), row);
         }
 
-        void Add(JsonElement node, bool visible)
+        void Add(JsonElement node, bool visible, int row)
         {
             if (plan.Widgets.Count + plan.SkippedWidgetCount >= 4096) throw new InvalidDataException("组件实例过多。");
             visible &= node.Flag("IsVisible", true);
@@ -97,7 +97,7 @@ public static partial class ClassIslandImporter
             if (type == "container")
             {
                 plan.Warn("容器本身没有对应组件；其中可用的组件按原顺序展开。");
-                foreach (var child in options.Items("Children")) Add(child, visible);
+                foreach (var child in options.Items("Children")) Add(child, visible, row);
                 return;
             }
             if (type == null) { plan.SkippedWidgetCount++; return; }
@@ -105,7 +105,7 @@ public static partial class ClassIslandImporter
             {
                 plan.SkippedWidgetCount++; plan.Warn("周期与按日／周动态倒计时没有对应组件，已跳过。"); return;
             }
-            var w = new WidgetConfig { Type = type, IsEnabled = visible, Order = plan.Widgets.Count, Presentation = WidgetPresentationImport.Read(node) };
+            var w = new WidgetConfig { Type = type, IsEnabled = visible, Row = row, Order = plan.Widgets.Count, Presentation = WidgetPresentationImport.Read(node) };
             if (node.Flag("HideOnRule")) plan.Warn("组件的条件隐藏规则不会执行，保留静态可见状态。");
             if (node.Flag("IsResourceOverridingEnabled"))
             {
