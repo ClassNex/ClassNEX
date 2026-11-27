@@ -1,6 +1,7 @@
 using Avalonia.Threading;
 using ClassNex.Controls.NotificationEffects;
 using ClassNex.Core.Abstractions;
+using ClassNex.Styles;
 using ClassNex.Views;
 
 namespace ClassNex.Services;
@@ -35,7 +36,7 @@ public sealed class MainWindowNotificationSurface : INotificationSurface
             if (mainWindow is null)
                 return;
 
-            if (playEffect && mainWindow.GetIslandCenterOnScreen() is { } center && mainWindow.Screens.ScreenFromPoint(center) is { } screen)
+            if (playEffect && DesktopMotion.IsEnabled && mainWindow.GetIslandCenterOnScreen() is { } center && mainWindow.Screens.ScreenFromPoint(center) is { } screen)
             {
                 _effectWindow.UpdateWindowPos(screen, 1 / screen.Scaling, WindowsOverlay.ForegroundCovers(screen.Bounds));
                 _effectWindow.PlayEffect(new RippleEffect(center, mainWindow.ClassroomNotificationAccent));
@@ -72,7 +73,14 @@ public sealed class MainWindowNotificationSurface : INotificationSurface
         ShowOverlay(new(left, subject, teacher, time, prefix, message, verticalPageTurn), null, trackDuration, progress);
 
     public void ShowOverlay(NotificationOverlay detail, int? seconds, TimeSpan trackDuration, INotificationOverlayProgress progress) =>
-        Dispatcher.UIThread.Post(() => Window?.ShowNotificationOverlay(detail, seconds, progress));
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (Window is not { } window) return;
+#if DEBUG
+            window.ReviewOverlayDuration = trackDuration;
+#endif
+            window.ShowNotificationOverlay(detail, seconds, progress);
+        });
 
     public void UpdateCountdown(int seconds) => Dispatcher.UIThread.Post(() => Window?.UpdateNotificationOverlayCountdown(seconds));
 

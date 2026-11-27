@@ -21,10 +21,15 @@ public partial class MainWindow
     private PixelPoint? _dragAnchor;
     private Screen? _dragScreen;
     private bool _placementQueued, _suppressTap;
+    private bool _readingOverflow;
     private (PixelRect Island, int Radius, PixelRect? Toolbar, int ToolRadius)? _inputRegion;
+
+    private bool PassesPointerThrough => !LinePanel.IsHitTestVisible || (AppServices.Settings.IsClickThrough && !_editMode && !_readingOverflow);
 
     private void WirePlacement()
     {
+        MaskTitleViewport.ScrollChanged += OnReminderScrollChanged;
+        NotificationBodyViewport.ScrollChanged += OnReminderScrollChanged;
         LinePanel.AddHandler(PointerPressedEvent, IslandPressed, RoutingStrategies.Bubble);
         LinePanel.AddHandler(PointerMovedEvent, IslandMoved, RoutingStrategies.Bubble, true);
         LinePanel.AddHandler(PointerReleasedEvent, IslandReleased, RoutingStrategies.Tunnel, true);
@@ -59,11 +64,39 @@ public partial class MainWindow
             e.Handled = true;
         }, RoutingStrategies.Tunnel);
         SizeChanged += (_, _) => QueuePlacement();
-        IslandBackground.SizeChanged += (_, _) => QueuePlacement();
+        IslandBackground.SizeChanged += (_, _) => { _lastHoverPoint = null; QueuePlacement(); };
         EditBarHost.SizeChanged += (_, _) => QueuePlacement();
     }
 
     private bool CanUseGesture => IsVisible && !_closed && !_editMode && !_showingNotification && !AppServices.Settings.IsClickThrough;
+
+    private void OnReminderScrollChanged(object? sender, ScrollChangedEventArgs e)
+    {
+        if (e.ExtentDelta.Y != 0 || e.ViewportDelta.Y != 0) RefreshReminderInput();
+    }
+
+    private void RefreshReminderInput()
+    {
+        ScrollViewer? view = null;
+        if (IsVisible && !_closed && !_editMode && !_nexPanelActive && _showingNotification && !_overlayExiting)
+        {
+            if (NotificationMask.IsVisible)
+                view = NotificationMask.IsHitTestVisible ? MaskTitleViewport : null;
+            else if (NotificationOverlay.IsVisible && NotificationOverlay.IsHitTestVisible)
+                view = NotificationBodyViewport;
+        }
+
+        var reading = view != null && view.Viewport.Height > 0 && view.Extent.Height - view.Viewport.Height > .5;
+        if (reading == _readingOverflow) return;
+        _readingOverflow = reading;
+        if (_closed) return;
+        ApplyClickThrough();
+        if (IsVisible && GetIslandScreenRect() is { } bounds) UpdateInputRegion(new PixelRect(bounds.Position - Position, bounds.Size));
+        ApplyMotionPreference();
+        UpdateRunningState();
+        if (_hoverTimer.IsEnabled) UpdateHoverFade();
+    }
+
     private static bool IsButton(object? source) => source is Visual visual && visual.GetSelfAndVisualAncestors().Any(v => v is Button or Thumb);
     private static string? TapTarget(object? source) => (source as Visual)?.GetSelfAndVisualAncestors().OfType<Control>()
         .FirstOrDefault(x => x.Name is "OverlayImportHint" or "OverlayWidgetsHint" or "NexPanel")?.Name;
@@ -183,12 +216,27 @@ public partial class MainWindow
         anchor is { } p ? Math.Clamp(p.X, work.X, Math.Max(work.X, work.Right - island.Width)) : work.X + Math.Max(0, work.Width - island.Width) / 2,
         anchor is { } q ? Math.Clamp(q.Y, work.Y, Math.Max(work.Y, work.Bottom - island.Height)) : work.Y);
 
+    private PixelPoint ReminderAnchor(PixelRect area, PixelPoint saved, PixelRect reminder)
+    {
+        var size = ClassroomReturnSize;
+        var end = IslandBackground.PointToScreen(new Point(size.Width, size.Height));
+        var classroom = new PixelSize(Math.Max(1, end.X - reminder.X), Math.Max(1, end.Y - reminder.Y));
+        var resting = ClampIsland(area, classroom, saved);
+        var x = resting.X == area.X ? area.X :
+            resting.X + classroom.Width == area.Right ? area.Right - reminder.Width :
+            resting.X + (classroom.Width - reminder.Width) / 2;
+        var y = resting.Y + classroom.Height == area.Bottom ? area.Bottom - reminder.Height : resting.Y;
+        return new PixelPoint(x, y);
+    }
+
     private void EnforcePlacement()
     {
         if (!IsVisible || _closed || GetIslandScreenRect() is not { } island || PlacementScreen() is not { } screen) return;
         var area = screen.WorkingArea;
         var anchor = _dragAnchor ?? SavedAnchor();
-        if (!anchor.HasValue && AppServices.Settings.ImportedDock is { } d)
+        if (_dragAnchor is null && _showingNotification && anchor is { } saved)
+            anchor = ReminderAnchor(area, saved, island);
+        else if (!anchor.HasValue && AppServices.Settings.ImportedDock is { } d)
         {
             var width = Math.Max(0, area.Width - island.Width);
             var x = area.X + ((d.Anchor % 3) switch { 0 => 0, 2 => width, _ => width / 2 });
@@ -198,18 +246,14 @@ public partial class MainWindow
         var target = ClampIsland(area, island.Size, anchor);
         var offset = island.Position - Position;
         var origin = new PixelPoint(target.X - offset.X, target.Y - offset.Y);
-        if (Position != origin) Position = origin;
+        if (Position != origin) { Position = origin; _lastHoverPoint = null; }
         UpdateInputRegion(new PixelRect(offset, island.Size));
     }
 
     private void UpdateInputRegion(PixelRect island)
     {
         if (_hwnd == 0) return;
-        if (AppServices.Settings.IsClickThrough && !_editMode)
-        {
-            if (_inputRegion != null) { WindowsOverlay.SetInputRegion(_hwnd, null, 0, null, 0); _inputRegion = null; }
-            return;
-        }
+        if (PassesPointerThrough) return;
         PixelRect? toolbar = null;
         if (_editMode && EditBarHost.IsVisible && EditBarHost.Bounds.Width > 0)
         {

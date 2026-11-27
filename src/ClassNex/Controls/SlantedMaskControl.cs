@@ -102,6 +102,7 @@ public class SlantedMaskControl : Control
     }
 
     private CancellationTokenSource? _cts;
+    private bool _settling;
     internal Task TransitionCompleted { get; private set; } = Task.CompletedTask;
 
     private static readonly double Tan30 = Math.Tan(Math.PI / 3.0);
@@ -122,6 +123,7 @@ public class SlantedMaskControl : Control
         Region4ProgressProperty.Changed.AddClassHandler<SlantedMaskControl>((o, _) => o.InvalidateVisual());
         IsOpenedProperty.Changed.AddClassHandler<SlantedMaskControl>((o, _) =>
         {
+            if (o._settling) return;
             if (o.IsOpened)
                 o.Open();
             else
@@ -134,6 +136,16 @@ public class SlantedMaskControl : Control
     public void Open() => TransitionCompleted = StartSequence(open: true);
 
     public void Close() => TransitionCompleted = StartSequence(open: false);
+
+    internal void Settle(bool open)
+    {
+        _cts?.Cancel();
+        _settling = true;
+        try { IsOpened = open; }
+        finally { _settling = false; }
+        Region0Progress = Region1Progress = Region2Progress = Region3Progress = Region4Progress = open ? 1 : 0;
+        TransitionCompleted = Task.CompletedTask;
+    }
 
     private async Task StartSequence(bool open)
     {

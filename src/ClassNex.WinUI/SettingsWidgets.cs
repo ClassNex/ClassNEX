@@ -1,72 +1,163 @@
 using ClassNex.Models;
 using ClassNex.Services;
+using System.Collections.ObjectModel;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.ApplicationModel.DataTransfer;
 
 namespace ClassNex.WinUI;
 
 public sealed partial class NativeSettingsWindow
 {
     private int _widgetIndex;
+    private bool _widgetLibrary;
+    private bool _widgetListView;
+    private const string WidgetTypeFormat = "ClassNEX.WidgetType";
     private string _widgetShape = "";
-    private static string WidgetShape(AppSettings s) => string.Join(';', s.Widgets.Select(w => $"{w.Order}:{w.Type}"));
+    private static string WidgetShape(AppSettings s) => string.Join(';', s.Widgets.Select(w => $"{w.Row}:{w.Order}:{w.Type}:{w.IsEnabled}"));
     private static void Reindex(List<WidgetConfig> list) { for (var i = 0; i < list.Count; ++i) list[i].Order = i; }
+
+    public void SelectWidget(int index)
+    {
+        CommitInputs();
+        _widgetIndex = index;
+        _widgetLibrary = false;
+        if (CurrentPageKey == "widget-layout") RenderPage();
+    }
+
+    private void ChangeWidgetLayout(Action<List<WidgetConfig>> change)
+    {
+        CommitInputs();
+        Edit(s => { var sorted = WidgetConfig.InDisplayOrder(s.Widgets).ToList(); change(sorted); Reindex(sorted); s.Widgets = sorted; _widgetShape = "!"; });
+    }
 
     private void WidgetLayoutPage()
     {
         var settings = _bridge.ReadSettings();
         _widgetShape = WidgetShape(settings);
         _widgetIndex = Math.Clamp(_widgetIndex, 0, Math.Max(0, settings.Widgets.Count - 1));
-        CommandRow("EditDesktop", "桌面布局", "编辑组件", NativeSettingsKeys.EditOverlay);
-        Section("桌面课表布局");
-        if (settings.Widgets.Count != 0)
+        AddWidgetPresetPicker();
+        CommandRow("EditDesktop", "在桌面上编辑", "进入编辑模式", NativeSettingsKeys.EditOverlay);
+        var layout = new Grid { ColumnSpacing = 16, RowSpacing = 8 };
+        layout.ColumnDefinitions.Add(new()); layout.ColumnDefinitions.Add(new());
+        layout.RowDefinitions.Add(new() { Height = GridLength.Auto }); layout.RowDefinitions.Add(new() { Height = GridLength.Auto });
+        var master = new StackPanel { Spacing = 6 }; var inspector = new StackPanel { Spacing = 6 };
+        layout.Children.Add(master); layout.Children.Add(inspector); _body.Children.Add(layout);
+        void Arrange(double width) { var wide = width >= 690; layout.ColumnDefinitions[0].Width = wide ? new GridLength(_widgetListView ? 240 : Math.Clamp(width * .40, 280, 440)) : new GridLength(1, GridUnitType.Star); layout.ColumnDefinitions[1].Width = wide ? new GridLength(1, GridUnitType.Star) : new GridLength(0); Grid.SetColumn(inspector, wide ? 1 : 0); Grid.SetRow(inspector, wide ? 0 : 1); layout.ColumnSpacing = wide ? 16 : 0; }
+        Arrange(0); layout.SizeChanged += (_, e) => Arrange(e.NewSize.Width);
+        var orderHeader = new Grid { ColumnSpacing = 6 };
+        orderHeader.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
+        orderHeader.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+        orderHeader.Children.Add(Text("桌面组件", "SubtitleTextBlockStyle"));
+        var viewMode = Target("WidgetOrderMode", "排列视图", new ComboBox { ItemsSource = new[] { "按行排列", "顺序列表" }, SelectedIndex = _widgetListView ? 1 : 0, MinWidth = 100 });
+        viewMode.SelectionChanged += (_, _) => { if (viewMode.SelectedIndex < 0 || _widgetListView == (viewMode.SelectedIndex == 1)) return; CommitInputs(); _widgetListView = viewMode.SelectedIndex == 1; RenderPage(); };
+        Grid.SetColumn(viewMode, 1); orderHeader.Children.Add(viewMode); master.Children.Add(orderHeader);
+        var sorted = WidgetConfig.InDisplayOrder(settings.Widgets).ToList();
+        var rows = sorted.Select(w => w.Row).Distinct().ToList();
+        void Add(string type, int row, int? before = null) => ChangeWidgetLayout(v =>
         {
-            var index = _widgetIndex;
-            var display = Enumerable.Range(0, settings.Widgets.Count).OrderBy(i => settings.Widgets[i].Order).ToArray();
-            var choice = Target("WidgetSelection", "要编辑的组件", new ComboBox
+            if (WidgetRegistry.Find(type) == null || !v.SequenceEqual(sorted)) return;
+            _widgetIndex = before ?? (v.FindLastIndex(w => w.Row == row) + 1);
+            v.Insert(_widgetIndex, new() { Type = type, Row = row }); _widgetLibrary = false;
+        });
+        void AppendSelected(string type) => Add(type, sorted.Count == 0 ? 0 : sorted[_widgetIndex].Row);
+        if (!_widgetListView) AddWidgetRows(master, sorted, Add);
+        else
+        {
+        var entries = new ObservableCollection<ListViewItem>(sorted.Select((w, i) => new ListViewItem
+        {
+            Content = (rows.Count > 1 ? $"第 {rows.IndexOf(w.Row) + 1} 行 · " : "") + WidgetRegistry.DisplayNameOf(w.Type) + (w.IsEnabled ? "" : "（已隐藏）"), Tag = i,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch
+        }));
+        var list = Target("WidgetSelection", "桌面组件顺序", new ListView { ItemsSource=entries, CanDragItems=true, CanReorderItems=true, AllowDrop=true, SelectedIndex=sorted.Count==0 ? -1 : _widgetIndex, MinHeight=54 });
+        bool dragging=false;
+        int dragIndex=-1;
+        list.DragItemsStarting += (_,e) => { dragging=true; dragIndex=e.Items.OfType<ListViewItem>().FirstOrDefault()?.Tag is int i ? i : list.SelectedIndex; };
+        list.DragItemsCompleted += (_,_) =>
+        {
+            dragging = false;
+            var indices = entries.Select(item => (int)item.Tag).ToArray();
+            if (indices.SequenceEqual(Enumerable.Range(0, sorted.Count))) return;
+            ChangeWidgetLayout(v =>
             {
-                ItemsSource = display.Select((slot, i) => $"{i + 1}. {WidgetRegistry.DisplayNameOf(settings.Widgets[slot].Type)}").ToArray(),
-                SelectedIndex = index, MinWidth = 154, MaxWidth = 240
+                if (v.Count != indices.Length) return;
+                var destination = Array.IndexOf(indices, dragIndex);
+                if (dragIndex >= 0 && destination >= 0) v[dragIndex].Row = v[destination].Row;
+                var reordered = indices.Select(i => v[i]).ToList();
+                _widgetIndex = Array.IndexOf(indices, _widgetIndex);
+                v.Clear(); v.AddRange(reordered);
             });
-            choice.SelectionChanged += (_, _) =>
+        };
+        list.SelectionChanged += (_,_) => { if(!dragging && list.SelectedIndex>=0 && (_widgetLibrary || list.SelectedIndex!=_widgetIndex)) SelectWidget(list.SelectedIndex); };
+        list.DragOver += (_,e) => { if(e.DataView.Contains(WidgetTypeFormat)){e.AcceptedOperation=DataPackageOperation.Copy;e.Handled=true;} };
+        list.Drop += async (_,e) =>
+        {
+            if (!e.DataView.Contains(WidgetTypeFormat)) return;
+            e.Handled = true; var deferral = e.GetDeferral();
+            try
             {
-                if (_refreshing || choice.SelectedIndex < 0 || choice.SelectedIndex == _widgetIndex) return;
-                FlushSlider();
-                _widgetIndex = choice.SelectedIndex;
-                RenderPage();
-            };
-            Row("要编辑的组件", "", choice);
-            var actions = Target("WidgetActions", "排列和移除当前组件", new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 });
-            Button MoveButton(int delta)
-            {
-                var button = ActionButton(delta < 0 ? "WidgetUp" : "WidgetDown", delta < 0 ? "上移" : "下移", () =>
-                {
-                    FlushSlider();
-                    var target = index + delta;
-                    Edit(s =>
-                    {
-                        if (target < 0 || index >= s.Widgets.Count || target >= s.Widgets.Count) return;
-                        s.Widgets = s.Widgets.OrderBy(w => w.Order).ToList();
-                        (s.Widgets[index], s.Widgets[target]) = (s.Widgets[target], s.Widgets[index]);
-                        Reindex(s.Widgets);
-                        _widgetIndex = target;
-                        _widgetShape = "!";
-                    });
-                });
-                button.IsEnabled = index + delta >= 0 && index + delta < settings.Widgets.Count;
-                return button;
+                var row = sorted.LastOrDefault()?.Row ?? 0; var position = sorted.Count;
+                for (var i = 0; i < sorted.Count; ++i)
+                    if (list.ContainerFromIndex(i) is ListViewItem item && e.GetPosition(item).Y is var y && y < item.ActualHeight)
+                    { row = sorted[i].Row; position = i + (y >= item.ActualHeight / 2 ? 1 : 0); break; }
+                if (await e.DataView.GetDataAsync(WidgetTypeFormat) is string type) Add(type, row, position);
             }
-            actions.Children.Add(MoveButton(-1));
-            actions.Children.Add(MoveButton(1));
-            actions.Children.Add(ActionButton("WidgetRemove", "移除", () =>
+            finally { deferral.Complete(); }
+        };
+        master.Children.Add(list);
+        }
+        if (sorted.Count>0)
+        {
+            var index=_widgetIndex; var actions=Target("WidgetActions","组件操作",new StackPanel{Orientation=Orientation.Horizontal,Spacing=2}); master.Children.Add(actions);
+            void Tool(string id,string label,string glyph,bool enabled,Action action){var b=ActionButton(id,label,action); b.Content=new FontIcon { Glyph=glyph, FontSize=16 }; b.MinWidth=32;b.Padding=new Thickness(5);b.IsEnabled=enabled;ToolTipService.SetToolTip(b,label);actions.Children.Add(b);}
+            void Move(int offset)=>ChangeWidgetLayout(v=>{var w=v[index];_widgetIndex=index+offset;w.Row=v[_widgetIndex].Row;v.RemoveAt(index);v.Insert(_widgetIndex,w);});
+            Tool("WidgetUp","上移","\uE70E",index>0,()=>Move(-1)); Tool("WidgetDown","下移","\uE70D",index+1<sorted.Count,()=>Move(1));
+            Tool("WidgetCopy","创建副本","\uE8C8",true,()=>ChangeWidgetLayout(v=>{v.Insert(index+1,v[index].Copy());_widgetIndex=index+1;}));
+            Tool("WidgetRemove","移除组件","\uE74D",true,()=>ChangeWidgetLayout(v=>v.RemoveAt(index)));
+        }
+        else master.Children.Add(SettingCaption("从组件库添加第一个组件。"));
+        var tabs = Target("WidgetLibrary", "组件库与设置", new SelectorBar());
+        var library = new SelectorBarItem { Text="组件库" }; var properties=new SelectorBarItem { Text="组件设置",IsEnabled=sorted.Count>0 };
+        tabs.Items.Add(library); tabs.Items.Add(properties); tabs.SelectedItem = sorted.Count==0 || _widgetLibrary ? library : properties;
+        tabs.SelectionChanged+=(_,_)=>{ var show=tabs.SelectedItem==library; if(show==_widgetLibrary)return;CommitInputs();_widgetLibrary=show;RenderPage();}; inspector.Children.Add(tabs);
+        var pageBody=_body;
+        try
+        {
+            _body=inspector;
+            if (tabs.SelectedItem==library)
             {
-                FlushSlider();
-                Edit(s => { if (index < s.Widgets.Count) { s.Widgets = s.Widgets.OrderBy(w => w.Order).ToList(); s.Widgets.RemoveAt(index); Reindex(s.Widgets); } });
-            }));
-            Row("排列与移除", "", actions);
-            var type = settings.Widgets[display[index]].Type;
-            WidgetConfig Get(AppSettings s) => s.Widgets[display[index]];
+                foreach(var info in WidgetRegistry.Types)
+                {
+                    var button=ActionButton("WidgetAdd_"+info.Type,"添加"+info.DisplayName,()=>AppendSelected(info.Type));
+                    button.Content=new FontIcon{Glyph="\uE710",FontSize=14}; ToolTipService.SetToolTip(button,"添加"+info.DisplayName);
+                    var row=MakeSettingRow(info.DisplayName,info.Description,button); row.CanDrag=true;row.DragStarting+=(_,e)=>{e.AllowedOperations=DataPackageOperation.Copy;e.Data.SetData(WidgetTypeFormat,info.Type);};_body.Children.Add(row);
+                }
+            }
+            else
+            {
+                var index=_widgetIndex;
+                var destinations=rows.Select((_,i)=>$"第 {i+1} 行").Append("移到新的一行").ToArray();
+                Choice("WidgetRow", "所在行", destinations,
+                    s=>rows.IndexOf(WidgetConfig.InDisplayOrder(s.Widgets).ElementAt(index).Row),
+                    (s,value)=>
+                    {
+                        if (value < 0 || value > rows.Count) return;
+                        var moved = WidgetConfig.MoveToRowEnd(s.Widgets, sorted[index], value < rows.Count ? rows[value] : null);
+                        if (moved >= 0) { _widgetIndex = moved; _widgetShape = "!"; }
+                    });
+                WidgetProperties(index,sorted[index].Type);
+            }
+        }
+        finally{_body=pageBody;}
+        ActionRow("WidgetsReset", "恢复默认布局", "恢复默认", ConfirmWidgetReset);
+    }
+
+    private void WidgetProperties(int index, string type)
+    {
+            WidgetConfig Get(AppSettings s) => WidgetConfig.InDisplayOrder(s.Widgets).ElementAt(index);
             Switch("WidgetEnabled", "启用该组件", s => Get(s).IsEnabled, (s, v) => Get(s).IsEnabled = v);
+            Choice("WidgetDisplayWhen", "显示时段", ["始终显示", "仅上课时", "仅课间时", "仅活动时", "仅当天无课时"],
+                s => Enum.IsDefined(Get(s).DisplayWhen) ? (int)Get(s).DisplayWhen : 0, (s, v) => Get(s).DisplayWhen = (WidgetDisplayWhen)v);
             Scale("WidgetFontScale", "组件字号", .6, 2, .05, s => Get(s).FontScale, (s, v) => Get(s).FontScale = v, v => $"{v:0.00}×");
             switch (type)
             {
@@ -83,6 +174,10 @@ public sealed partial class NativeSettingsWindow
                     break;
                 case "schedule":
                     Switch("WidgetFade", "淡化上过的课程", s => Get(s).FadeCompletedClasses, (s, v) => Get(s).FadeCompletedClasses = v);
+                    Switch("WidgetHideFinished", "隐藏已结束的课程", s => Get(s).HideFinishedClass, (s, v) => Get(s).HideFinishedClass = v);
+                    Switch("WidgetCurrentOnly", "上课时只显示当前课程", s => Get(s).ShowCurrentLessonOnlyOnClass, (s, v) => Get(s).ShowCurrentLessonOnlyOnClass = v);
+                    Switch("WidgetTimeDetails", "显示剩余时间", s => Get(s).ShowTimeDetails, (s, v) => Get(s).ShowTimeDetails = v);
+                    Number("WidgetCountdownSeconds", "倒计时胶囊提前秒数", 0, 86400, s => Get(s).CountdownSeconds, (s, v) => Get(s).CountdownSeconds = v, "设为 0 不显示胶囊。");
                     Scale("WidgetSpacing", "课程表文本间距", .5, 1.5, .05, s => Get(s).ScheduleSpacing, (s, v) => Get(s).ScheduleSpacing = v, v => $"{v:0.00}×");
                     break;
                 case "nextclass":
@@ -94,19 +189,7 @@ public sealed partial class NativeSettingsWindow
                     Switch("WidgetCountdownAccent", "使用强调色", s => Get(s).UseCountdownAccent, (s, v) => Get(s).UseCountdownAccent = v);
                     break;
             }
-        }
-        else _body.Children.Add(Text("还没有组件，可从下方添加或恢复默认布局。"));
-        Section("组件库");
-        var library = Target("WidgetLibrary", "选择要添加的组件", new ComboBox { ItemsSource = WidgetRegistry.Types.Select(t => t.DisplayName).ToArray(), SelectedIndex = 0, MinWidth = 154 });
-        Row("选择组件", "同类组件可以多次添加。", library);
-        ActionRow("WidgetAdd", "添加到桌面课表", "添加组件", () =>
-        {
-            if (library.SelectedIndex < 0 || library.SelectedIndex >= WidgetRegistry.Types.Count) return;
-            FlushSlider();
-            var type = WidgetRegistry.Types[library.SelectedIndex].Type;
-            Edit(s => { s.Widgets = s.Widgets.OrderBy(w => w.Order).ToList(); Reindex(s.Widgets); _widgetIndex = s.Widgets.Count; s.Widgets.Add(new WidgetConfig { Type = type, Order = _widgetIndex }); });
-        });
-        ActionRow("WidgetsReset", "恢复默认布局", "恢复默认", ConfirmWidgetReset);
+            WidgetAppearance(Get);
     }
 
     private async void ConfirmWidgetReset()

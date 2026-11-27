@@ -57,6 +57,6 @@ public sealed class NextClassWidget : WidgetBase
 
         _text.Text = message;
         _text.FontSize = Size(14.5);
-        View.IsVisible = message.Length > 0;
+        SetContentVisible(message.Length > 0);
     }
 }

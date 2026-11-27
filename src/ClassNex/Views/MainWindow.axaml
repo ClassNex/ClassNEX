@@ -67,19 +67,10 @@
                                     Margin="16,0"
                                     MinWidth="20"
                                     Background="Transparent" ClipToBounds="True"
-                                    HorizontalAlignment="Center">
+                                    HorizontalAlignment="Center" VerticalAlignment="Center">
                                 <Border.RenderTransform>
                                     <TranslateTransform/>
                                 </Border.RenderTransform>
-                                <Border.Transitions>
-                                    <Transitions>
-                                        <DoubleTransition Property="Opacity" Duration="0:0:0.2">
-                                            <DoubleTransition.Easing>
-                                                <SineEaseIn/>
-                                            </DoubleTransition.Easing>
-                                        </DoubleTransition>
-                                    </Transitions>
-                                </Border.Transitions>
                                 <Grid>
                                     <ScrollViewer x:Name="WidgetViewport" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
                                         <StackPanel x:Name="WidgetHost" Orientation="Horizontal" Spacing="0"
@@ -123,7 +114,7 @@
                             </Border>
 
                             <Border x:Name="NotificationMaskShadow" ZIndex="1" IsHitTestVisible="False" HorizontalAlignment="Center"
-                                    Height="40" Width="{Binding #IslandBackground.Width}" CornerRadius="8" Opacity="0"
+                                    Height="{Binding #IslandBackground.Height}" Width="{Binding #IslandBackground.Width}" CornerRadius="8" Opacity="0"
                                     Background="{DynamicResource AccentFillColorDefaultBrush}">
                                 <Border.Transitions><Transitions><BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.1"/></Transitions></Border.Transitions>
                                 <Border.Styles>
@@ -145,14 +136,15 @@
                                     </Style>
                                 </Border.Styles>
                             </Border>
-                            <Border x:Name="NotificationMask" ZIndex="2" Height="40" CornerRadius="8"
+                            <Border x:Name="NotificationMask" ZIndex="2" Height="{Binding #IslandBackground.Height}" CornerRadius="8"
                                     HorizontalAlignment="Center" IsVisible="False" IsHitTestVisible="False" ClipToBounds="True"
                                     TextElement.Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
                                     Width="{Binding #IslandBackground.Width}">
                                 <Panel>
                                     <ctl:SlantedMaskControl x:Name="NotificationMaskBg" ClipToBounds="True" RegionDurationMs="360" StageStaggerMs="120"
                                                             Fill="{DynamicResource AccentFillColorDefaultBrush}"/>
-                                    <Border Padding="12 0">
+                                    <ScrollViewer x:Name="MaskTitleViewport" Padding="12 0" VerticalContentAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                                  HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled">
                                         <Border x:Name="NotificationMaskContent" RenderTransformOrigin="50%,50%">
                                             <Border.RenderTransform><TransformGroup><ScaleTransform/></TransformGroup></Border.RenderTransform>
                                             <StackPanel x:Name="NotificationMaskIcons" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
@@ -165,12 +157,12 @@
                                                 </Border>
                                             </StackPanel>
                                         </Border>
-                                    </Border>
+                                    </ScrollViewer>
                                 </Panel>
                             </Border>
 
                             <Border x:Name="NotificationOverlay"
-                                    Height="40"
+                                    Height="{Binding #IslandBackground.Height}"
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Center"
                                     IsVisible="False"
@@ -183,15 +175,6 @@
                                     <Style Selector="TextBlock">
                                         <Setter Property="FontSize" Value="{DynamicResource MainWindowBodyFontSize}"/>
                                         <Setter Property="FontWeight" Value="{Binding $parent[Control].(TextElement.FontWeight)}"/>
-                                    </Style>
-                                    <Style Selector="Border#NotificationOverlay.leaving">
-                                        <Setter Property="Transitions">
-                                            <Transitions>
-                                                <DoubleTransition Property="Opacity" Duration="0:0:0.2">
-                                                    <DoubleTransition.Easing><SineEaseIn/></DoubleTransition.Easing>
-                                                </DoubleTransition>
-                                            </Transitions>
-                                        </Setter>
                                     </Style>
                                 </Border.Styles>
                                 <Grid x:Name="NotificationDetailLayout" HorizontalAlignment="Center">
@@ -224,6 +207,9 @@
                                             </ProgressBar.Transitions>
                                         </ProgressBar>
                                     </Canvas>
+                                    <ScrollViewer x:Name="NotificationBodyViewport" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled"
+                                                  HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+                                    <Grid x:Name="NotificationPages">
                                     <Grid x:Name="NotificationCourseProvider" Margin="16 0">
                                         <Grid.Resources>
                                             <ResourceDictionary>
@@ -234,7 +220,7 @@
                                         </Grid.Resources>
                                         <ListBox x:Name="NotificationSlides" Theme="{StaticResource {x:Type ListBox}}" Classes="sliding" IsHitTestVisible="False" Focusable="False">
                                             <ListBoxItem FontSize="{DynamicResource MainWindowBodyFontSize}" Foreground="{DynamicResource TextFillColorPrimaryBrush}">
-                                                <Grid x:Name="NotificationOverlayCoursePage" ColumnDefinitions="*,*">
+                                                <Grid x:Name="NotificationOverlayCoursePage" ColumnDefinitions="Auto,Auto" HorizontalAlignment="Center" VerticalAlignment="Center">
                                                     <TextBlock x:Name="NotificationOverlayLeft" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="12 0">
                                                         <Run Text="距上课还剩" Classes="l-instructive"/>
                                                         <Run x:Name="NotificationSeconds" FontWeight="Bold"/>
@@ -245,12 +231,12 @@
                                                         <Run x:Name="NotificationBreakDuration" FontWeight="Bold"/>
                                                     </TextBlock>
                                                     <TextBlock x:Name="NotificationPlainCaption" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="12 0" IsVisible="False"/>
-                                                    <StackPanel x:Name="NotificationLesson" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Orientation="Horizontal" Margin="12 0">
+                                                    <WrapPanel x:Name="NotificationLesson" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Orientation="Horizontal" Margin="12 0">
                                                         <TextBlock x:Name="NotificationOverlayPrefix" VerticalAlignment="Center" Classes="l-instructive"/>
                                                         <TextBlock x:Name="NotificationOverlaySubject" VerticalAlignment="Center" FontWeight="Bold" FontSize="{DynamicResource MainWindowLargeFontSize}"/>
                                                         <TextBlock x:Name="NotificationOverlayTeacher" Margin="6 0 0 0" FontSize="{DynamicResource MainWindowSecondaryFontSize}" VerticalAlignment="Bottom" Classes="l-secondary"/>
                                                         <TextBlock x:Name="NotificationOverlayTime" Margin="2 0 0 0" FontSize="{DynamicResource MainWindowSecondaryFontSize}" VerticalAlignment="Bottom" Classes="l-secondary"/>
-                                                    </StackPanel>
+                                                    </WrapPanel>
                                                 </Grid>
                                             </ListBoxItem>
                                             <ListBoxItem FontSize="{DynamicResource MainWindowBodyFontSize}" Foreground="{DynamicResource TextFillColorPrimaryBrush}">
@@ -262,6 +248,8 @@
                                         <TextBlock x:Name="NotificationSimpleMessage" Margin="24 0" VerticalAlignment="Center" HorizontalAlignment="Center"
                                                    FontSize="{DynamicResource MainWindowBodyFontSize}" TextTrimming="CharacterEllipsis"/>
                                     </Grid>
+                                    </Grid>
+                                    </ScrollViewer>
                                 </Grid>
                             </Border>
 

@@ -21,7 +21,7 @@ public sealed partial class NativeSettingsWindow
 
     private void Section(string title) => _body.Children.Add(new TextBlock
     {
-        Text = title, FontSize = 20, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 12, 0, 2)
+        Text = title, FontSize = 16, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 16, 0, 4)
     });
 
     private T Target<T>(string id, string title, T element) where T : FrameworkElement
@@ -56,11 +56,11 @@ public sealed partial class NativeSettingsWindow
     private static Grid MakeSettingRow(string title, string detail, FrameworkElement editor, bool surface = true)
     {
         var grid = new Grid { ColumnSpacing = 16, HorizontalAlignment = HorizontalAlignment.Stretch,
-            MinHeight = surface ? 64 : 40, Padding = surface ? new Thickness(16, 10, 16, 10) : new Thickness(0, 3, 0, 3) };
+            MinHeight = surface ? SettingsCardHeight : 40, Padding = surface ? new Thickness(16, 12, 16, 12) : new Thickness(0, 3, 0, 3) };
         if (surface) grid.Style = SettingSurface;
         grid.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
-        grid.RowDefinitions.Add(new() { Height = GridLength.Auto });
+        grid.RowDefinitions.Add(new() { Height = new GridLength(1, GridUnitType.Star) });
         grid.RowDefinitions.Add(new() { Height = GridLength.Auto });
         var label = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Spacing = 2 };
         label.Children.Add(Text(title));
@@ -121,7 +121,7 @@ public sealed partial class NativeSettingsWindow
     }
 
     private void Row(string title, string detail, FrameworkElement editor) =>
-        _body.Children.Add(MakeSettingRow(title, detail, editor, CurrentPageKey != "home" && _currentExpander is null));
+        _body.Children.Add(MakeSettingRow(title, detail, editor, _currentExpander is null));
 
     private ToggleSwitch Switch(string id, string title, Func<AppSettings, bool> get, Action<AppSettings, bool> set, string detail = "")
     {
@@ -138,6 +138,12 @@ public sealed partial class NativeSettingsWindow
         _bindings.Add(s => { var i = Math.Clamp(get(s), 0, options.Length - 1); if (combo.SelectedIndex != i) combo.SelectedIndex = i; });
         combo.SelectionChanged += (_, _) => { if (!_refreshing && combo.SelectedIndex is var i && i >= 0 && get(_bridge.ReadSettings()) != i) Edit(s => set(s, i)); };
         Row(title, detail, combo);
+    }
+
+    private void ThemeChoice(string id, string title)
+    {
+        string[] modes = ["system", "light", "dark"];
+        Choice(id, title, ["跟随系统", "浅色", "深色"], s => Array.IndexOf(modes, s.ThemeMode), (s, i) => s.ThemeMode = modes[i]);
     }
 
     private void Scale(string id, string title, double min, double max, double step, Func<AppSettings, double> get,

@@ -20,7 +20,7 @@ public sealed class WidgetContext
     public required DateTime Now { get; init; }
 
     public string CountdownText { get; init; } = "";
-    public double ScheduleWidth { get; init; } = 560;
+    public double ScheduleWidth { get; set; } = 560;
 }
 
 public abstract class WidgetBase
@@ -46,29 +46,76 @@ public abstract class WidgetBase
 
     public Control View { get; protected set; } = new Panel();
 
-    private Control? _displayView;
-    internal Control DisplayView => _displayView ??= Config.Presentation is { } p ? Present(p) : View;
+    private Border? _wrapper;
+    private IDisposable? _visibility;
+    private WidgetPresentation? _appliedStyle;
+    private HorizontalAlignment _originalAlignment;
+    private double _surfaceOpacity;
+    private string? _surfaceTheme;
+    internal Control DisplayView => _wrapper ?? View;
+    private bool _hasContent = true;
+    internal bool AllowedInClassroom { get; private set; } = true;
 
-    private Control Present(WidgetPresentation style)
+    internal bool SetClassroomVisibility(bool allowed)
+    {
+        if (AllowedInClassroom == allowed) return false;
+        AllowedInClassroom = allowed;
+        View.IsVisible = allowed && _hasContent;
+        return true;
+    }
+
+    protected void SetContentVisible(bool present)
+    {
+        if (_hasContent == present) return;
+        _hasContent = present;
+        View.IsVisible = present && AllowedInClassroom;
+    }
+
+    internal void ApplyPresentation()
     {
         static double Limit(double input, double min, double max, double fallback = 0) => double.IsFinite(input) ? Math.Clamp(input, min, max) : fallback;
-        var wrapper = new Border { Child = View, Opacity = Limit(style.Opacity, 0, 1, 1), VerticalAlignment = VerticalAlignment.Center };
-        if (style.Width is { } fixedWidth) wrapper.Width = Limit(fixedWidth, 0, 4096);
-        else
+        var style = Config.Presentation;
+        var settings = AppServices.Settings;
+        var theme = Avalonia.Application.Current?.ActualThemeVariant.Key?.ToString();
+        if (Equals(_appliedStyle, style) && (style is null || (_surfaceOpacity == settings.BackgroundOpacity && _surfaceTheme == theme))) return;
+        _appliedStyle = style;
+        _surfaceOpacity = settings.BackgroundOpacity;
+        _surfaceTheme = theme;
+        if (style is null)
         {
-            if (style.MinWidth is { } min) wrapper.MinWidth = Limit(min, 0, 4096);
-            if (style.MaxWidth is { } max) wrapper.MaxWidth = Limit(max, wrapper.MinWidth, 4096, 4096);
+            if (_wrapper is null) return;
+            var parent = _wrapper.Parent as Panel;
+            var index = parent?.Children.IndexOf(_wrapper) ?? -1;
+            if (index >= 0) parent!.Children.RemoveAt(index);
+            _visibility?.Dispose(); _visibility = null;
+            _wrapper.Child = null; _wrapper = null;
+            View.HorizontalAlignment = _originalAlignment;
+            if (index >= 0) parent!.Children.Insert(index, View);
+            return;
         }
-        if (style.Alignment is not null) View.HorizontalAlignment = style.Alignment switch
-            { "left" => HorizontalAlignment.Left, "right" => HorizontalAlignment.Right, "center" => HorizontalAlignment.Center, _ => HorizontalAlignment.Stretch };
-        if (style.Margin is [var l, var t, var r, var b]) wrapper.Margin = new Thickness(Limit(l, -160, 512), Limit(t, -160, 512), Limit(r, -160, 512), Limit(b, -160, 512));
+        if (_wrapper is null)
+        {
+            var parent = View.Parent as Panel;
+            var index = parent?.Children.IndexOf(View) ?? -1;
+            if (index >= 0) parent!.Children.RemoveAt(index);
+            _originalAlignment = View.HorizontalAlignment;
+            _wrapper = new Border { Child = View, Tag = Config, ClipToBounds = true, VerticalAlignment = VerticalAlignment.Center };
+            _visibility = _wrapper.Bind(Visual.IsVisibleProperty, View.GetObservable(Visual.IsVisibleProperty));
+            if (index >= 0) parent!.Children.Insert(index, _wrapper);
+        }
+        var wrapper = _wrapper;
+        wrapper.Opacity = Limit(style.Opacity, 0, 1, 1);
+        wrapper.Width = style.Width is { } width ? Limit(width, 0, 4096) : double.NaN;
+        wrapper.MinWidth = style.Width is null && style.MinWidth is { } min ? Limit(min, 0, 4096) : 0;
+        wrapper.MaxWidth = style.Width is null && style.MaxWidth is { } max ? Limit(max, wrapper.MinWidth, 4096, 4096) : double.PositiveInfinity;
+        View.HorizontalAlignment = style.Alignment switch { "left" => HorizontalAlignment.Left, "center" => HorizontalAlignment.Center,
+            "right" => HorizontalAlignment.Right, "stretch" => HorizontalAlignment.Stretch, _ => _originalAlignment };
+        wrapper.Margin = style.Margin is [var l, var t, var r, var b] ? new Thickness(Limit(l, -160, 512), Limit(t, -160, 512), Limit(r, -160, 512), Limit(b, -160, 512)) : default;
         if (style.Background is { } text && Color.TryParse(text, out var color))
-            wrapper.Background = new SolidColorBrush(color, Limit(style.BackgroundOpacity ?? AppServices.Settings.BackgroundOpacity, 0, 1));
+            wrapper.Background = new SolidColorBrush(color, Limit(style.BackgroundOpacity ?? _surfaceOpacity, 0, 1));
         else if (style.BackgroundOpacity is { } opacity) wrapper.Background = CiPalette.WithOpacity(CiPalette.IslandSurfaceBrush(), Limit(opacity, 0, 1));
-        if (style.CornerRadius is { } radius) wrapper.CornerRadius = new CornerRadius(Limit(radius, 0, 512));
-        wrapper.ClipToBounds = true;
-        wrapper.Bind(Visual.IsVisibleProperty, View.GetObservable(Visual.IsVisibleProperty));
-        return wrapper;
+        else wrapper.Background = null;
+        wrapper.CornerRadius = style.CornerRadius is { } radius ? new CornerRadius(Limit(radius, 0, 512)) : default;
     }
 
     public abstract void Refresh(WidgetContext ctx);

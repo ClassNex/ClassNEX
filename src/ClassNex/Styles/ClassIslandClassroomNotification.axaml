@@ -11,13 +11,36 @@
             <x:Double x:Key="MainWindowSecondaryFontSize">14</x:Double>
             <x:Double x:Key="MainWindowEmphasizedFontSize">18</x:Double>
             <x:Double x:Key="MainWindowLargeFontSize">20</x:Double>
+            <ControlTheme x:Key="StationaryReminderSlide" TargetType="ListBoxItem">
+                <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                <Setter Property="Template">
+                    <ControlTemplate>
+                        <ContentPresenter Name="ContentPresenter" IsVisible="{TemplateBinding IsSelected}"
+                                          Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          HorizontalAlignment="Stretch"/>
+                    </ControlTemplate>
+                </Setter>
+            </ControlTheme>
         </ResourceDictionary>
     </Styles.Resources>
     <Style Selector="ListBoxItem TextBlock"><Setter Property="Margin" Value="0 0 0 -3"/></Style>
+    <Style Selector="Border#CardContent.reminder-fade">
+        <Setter Property="Transitions">
+            <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.2"><DoubleTransition.Easing><SineEaseIn/></DoubleTransition.Easing></DoubleTransition></Transitions>
+        </Setter>
+    </Style>
     <Style Selector="Border#IslandBackground.reminder-resize">
         <Setter Property="Transitions">
             <Transitions>
                 <DoubleTransition Property="Width" Duration="0:0:0.300" Easing="0.65, 0, 0.35, 1.0"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Border#IslandBackground.classroom-return">
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Width" Duration="0:0:0.300" Easing="0.65, 0, 0.35, 1.0"/>
+                <DoubleTransition Property="Height" Duration="0:0:0.300" Easing="0.65, 0, 0.35, 1.0"/>
             </Transitions>
         </Setter>
     </Style>

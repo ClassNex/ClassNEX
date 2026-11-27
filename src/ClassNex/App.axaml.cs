@@ -7,6 +7,7 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using ClassNex.Core.Abstractions;
+using ClassNex.Models;
 using ClassNex.Services;
 using ClassNex.Styles;
 using ClassNex.Views;
@@ -545,6 +546,14 @@ public partial class App : Application
         (Current as App)?._desktop?.OpenSettings(page);
     }
 
+    internal static void EditWidget(WidgetConfig config)
+    {
+        if (Current is not App app || app._desktop == null) return;
+        app._desktop.OpenSettings("widget-layout");
+        var index = WidgetConfig.InDisplayOrder(AppServices.Settings.Widgets).ToList().IndexOf(config);
+        if (index >= 0) app._desktop.Settings?.SelectWidget(index);
+    }
+
     public static void OpenProfileEditor(int tabIndex = 0)
     {
         if (Current is not App app)
@@ -744,7 +753,12 @@ public partial class App : Application
             new Views.TrayMenuWindow.Item("\uE19E", "加载课表…", () => _ = LoadTimetableFromMenuAsync()),
             new Views.TrayMenuWindow.Item("\uE24A", "换课…", () => OpenProfileEditor(3)),
             Views.TrayMenuWindow.Separator,
-            new Views.TrayMenuWindow.Item("\uE12C", "编辑主界面…", () => OpenSettings("widget-layout")),
+            new Views.TrayMenuWindow.Item("\uE12C", "编辑主界面…", () =>
+            {
+                if (_mainWindow is not { } overlay) return;
+                if (!overlay.IsVisible) ToggleMainWindow();
+                overlay.EnterEditMode();
+            }),
             new Views.TrayMenuWindow.Item("\uE154", "应用设置…", () => OpenSettings()),
             Views.TrayMenuWindow.Separator,
             new Views.TrayMenuWindow.Item("\uE412", "NEX Intelligence…", OpenNexChat,

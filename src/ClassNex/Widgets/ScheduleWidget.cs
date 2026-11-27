@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using ClassNex.Models;
+using ClassNex.Services;
 using ClassNex.Styles;
 
 namespace ClassNex.Widgets;
@@ -22,6 +23,10 @@ public sealed class ScheduleWidget : WidgetBase
     private string? _state;
     private List<CourseSlot>? _lastSlots;
     private (string Title, TimeSpan Start, TimeSpan End)? _current;
+    private bool _currentIsBreak;
+    private TodaySummary? _periodDay;
+    private IReadOnlyList<TemporaryTimeItem>? _periodTemplate;
+    private TimeSpan _periodFrom, _periodUntil;
     private CourseSlot? _next;
     private (double Font, double Spacing, bool Fade, int Width, bool OnlyCurrent, bool HideFinished, bool Details, int Seconds) _viewOptions;
     private TimeSpan _currentStart;
@@ -62,25 +67,38 @@ public sealed class ScheduleWidget : WidgetBase
     public override void Refresh(WidgetContext ctx)
     {
         var now = ctx.Now.TimeOfDay;
+        var day = ctx.Today;
 
-        if (ctx.Profile.Schedules.Count == 0 && ctx.Profile.Subjects.Count == 0)
+        if (ctx.Profile.Subjects.Count == 0 && !ctx.Profile.IsTimetableConfigured(DateOnly.FromDateTime(ctx.Now)))
         {
             ShowPlaceholder("import");
             return;
         }
 
-        if (ctx.Today.IsEmpty)
+        IReadOnlyList<TemporaryTimeItem> template = day.Current == null && !day.IsEmpty && !day.IndependentTimeLayout.HasValue
+            ? ctx.Settings.TimeLayout.GetClassroomPeriods() : Array.Empty<TemporaryTimeItem>();
+        var cur = _current;
+        var isBreak = _currentIsBreak;
+        if (_state != "day" || !ReferenceEquals(_periodDay, day) || !ReferenceEquals(_periodTemplate, template) || now < _periodFrom || now >= _periodUntil)
+        {
+            var period = WidgetClassroomPeriod.At(day, now, template, out cur);
+            isBreak = period.Kind is ClassTimeKind.Break or ClassTimeKind.Action;
+            _periodDay = day;
+            _periodTemplate = template;
+            _periodFrom = now;
+            _periodUntil = period.Until;
+        }
+        if (day.IsEmpty && cur is null)
         {
             ShowPlaceholder("empty");
             return;
         }
 
-        var slots = ctx.Today.Slots;
-        var cur = FindCurrent(slots, now);
+        var slots = day.Slots;
         var budget = double.IsFinite(ctx.ScheduleWidth) ? (int)Math.Max(100, Math.Floor(ctx.ScheduleWidth / 4) * 4) : 560;
         var options = (Config.FontScale, Config.ScheduleSpacing, Config.FadeCompletedClasses, budget,
             Config.ShowCurrentLessonOnlyOnClass, Config.HideFinishedClass, Config.ShowTimeDetails, Config.CountdownSeconds);
-        if (_state == "day" && _current == cur && _next == ctx.Today.Next && options == _viewOptions &&
+        if (_state == "day" && _current == cur && _currentIsBreak == isBreak && _next == day.Next && options == _viewOptions &&
             (_lastSlots == slots || _lastSlots is not null && slots.SequenceEqual(_lastSlots)))
         {
             if (cur is not null)
@@ -90,7 +108,8 @@ public sealed class ScheduleWidget : WidgetBase
 
         _state = "day";
         _current = cur;
-        _next = ctx.Today.Next;
+        _currentIsBreak = isBreak;
+        _next = day.Next;
         _lastSlots = slots;
         _viewOptions = options;
         ClearCurrent();
@@ -113,16 +132,13 @@ public sealed class ScheduleWidget : WidgetBase
         }
 #endif
 
-        for (var i = 0; i < slots.Count; i++)
+        var showInterlude = isBreak;
+        foreach (var slot in slots)
         {
-            var slot = slots[i];
-
-            if (i > 0)
+            if (showInterlude && slot.Start > now && cur is { } interlude)
             {
-                var gapStart = slots[i - 1].End;
-                var gapEnd = slot.Start;
-                if (gapEnd > gapStart && now >= gapStart && now < gapEnd)
-                    AddExpanded("课间休息", gapStart, gapEnd, now, isBreak: true);
+                AddExpanded(interlude.Title, interlude.Start, interlude.End, now, isBreak: true);
+                showInterlude = false;
             }
 
             var isCurrent = slot.Contains(now);
@@ -133,7 +149,9 @@ public sealed class ScheduleWidget : WidgetBase
             else if (!(isFinished && Config.HideFinishedClass) && !(Config.ShowCurrentLessonOnlyOnClass && ctx.Today.Current is not null))
                 _root.Children.Add(BuildMinimized(slot, isFinished));
         }
-        FitToViewport(slots, ctx.Today.Next, budget);
+        if (showInterlude && cur is { } finalInterlude)
+            AddExpanded(finalInterlude.Title, finalInterlude.Start, finalInterlude.End, now, isBreak: true);
+        FitToViewport(slots, day.Next, budget);
     }
 
     private void ShowPlaceholder(string state)
@@ -226,27 +244,6 @@ public sealed class ScheduleWidget : WidgetBase
             return TimeSpan.FromSeconds(45);
 #endif
         return end - now;
-    }
-
-    private (string Title, TimeSpan Start, TimeSpan End)? FindCurrent(
-        System.Collections.Generic.IReadOnlyList<CourseSlot> slots,
-        TimeSpan now)
-    {
-        for (var i = 0; i < slots.Count; i++)
-        {
-            if (i > 0)
-            {
-                var gapStart = slots[i - 1].End;
-                var gapEnd = slots[i].Start;
-                if (gapEnd > gapStart && now >= gapStart && now < gapEnd)
-                    return ("课间休息", gapStart, gapEnd);
-            }
-
-            if (slots[i].Contains(now))
-                return (slots[i].Subject, slots[i].Start, slots[i].End);
-        }
-
-        return null;
     }
 
     private void AddExpanded(string title, TimeSpan start, TimeSpan end, TimeSpan now, bool isBreak = false)
