@@ -20,26 +20,25 @@ public partial class MainWindow
     private double _pressScaling;
     private PixelPoint? _dragAnchor;
     private Screen? _dragScreen;
-    private bool _placementQueued, _suppressTap;
+    private bool _placementQueued;
     private bool _readingOverflow;
     private (PixelRect Island, int Radius, PixelRect? Toolbar, int ToolRadius)? _inputRegion;
 
-    private bool PassesPointerThrough => !LinePanel.IsHitTestVisible || (AppServices.Settings.IsClickThrough && !_editMode && !_readingOverflow);
+    private static double ClassroomHoverOpacity => double.IsFinite(AppServices.Settings.HoverOpacity)
+        ? Math.Clamp(AppServices.Settings.HoverOpacity, 0, 1) : 1;
+
+    private bool FadesOnHover => !_editMode && !_readingOverflow && !_nexPanelActive && ClassroomHoverOpacity < 1;
+
+    private bool PassesPointerThrough => !LinePanel.IsHitTestVisible ||
+        (!_editMode && !_readingOverflow && (AppServices.Settings.IsClickThrough || FadesOnHover));
 
     private void WirePlacement()
     {
         MaskTitleViewport.ScrollChanged += OnReminderScrollChanged;
         NotificationBodyViewport.ScrollChanged += OnReminderScrollChanged;
-        LinePanel.AddHandler(PointerPressedEvent, IslandPressed, RoutingStrategies.Bubble);
-        LinePanel.AddHandler(PointerMovedEvent, IslandMoved, RoutingStrategies.Bubble, true);
-        LinePanel.AddHandler(PointerReleasedEvent, IslandReleased, RoutingStrategies.Tunnel, true);
-        LinePanel.AddHandler(PointerCaptureLostEvent, (_, e) =>
-        {
-            if (e.Pointer == _placementPointer) FinishIslandDrag(false);
-        }, RoutingStrategies.Tunnel | RoutingStrategies.Direct, true);
         LinePanel.Tapped += (_, e) =>
         {
-            if (!CanUseGesture || _suppressTap) return;
+            if (!CanUseGesture) return;
             switch (TapTarget(e.Source))
             {
                 case "OverlayImportHint": App.OpenProfileEditor(0); break;
@@ -51,7 +50,7 @@ public partial class MainWindow
         };
         LinePanel.DoubleTapped += (_, e) =>
         {
-            if (!CanUseGesture || _suppressTap || TapTarget(e.Source) != null || IsButton(e.Source)) return;
+            if (!CanUseGesture || TapTarget(e.Source) != null || IsButton(e.Source)) return;
             App.OpenSettings();
             e.Handled = true;
         };
@@ -68,7 +67,8 @@ public partial class MainWindow
         EditBarHost.SizeChanged += (_, _) => QueuePlacement();
     }
 
-    private bool CanUseGesture => IsVisible && !_closed && !_editMode && !_showingNotification && !AppServices.Settings.IsClickThrough;
+    private bool CanUseGesture => IsVisible && !_closed && !_editMode && !_showingNotification && !PassesPointerThrough;
+    private bool CanPlaceIsland => IsVisible && !_closed && _editMode && !_showingNotification && !_nexPanelActive;
 
     private void OnReminderScrollChanged(object? sender, ScrollChangedEventArgs e)
     {
@@ -90,11 +90,8 @@ public partial class MainWindow
         if (reading == _readingOverflow) return;
         _readingOverflow = reading;
         if (_closed) return;
-        ApplyClickThrough();
-        if (IsVisible && GetIslandScreenRect() is { } bounds) UpdateInputRegion(new PixelRect(bounds.Position - Position, bounds.Size));
         ApplyMotionPreference();
         UpdateRunningState();
-        if (_hoverTimer.IsEnabled) UpdateHoverFade();
     }
 
     private static bool IsButton(object? source) => source is Visual visual && visual.GetSelfAndVisualAncestors().Any(v => v is Button or Thumb);
@@ -103,22 +100,20 @@ public partial class MainWindow
 
     private void IslandPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (!CanUseGesture || !e.Pointer.IsPrimary || IsButton(e.Source) || _placementPointer != null ||
+        if (!CanPlaceIsland || sender is not Control handle || !e.Pointer.IsPrimary || _placementPointer != null ||
             !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed || GetIslandScreenRect() is not { } bounds) return;
-        if (e.Pointer.Type == PointerType.Touch && (WidgetViewport.Extent.Width > WidgetViewport.Viewport.Width + 1 || WidgetViewport.Extent.Height > WidgetViewport.Viewport.Height + 1)) return;
-        _suppressTap = false;
         _pressPoint = this.PointToScreen(e.GetPosition(this));
-        if (!bounds.Contains(_pressPoint)) return;
         _pressIsland = bounds;
         _pressScaling = RenderScaling;
         _placementPointer = e.Pointer;
-        _captureOwner = e.Source as IInputElement ?? LinePanel;
-        e.Pointer.Capture(_captureOwner);
+        _captureOwner = handle;
+        e.Pointer.Capture(handle);
+        e.Handled = true;
     }
 
     private void IslandMoved(object? sender, PointerEventArgs e)
     {
-        if (e.Pointer != _placementPointer || !CanUseGesture) return;
+        if (e.Pointer != _placementPointer || !CanPlaceIsland) return;
         if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) { FinishIslandDrag(true); return; }
         var p = this.PointToScreen(e.GetPosition(this));
         var threshold = Math.Max(3, 4 * _pressScaling);
@@ -129,29 +124,28 @@ public partial class MainWindow
         var size = new PixelSize((int)Math.Round(_pressIsland.Width * ratio), (int)Math.Round(_pressIsland.Height * ratio));
         var desired = new PixelPoint(p.X - (int)Math.Round((_pressPoint.X - _pressIsland.X) * ratio), p.Y - (int)Math.Round((_pressPoint.Y - _pressIsland.Y) * ratio));
         _dragAnchor = ClampIsland(screen.WorkingArea, size, desired);
-        _suppressTap = true;
         EnforcePlacement();
         e.Handled = true;
     }
 
     private void IslandReleased(object? sender, PointerReleasedEventArgs e)
     {
-        if (e.Pointer != _placementPointer || e.InitialPressMouseButton != MouseButton.Left) return;
-        if (_dragAnchor != null) e.Handled = true;
+        if (e.Pointer != _placementPointer || (e.Pointer.Type == PointerType.Mouse && e.InitialPressMouseButton != MouseButton.Left)) return;
+        e.Handled = true;
         FinishIslandDrag(true);
     }
 
     private void FinishIslandDrag(bool save)
     {
         if (_placementPointer is not { } pointer) return;
-        var anchor = _dragAnchor;
+        var moved = _dragAnchor.HasValue;
+        var position = save && moved && IsVisible && !_closed ? GetIslandScreenRect()?.Position : null;
         var owner = _captureOwner;
         _captureOwner = null;
         _placementPointer = null; _dragAnchor = null; _dragScreen = null;
         if (ReferenceEquals(pointer.Captured, owner)) pointer.Capture(null);
-        if (anchor is not { } point) return;
-        if (save && !_closed && IsVisible) SavePlacement(point);
-        QueuePlacement();
+        if (position is { } point) SavePlacement(point);
+        if (moved) QueuePlacement();
     }
 
     internal void ResetPlacement()
@@ -244,23 +238,30 @@ public partial class MainWindow
             anchor = new(x + Math.Clamp(d.OffsetX, -area.Width, area.Width), y + Math.Clamp(d.OffsetY, -area.Height, area.Height));
         }
         var target = ClampIsland(area, island.Size, anchor);
+        if (GetEditToolbarScreenRect() is { } toolbar)
+        {
+            var editor = island.Union(toolbar);
+            var islandOffset = island.Position - editor.Position;
+            target = ClampIsland(area, editor.Size, target - islandOffset) + islandOffset;
+        }
         var offset = island.Position - Position;
         var origin = new PixelPoint(target.X - offset.X, target.Y - offset.Y);
         if (Position != origin) { Position = origin; _lastHoverPoint = null; }
         UpdateInputRegion(new PixelRect(offset, island.Size));
     }
 
+    private PixelRect? GetEditToolbarScreenRect()
+    {
+        if (!_editMode || !EditBarHost.IsVisible || EditBarHost.Bounds.Width <= 0 || EditBarHost.Bounds.Height <= 0) return null;
+        var start = EditBarHost.PointToScreen(default);
+        var end = EditBarHost.PointToScreen(new Point(EditBarHost.Bounds.Width, EditBarHost.Bounds.Height));
+        return new PixelRect(start.X, start.Y, Math.Max(1, end.X - start.X), Math.Max(1, end.Y - start.Y));
+    }
+
     private void UpdateInputRegion(PixelRect island)
     {
-        if (_hwnd == 0) return;
-        if (PassesPointerThrough) return;
-        PixelRect? toolbar = null;
-        if (_editMode && EditBarHost.IsVisible && EditBarHost.Bounds.Width > 0)
-        {
-            var start = EditBarHost.PointToScreen(default) - Position;
-            var end = EditBarHost.PointToScreen(new Point(EditBarHost.Bounds.Width, EditBarHost.Bounds.Height)) - Position;
-            toolbar = new PixelRect(start.X, start.Y, Math.Max(1, end.X - start.X), Math.Max(1, end.Y - start.Y));
-        }
+        if (_hwnd == 0 || PassesPointerThrough) return;
+        PixelRect? toolbar = GetEditToolbarScreenRect() is { } bar ? new PixelRect(bar.Position - Position, bar.Size) : null;
         var scale = Math.Clamp(ReminderScale, .4, 5) * RenderScaling;
         var radius = Math.Min(Math.Min(island.Width, island.Height) / 2, (int)Math.Round(IslandBackground.CornerRadius.TopLeft * scale));
         var region = (Island: island, Radius: radius, Toolbar: toolbar, ToolRadius: (int)Math.Round(12 * scale));

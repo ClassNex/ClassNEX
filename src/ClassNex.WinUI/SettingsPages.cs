@@ -98,7 +98,7 @@ public sealed partial class NativeSettingsWindow
         Choice("Orientation", "组件排列方向", ["横向", "纵向"], s => s.Orientation == LayoutOrientation.Vertical ? 1 : 0, (s, i) => s.Orientation = i == 1 ? LayoutOrientation.Vertical : LayoutOrientation.Horizontal);
         Switch("WindowVisible", "显示桌面课表", s => s.IsMainWindowVisible, (s, v) => s.IsMainWindowVisible = v);
         Switch("Topmost", "窗口置顶", s => s.Topmost, (s, v) => s.Topmost = v);
-        Switch("ClickThrough", "鼠标穿透", s => s.IsClickThrough, (s, v) => s.IsClickThrough = v, "点击直接落到桌面课表后面的窗口。");
+        Switch("ClickThrough", "鼠标穿透", s => s.IsClickThrough, (s, v) => s.IsClickThrough = v, "如需点击常态课表，请关闭此项，并将移入时不透明度设为 100%。");
         Scale("HoverOpacity", "鼠标移入时不透明度", .0, 1, .05, s => s.HoverOpacity, (s, v) => s.HoverOpacity = v, v => $"{v:P0}");
     }
 

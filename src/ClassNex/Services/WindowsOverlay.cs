@@ -4,20 +4,14 @@ using Avalonia;
 
 namespace ClassNex.Services;
 
-
-
-
-
-
-
 internal static class WindowsOverlay
 {
     private const int GwlExStyle = -20;
 
-    private const int WsExTransparent = 0x00000020; 
-    private const int WsExToolWindow = 0x00000080;  
-    private const int WsExLayered = 0x00080000;     
-    private const int WsExNoActivate = 0x08000000;  
+    private const int WsExTransparent = 0x00000020;
+    private const int WsExToolWindow = 0x00000080;
+    private const int WsExLayered = 0x00080000;
+    private const int WsExNoActivate = 0x08000000;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct Point
@@ -93,70 +87,24 @@ internal static class WindowsOverlay
             SetWindowLong32(hWnd, GwlExStyle, value.ToInt32());
     }
 
-    
-    public static void SetClickThrough(IntPtr hWnd, bool enabled, bool keepNonActivating = false)
+    private static void UpdateStyle(nint hWnd, int add, int remove)
     {
         if (!OperatingSystem.IsWindows() || hWnd == IntPtr.Zero)
             return;
-
-        try
-        {
-            var style = GetExStyle(hWnd).ToInt64();
-
-            if (enabled)
-                style |= WsExTransparent | WsExLayered | WsExNoActivate;
-            else
-                style &= ~(long)(WsExTransparent | WsExNoActivate);
-            if (keepNonActivating) style |= WsExNoActivate;
-
-            SetExStyle(hWnd, new IntPtr(style));
-        }
-        catch
-        {
-            
-        }
+        var current = GetExStyle(hWnd).ToInt64();
+        var style = (current & ~(long)remove) | (uint)add;
+        if (style != current) SetExStyle(hWnd, new IntPtr(style));
     }
 
-    
-    
-    
-    
-    
-    public static void SetToolWindow(IntPtr hWnd, bool enabled)
+    public static void SetClickThrough(nint hWnd, bool enabled, bool keepNonActivating = false)
     {
-        if (!OperatingSystem.IsWindows() || hWnd == IntPtr.Zero)
-            return;
-
-        try
-        {
-            var style = GetExStyle(hWnd).ToInt64();
-
-            if (enabled)
-                style |= WsExToolWindow;
-            else
-                style &= ~(long)WsExToolWindow;
-
-            SetExStyle(hWnd, new IntPtr(style));
-        }
-        catch
-        {
-            
-        }
+        if (enabled) UpdateStyle(hWnd, WsExTransparent | WsExLayered | WsExNoActivate, 0);
+        else UpdateStyle(hWnd, keepNonActivating ? WsExNoActivate : 0, WsExTransparent | WsExNoActivate);
     }
 
-    
-    public static (int X, int Y)? GetCursorPosition()
-    {
-        if (!OperatingSystem.IsWindows())
-            return null;
+    public static void SetToolWindow(nint hWnd, bool enabled) =>
+        UpdateStyle(hWnd, enabled ? WsExToolWindow : 0, enabled ? 0 : WsExToolWindow);
 
-        try
-        {
-            return GetCursorPos(out var p) ? (p.X, p.Y) : null;
-        }
-        catch
-        {
-            return null;
-        }
-    }
+    public static PixelPoint? GetCursorPosition() =>
+        OperatingSystem.IsWindows() && GetCursorPos(out var p) ? new PixelPoint(p.X, p.Y) : null;
 }

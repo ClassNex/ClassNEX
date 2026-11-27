@@ -47,13 +47,14 @@ internal sealed partial class NativeDesktop
             }
             var cleanDates = await Ui(() => !AppServices.Schedule.Profile.TemporarySchedules.ContainsKey(date) && !AppServices.Schedule.Profile.TemporarySchedules.ContainsKey(next));
             if (!cleanDates) throw new InvalidOperationException("Period review dates must be empty in the disposable classroom");
-            var clickThrough = await Ui(() => AppServices.Settings.IsClickThrough);
+            var pointerPreferences = await Ui(() => (AppServices.Settings.IsClickThrough, AppServices.Settings.HoverOpacity));
             try
             {
                 await Act("arrange-classroom-display-periods", () =>
                 {
                     schedules.Apply(teaching); schedules.Apply(new(next, "停课", []) { TimeLayout = [] });
                     AppServices.Settings.IsClickThrough = false;
+                    AppServices.Settings.HoverOpacity = 1;
                     AppServices.Settings.Widgets = [new() { Type = "date" }, clock, activity, dayOff];
                     AppServices.SaveSettings(); Settings.SelectWidget(1); Settings.NavigateTo("widget-layout");
                 });
@@ -97,7 +98,9 @@ internal sealed partial class NativeDesktop
                 {
                     window.ExitEditMode(); window.HideNexPanel(); window.HideNotificationMask(); Settings.NavigateTo("widgets");
                     schedules.Remove(date); schedules.Remove(next);
-                    AppServices.Settings.Widgets = original; AppServices.Settings.IsClickThrough = clickThrough; AppServices.SaveSettings(); return true;
+                    AppServices.Settings.Widgets = original;
+                    (AppServices.Settings.IsClickThrough, AppServices.Settings.HoverOpacity) = pointerPreferences;
+                    AppServices.SaveSettings(); return true;
                 });
             }
         }

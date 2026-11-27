@@ -51,7 +51,7 @@ public partial class MainWindow : Window
     private volatile bool _closed;
     private bool _showingNotification;
     private double _normalWidth;
-    private (int X, int Y)? _lastHoverPoint;
+    private PixelPoint? _lastHoverPoint;
     private int _refreshPosted;
 
 #if DEBUG
@@ -148,8 +148,14 @@ public partial class MainWindow : Window
     {
         _lastHoverPoint = null;
         if (IsVisible && !_closed) _timer.Start(); else _timer.Stop();
-        if (IsVisible && !_closed && !_editMode && !_readingOverflow && AppServices.Settings.HoverOpacity < 0.999) _hoverTimer.Start();
-        else { _hoverTimer.Stop(); HoverHost.Opacity = _hoverFadeTarget = 1; }
+        if (!_closed) ApplyClickThrough();
+        if (IsVisible && !_closed && LinePanel.IsHitTestVisible && FadesOnHover)
+            _hoverTimer.Start();
+        else
+        {
+            _hoverTimer.Stop();
+            SetHoverFadeTarget(1);
+        }
     }
 
     protected override void OnClosed(EventArgs e)
@@ -181,7 +187,7 @@ public partial class MainWindow : Window
         if (_closed) return;
         if (!Dispatcher.UIThread.CheckAccess()) { Dispatcher.UIThread.Post(ApplySettings); return; }
         var s = AppServices.Settings;
-        if (s.IsClickThrough || _editMode) FinishIslandDrag(false);
+        if (!CanPlaceIsland) FinishIslandDrag(false);
         SynchronizeWidgetInstances();
 
         Topmost = s.Topmost;
@@ -226,7 +232,6 @@ public partial class MainWindow : Window
             else if (!_overlayExiting) ArrangeNotification();
         }
 
-        ApplyClickThrough();
         UpdateRunningState();
         if (IsVisible) RefreshWidgets();
 
@@ -372,7 +377,7 @@ public partial class MainWindow : Window
         if (visible == LinePanel.IsHitTestVisible) return;
         LinePanel.Opacity = visible ? 1 : 0;
         LinePanel.IsHitTestVisible = visible;
-        ApplyClickThrough();
+        UpdateRunningState();
         QueuePlacement();
     }
 
@@ -491,7 +496,6 @@ public partial class MainWindow : Window
     {
         base.OnOpened(e);
         _hwnd = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
-        ApplyClickThrough();
         UpdateRunningState();
         QueuePlacement();
 
@@ -530,6 +534,7 @@ public partial class MainWindow : Window
         NexPanel.Opacity = 1;
         CardContent.IsVisible = false;
         FitIslandToActivePanel();
+        UpdateRunningState();
         if (AppServices.Settings.Topmost && _hwnd != IntPtr.Zero)
             SetWindowPos(_hwnd, HwndTopmost, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate);
     }
@@ -545,6 +550,7 @@ public partial class MainWindow : Window
         IslandBackground.Opacity = Math.Clamp(AppServices.Settings.BackgroundOpacity, 0, 1);
         FitIslandToActivePanel();
         UpdateReminderAvailability();
+        UpdateRunningState();
     }
 
     private void FitIslandToActivePanel()
@@ -623,52 +629,42 @@ public partial class MainWindow : Window
         if (_hwnd == IntPtr.Zero)
             _hwnd = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
 
-        WindowsOverlay.SetClickThrough(_hwnd, PassesPointerThrough, keepNonActivating: true);
-        if (PassesPointerThrough && _inputRegion != null && WindowsOverlay.SetInputRegion(_hwnd, null, 0, null, 0)) _inputRegion = null;
-
+        var through = PassesPointerThrough;
+        WindowsOverlay.SetClickThrough(_hwnd, through, keepNonActivating: true);
+        if (through)
+        {
+            if (_inputRegion != null && WindowsOverlay.SetInputRegion(_hwnd, null, 0, null, 0)) _inputRegion = null;
+        }
+        else if (IsVisible && GetIslandScreenRect() is { } bounds)
+            UpdateInputRegion(new PixelRect(bounds.Position - Position, bounds.Size));
         WindowsOverlay.SetToolWindow(_hwnd, true);
     }
 
     private void UpdateHoverFade()
     {
-        if (!IsVisible)
-        {
-            _hoverFadeTarget = 1.0;
-            HoverHost.Opacity = 1.0;
-            return;
-        }
+        if (WindowsOverlay.GetCursorPosition() is { } cursor) UpdateHoverFadeAt(cursor);
+    }
 
-        var cursor = WindowsOverlay.GetCursorPosition();
-        if (cursor is null || Bounds.Width <= 0 || Bounds.Height <= 0)
-            return;
-        if (_lastHoverPoint == cursor) return;
+    internal void UpdateHoverFadeAt(PixelPoint cursor)
+    {
+        if (!_hoverTimer.IsEnabled || _lastHoverPoint == cursor || IslandBackground.Bounds.Width <= 0 ||
+            IslandBackground.Bounds.Height <= 0 || GetIslandScreenRect() is not { } island) return;
         _lastHoverPoint = cursor;
-
-        var islandTopLeft = IslandBackground.PointToScreen(new Point(0, 0));
-        var islandBottomRight = IslandBackground.PointToScreen(
-            new Point(IslandBackground.Bounds.Width, IslandBackground.Bounds.Height));
-
-        var left = islandTopLeft.X;
-        var top = islandTopLeft.Y;
-        var right = islandBottomRight.X;
-        var bottom = islandBottomRight.Y;
 
 #if DEBUG
         if (VerifyLayout)
         {
-            _hoverDebugRect = $"{left},{top}..{right},{bottom}";
-            _hoverDebugCursor = $"{cursor.Value.X},{cursor.Value.Y}";
+            _hoverDebugRect = $"{island.X},{island.Y}..{island.Right},{island.Bottom}";
+            _hoverDebugCursor = $"{cursor.X},{cursor.Y}";
         }
 #endif
 
-        var hovered = cursor.Value.X >= left && cursor.Value.X <= right
-                      && cursor.Value.Y >= top && cursor.Value.Y <= bottom;
+        SetHoverFadeTarget(island.ContainsExclusive(cursor) ? ClassroomHoverOpacity : 1);
+    }
 
-        var target = hovered && !_editMode
-            ? Math.Clamp(AppServices.Settings.HoverOpacity, 0.0, 1.0)
-            : 1.0;
-
-        if (Math.Abs(_hoverFadeTarget - target) > 0.001)
+    private void SetHoverFadeTarget(double target)
+    {
+        if (_hoverFadeTarget != target)
         {
             _hoverFadeTarget = target;
             HoverHost.Opacity = target;

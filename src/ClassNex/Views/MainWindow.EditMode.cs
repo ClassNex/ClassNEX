@@ -42,6 +42,7 @@ public partial class MainWindow
         if (!_editMode)
             return;
 
+        FinishIslandDrag(false);
         _editMode = false;
         EditBarHost.Children.Clear();
         UpdateReminderAvailability();
@@ -281,6 +282,24 @@ public partial class MainWindow
     private void BuildEditBar()
     {
         var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+
+        var move = new Border
+        {
+            Name = "MoveIslandHandle", Width = 32, MinHeight = 32, CornerRadius = new CornerRadius(6),
+            Background = CiPalette.ChipSurfaceBrush(), Cursor = new Cursor(StandardCursorType.SizeAll),
+            Child = new TextBlock
+            {
+                Text = "\uE121", FontFamily = ApplicationLucide, FontSize = 16, Foreground = CiPalette.PrimaryTextBrush(),
+                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+            },
+        };
+        ToolTip.SetTip(move, "拖动主界面");
+        Avalonia.Automation.AutomationProperties.SetName(move, "拖动主界面");
+        move.PointerPressed += IslandPressed;
+        move.PointerMoved += IslandMoved;
+        move.PointerReleased += IslandReleased;
+        move.PointerCaptureLost += (_, e) => { if (e.Pointer == _placementPointer) FinishIslandDrag(false); };
+        row.Children.Add(move);
 
         row.Children.Add(BuildAddComponentButton(compact: false));
 
