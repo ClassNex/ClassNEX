@@ -8,25 +8,30 @@ using Avalonia.Threading;
 using ClassNex.Models;
 using ClassNex.Services;
 
-internal static class Program
+internal static partial class Program
 {
     private static void Check(bool condition, string reason) { if (!condition) throw new InvalidOperationException(reason); }
 
     [STAThread]
     private static int Main(string[] args)
     {
+        if (args is ["--legacy-pdb", var pdb]) return DescribeLegacyPdb(pdb);
+        var legacy = args is [_, _, "old-settings" or "old-timetable" or "old-settings-boundary" or "old-settings-reopen" or "old-timetable-reopen" or "old-settings-boundary-reopen"] ? args[2] : null;
+        var reopen = legacy?.EndsWith("-reopen", StringComparison.Ordinal) == true;
         var root = new DirectoryInfo(Path.Combine(AppContext.BaseDirectory, ".."));
         var parent = root.Parent;
-        Check(args.Length == 2 && root.Name == "paired-desktop" && parent?.Name.StartsWith("classnex-central-test-", StringComparison.Ordinal) == true &&
+        Check((args.Length == 2 || legacy != null) && root.Name == "paired-desktop" && parent?.Name.StartsWith("classnex-central-test-", StringComparison.Ordinal) == true &&
             string.Equals(parent.Parent?.FullName, Path.TrimEndingDirectorySeparator(Path.GetTempPath()), StringComparison.OrdinalIgnoreCase) &&
-            !Directory.Exists(SettingsService.DataDirectory) && new[] { root, parent, new DirectoryInfo(AppContext.BaseDirectory) }.All(d => !d.Attributes.HasFlag(FileAttributes.ReparsePoint)), "Requires a new disposable pairing fixture");
+            new[] { root, parent, new DirectoryInfo(AppContext.BaseDirectory) }.All(d => !d.Attributes.HasFlag(FileAttributes.ReparsePoint)), "Requires a disposable pairing fixture");
+        Check(reopen ? new DirectoryInfo(SettingsService.DataDirectory) is { Exists: true } d && !d.Attributes.HasFlag(FileAttributes.ReparsePoint) &&
+            File.ReadAllText(Path.Combine(root.FullName, ".legacy-binary-fixture")) == legacy![..^7] : !Directory.Exists(SettingsService.DataDirectory), "Requires a new fixture or its own verified previous phase");
         var host = Local(args[0]); var issuer = Local(args[1]);
         AppBuilder.Configure<Application>().UseHeadless(new AvaloniaHeadlessPlatformOptions()).SetupWithoutStarting();
         using var stop = new CancellationTokenSource();
         var exit = 1;
         Dispatcher.UIThread.Post(async () =>
         {
-            try { await Verify(host, issuer); exit = 0; }
+            try { if (legacy == null) await Verify(host, issuer); else await VerifyLegacyBinary(host, legacy, reopen); exit = 0; }
             catch (Exception error) { Console.Error.WriteLine(error); }
             finally { stop.Cancel(); }
         });

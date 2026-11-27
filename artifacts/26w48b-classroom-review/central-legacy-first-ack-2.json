@@ -1,0 +1,66 @@
+{
+  "sha256": {
+    "ClassNex.Central.dll": "0a9d9e406cef94716d0f6b25f56233b0d05dadb5a9287d74bbe927cc8ea27540",
+    "ClassNex.Core.dll": "04ad7319caa4c5e4ec41c9297275f74eda31e05b08adbe295333f509283dab99",
+    "YamlDotNet.dll": "86f873f682c619a0c24e263dcdd15fe027104666641c92f503516671d61edda6",
+    "wwwroot/index.html": "38387cd941c77eb608de4112c55e31f68f938ad74742b362cec18a1df07b70be",
+    "wwwroot/control.css": "0932dd42fe7c3b75cc1022ed8a55ff3d5443f7270b331e131716696e15d4da04"
+  },
+  "gitSource": "7dd4ddba1a7c8283e42c6b08d712d501ec0c7afc",
+  "pdb": {
+    "ClassNex.Central": {
+      "version": "1.0.0+803b86a5c41c7c6a111da84541617c77e7ed5ee4",
+      "documentsChecked": 6,
+      "different": []
+    },
+    "ClassNex.Core": {
+      "version": "0.26.0-alpha.1+803b86a5c41c7c6a111da84541617c77e7ed5ee4",
+      "documentsChecked": 4,
+      "different": []
+    }
+  },
+  "portalMatchesGit": {
+    "wwwroot/index.html": true,
+    "wwwroot/control.css": true
+  },
+  "checkoutHeadAtVerification": "d9ae33717160bc2d5e23dabd1eda64ce28c30d4e",
+  "desktopAssemblySha256": "cc0276cc53c33fc85706eab0d99539e0b111cec77bbd73798bb227718774fb7c",
+  "scenarios": [
+    {
+      "direction": "old-settings-boundary",
+      "headlessPortal": "real packaged form",
+      "portalWrites": [
+        "pair",
+        "timetable"
+      ],
+      "serverPreservedPendingResource": true,
+      "first": {
+        "stage": "verified",
+        "newProcess": false,
+        "Assignments": 4,
+        "CleanReports": 1,
+        "InitialPayloads": 1,
+        "FullPublishes": 0,
+        "ConditionalPublishes": 0,
+        "PendingReports": 1,
+        "PendingFullReports": 0,
+        "PendingDraftReports": 0,
+        "pendingResources": 1
+      },
+      "reopened": {
+        "stage": "verified",
+        "newProcess": true,
+        "Assignments": 2,
+        "CleanReports": 0,
+        "InitialPayloads": 0,
+        "FullPublishes": 0,
+        "ConditionalPublishes": 0,
+        "PendingReports": 1,
+        "PendingFullReports": 0,
+        "PendingDraftReports": 0,
+        "pendingResources": 1
+      }
+    }
+  ],
+  "passed": true
+}

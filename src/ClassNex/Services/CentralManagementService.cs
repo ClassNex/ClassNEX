@@ -120,7 +120,7 @@ public sealed partial class CentralManagementService : IDisposable
                 {
                     await ReceiveUneditedAsync(config, management, generation, localVersion, cancellationToken);
                     if (ShouldReport() && generation == Volatile.Read(ref _connectionGeneration))
-                        await ReportAsync(accessToken, null, cancellationToken, presenceOnly: true);
+                        await ReportAsync(accessToken, generation, cancellationToken);
                     return;
                 }
                 foreach (var edit in _journal.Snapshot()) KeepConflict(management, edit);
@@ -136,7 +136,7 @@ public sealed partial class CentralManagementService : IDisposable
                 management.LastSyncTime = DateTime.Now;
                 SetStatus("已连接，等待集控端分配班级" + DraftNotice(management));
                 if (classWasAssigned || ShouldReport())
-                    await ReportAsync(accessToken, null, cancellationToken);
+                    await ReportAsync(accessToken, generation, cancellationToken);
                 return;
             }
 
@@ -146,7 +146,8 @@ public sealed partial class CentralManagementService : IDisposable
                 StringComparison.Ordinal);
             var applied = false;
             var hasSettings = !string.IsNullOrWhiteSpace(config.SettingsJson);
-            if ((hasSettings || !string.IsNullOrWhiteSpace(config.TimetableYaml)) &&
+            var hasTimetable = !string.IsNullOrWhiteSpace(config.TimetableYaml);
+            if ((hasSettings || hasTimetable) &&
                 (classChanged || config.Revision > management.AppliedRevision || Volatile.Read(ref _forcePull) != 0))
             {
                 var current = await Dispatcher.UIThread.InvokeAsync(() => CentralSettingsPayload.Serialize(AppServices.Settings));
@@ -172,8 +173,9 @@ public sealed partial class CentralManagementService : IDisposable
             if (!BindDrafts(management)) return;
             management.LastSyncTime = DateTime.Now;
             SetStatus($"已同步 · {management.SelectedClassName} · 修订 {management.AppliedRevision}" + DraftNotice(management));
-            if (applied || ShouldReport())
-                await ReportAsync(accessToken, null, cancellationToken);
+            if (classChanged || applied || ShouldReport())
+                await ReportAsync(accessToken, generation, cancellationToken,
+                    initial: hasSettings && hasTimetable ? null : config, observedVersion: localVersion);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (UnauthorizedAccessException) when (Paired(AppServices.Settings.CentralManagement)) { ExpireBinding(generation); }
@@ -185,10 +187,7 @@ public sealed partial class CentralManagementService : IDisposable
             {
                 try
                 {
-                    await ReportAsync(
-                        RequireAccessToken(),
-                        ex.Message,
-                        cancellationToken, presenceOnly: IsDirty);
+                    await ReportAsync(RequireAccessToken(), generation, cancellationToken, error: ex.Message);
                 }
                 catch
                 {
@@ -257,29 +256,33 @@ public sealed partial class CentralManagementService : IDisposable
 
     private async Task ReportAsync(
         string accessToken,
-        string? error,
+        int generation,
         CancellationToken cancellationToken,
-        bool presenceOnly = false)
+        string? error = null,
+        CentralConfigEnvelope? initial = null,
+        long observedVersion = 0)
     {
         var management = AppServices.Settings.CentralManagement;
-        if (string.IsNullOrWhiteSpace(accessToken) ||
-            string.IsNullOrWhiteSpace(management.ClientId))
-            return;
+        var clientId = management.ClientId;
+        var server = management.ServerUrl;
+        bool Connected() => !cancellationToken.IsCancellationRequested && management.IsEnabled &&
+            generation == Volatile.Read(ref _connectionGeneration) && management.ClientId == clientId && management.ServerUrl == server;
+        bool CanSeed() => Connected() && initial?.ClassId == management.SelectedClassId &&
+            observedVersion == Volatile.Read(ref _localVersion) && !IsDirty;
+        if (string.IsNullOrWhiteSpace(accessToken) || string.IsNullOrWhiteSpace(clientId) || !Connected()) return;
 
-        var timetable = !presenceOnly && File.Exists(AppServices.TimetablePath)
-            ? await File.ReadAllTextAsync(AppServices.TimetablePath, cancellationToken)
-            : "";
-        await _client.ReportAsync(
-            management.ServerUrl,
-            accessToken,
-            new CentralReportRequest(
-                management.ClientId,
-                AppServices.ProductVersion,
-                Environment.MachineName,
-                presenceOnly ? "" : await Dispatcher.UIThread.InvokeAsync(() => CentralSettingsPayload.Serialize(AppServices.Settings)),
-                timetable,
-                error),
-            cancellationToken);
+        var report = new CentralReportRequest(clientId, AppServices.ProductVersion, Environment.MachineName, "", "", error);
+        if (initial != null && CanSeed())
+        {
+            var (settings, path) = await Dispatcher.UIThread.InvokeAsync(() => CanSeed()
+                ? (string.IsNullOrWhiteSpace(initial.SettingsJson) ? CentralSettingsPayload.Serialize(AppServices.Settings) : "",
+                   string.IsNullOrWhiteSpace(initial.TimetableYaml) ? AppServices.TimetablePath : "")
+                : ("", ""));
+            var timetable = File.Exists(path) ? await File.ReadAllTextAsync(path, cancellationToken) : "";
+            if (CanSeed()) report = report with { SettingsJson = settings, TimetableYaml = timetable };
+        }
+        if (!Connected()) return;
+        await _client.ReportAsync(server, accessToken, report, cancellationToken);
         _lastReportAt = DateTime.UtcNow;
     }
 
