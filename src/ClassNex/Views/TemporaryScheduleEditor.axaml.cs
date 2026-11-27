@@ -113,9 +113,9 @@ public partial class TemporaryScheduleEditor : UserControl
         if (IsEdited) _drafts[date] = Snapshot(); else _drafts.Remove(date);
     }
 
-    internal void RenameDraftSubject(string from, string to)
+    internal void RenameDraftSubject(ScheduleProfile profile, string from, string to)
     {
-        if (_profile is null || _profile.FindSubject(to) is null) return;
+        if (!ReferenceEquals(_profile, profile)) return;
         RememberDraft();
         foreach (var draft in _drafts.Values)
             foreach (var row in draft.Rows)

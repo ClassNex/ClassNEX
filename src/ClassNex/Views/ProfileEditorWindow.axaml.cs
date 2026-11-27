@@ -239,9 +239,9 @@ public partial class ProfileEditorWindow : AppWindow
         AddSubjectButton.Click += async (_, _) => { if (!HasSubjectDraft || await ConfirmSubjectDiscardAsync()) AddSubject(); };
         DeleteSubjectButton.Click += async (_, _) => { if (!HasSubjectDraft || await ConfirmSubjectDiscardAsync()) DeleteSubject(); };
         SaveSubjectsButton.Click += OnSaveNow;
-        SubjectNameBox.TextChanged += (_, _) => UpdateSubjectSaveState();
-        SubjectSimplifiedBox.TextChanged += (_, _) => UpdateSubjectSaveState();
-        SubjectTeacherBox.TextChanged += (_, _) => UpdateSubjectSaveState();
+        SubjectNameBox.TextChanging += (_, _) => UpdateSubjectSaveState();
+        SubjectSimplifiedBox.TextChanging += (_, _) => UpdateSubjectSaveState();
+        SubjectTeacherBox.TextChanging += (_, _) => UpdateSubjectSaveState();
         OutdoorCheck.IsCheckedChanged += (_, _) => UpdateSubjectSaveState();
 
         OpenButton.Click += OnOpenTimetable;
@@ -367,7 +367,7 @@ public partial class ProfileEditorWindow : AppWindow
                 if (_pageIndex != 3) SelectTab(2);
                 return;
             }
-            if (subject.Name != originalName) PageSwap.RenameDraftSubject(originalName, subject.Name);
+            if (subject.Name != originalName) PageSwap.RenameDraftSubject(AppServices.Schedule.Profile, originalName, subject.Name);
             SelectSubjectRow(subject);
             RefreshSubjectNames();
             RefreshPalette();
