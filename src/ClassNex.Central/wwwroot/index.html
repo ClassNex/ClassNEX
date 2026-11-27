@@ -12,9 +12,14 @@
 <div id="loginScreen" class="login-screen">
   <section class="login-card">
     <h1>ClassNEX 集控</h1>
-    <p>在这里连接教室设备、调整显示设置和编排课表。首次连接只需要教室端显示的配对码。</p>
-    <a class="button primary" href="auth/login">使用 ClassNEX ID 登录</a>
+    <p id="loginIntro">在这里连接教室设备、调整显示设置和编排课表。首次连接只需要教室端显示的配对码。</p>
+    <a id="loginLink" class="button primary" href="auth/login">使用 ClassNEX ID 登录</a>
     <p class="small" id="loginStatus" role="status">可在账户登录页选择 STCN 登录。</p>
+    <div id="sessionActions" hidden>
+      <a id="renewSessionLink" class="button primary" href="auth/login" target="_blank" rel="noopener noreferrer">在新标签页登录</a>
+      <button id="checkSessionButton" type="button">检查登录状态</button>
+      <button id="discardSessionButton" type="button" class="subtle">放弃草稿并重新打开</button>
+    </div>
   </section>
 </div>
 
@@ -87,7 +92,7 @@
             <div class="page-actions"><button id="deviceRefresh">刷新设备</button></div>
           </div>
           <section class="pair-panel" aria-labelledby="pairTitle">
-            <div><h2 id="pairTitle">配对一台设备</h2><p class="settings-desc" id="pairHelp">在教室端打开「集控管理」，将屏幕上的 8 位配对码填在这里。</p></div>
+            <div><h2 id="pairTitle">配对一台设备</h2><p class="settings-desc" id="pairHelp">教室端「集控与自动化」→「获取配对码」，在此填入 8 位码。</p></div>
             <form id="pairForm"><input id="pairCode" aria-label="设备配对码" aria-describedby="pairHelp" placeholder="XXXX-XXXX" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" required><select id="pairClass" aria-label="配对到班级"><option value="">新建班级，沿用教室课表</option></select><button id="pairButton" class="primary">配对设备</button></form>
             <div id="pairStatus" class="status-line" role="status"></div>
           </section>
@@ -134,6 +139,10 @@
             <button id="deleteSettingsClass" class="danger" disabled>删除班级</button>
             <span id="settingsClassMeta" class="muted small"></span>
           </div>
+          <div id="settingsConflict" class="class-picker sync-conflict" role="group" aria-label="应用设置同步冲突" hidden>
+            <p class="settings-desc sync-conflict-note"></p>
+            <div class="options-actions"><button type="button" class="primary" data-conflict-choice="server">采用服务器版本</button><button type="button" data-conflict-choice="local">保留本页版本</button></div>
+          </div>
           <div class="example-label">客户端功能分组</div>
           <div id="settingsForm" class="settings-form wide"></div>
           <div id="settingsStatus" role="status" class="status-line card-status">选择班级后可编辑设置</div>
@@ -155,6 +164,10 @@
             <button id="createArchiveClass">创建班级</button>
             <button id="deleteArchiveClass" class="danger" disabled>删除班级</button>
             <span id="archiveClassMeta" class="muted small"></span>
+          </div>
+          <div id="archiveConflict" class="class-picker sync-conflict" role="group" aria-label="课表同步冲突" hidden>
+            <p class="settings-desc sync-conflict-note"></p>
+            <div class="options-actions"><button type="button" class="primary" data-conflict-choice="server">采用服务器版本</button><button type="button" data-conflict-choice="local">保留本页版本</button></div>
           </div>
           <div class="example-label">课表与科目</div>
           <div class="archive-panel">
@@ -179,7 +192,7 @@
               </aside>
               <div>
                 <div class="timetable-scroll">
-                  <table id="timetableTable" class="timetable-table"></table>
+                  <table id="timetableTable" class="timetable-table" aria-label="班级课表"></table>
                 </div>
                 <div class="timetable-hint">节次时间可直接修改。单周或双周编辑时会先复制每周课表作为基础，再保存该周次的差异。</div>
               </div>
@@ -207,20 +220,33 @@
 <div id="toast" class="toast" role="status"></div>
 
 <script>
-const state={user:null,classes:[],devices:[],selectedClassId:"",selectedDeviceId:"",page:"devices",query:"",settings:null,timetable:null,classRevision:0,editorDirty:false,classRefreshBusy:false,week:"all",selectedSubject:"",timeSlots:[]};
+const state={user:null,classes:[],devices:[],selectedClassId:"",selectedDeviceId:"",page:"devices",query:"",settings:null,timetable:null,classRefreshBusy:false,pairing:false,week:"all",selectedSubject:"",timeSlots:[]};
+const resourceKinds=["settings","timetable"], observed=new Map(), drafts=new Map();
+const authPath="/api/v1/auth/me", browserSession={blocked:false,epoch:0,check:null};
+const resourceKey=(id,kind)=>`${id}/${kind}`;
+const draftFor=(kind,id=state.selectedClassId)=>drafts.get(resourceKey(id,kind));
+const classUrl=id=>`/api/v1/classes/${encodeURIComponent(id)}`;
 const $=id=>document.getElementById(id);
 const appBase=(document.getElementById("appBase")?.getAttribute("href")||"/").replace(/\/$/,"");
+const sessionChannel=typeof BroadcastChannel==="function"?new BroadcastChannel("classnex-control-"+appBase):null;
 const appPath=path=>path.startsWith("/")?appBase+path:path;
 const api=async(path,options={})=>{
-  const response=await fetch(appPath(path),{...options,headers:{"Content-Type":"application/json",...(options.headers||{})}});
-  if(response.status===401){showLogin();throw new Error("请登录 ClassNEX ID")}
+  const account=path===authPath?null:state.user?.accountKey;
+  const epoch=browserSession.epoch;
+  const isCurrent=()=>!account||(!browserSession.blocked&&epoch===browserSession.epoch&&account===state.user?.accountKey);
+  if(!isCurrent())throw new Error("当前会话的同步已暂停。");
+  const response=await fetch(appPath(path),{...options,headers:{"Content-Type":"application/json",...options.headers,...(account?{"X-ClassNex-Account":account}:{})}});
+  const text=response.status===204?"":await response.text();
+  if(!isCurrent())throw new Error("当前会话的同步已暂停。");
+  if(response.status===401&&account){blockSession();void checkSession()}
   if(response.status===204)return null;
-  const text=await response.text();
   if(response.status===429)throw new Error("尝试次数过多，请稍后再试。");
   if(!response.ok){
     let message=text;
     try{message=JSON.parse(text).message||text}catch{}
-    throw new Error(message && !message.trim().startsWith("<") ? message : `请求失败（HTTP ${response.status}）`)
+    const error=new Error(response.status===401?"请登录 ClassNEX ID":message && !message.trim().startsWith("<") ? message : `请求失败（HTTP ${response.status}）`);
+    error.status=response.status;
+    throw error;
   }
   return text?JSON.parse(text):null;
 };
@@ -230,6 +256,7 @@ const initials=value=>String(value||"C").trim().slice(0,1).toUpperCase();
 const timeText=value=>value?new Date(value).toLocaleString():"尚未连接";
 let toastTimer=0;
 const showToast=(text,error=false)=>{
+  if(browserSession.blocked)return;
   const box=$("toast");box.textContent=text;box.className="toast show"+(error?" error":"");
   clearTimeout(toastTimer);toastTimer=setTimeout(()=>box.className="toast",3200);
 };
@@ -266,6 +293,12 @@ const normalizeCaseDuplicates=value=>{
   }
   return result;
 };
+const localSettingKeys=new Set([
+  "nexapikey","nexpermission","nexapibaseurl","nexmodel","nexsystemprompt",
+  "accountclientid","accountendpoint","email","username","isoobecompleted",
+  "timetablepath","centralmanagement","isdebugoptionsenabled","uselocalremindersound"
+]);
+const classroomSettings=value=>Object.fromEntries(Object.entries(value??{}).filter(([key])=>!localSettingKeys.has(key.toLowerCase())));
 const settingsGroups=[
   {
     title:"外观与缩放",
@@ -333,12 +366,7 @@ const settingsGroups=[
       {key:"IsNexIntelligenceEnabled",label:"启用 NEX",description:"启用内置智能助手。",kind:"toggle",fallback:true},
       {key:"IsNexVoiceWakeEnabled",label:"语音唤醒",description:"允许通过唤醒词启动 NEX。",kind:"toggle",fallback:true},
       {key:"IsNexEdgeBarEnabled",label:"屏幕边缘唤醒",description:"显示屏幕边缘的 NEX 唤醒条。",kind:"toggle",fallback:true},
-      {key:"NexEdgeBarSide",label:"唤醒条位置",description:"选择边缘唤醒条所在的一侧。",kind:"select",fallback:"right",options:[{value:"left",label:"左侧"},{value:"right",label:"右侧"}]},
-      {key:"NexPermission",label:"工具权限",description:"限制 NEX 可以执行的本地操作。",kind:"select",fallback:"readonly",options:[{value:"readonly",label:"仅查看"},{value:"workspace",label:"工作区内修改"},{value:"full",label:"完全权限"}]},
-      {key:"NexApiBaseUrl",label:"API 地址",description:"OpenAI 兼容接口的基础地址。",kind:"text",fallback:""},
-      {key:"NexApiKey",label:"API 密钥",description:"只保存在客户端设置中。",kind:"password",fallback:""},
-      {key:"NexModel",label:"模型",description:"默认使用的模型名称。",kind:"text",fallback:""},
-      {key:"NexSystemPrompt",label:"系统提示词",description:"给 NEX 的附加行为说明。",kind:"textarea",fallback:""}
+      {key:"NexEdgeBarSide",label:"唤醒条位置",description:"选择边缘唤醒条所在的一侧。",kind:"select",fallback:"right",options:[{value:"left",label:"左侧"},{value:"right",label:"右侧"}]}
     ]
   }
 ];
@@ -357,7 +385,7 @@ const renderSettingControl=field=>{
   if(field.kind==="select")return `<select ${common}>${selectOptions(field).map(option=>`<option value="${escapeHtml(option.value)}"${String(option.value)===String(value)?" selected":""}>${escapeHtml(option.label)}</option>`).join("")}</select>`;
   if(field.kind==="textarea")return `<textarea ${common} spellcheck="false">${escapeHtml(value??"")}</textarea>`;
   if(field.kind==="date")return `<input type="date" ${common} value="${escapeHtml(String(value||"").slice(0,10))}">`;
-  return `<input type="${field.kind==="password"?"password":"text"}" ${common} value="${escapeHtml(value??"")}" spellcheck="false">`;
+  return `<input type="text" ${common} value="${escapeHtml(value??"")}" spellcheck="false">`;
 };
 const renderWidgetSettings=()=>{
   const widgets=getPathValue(state.settings,"Widgets")||[];
@@ -370,8 +398,8 @@ const renderWidgetSettings=()=>{
     const peers=entries.filter(item=>item.type===entry.type);
     const ordinal=peers.findIndex(item=>item.index===entry.index)+1;
     const base=widgetNames[entry.type]||entry.type||"未知组件";
-    const label=peers.length>1?`${base} ${ordinal}`:base;
-    return `<div class="widget-row"><div><div class="widget-name">${escapeHtml(label)}</div><div class="widget-scale">${entry.enabled?"已显示":"已隐藏"}</div></div><label class="switch"><input type="checkbox" data-widget-index="${entry.index}" data-widget-prop="IsEnabled" ${entry.enabled?"checked":""}><span class="switch-track"></span></label><div><input type="range" data-widget-index="${entry.index}" data-widget-prop="FontScale" min="0.5" max="2" step="0.05" value="${entry.scale}"><div class="widget-scale">字号 ${Math.round(entry.scale*100)}%</div></div></div>`;
+    const label=escapeHtml(peers.length>1?`${base} ${ordinal}`:base);
+    return `<div class="widget-row"><div><div class="widget-name">${label}</div><div class="widget-scale">${entry.enabled?"已显示":"已隐藏"}</div></div><label class="switch"><input type="checkbox" role="switch" aria-label="显示${label}" data-widget-index="${entry.index}" data-widget-prop="IsEnabled" ${entry.enabled?"checked":""}><span class="switch-track"></span></label><div><input type="range" aria-label="${label} 字号" data-widget-index="${entry.index}" data-widget-prop="FontScale" min="0.5" max="2" step="0.05" value="${entry.scale}"><div class="widget-scale">字号 ${Math.round(entry.scale*100)}%</div></div></div>`;
   }).join("")}</div>`;
 };
 const renderSettingsForm=()=>{
@@ -474,7 +502,10 @@ const effectiveCourse=(day,slot)=>{
 };
 const renderSubjectPanel=()=>{
   const chips=$("subjectChips");
-  chips.innerHTML=(state.timetable?.subjects||[]).map((subject,index)=>`<div class="subject-chip${subject.name===state.selectedSubject?" active":""}" ><button type="button" class="subject-choice" data-subject-index="${index}" aria-pressed="${subject.name===state.selectedSubject}">${escapeHtml(subject.name)}</button><button data-remove-subject="${index}" title="删除科目">×</button></div>`).join("")||'<div class="small muted">还没有科目</div>';
+  chips.innerHTML=(state.timetable?.subjects||[]).map((subject,index)=>{
+    const name=escapeHtml(subject.name);
+    return `<div class="subject-chip${subject.name===state.selectedSubject?" active":""}"><button type="button" class="subject-choice" data-subject-index="${index}" aria-pressed="${subject.name===state.selectedSubject}">${name}</button><button type="button" data-remove-subject="${index}" aria-label="删除科目：${name}" title="删除科目">×</button></div>`;
+  }).join("")||'<div class="small muted">还没有科目</div>';
   const selected=(state.timetable?.subjects||[]).find(item=>item.name===state.selectedSubject);
   $("subjectDetails").classList.toggle("hidden",!selected);
   if(selected){
@@ -487,7 +518,17 @@ const renderTimetable=()=>{
   renderSubjectPanel();
   const days=["周一","周二","周三","周四","周五","周六","周日"];
   const table=$("timetableTable");
-  table.innerHTML=`<thead><tr><th>节次与时间</th>${days.map(day=>`<th>${day}</th>`).join("")}</tr></thead><tbody>${state.timeSlots.map((slot,index)=>`<tr><td><div class="slot-editor"><div class="slot-name">第 ${index+1} 节</div><div class="slot-time"><input type="time" data-slot-index="${index}" data-slot-part="start" value="${clockInput(slot.start)}"><input type="time" data-slot-index="${index}" data-slot-part="end" value="${clockInput(slot.end)}"></div><div class="slot-actions"><button class="danger" data-delete-slot="${index}">删除</button></div></div></td>${days.map((_,dayIndex)=>{const day=dayIndex+1;const course=effectiveCourse(day,slot);return `<td><button type="button" class="lesson-cell ${course?"filled":"empty"} ${state.selectedSubject?"pickable":""}" data-cell-day="${day}" data-cell-slot="${index}">${course?escapeHtml(course.subject||course.subjectName||"已排课"):"点击排课"}</button></td>`}).join("")}</tr>`).join("")}</tbody>`;
+  const rows=state.timeSlots.map((slot,index)=>{
+    const label=`第 ${index+1} 节`;
+    const cells=days.map((dayName,dayIndex)=>{
+      const day=dayIndex+1;
+      const course=effectiveCourse(day,slot);
+      const text=course?escapeHtml(course.subject||course.subjectName||"已排课"):"点击排课";
+      return `<td><button type="button" class="lesson-cell ${course?"filled":"empty"} ${state.selectedSubject?"pickable":""}" data-cell-day="${day}" data-cell-slot="${index}" aria-label="${dayName}${label}：${text}">${text}</button></td>`;
+    }).join("");
+    return `<tr><td><div class="slot-editor"><div class="slot-name">${label}</div><div class="slot-time"><input type="time" data-slot-index="${index}" data-slot-part="start" aria-label="${label}开始时间" value="${clockInput(slot.start)}"><input type="time" data-slot-index="${index}" data-slot-part="end" aria-label="${label}结束时间" value="${clockInput(slot.end)}"></div><div class="slot-actions"><button type="button" class="danger" data-delete-slot="${index}" aria-label="删除${label}">删除</button></div></div></td>${cells}</tr>`;
+  }).join("");
+  table.innerHTML=`<thead><tr><th scope="col">节次与时间</th>${days.map(day=>`<th scope="col">${day}</th>`).join("")}</tr></thead><tbody>${rows}</tbody>`;
 };
 const setLessonCell=(day,slotIndex)=>{
   const slot=state.timeSlots[slotIndex];
@@ -610,50 +651,135 @@ const applyUser=user=>{
   $("accountSubject").textContent=user.subject||"";
 };
 
+const updatePairButton=()=>$("pairButton").disabled=state.pairing||$("pairClass").hasAttribute("aria-invalid");
+function renderPairClasses(){
+  const select=$("pairClass"), previous=select.value;
+  const missing=previous!==""&&!state.classes.some(c=>c.classId===previous);
+  select.replaceChildren(new Option("新建班级，沿用教室课表",""),...state.classes.map(c=>new Option(c.name,c.classId)));
+  if(missing){
+    const option=new Option("原班级已不可用，请重新选择",previous);
+    option.disabled=true;
+    select.prepend(option);
+    select.setAttribute("aria-invalid","true");
+    setPageStatus("pairStatus","原班级已不可用，请重新选择班级，或明确选择新建。",true);
+  }
+  select.value=previous;
+  updatePairButton();
+}
+
 const loadAll=async()=>{
   const [classes,devices]=await Promise.all([api("/api/v1/classes"),api("/api/v1/devices")]);
   state.classes=classes||[];state.devices=devices||[];
-  const pairClass=$("pairClass"),previous=pairClass.value;
-  pairClass.replaceChildren(new Option("新建班级，沿用教室课表",""),...state.classes.map(c=>new Option(c.name,c.classId)));
-  if(state.classes.some(c=>c.classId===previous))pairClass.value=previous;
-  if(state.selectedClassId&&!state.classes.some(item=>item.classId===state.selectedClassId))state.selectedClassId="";
+  renderPairClasses();
+  if(state.selectedClassId&&!state.classes.some(item=>item.classId===state.selectedClassId))handleMissingClass();
   if(state.selectedDeviceId&&!state.devices.some(item=>item.clientId===state.selectedDeviceId))state.selectedDeviceId="";
   renderOverview();renderDevices();renderClasses();
   if((state.page==="app-settings"||state.page==="archive-settings")&&!state.selectedClassId&&state.classes.length)
     void loadClass(state.classes[0].classId).then(resetPageScroll);
 };
 
+function blockSession(differentAccount=false){
+  if(!browserSession.blocked){
+    browserSession.blocked=true;
+    browserSession.epoch++;
+    for(const entry of drafts.values())clearTimeout(entry.timer);
+  }
+  clearTimeout(toastTimer);
+  $("toast").textContent="";
+  $("toast").className="toast";
+  showLogin();
+  $("loginIntro").hidden=$("loginLink").hidden=true;
+  $("sessionActions").hidden=false;
+  const detail=differentAccount?"浏览器当前登录的不是此页原来的账号。":"此页的登录会话已失效。";
+  $("loginStatus").textContent=detail+(drafts.size?" 未同步的更改仍留在此页，已暂停同步。":"")+" 请在新标签页登录原账号，再回到此页。";
+  $("discardSessionButton").textContent=drafts.size?"放弃草稿并重新打开":"使用当前账号重新打开";
+}
+
+const readSession=()=>api(authPath,{cache:"no-store"});
+const validAccountKey=value=>typeof value==="string"&&/^[0-9a-f]{64}$/.test(value);
+function checkSession(){
+  if(!state.user||browserSession.check)return browserSession.check;
+  const key=state.user.accountKey, epoch=browserSession.epoch;
+  $("checkSessionButton").disabled=true;
+  browserSession.check=(async()=>{
+    try{
+      const user=await readSession();
+      if(epoch!==browserSession.epoch)return;
+      if(user?.accountKey!==key){blockSession(true);return}
+      applyUser(user);
+      if(!browserSession.blocked)return;
+      browserSession.blocked=false;
+      try{await loadAll()}catch(error){if(!browserSession.blocked)showToast(error.message,true)}
+      if(!browserSession.blocked){showApp();retryPendingDrafts()}
+    }catch(error){
+      if(epoch!==browserSession.epoch)return;
+      if(error.status===401)blockSession();
+      else if(browserSession.blocked)$("loginStatus").textContent="暂时无法检查登录状态。请保留此页，联网后重试。";
+    }
+  })().finally(()=>{
+    browserSession.check=null;
+    $("checkSessionButton").disabled=false;
+  });
+  return browserSession.check;
+}
+
+$("checkSessionButton").onclick=()=>void checkSession();
+$("discardSessionButton").onclick=()=>{
+  if(!browserSession.blocked)return;
+  if(drafts.size&&!confirm("放弃此页所有未同步的更改，并用浏览器当前账号重新打开集控？"))return;
+  drafts.clear();
+  location.reload();
+};
+window.addEventListener("focus",()=>void checkSession());
+window.addEventListener("pageshow",event=>{if(event.persisted)void checkSession()});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)void checkSession()});
+sessionChannel?.addEventListener("message",()=>void checkSession());
+
 const loadSession=async()=>{
   try{
-    applyUser(await api("/api/v1/auth/me"));
+    const user=await readSession();
+    if(!validAccountKey(user?.accountKey)){
+      $("loginLink").hidden=true;
+      $("loginStatus").textContent="当前集控服务不支持账号校验，请更新服务后刷新此页。";
+      return;
+    }
+    applyUser(user);
+    sessionChannel?.postMessage("check");
     showApp();
     await loadAll();
     showPage("overview");
-  }catch(error){if(!state.user){showLogin();if(error.message!=="请登录 ClassNEX ID")$("loginStatus").textContent="暂时无法连接集控服务，请检查网络后刷新。"}else showToast("无法加载班级和设备，请刷新重试。",true)}
+  }catch(error){
+    if(!state.user){
+      showLogin();
+      if(error.status===401)sessionChannel?.postMessage("check");
+      else $("loginStatus").textContent="暂时无法连接集控服务，请检查网络后刷新。";
+    }else if(!browserSession.blocked)showToast("无法加载班级和设备，请刷新重试。",true);
+  }
 };
 
 const refreshSelectedClassRevision=async()=>{
-  if(state.classRefreshBusy||state.editorDirty||loadingClass||!state.selectedClassId||document.hidden)return;
+  if(browserSession.blocked||state.classRefreshBusy||loadingClass||!state.selectedClassId||document.hidden)return;
   if(state.page!=="app-settings"&&state.page!=="archive-settings")return;
   state.classRefreshBusy=true;
-  const ticket=loadTicket, id=state.selectedClassId, edit=editGeneration;
+  const ticket=loadTicket, id=state.selectedClassId;
+  const isCurrent=()=>ticket===loadTicket&&id===state.selectedClassId;
   try{
-    const classes=await api("/api/v1/classes");
-    if(ticket!==loadTicket || id!==state.selectedClassId || state.editorDirty || edit!==editGeneration)return;
+    const classes=await api("/api/v1/classes",{cache:"no-store"});
+    if(!isCurrent())return;
     state.classes=classes||[];
+    const selected=state.classes.find(item=>item.classId===id);
+    if(!selected){handleMissingClass();renderClasses();return}
     renderClasses();
-    const selected=state.classes.find(item=>item.classId===state.selectedClassId);
-    if(!selected){
-      state.selectedClassId="";
-      state.settings=null;
-      state.timetable=null;
-      state.classRevision=0;
-      renderSettingsForm();
-      renderTimetable();
-      return;
+    const kinds=resourceKinds.filter(kind=>!draftFor(kind,id)&&observedVersion(id,kind)<selected.revision);
+    if(!kinds.length)return;
+    const {revision,bodies}=await readResources(id,kinds);
+    if(!isCurrent())return;
+    for(const kind of kinds){
+      if(draftFor(kind,id)||observedVersion(id,kind)>=revision)continue;
+      rememberResource(id,kind,revision,bodies[kind]);
+      showResource(kind,bodies[kind]);
+      showSaveState(kind,`已读取服务器版本 · 修订 ${revision}`);
     }
-    if(Number(selected.revision)!==Number(state.classRevision))
-      await loadClass(selected.classId);
   }catch{
   }finally{
     state.classRefreshBusy=false;
@@ -725,14 +851,14 @@ const assignDevice=async(classId)=>{
 };
 
 const renderClasses=()=>{
-  const options=state.classes.map(item=>`<option value="${escapeHtml(item.classId)}">${escapeHtml(item.name)} · 修订 ${item.revision}</option>`).join("");
+  const selected=state.classes.find(item=>item.classId===state.selectedClassId);
+  const missing=state.selectedClassId&&!selected?`<option value="${escapeHtml(state.selectedClassId)}" disabled>班级已不存在（草稿保留）</option>`:"";
+  const options=missing+state.classes.map(item=>`<option value="${escapeHtml(item.classId)}">${escapeHtml(item.name)} · 修订 ${item.revision}</option>`).join("")||'<option value="">暂无班级</option>';
   for(const id of ["settingsClassSelect","archiveClassSelect"]){
     const select=$(id);
-    select.innerHTML=options||'<option value="">暂无班级</option>';
-    if(state.selectedClassId&&state.classes.some(item=>item.classId===state.selectedClassId))
-      select.value=state.selectedClassId;
+    if(select.dataset.options!==options){select.innerHTML=options;select.dataset.options=options}
+    if(state.selectedClassId)select.value=state.selectedClassId;
   }
-  const selected=state.classes.find(item=>item.classId===state.selectedClassId);
   const meta=selected?`修订 ${selected.revision} · ${selected.deviceCount??0} 台设备 · 更新 ${timeText(selected.updatedAt)}`:"尚未选择班级";
   $("settingsClassMeta").textContent=meta;
   $("archiveClassMeta").textContent=meta;
@@ -742,30 +868,25 @@ const renderClasses=()=>{
   $("saveArchiveButton").disabled=!selected;
 };
 
-let loadTicket=0, loadingClass=false, editGeneration=0;
+let loadTicket=0, loadingClass=false;
 const loadClass=async id=>{
-  const ticket=++loadTicket, edits=editGeneration;
+  const ticket=++loadTicket;
   loadingClass=true;
+  renderClasses();
+  if(state.selectedClassId&&state.selectedClassId!==id)
+    for(const kind of resourceKinds){const draft=draftFor(kind);if(draft&&!draft.error)void saveDraft(draft)}
   try{
-    if(!await flushEdits() || ticket!==loadTicket)return;
-    const [item,timetable]=await Promise.all([
-      api(`/api/v1/classes/${encodeURIComponent(id)}`),
-      api(`/api/v1/classes/${encodeURIComponent(id)}/timetable`)
-    ]);
-    if(ticket!==loadTicket || editGeneration!==edits)return;
+    const {item,revision,bodies}=await readResources(id,resourceKinds);
+    if(ticket!==loadTicket)return;
     state.selectedClassId=id;
-    state.settings=normalizeCaseDuplicates(JSON.parse(item.settingsJson||"{}"));
-    state.timetable=normalizeTimetable(timetable);
-    state.classRevision=Number(item.revision)||0;
-    state.editorDirty=false;
-    state.timeSlots=[];
     state.selectedSubject="";
-    setPageStatus("settingsStatus","正在编辑 "+item.name);
-    setPageStatus("archiveStatus","正在编辑 "+item.name);
-    renderSettingsForm();
-    renderTimetable();
+    for(const kind of resourceKinds){
+      const resource=rememberResource(id,kind,revision,bodies[kind]);
+      showResource(kind,draftFor(kind,id)?.body??resource.body);
+      showSaveState(kind,"正在编辑 "+item.name);
+    }
     renderClasses();renderDeviceOptions();
-  }catch(error){if(ticket===loadTicket){setPageStatus("settingsStatus",error.message,true);setPageStatus("archiveStatus",error.message,true)}}
+  }catch(error){if(ticket===loadTicket)showToast(`无法载入班级：${error.message}`,true)}
   finally{if(ticket===loadTicket){loadingClass=false;renderClasses()}}
 };
 
@@ -777,12 +898,24 @@ const toggleNav=()=>$("appShell").classList.toggle(narrowNav.matches?"nav-open":
 $("navToggle").onclick=toggleNav;
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("appShell").classList.contains("nav-open")){$("appShell").classList.remove("nav-open");$("navToggle").focus()}});
 $("searchInput").oninput=event=>{state.query=event.target.value.trim();showPage("devices")};
+$("pairClass").onchange=()=>{
+  if($("pairClass").hasAttribute("aria-invalid")){
+    $("pairClass").removeAttribute("aria-invalid");
+    setPageStatus("pairStatus","");
+  }
+  updatePairButton();
+};
 $("pairForm").onsubmit=async e=>{
-  e.preventDefault();const input=$("pairCode"),button=$("pairButton"),code=input.value.replace(/[\s-]/g,"").toUpperCase();
+  e.preventDefault();if(state.pairing)return;
+  const input=$("pairCode"),code=input.value.replace(/[\s-]/g,"").toUpperCase();
   if(!/^[A-Z0-9]{8}$/.test(code)){input.setAttribute("aria-invalid","true");setPageStatus("pairStatus","请输入完整的 8 位配对码。",true);input.focus();return}
-  input.removeAttribute("aria-invalid");button.disabled=true;setPageStatus("pairStatus","正在配对…");
-  try{const classId=$("pairClass").value;const device=await api("/api/v1/pairing/claim",{method:"POST",body:JSON.stringify({code,classId:classId||undefined})});input.value="";state.selectedDeviceId=device.clientId;await loadAll();setPageStatus("pairStatus",`已配对：${device.displayName||device.machineName}。现在可以调整班级设置。`)}
-  catch(error){setPageStatus("pairStatus",error.message,true)}finally{button.disabled=false}
+  const classId=$("pairClass").value;
+  if($("pairClass").hasAttribute("aria-invalid")||classId&&!state.classes.some(c=>c.classId===classId)){
+    renderPairClasses();$("pairClass").focus();return;
+  }
+  input.removeAttribute("aria-invalid");state.pairing=true;updatePairButton();setPageStatus("pairStatus","正在配对…");
+  try{const device=await api("/api/v1/pairing/claim",{method:"POST",body:JSON.stringify({code,classId:classId||undefined})});input.value="";state.selectedDeviceId=device.clientId;await loadAll();setPageStatus("pairStatus",`已配对：${device.displayName||device.machineName}。现在可以调整班级设置。`)}
+  catch(error){setPageStatus("pairStatus",error.message,true)}finally{state.pairing=false;updatePairButton()}
 };
 $("revokeDeviceButton").onclick=async()=>{const id=state.selectedDeviceId,device=state.devices.find(d=>d.clientId===id);if(!device||!confirm(`解除「${device.displayName||device.machineName}」的配对？之后需要新配对码才能重新连接。`))return;try{await api(`/api/v1/devices/${encodeURIComponent(id)}`,{method:"DELETE"});await loadAll();setPageStatus("deviceStatus","已解除配对，设备上的课表会保留。")}catch(e){setPageStatus("deviceStatus",e.message,true)}};
 $("refreshButton").onclick=async()=>{try{await loadAll();showToast("数据已刷新")}catch(error){showToast(error.message,true)}};
@@ -799,54 +932,152 @@ const createClassFor=async(inputId,statusId)=>{
   }catch(error){setPageStatus(statusId,error.message,true);showToast(error.message,true)}
 };
 
-const drafts=new Map();
-let saveTimer, saving;
 const statusFor=kind=>kind==="settings"?"settingsStatus":"archiveStatus";
 const retryFor=kind=>$(kind==="settings"?"saveSettingsButton":"saveArchiveButton");
+const conflictFor=kind=>$(kind==="settings"?"settingsConflict":"archiveConflict");
+const resourceName=kind=>kind==="settings"?"应用设置":"课表";
+const observedVersion=(id,kind)=>observed.get(resourceKey(id,kind))?.revision??-1;
+const readRevision=item=>{
+  if(!Number.isSafeInteger(item?.revision)||item.revision<0)throw new Error("服务器未返回有效的班级修订。");
+  return item.revision;
+};
+async function readResources(id,kinds){
+  const url=classUrl(id), item=await api(url,{cache:"no-store"}), revision=readRevision(item);
+  const bodies={};
+  if(kinds.includes("settings")){
+    const value=classroomSettings(JSON.parse(item.settingsJson||"{}"));
+    bodies.settings=JSON.stringify({settingsJson:JSON.stringify(value)});
+  }
+  if(kinds.includes("timetable"))bodies.timetable=JSON.stringify(await api(`${url}/timetable`,{cache:"no-store"}));
+  return {item,revision,bodies};
+}
+function rememberResource(id,kind,revision,body){
+  const key=resourceKey(id,kind), current=observed.get(key);
+  if(current&&current.revision>revision)return current;
+  const resource={revision,body};
+  observed.set(key,resource);
+  return resource;
+}
+function showResource(kind,body){
+  const value=JSON.parse(body);
+  if(kind==="settings"){
+    state.settings=normalizeCaseDuplicates(JSON.parse(value.settingsJson||"{}"));
+    renderSettingsForm();
+  }else{
+    state.timetable=normalizeTimetable(value);
+    state.timeSlots=[];
+    if(!state.timetable.subjects.some(subject=>subject.name===state.selectedSubject))state.selectedSubject="";
+    renderTimetable();
+  }
+}
+function showSaveState(kind,message=""){
+  const draft=draftFor(kind), panel=conflictFor(kind);
+  panel.hidden=!draft?.conflict;
+  retryFor(kind).hidden=!draft?.error||draft.conflict||!!draft.saving;
+  if(draft?.conflict){
+    panel.querySelector(".sync-conflict-note").textContent=draft.resolving?"正在读取服务器版本…":draft.error||`服务器的${resourceName(kind)}已更新，本页更改仍保留。`;
+    for(const button of panel.querySelectorAll("button"))button.disabled=draft.resolving;
+    setPageStatus(statusFor(kind),"有更改未同步。请选择要保留的版本。",true);
+  }else if(draft?.error)setPageStatus(statusFor(kind),`未同步：${draft.error}。更改仍在此页。`,true);
+  else if(draft)setPageStatus(statusFor(kind),"正在同步…");
+  else if(message)setPageStatus(statusFor(kind),message);
+}
+function clearClassEditor(){
+  state.selectedClassId="";state.settings=null;state.timetable=null;state.selectedSubject="";
+  renderSettingsForm();renderTimetable();
+  for(const kind of resourceKinds)showSaveState(kind,`选择班级后可编辑${resourceName(kind)}`);
+}
+function handleMissingClass(){
+  if(!resourceKinds.some(kind=>draftFor(kind))){clearClassEditor();return}
+  for(const kind of resourceKinds)setPageStatus(statusFor(kind),"班级已不存在，尚未同步的更改仍保留。",true);
+}
 function markEdited(kind){
   const id=state.selectedClassId;
-  if(!id)return;
-  editGeneration++;
-  const value=kind==="settings"?{settingsJson:JSON.stringify(state.settings)}:state.timetable;
-  drafts.set(`${id}/${kind}`,{id,kind,body:JSON.stringify(value)});
-  state.editorDirty=true;
-  retryFor(kind).hidden=true;
-  setPageStatus(statusFor(kind),"正在同步…");
-  clearTimeout(saveTimer);saveTimer=setTimeout(flushEdits,350);
+  const key=resourceKey(id,kind), revision=observedVersion(id,kind);
+  if(!id||revision<0)return;
+  const value=kind==="settings"?{settingsJson:JSON.stringify(classroomSettings(state.settings))}:state.timetable;
+  const entry=drafts.get(key)||{id,kind,revision};
+  entry.body=JSON.stringify(value);
+  drafts.set(key,entry);
+  if(!entry.conflict){
+    entry.error="";
+    if(!entry.saving){clearTimeout(entry.timer);entry.timer=setTimeout(()=>void saveDraft(entry),350)}
+  }
+  showSaveState(kind);
 }
-function flushEdits(){
-  clearTimeout(saveTimer);
-  if(saving)return saving;
-  if(!drafts.size)return Promise.resolve(true);
-  saving=(async()=>{
-    while(drafts.size){
-      const [key,entry]=drafts.entries().next().value;
-      const {id,kind,body}=entry;
+function saveDraft(entry){
+  if(!entry)return Promise.resolve(true);
+  const {id,kind}=entry, key=resourceKey(id,kind);
+  if(drafts.get(key)!==entry)return Promise.resolve(true);
+  if(browserSession.blocked||entry.conflict||entry.resolving)return Promise.resolve(false);
+  if(entry.saving)return entry.saving;
+  clearTimeout(entry.timer);
+  entry.error="";
+  entry.saving=(async()=>{
+    while(drafts.get(key)===entry){
+      const {body,revision}=entry;
       try{
-        const item=await api(`/api/v1/classes/${encodeURIComponent(id)}/${kind}`,{method:"PUT",body});
-        if(drafts.get(key)===entry)drafts.delete(key);
-        if(state.selectedClassId===id){
-          state.classRevision=Number(item.revision)||state.classRevision;
-          const cls=state.classes.find(c=>c.classId===id);if(cls)cls.revision=state.classRevision;
-          if(!drafts.has(key)){retryFor(kind).hidden=true;setPageStatus(statusFor(kind),`已同步 · 修订 ${state.classRevision}`)}
-        }
-      }catch(error){retryFor(kind).hidden=false;setPageStatus(statusFor(kind),`未同步：${error.message}。更改仍在此页。`,true);return false}
+        const item=await api(`${classUrl(id)}/${kind}`,{method:"PUT",headers:{"If-Match":`"${revision}"`},body});
+        entry.revision=readRevision(item);
+        rememberResource(id,kind,entry.revision,body);
+        const cls=state.classes.find(c=>c.classId===id);
+        if(cls&&cls.revision<entry.revision)cls.revision=entry.revision;
+        if(entry.body===body)drafts.delete(key);
+      }catch(error){
+        entry.conflict=error.status===409;
+        entry.error=entry.conflict?`服务器的${resourceName(kind)}已更新，本页更改仍保留。`:error.message;
+        return false;
+      }
     }
     return true;
-  })().finally(()=>{saving=null;state.editorDirty=drafts.size>0});
-  return saving;
+  })().finally(()=>{
+    entry.saving=null;
+    if(state.selectedClassId===id)showSaveState(kind,`已同步 · 修订 ${entry.revision}`);
+  });
+  if(state.selectedClassId===id)showSaveState(kind);
+  return entry.saving;
+}
+async function resolveDraft(kind,keepLocal){
+  const entry=draftFor(kind);
+  if(!entry?.conflict||entry.resolving)return;
+  if(keepLocal&&!confirm(`确定用本页${resourceName(kind)}覆盖服务器上的同一项内容？`))return;
+  const {id,body}=entry, key=resourceKey(id,kind);
+  entry.resolving=true;
+  showSaveState(kind);
+  try{
+    const {revision,bodies}=await readResources(id,keepLocal?[]:[kind]);
+    if(entry.body!==body){entry.error="读取时本页又有更改，请重新选择要保留的版本。";return}
+    if(keepLocal){entry.revision=revision;entry.conflict=false;entry.error=""}
+    else{
+      const resource=rememberResource(id,kind,revision,bodies[kind]);
+      drafts.delete(key);
+      if(state.selectedClassId===id)showResource(kind,resource.body);
+    }
+  }catch(error){entry.error=`未能读取服务器版本：${error.message}。本页更改仍保留。`}
+  finally{
+    entry.resolving=false;
+    if(state.selectedClassId===id)showSaveState(kind,"已采用服务器版本");
+  }
+  if(keepLocal&&!entry.conflict)await saveDraft(entry);
 }
 window.addEventListener("beforeunload",event=>{if(drafts.size){event.preventDefault();event.returnValue=""}});
-window.addEventListener("online",flushEdits);
+function retryPendingDrafts(){
+  for(const entry of drafts.values()){
+    if(entry.saving)void entry.saving.then(()=>saveDraft(entry));
+    else void saveDraft(entry);
+  }
+}
+window.addEventListener("online",()=>{if(browserSession.blocked)void checkSession();else retryPendingDrafts()});
 
 const deleteCurrentClass=async statusId=>{
   const id=state.selectedClassId,cls=state.classes.find(c=>c.classId===id);
   if(!cls||!confirm(`删除「${cls.name}」的班级配置？此操作不能撤销。`))return;
   try{
-    if(!await flushEdits()||state.selectedClassId!==id)return;
-    await api(`/api/v1/classes/${encodeURIComponent(id)}`,{method:"DELETE"});
-    drafts.delete(`${id}/settings`);drafts.delete(`${id}/timetable`);state.editorDirty=drafts.size>0;
-    if(state.selectedClassId===id){state.selectedClassId="";state.settings=null;state.timetable=null;state.timeSlots=[];state.selectedSubject="";renderSettingsForm();renderTimetable()}
+    const saved=await Promise.all(resourceKinds.map(kind=>saveDraft(draftFor(kind,id))));
+    if(saved.includes(false)||state.selectedClassId!==id||resourceKinds.some(kind=>draftFor(kind,id)))return;
+    await api(classUrl(id),{method:"DELETE"});
+    if(state.selectedClassId===id&&!resourceKinds.some(kind=>draftFor(kind,id)))clearClassEditor();
+    for(const kind of resourceKinds)if(!draftFor(kind,id))observed.delete(resourceKey(id,kind));
     await loadAll();
     setPageStatus(statusId,"班级已删除");showToast("班级已删除");
   }catch(error){setPageStatus(statusId,error.message,true);showToast(error.message,true)}
@@ -858,8 +1089,11 @@ $("createSettingsClass").onclick=()=>createClassFor("settingsNewClassName","sett
 $("createArchiveClass").onclick=()=>createClassFor("archiveNewClassName","archiveStatus");
 $("deleteSettingsClass").onclick=()=>deleteCurrentClass("settingsStatus");
 $("deleteArchiveClass").onclick=()=>deleteCurrentClass("archiveStatus");
-$("saveSettingsButton").onclick=flushEdits;
-$("saveArchiveButton").onclick=flushEdits;
+for(const kind of resourceKinds){
+  retryFor(kind).onclick=()=>void saveDraft(draftFor(kind));
+  for(const button of conflictFor(kind).querySelectorAll("[data-conflict-choice]"))
+    button.onclick=()=>void resolveDraft(kind,button.dataset.conflictChoice==="local");
+}
 loadSession();
 </script>
 </body>

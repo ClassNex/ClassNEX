@@ -6,6 +6,7 @@ using ClassNex.Models;
 using ClassNex.Services;
 
 const string SessionCookie = "classnex_central_session";
+const string BrowserAccountHeader = "X-ClassNex-Account";
 
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
@@ -136,8 +137,13 @@ app.MapGet("/auth/logout", async (HttpRequest request, HttpResponse response) =>
 
 app.MapGet("/api/v1/auth/me", async (HttpRequest request) =>
 {
+    request.HttpContext.Response.Headers.CacheControl = "no-store";
     var user = await GetCurrentUserAsync(request);
-    return user is null ? Results.Unauthorized() : Results.Json(user);
+    return user is null ? Results.Unauthorized() : Results.Json(new
+    {
+        user.Subject, user.Name, user.Email, user.PreferredUsername, user.Picture, user.Organization,
+        AccountKey = auth.BrowserAccountKey(user)
+    });
 });
 
 app.MapGet("/api/v1/auth/profile", async (HttpRequest request) =>
@@ -449,7 +455,13 @@ static long? ReadEditRevision(HttpRequest request)
     throw new ArgumentException("无效的班级基准修订。");
 }
 
-Task<CentralUser?> GetBrowserUserAsync(HttpRequest request) => request.Cookies.TryGetValue(SessionCookie, out var id) ? sessionStore.GetAsync(id) : Task.FromResult<CentralUser?>(null);
+async Task<CentralUser?> GetBrowserUserAsync(HttpRequest request)
+{
+    if (!request.Cookies.TryGetValue(SessionCookie, out var id) || await sessionStore.GetAsync(id) is not { } user)
+        return null;
+    var expected = request.Headers.TryGetValue(BrowserAccountHeader, out var key) ? key.ToString() : null;
+    return auth.MatchesBrowserAccount(user, expected) ? user : null;
+}
 
 async Task<string?> DeviceOwnerAsync(HttpRequest request, string id)
 {
@@ -460,11 +472,9 @@ async Task<string?> DeviceOwnerAsync(HttpRequest request, string id)
 
 async Task<CentralUser?> GetCurrentUserAsync(HttpRequest request)
 {
-    if (request.Cookies.TryGetValue(SessionCookie, out var sessionId) &&
-        await sessionStore.GetAsync(sessionId) is { } sessionUser)
-    {
+    if (await GetBrowserUserAsync(request) is { } sessionUser)
         return sessionUser;
-    }
+    if (request.Headers.ContainsKey(BrowserAccountHeader)) return null;
 
     var header = request.Headers.Authorization.ToString();
     if (!header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))

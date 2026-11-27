@@ -7,6 +7,7 @@ import http.server
 import json
 import os
 import pathlib
+import shutil
 import socket
 import subprocess
 import tempfile
@@ -196,9 +197,16 @@ def run(central, desktop, paired_desktop=None):
                     reason = data/'account-review-error.txt'
                     raise AssertionError(reason.read_text(encoding='utf-8') if reason.exists() else f'Desktop exited {client.returncode}')
             check_persisted_pair = exercise_pairing(request, port, provider_port, host, cookie)
+            paired_hash = None
             if paired_desktop:
                 disposable = root/'paired-desktop'/'app'
-                subprocess.run(['dotnet', 'publish', str(paired_desktop), '-c', 'Release', '--no-build', '--no-restore', '--no-self-contained', '-o', str(disposable)], check=True)
+                if paired_desktop.is_dir():
+                    if not (paired_desktop/'ClassNex.PairingReview.runtimeconfig.json').is_file() or (paired_desktop/'data').exists():
+                        raise ValueError('Expected a clean, published pairing review application')
+                    shutil.copytree(paired_desktop, disposable)
+                else:
+                    subprocess.run(['dotnet', 'publish', str(paired_desktop), '-c', 'Release', '--no-build', '--no-restore', '--no-self-contained', '-o', str(disposable)], check=True)
+                paired_hash = hashlib.sha256((disposable/'ClassNex.dll').read_bytes()).hexdigest()
                 subprocess.run([str(disposable/'ClassNex.PairingReview.exe'), host, casdoor], cwd=disposable, env=settings, timeout=85, check=True)
             central_process.terminate(); central_process.wait(timeout=10); central_process = start()
             check_persisted_pair()
@@ -206,6 +214,8 @@ def run(central, desktop, paired_desktop=None):
             status, h, _ = request(port,'GET','/auth/logout',headers=cookie)
             assert status==302 and h['Location']==host+'/Control/' and request(port,'GET','/api/v1/auth/me',headers=cookie)[0]==401
             print('PASS: browser-bound single-use PKCE callback, header-only userinfo, assignment, two-way settings/timetable, persisted session, logout, device pairing, owner isolation, scoped device sync, cancellation, restart and revocation' + (', desktop login, protected credential migration/reload, switching/cancel/failure, avatar ownership/race/fallback, missing email, legacy identity, automatic bidirectional desktop sync, AI streaming' if desktop else ''))
+            return {'passed':True,'loopbackOnly':True,'centralAssemblySha256':hashlib.sha256(central.read_bytes()).hexdigest(),
+                    'pairedDesktopAssemblySha256':paired_hash,'pairedDesktopExercisesCompleted':bool(paired_desktop),'desktopAccountExercisesCompleted':bool(desktop)}
         finally:
             if central_process and central_process.poll() is None:
                 central_process.terminate(); central_process.wait(timeout=10)
@@ -216,5 +226,9 @@ if __name__ == '__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--central',type=pathlib.Path,default=pathlib.Path(__file__).resolve().parents[1]/'src/ClassNex.Central/bin/Debug/net10.0/ClassNex.Central.dll')
     parser.add_argument('--desktop',type=pathlib.Path,help='Optional built Debug ClassNex.csproj; publishes a clean disposable app and tests its loopback callback')
-    parser.add_argument('--paired-desktop',type=pathlib.Path,help='Optional built Release tools/ClassNex.PairingReview project; runs the real desktop service without creating windows')
-    opts=parser.parse_args(); run(opts.central.resolve(strict=True),opts.desktop.resolve(strict=True) if opts.desktop else None,opts.paired_desktop.resolve(strict=True) if opts.paired_desktop else None)
+    parser.add_argument('--paired-desktop',type=pathlib.Path,help='Optional built Release tools/ClassNex.PairingReview project or its clean publish directory; runs the real desktop service without creating windows')
+    parser.add_argument('--report',type=pathlib.Path,help='Save a credential-free success receipt with the actual tested assembly hashes')
+    opts=parser.parse_args(); proof=run(opts.central.resolve(strict=True),opts.desktop.resolve(strict=True) if opts.desktop else None,opts.paired_desktop.resolve(strict=True) if opts.paired_desktop else None)
+    if opts.report:
+        opts.report.parent.mkdir(parents=True,exist_ok=True)
+        opts.report.write_text(json.dumps(proof,indent=2)+'\n',encoding='utf-8')

@@ -37,6 +37,17 @@ public sealed class CentralAuthService : IDisposable
 
     public string PublicBaseUrl { get; }
 
+    internal string BrowserAccountKey(CentralUser user)
+    {
+        var issuer = user.Issuer?.TrimEnd('/');
+        if (string.IsNullOrWhiteSpace(issuer) || issuer == CasdoorInternalUrl) issuer = CasdoorUrl;
+        return Convert.ToHexStringLower(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(
+            new[] { CasdoorUrl, issuer, user.Subject, user.Organization ?? "" })));
+    }
+
+    internal bool MatchesBrowserAccount(CentralUser user, string? expected) =>
+        expected is null || string.Equals(expected, BrowserAccountKey(user), StringComparison.Ordinal);
+
     public string BuildLoginUrl(
         string state,
         string codeChallenge,
@@ -119,7 +130,7 @@ public sealed class CentralAuthService : IDisposable
             subject,
             Get("name"),
             Get("email"),
-            Get("preferred_username"), Get("picture"));
+            Get("preferred_username"), Get("picture")) { Issuer = Get("iss"), Organization = Get("organization") };
         _cache.Set(key, user, new MemoryCacheEntryOptions { Size = 1, AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(2) });
         return user;
     }
@@ -132,4 +143,8 @@ public sealed record CentralUser(
     string Name,
     string Email,
     string PreferredUsername,
-    string Picture = "");
+    string Picture = "")
+{
+    public string Issuer { get; init; } = "";
+    public string Organization { get; init; } = "";
+}
