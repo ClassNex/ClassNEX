@@ -76,7 +76,10 @@ internal sealed partial class NativeDesktop
                 AppServices.SaveSettings();
                 return "已选用本机 WAV 音效";
             case CentralConnect when AppServices.Management is { } manager:
-                await manager.ConnectAndSyncAsync();
+                await manager.RequestPairingAsync();
+                return s.CentralManagement.LastStatus;
+            case "central.unpair" when AppServices.Management is { } bound:
+                await bound.DisconnectAsync();
                 return s.CentralManagement.LastStatus;
             case NativeSettingsKeys.Models:
                 return string.Join('\n', await NexModelCatalog.FetchAsync(NexConfig.ResolveBaseUrl(s), NexConfig.ResolveApiKey(s)));

@@ -24,10 +24,10 @@ public sealed class CentralSessionStore
         if (!File.Exists(_path))
             return;
 
-        await using var stream = File.OpenRead(_path);
-        _sessions = await JsonSerializer.DeserializeAsync<
-                       Dictionary<string, CentralWebSession>>(stream, JsonOptions)
-                   ?? new Dictionary<string, CentralWebSession>();
+        await using (var stream = File.OpenRead(_path))
+        {
+            _sessions = await JsonSerializer.DeserializeAsync<Dictionary<string, CentralWebSession>>(stream, JsonOptions) ?? [];
+        }
         await RemoveExpiredAsync();
     }
 
@@ -105,8 +105,16 @@ public sealed class CentralSessionStore
 
     private async Task SaveAsync()
     {
-        await using var stream = File.Create(_path);
-        await JsonSerializer.SerializeAsync(stream, _sessions, JsonOptions);
+        var temporary = _path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        var options = new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write, Share = FileShare.None, Options = FileOptions.Asynchronous };
+        if (!OperatingSystem.IsWindows()) options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        try
+        {
+            await using (var stream = new FileStream(temporary, options))
+                await JsonSerializer.SerializeAsync(stream, _sessions, JsonOptions);
+            File.Move(temporary, _path, true);
+        }
+        finally { File.Delete(temporary); }
     }
 }
 

@@ -49,3 +49,4 @@ tools/frames3/
 tools/*.png
 
 tools/_tmp*
+__pycache__/

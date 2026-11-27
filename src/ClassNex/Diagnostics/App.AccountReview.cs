@@ -43,7 +43,7 @@ public partial class App
             using var response = await browser.GetAsync(AccountService.BuildLoginUrl());
             response.EnsureSuccessStatusCode();
             string? code = null;
-            for (var i = 0; i < 40 && !AccountService.TryTakeCode(out code); i++) await Task.Delay(50);
+            for (var i = 0; i < 40 && !AccountService.TryTakeCallback(out code, out _); i++) await Task.Delay(50);
             if (code is null) throw new InvalidOperationException("No desktop callback");
             var (ok, message) = await AccountService.CompleteLoginAsync(code);
             if (!ok || AccountService.Current is not { Name: "fixture", Email: "fixture@example.invalid" })
@@ -86,6 +86,13 @@ public partial class App
                     await StartSwitch();
                     Cancel();
                     Require(ReferenceEquals(account, AccountService.Current) && !AccountService.FlowActive && AppServices.Settings.Email == account.Email && File.Exists(cached), "Cancel must keep the first identity and avatar");
+
+                    await Command("denied");
+                    await StartSwitch();
+                    using (var declined = await browser.GetAsync(location)) declined.EnsureSuccessStatusCode();
+                    await Until(() => login.FindControl<TextBlock>("FlowStatusText")!.Text == "已取消浏览器授权。", "Provider cancellation left the login window waiting");
+                    Require(ReferenceEquals(account, AccountService.Current) && !AccountService.FlowActive, "Provider cancellation must retain the signed-in account");
+                    Cancel();
 
                     await Command("fail");
                     await StartSwitch();

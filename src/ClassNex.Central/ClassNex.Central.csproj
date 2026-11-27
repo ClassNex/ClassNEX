@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ClassNex.Core\ClassNex.Core.csproj" />
+    <InternalsVisibleTo Include="ClassNex.Central.Tests" />
   </ItemGroup>
 
 </Project>

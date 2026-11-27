@@ -15,6 +15,7 @@ import time
 import urllib.parse as url
 import struct
 import zlib
+from central_pairing_checks import exercise_pairing
 
 
 class Provider(http.server.BaseHTTPRequestHandler):
@@ -53,7 +54,7 @@ class Provider(http.server.BaseHTTPRequestHandler):
         parsed = url.urlsplit(self.path)
         if parsed.path.startswith('/fixture/'):
             action = parsed.path[len('/fixture/'):]
-            if action in ('session', 'second', 'broken', 'fail'):
+            if action in ('session', 'second', 'broken', 'fail', 'denied'):
                 self.server.identity = action
             elif action == 'hold':
                 self.server.avatar_started.clear(); self.server.avatar_release.clear()
@@ -77,6 +78,11 @@ class Provider(http.server.BaseHTTPRequestHandler):
             callback = query['redirect_uri'][0]
             if url.urlsplit(callback).hostname not in ('127.0.0.1', 'localhost') or query['code_challenge_method'] != ['S256']:
                 return self.reply(400, {})
+            if self.server.identity == 'denied':
+                self.send_response(302)
+                self.send_header('Location', callback + '?' + url.urlencode({'state': query['state'][0], 'error': 'access_denied'}))
+                self.end_headers()
+                return
             code = os.urandom(12).hex()
             self.server.codes[code] = (query['code_challenge'][0], callback, self.server.identity)
             self.send_response(302)
@@ -104,7 +110,7 @@ def request(port, method, path, body=None, headers=None):
         conn.close()
 
 
-def run(central, desktop):
+def run(central, desktop, paired_desktop=None):
     with tempfile.TemporaryDirectory(prefix='classnex-central-test-') as temp:
         root = pathlib.Path(temp)
         provider = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Provider)
@@ -133,7 +139,15 @@ def run(central, desktop):
             child.terminate(); child.wait(timeout=10); raise RuntimeError('Central did not listen on the loopback fixture')
         central_process = None
         try:
+            sessions_path = root/'server'/'central-sessions.json'
+            sessions_path.parent.mkdir(exist_ok=True)
+            fixture_user = {'subject':'local-session-review','name':'教室管理员','email':'','preferredUsername':'review','picture':''}
+            sessions_path.write_text(json.dumps({key:{'user':fixture_user,'expiresAt':expiry} for key,expiry in
+                [('fixture-expired','2000-01-01T00:00:00Z'),('fixture-current','2099-01-01T00:00:00Z')]}),encoding='utf-8')
             central_process = start()
+            assert request(port,'GET','/api/v1/auth/me',headers={'Cookie':'classnex_central_session=fixture-expired'})[0] == 401
+            assert request(port,'GET','/api/v1/auth/me',headers={'Cookie':'classnex_central_session=fixture-current'})[0] == 200
+            assert 'fixture-expired' not in json.loads(sessions_path.read_text(encoding='utf-8'))
             status, h, _ = request(port, 'GET', '/auth/login'); assert status == 302
             auth = url.urlsplit(h['Location']); assert auth.netloc == f'127.0.0.1:{provider_port}'
             args = url.parse_qs(auth.query); assert args['redirect_uri'] == [host+'/Control/auth/callback'] and 'prompt' not in args
@@ -169,11 +183,17 @@ def run(central, desktop):
                 if client.returncode:
                     reason = data/'account-review-error.txt'
                     raise AssertionError(reason.read_text(encoding='utf-8') if reason.exists() else f'Desktop exited {client.returncode}')
+            check_persisted_pair = exercise_pairing(request, port, provider_port, host, cookie)
+            if paired_desktop:
+                disposable = root/'paired-desktop'/'app'
+                subprocess.run(['dotnet', 'publish', str(paired_desktop), '-c', 'Release', '--no-build', '--no-restore', '--no-self-contained', '-o', str(disposable)], check=True)
+                subprocess.run([str(disposable/'ClassNex.PairingReview.exe'), host, casdoor], cwd=disposable, env=settings, timeout=85, check=True)
             central_process.terminate(); central_process.wait(timeout=10); central_process = start()
+            check_persisted_pair()
             assert api('auth/me')['subject']=='classnex-fixture' and any(c['classId']==cls for c in api('classes'))
             status, h, _ = request(port,'GET','/auth/logout',headers=cookie)
             assert status==302 and h['Location']==host+'/Control/' and request(port,'GET','/api/v1/auth/me',headers=cookie)[0]==401
-            print('PASS: PKCE, /Control callback, profile, assignment, two-way settings/timetable, persisted session, logout' + (', desktop login, account switching/cancel/failure, avatar ownership/race/fallback, missing email, legacy identity, automatic bidirectional desktop sync, AI streaming' if desktop else ''))
+            print('PASS: PKCE, /Control callback, profile, assignment, two-way settings/timetable, persisted session, logout, device pairing, owner isolation, scoped device sync, cancellation, restart and revocation' + (', desktop login, account switching/cancel/failure, avatar ownership/race/fallback, missing email, legacy identity, automatic bidirectional desktop sync, AI streaming' if desktop else ''))
         finally:
             if central_process and central_process.poll() is None:
                 central_process.terminate(); central_process.wait(timeout=10)
@@ -184,4 +204,5 @@ if __name__ == '__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--central',type=pathlib.Path,default=pathlib.Path(__file__).resolve().parents[1]/'src/ClassNex.Central/bin/Debug/net10.0/ClassNex.Central.dll')
     parser.add_argument('--desktop',type=pathlib.Path,help='Optional built Debug ClassNex.csproj; publishes a clean disposable app and tests its loopback callback')
-    opts=parser.parse_args(); run(opts.central.resolve(strict=True),opts.desktop.resolve(strict=True) if opts.desktop else None)
+    parser.add_argument('--paired-desktop',type=pathlib.Path,help='Optional built Release tools/ClassNex.PairingReview project; runs the real desktop service without creating windows')
+    opts=parser.parse_args(); run(opts.central.resolve(strict=True),opts.desktop.resolve(strict=True) if opts.desktop else None,opts.paired_desktop.resolve(strict=True) if opts.paired_desktop else None)

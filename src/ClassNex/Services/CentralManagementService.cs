@@ -1,17 +1,11 @@
-using System.Text.Json;
 using Avalonia.Threading;
 using ClassNex.Models;
 
 namespace ClassNex.Services;
 
-public sealed class CentralManagementService : IDisposable
+public sealed partial class CentralManagementService : IDisposable
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        WriteIndented = true,
-    };
-
-    private readonly CentralManagementClient _client = new();
+    private readonly CentralManagementClient _client;
     private readonly CancellationTokenSource _lifetime = new();
     private Timer? _timer;
     private Timer? _publishTimer;
@@ -27,6 +21,10 @@ public sealed class CentralManagementService : IDisposable
     private DateTime _lastReportAt = DateTime.MinValue;
 
     public event Action<string>? StatusChanged;
+
+    public CentralManagementService() : this(new()) { }
+
+    public CentralManagementService(CentralManagementClient client) => _client = client;
 
     public void Start()
     {
@@ -56,6 +54,7 @@ public sealed class CentralManagementService : IDisposable
     {
         if (ReferenceEquals(_lastAccount, AccountService.Current)) return;
         _lastAccount = AccountService.Current;
+        if (Paired(AppServices.Settings.CentralManagement)) return;
         _registeredForSession = false;
         Interlocked.Exchange(ref _publishedVersion, Volatile.Read(ref _localVersion));
         UpdatePolling();
@@ -63,7 +62,8 @@ public sealed class CentralManagementService : IDisposable
 
     private void UpdatePolling()
     {
-        var enabled = AppServices.Settings.CentralManagement.IsEnabled && AccountService.Current?.IsLoggedIn == true;
+        var management = AppServices.Settings.CentralManagement;
+        var enabled = management.IsEnabled && (Paired(management) || AccountService.Current?.IsLoggedIn == true);
         if (_polling == enabled) return;
         _polling = enabled;
         _timer?.Change(enabled ? TimeSpan.FromSeconds(1) : Timeout.InfiniteTimeSpan,
@@ -82,6 +82,7 @@ public sealed class CentralManagementService : IDisposable
         cancellationToken = linked.Token;
         if (Interlocked.CompareExchange(ref _busy, 1, 0) != 0)
             return;
+        var generation = Volatile.Read(ref _connectionGeneration);
 
         try
         {
@@ -92,6 +93,7 @@ public sealed class CentralManagementService : IDisposable
                 return;
             }
 
+            if (Paired(management) && !await CheckPairingAsync(management, generation, cancellationToken)) return;
             NormalizeServerUrl(management);
             var accessToken = RequireAccessToken();
             var localVersion = Volatile.Read(ref _localVersion);
@@ -100,13 +102,14 @@ public sealed class CentralManagementService : IDisposable
                 SetStatus("本机更改等待自动上传");
                 return;
             }
-            if (!_registeredForSession)
+            if (!_registeredForSession && !Paired(management))
                 await RegisterDeviceAsync(cancellationToken);
             var config = await _client.PullAsync(
                 management.ServerUrl,
                 accessToken,
                 management.ClientId,
                 cancellationToken);
+            if (!management.IsEnabled || generation != Volatile.Read(ref _connectionGeneration)) return;
 
             if (config is null)
             {
@@ -126,16 +129,15 @@ public sealed class CentralManagementService : IDisposable
                 config.ClassId,
                 StringComparison.Ordinal);
             var applied = false;
-            if (!string.IsNullOrWhiteSpace(config.SettingsJson) &&
+            var hasSettings = !string.IsNullOrWhiteSpace(config.SettingsJson);
+            if ((hasSettings || !string.IsNullOrWhiteSpace(config.TimetableYaml)) &&
                 (classChanged || config.Revision > management.AppliedRevision))
             {
-                var remote = JsonSerializer.Deserialize<AppSettings>(
-                                 config.SettingsJson,
-                                 JsonOptions)
-                             ?? throw new InvalidOperationException("集控设置格式无效");
+                var current = await Dispatcher.UIThread.InvokeAsync(() => CentralSettingsPayload.Serialize(AppServices.Settings));
+                var remote = CentralSettingsPayload.Merge(current, hasSettings ? config.SettingsJson : "{}");
                 var accepted = await Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    if (cancellationToken.IsCancellationRequested || Volatile.Read(ref _localVersion) != localVersion || IsDirty) return false;
+                    if (cancellationToken.IsCancellationRequested || generation != Volatile.Read(ref _connectionGeneration) || !management.IsEnabled || Volatile.Read(ref _localVersion) != localVersion || IsDirty) return false;
                     AppServices.ApplyManagedSettings(remote, config.TimetableYaml);
                     return true;
                 });
@@ -153,15 +155,17 @@ public sealed class CentralManagementService : IDisposable
                 await ReportAsync(accessToken, null, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (UnauthorizedAccessException) when (Paired(AppServices.Settings.CentralManagement)) { ExpireBinding(generation); }
         catch (Exception ex)
         {
+            if (generation != Volatile.Read(ref _connectionGeneration)) return;
             SetStatus("同步失败：" + ex.Message);
             if (ShouldReport())
             {
                 try
                 {
                     await ReportAsync(
-                        AccountService.Current?.AccessToken ?? "",
+                        RequireAccessToken(),
                         ex.Message,
                         cancellationToken);
                 }
@@ -176,17 +180,21 @@ public sealed class CentralManagementService : IDisposable
         }
     }
 
-    public void Disconnect()
+    public void Disconnect() => _ = DisconnectAsync();
+
+    private void ResetConnection()
     {
         var management = AppServices.Settings.CentralManagement;
         management.IsEnabled = false;
         UpdatePolling();
+        management.PairingCode = "";
         management.SelectedClassId = "";
         management.SelectedClassName = "";
         management.AppliedRevision = 0;
         management.LastSyncTime = null;
         _registeredForSession = false;
         _lastReportAt = DateTime.MinValue;
+        Interlocked.Exchange(ref _publishedVersion, Volatile.Read(ref _localVersion));
         SaveManagement();
         SetStatus("已断开集控");
     }
@@ -214,6 +222,7 @@ public sealed class CentralManagementService : IDisposable
     {
         if (Interlocked.CompareExchange(ref _publishing, 1, 0) != 0)
             return;
+        var generation = Volatile.Read(ref _connectionGeneration);
 
         try
         {
@@ -222,7 +231,7 @@ public sealed class CentralManagementService : IDisposable
             var cancellation = _lifetime.Token;
             if (!management.IsEnabled)
                 return;
-            if (string.IsNullOrWhiteSpace(management.SelectedClassId))
+            if (string.IsNullOrWhiteSpace(management.SelectedClassId) || (Paired(management) && !_approved))
             {
                 Interlocked.Exchange(ref _publishedVersion, version);
                 return;
@@ -242,6 +251,7 @@ public sealed class CentralManagementService : IDisposable
                     timetable), cancellation);
 
             management = AppServices.Settings.CentralManagement;
+            if (!management.IsEnabled || generation != Volatile.Read(ref _connectionGeneration)) return;
             management.SelectedClassId = revision.ClassId;
             management.SelectedClassName = revision.ClassName;
             management.AppliedRevision = revision.Revision;
@@ -249,8 +259,10 @@ public sealed class CentralManagementService : IDisposable
             Interlocked.Exchange(ref _publishedVersion, version);
             SetStatus($"已同步本机更改 · {revision.ClassName} · 修订 {revision.Revision}");
         }
+        catch (UnauthorizedAccessException) when (Paired(AppServices.Settings.CentralManagement)) { ExpireBinding(generation); }
         catch (Exception ex)
         {
+            if (generation != Volatile.Read(ref _connectionGeneration)) return;
             SetStatus("本机更改上传失败：" + ex.Message);
         }
         finally
@@ -309,8 +321,9 @@ public sealed class CentralManagementService : IDisposable
         _lastReportAt = DateTime.UtcNow;
     }
 
-    private static string RequireAccessToken()
+    private string RequireAccessToken()
     {
+        if (Paired(AppServices.Settings.CentralManagement)) return _ticket is { } ticket && _approved ? CentralManagementClient.AsDevice(ticket) : throw new UnauthorizedAccessException();
         var token = AccountService.Current?.AccessToken;
         if (string.IsNullOrWhiteSpace(token))
             throw new InvalidOperationException("请先登录 ClassNEX ID");
@@ -319,6 +332,7 @@ public sealed class CentralManagementService : IDisposable
 
     private static void NormalizeServerUrl(CentralManagementSettings management)
     {
+        if (Paired(management)) { management.ServerUrl = AppSettings.DefaultCentralEndpoint; return; }
         var value = management.ServerUrl.Trim().TrimEnd('/');
         if (string.IsNullOrWhiteSpace(value))
         {

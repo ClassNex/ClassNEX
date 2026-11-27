@@ -4,7 +4,7 @@ using ClassNex.Services;
 
 namespace ClassNex.Central;
 
-public sealed class CentralStore
+public sealed partial class CentralStore
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -14,6 +14,7 @@ public sealed class CentralStore
     private readonly string _statePath;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private CentralState _state = new();
+    private DateTime _lastSavedUtc;
 
     public CentralStore(string dataDirectory)
     {
@@ -29,6 +30,7 @@ public sealed class CentralStore
         await using var stream = File.OpenRead(_statePath);
         _state = await JsonSerializer.DeserializeAsync<CentralState>(stream, JsonOptions)
                  ?? new CentralState();
+        foreach (var record in _state.Classes.Values) record.AwaitingFirstTimetable ??= !HasTimetable(record.TimetableYaml);
     }
 
     public async Task RegisterDeviceAsync(CentralUser user, CentralDeviceRegistrationRequest request)
@@ -39,6 +41,7 @@ public sealed class CentralStore
             var id = string.IsNullOrWhiteSpace(request.ClientId)
                 ? Guid.NewGuid().ToString("N")
                 : request.ClientId.Trim();
+            if (IsPairingId(id)) throw new UnauthorizedAccessException("配对设备只能使用自己的设备凭据");
             if (!_state.Devices.TryGetValue(id, out var device))
             {
                 device = new CentralDeviceRecord { ClientId = id };
@@ -121,16 +124,17 @@ public sealed class CentralStore
                 return null;
 
             device.LastSeen = DateTime.UtcNow;
+            if (device.LastSeen - _lastSavedUtc >= TimeSpan.FromMinutes(1)) await SaveAsync();
             if (string.IsNullOrWhiteSpace(device.SelectedClassId) ||
                 !_state.Classes.TryGetValue(device.SelectedClassId, out var record) ||
                 !string.Equals(record.OwnerSubject, ownerSubject, StringComparison.Ordinal))
             {
-                await SaveAsync();
                 return null;
             }
 
-            await SaveAsync();
-            return new CentralAssignedConfig(record.Clone());
+            var config = record.Clone();
+            if (IsPairingId(clientId) && config.AwaitingFirstTimetable == true) config.TimetableYaml = "";
+            return new CentralAssignedConfig(config);
         }
         finally
         {
@@ -142,10 +146,8 @@ public sealed class CentralStore
         string ownerSubject,
         CentralReportRequest report)
     {
-        if (!string.IsNullOrWhiteSpace(report.SettingsJson))
-            using (JsonDocument.Parse(report.SettingsJson)) { }
-        if (!string.IsNullOrWhiteSpace(report.TimetableYaml))
-            _ = CsesCodec.Parse(report.TimetableYaml);
+        var settings = string.IsNullOrWhiteSpace(report.SettingsJson) ? "" : CentralSettingsPayload.FilterIncoming(report.SettingsJson);
+        var hasTimetable = HasTimetable(report.TimetableYaml);
 
         await _gate.WaitAsync();
         try
@@ -163,12 +165,17 @@ public sealed class CentralStore
                 _state.Classes.TryGetValue(device.SelectedClassId, out var record) &&
                 string.Equals(record.OwnerSubject, ownerSubject, StringComparison.Ordinal))
             {
+                var before = (record.SettingsJson, record.TimetableYaml);
                 if (string.IsNullOrWhiteSpace(record.SettingsJson) &&
-                    !string.IsNullOrWhiteSpace(report.SettingsJson))
-                    record.SettingsJson = report.SettingsJson;
-                if (string.IsNullOrWhiteSpace(record.TimetableYaml) &&
-                    !string.IsNullOrWhiteSpace(report.TimetableYaml))
+                    settings.Length > 0)
+                    record.SettingsJson = settings;
+                if ((record.AwaitingFirstTimetable == true || string.IsNullOrWhiteSpace(record.TimetableYaml)) &&
+                    hasTimetable)
+                {
                     record.TimetableYaml = report.TimetableYaml;
+                    record.AwaitingFirstTimetable = false;
+                }
+                if (before != (record.SettingsJson, record.TimetableYaml)) { record.Revision++; record.UpdatedAt = DateTime.UtcNow; }
             }
 
             await SaveAsync();
@@ -184,9 +191,8 @@ public sealed class CentralStore
         string ownerSubject,
         CentralClientPublishRequest publish)
     {
-        using (JsonDocument.Parse(publish.SettingsJson)) { }
-        if (!string.IsNullOrWhiteSpace(publish.TimetableYaml))
-            _ = CsesCodec.Parse(publish.TimetableYaml);
+        var settings = CentralSettingsPayload.FilterIncoming(publish.SettingsJson);
+        var hasTimetable = HasTimetable(publish.TimetableYaml);
 
         await _gate.WaitAsync();
         try
@@ -198,13 +204,15 @@ public sealed class CentralStore
                 !string.Equals(record.OwnerSubject, ownerSubject, StringComparison.Ordinal))
                 return null;
 
+            var timetable = record.AwaitingFirstTimetable == true && !hasTimetable && IsPairingId(publish.ClientId) ? record.TimetableYaml : publish.TimetableYaml;
+            if (hasTimetable) record.AwaitingFirstTimetable = false;
             var changed =
-                !string.Equals(record.SettingsJson, publish.SettingsJson, StringComparison.Ordinal) ||
-                !string.Equals(record.TimetableYaml, publish.TimetableYaml, StringComparison.Ordinal);
+                !string.Equals(record.SettingsJson, settings, StringComparison.Ordinal) ||
+                !string.Equals(record.TimetableYaml, timetable, StringComparison.Ordinal);
             if (changed)
             {
-                record.SettingsJson = publish.SettingsJson;
-                record.TimetableYaml = publish.TimetableYaml;
+                record.SettingsJson = settings;
+                record.TimetableYaml = timetable;
                 record.Message = "由客户端自动同步";
                 record.Revision++;
                 record.UpdatedAt = DateTime.UtcNow;
@@ -256,6 +264,7 @@ public sealed class CentralStore
         {
             var record = new CentralClassRecord
             {
+                AwaitingFirstTimetable = true,
                 ClassId = Guid.NewGuid().ToString("N"),
                 OwnerSubject = user.Subject,
                 OwnerName = user.Name,
@@ -291,14 +300,12 @@ public sealed class CentralStore
     public async Task<CentralClassRecord?> UpdateClassAsync(
         string classId,
         string ownerSubject,
-        string settingsJson,
-        string timetableYaml,
+        string? settingsJson,
+        string? timetableYaml,
         string message)
     {
-        if (!string.IsNullOrWhiteSpace(settingsJson))
-            using (JsonDocument.Parse(settingsJson)) { }
-        if (!string.IsNullOrWhiteSpace(timetableYaml))
-            _ = CsesCodec.Parse(timetableYaml);
+        if (!string.IsNullOrWhiteSpace(settingsJson)) settingsJson = CentralSettingsPayload.FilterIncoming(settingsJson);
+        var hasTimetable = HasTimetable(timetableYaml);
 
         await _gate.WaitAsync();
         try
@@ -307,10 +314,13 @@ public sealed class CentralStore
                 !string.Equals(record.OwnerSubject, ownerSubject, StringComparison.Ordinal))
                 return null;
 
-            var changed = !string.Equals(record.SettingsJson, settingsJson, StringComparison.Ordinal) ||
-                          !string.Equals(record.TimetableYaml, timetableYaml, StringComparison.Ordinal);
-            record.SettingsJson = settingsJson;
-            record.TimetableYaml = timetableYaml;
+            var settings = settingsJson ?? record.SettingsJson;
+            var timetable = timetableYaml ?? record.TimetableYaml;
+            var changed = !string.Equals(record.SettingsJson, settings, StringComparison.Ordinal) ||
+                          !string.Equals(record.TimetableYaml, timetable, StringComparison.Ordinal);
+            record.SettingsJson = settings;
+            record.TimetableYaml = timetable;
+            if (hasTimetable) record.AwaitingFirstTimetable = false;
             record.Message = message.Trim();
             if (changed)
             {
@@ -350,10 +360,20 @@ public sealed class CentralStore
         }
     }
 
+    private static bool HasTimetable(string? yaml)
+    {
+        if (yaml is { Length: > 4194304 }) throw new ArgumentException("课表超过大小限制");
+        if (string.IsNullOrWhiteSpace(yaml)) return false;
+        var profile = CsesCodec.Parse(yaml);
+        return profile.Subjects?.Count > 0 || profile.Schedules?.Any(s => s?.Classes?.Count > 0) == true || profile.ImportedTimeLayout?.Times?.Count > 0;
+    }
+
     private async Task SaveAsync()
     {
-        await using var stream = File.Create(_statePath);
-        await JsonSerializer.SerializeAsync(stream, _state, JsonOptions);
+        var pending = _statePath + ".tmp";
+        await using (var stream = File.Create(pending)) await JsonSerializer.SerializeAsync(stream, _state, JsonOptions);
+        File.Move(pending, _statePath, true);
+        _lastSavedUtc = DateTime.UtcNow;
     }
 
     private CentralDeviceSummary ToDeviceSummary(
@@ -390,6 +410,11 @@ public sealed class CentralStore
 
 public sealed class CentralClassRecord
 {
+    private string _settings = "";
+    private string? _sharedSettings;
+
+    public bool? AwaitingFirstTimetable { get; set; }
+
     public string ClassId { get; set; } = "";
 
     public string OwnerSubject { get; set; } = "";
@@ -404,7 +429,7 @@ public sealed class CentralClassRecord
 
     public string Message { get; set; } = "";
 
-    public string SettingsJson { get; set; } = "";
+    public string SettingsJson { get => _settings; set { _settings = value; _sharedSettings = null; } }
 
     public string TimetableYaml { get; set; } = "";
 
@@ -416,11 +441,23 @@ public sealed class CentralClassRecord
         UpdatedAt,
         Message);
 
-    public CentralClassRecord Clone() => (CentralClassRecord)MemberwiseClone();
+    public CentralClassRecord Clone()
+    {
+        if (_sharedSettings == null)
+        {
+            try { _sharedSettings = string.IsNullOrWhiteSpace(_settings) ? "" : CentralSettingsPayload.FilterIncoming(_settings); }
+            catch (Exception ex) when (ex is JsonException or ArgumentException or InvalidOperationException) { _sharedSettings = ""; }
+        }
+        var result = (CentralClassRecord)MemberwiseClone();
+        result._settings = _sharedSettings;
+        return result;
+    }
 }
 
 public sealed class CentralDeviceRecord
 {
+    public byte[]? DeviceKeyHash { get; set; }
+
     public string ClientId { get; set; } = "";
 
     public string OwnerSubject { get; set; } = "";

@@ -12,11 +12,13 @@ public static partial class AccountService
     private const string RedirectUri = "http://localhost:17171/callback";
 
     private static readonly object CodeLock = new();
-    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(20) };
+    private static readonly HttpClient Http = new(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(20) };
     private static string _verifier = "";
     private static HttpListener? _listener;
     private static string _state = "";
     private static string? _receivedCode;
+    private static string? _receivedError;
+    private static bool _callbackReceived;
 
     public static AccountProfile? Current { get; private set; }
 
@@ -54,8 +56,7 @@ public static partial class AccountService
         _state = Guid.NewGuid().ToString("N");
         _verifier = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
         var challenge = Convert.ToBase64String(SHA256.HashData(Encoding.ASCII.GetBytes(_verifier))).TrimEnd('=').Replace('+', '-').Replace('/', '_');
-        lock (CodeLock)
-            _receivedCode = null;
+        lock (CodeLock) { _receivedCode = _receivedError = null; _callbackReceived = false; }
 
         StartListener();
 
@@ -69,13 +70,14 @@ public static partial class AccountService
                $"&redirect_uri={Uri.EscapeDataString(RedirectUri)}";
     }
 
-    public static bool TryTakeCode(out string? code)
+    internal static bool TryTakeCallback(out string? code, out string? error)
     {
         lock (CodeLock)
         {
             code = _receivedCode;
-            _receivedCode = null;
-            return code is not null;
+            error = _receivedError;
+            _receivedCode = _receivedError = null;
+            return code is not null || error is not null;
         }
     }
 
@@ -85,7 +87,8 @@ public static partial class AccountService
         {
             _state = _verifier = "";
             StopListener();
-            _receivedCode = null;
+            _receivedCode = _receivedError = null;
+            _callbackReceived = false;
         }
     }
 
@@ -110,6 +113,8 @@ public static partial class AccountService
                 $"{endpoint}/api/login/oauth/access_token", form);
             var text = await response.Content.ReadAsStringAsync();
 
+            if (response.Content.Headers.ContentType?.MediaType?.Contains("json", StringComparison.OrdinalIgnoreCase) != true)
+                return (false, $"账户服务未返回授权结果（HTTP {(int)response.StatusCode}），请检查校园网连接后重试。");
             using var doc = JsonDocument.Parse(text);
             var root = doc.RootElement;
             if (!root.TryGetProperty("access_token", out var accessToken) ||
@@ -122,7 +127,7 @@ public static partial class AccountService
                 return (false, message);
             }
 
-            var profile = await FetchProfileAsync(token);
+            var profile = await FetchProfileAsync(endpoint, token);
             if (profile is null)
                 return (false, "无法获取账户资料");
 
@@ -171,7 +176,7 @@ public static partial class AccountService
         StopListener();
 
         var listener = new HttpListener();
-        listener.Prefixes.Add("http://localhost:17171/callback/");
+        listener.Prefixes.Add("http://localhost:17171/");
         listener.Start();
         _listener = listener;
         _ = Task.Run(() => ListenLoopAsync(listener));
@@ -209,10 +214,30 @@ public static partial class AccountService
     {
         try
         {
+            if (!context.Request.IsLocal || context.Request.HttpMethod != "GET" || context.Request.Url?.AbsolutePath.TrimEnd('/') != "/callback")
+            {
+                context.Response.StatusCode = 404;
+                context.Response.Close();
+                return;
+            }
             var state = context.Request.QueryString["state"] ?? "";
             var code = context.Request.QueryString["code"] ?? "";
-            var ok = ReferenceEquals(listener, _listener) && _state.Length != 0 && state == _state && code.Length > 0;
-            var html = ok
+            var error = context.Request.QueryString["error"];
+            var hasCode = code.Length != 0;
+            var hasError = !string.IsNullOrEmpty(error);
+            bool valid;
+            lock (CodeLock)
+            {
+                valid = ReferenceEquals(listener, _listener) && _state.Length != 0 && state == _state &&
+                        hasCode != hasError;
+                if (valid && !_callbackReceived)
+                {
+                    _callbackReceived = true;
+                    if (hasCode) _receivedCode = code;
+                    else _receivedError = error == "access_denied" ? "已取消浏览器授权。" : "账户服务未完成授权，请重新登录。";
+                }
+            }
+            var html = valid && hasCode
                 ? """
                   <!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
                   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -233,41 +258,47 @@ public static partial class AccountService
                   """;
 
             var bytes = Encoding.UTF8.GetBytes(html);
-            context.Response.StatusCode = ok ? 200 : 400;
+            context.Response.StatusCode = valid ? 200 : 400;
             context.Response.ContentType = "text/html; charset=utf-8";
+            context.Response.Headers["Cache-Control"] = "no-store";
+            context.Response.Headers["Referrer-Policy"] = "no-referrer";
             context.Response.ContentLength64 = bytes.Length;
             context.Response.OutputStream.Write(bytes, 0, bytes.Length);
             context.Response.Close();
 
-            if (!ok)
-                return;
-
-            lock (CodeLock)
-                _receivedCode = code;
         }
         catch
         {
         }
     }
 
-    private static async Task<AccountProfile?> FetchProfileAsync(string accessToken)
+    private static async Task<AccountProfile?> FetchProfileAsync(string issuer, string accessToken)
     {
-        var centralEndpoint = AppServices.Settings.CentralManagement.ServerUrl.Trim();
-        if (string.IsNullOrWhiteSpace(centralEndpoint))
-            centralEndpoint = AppSettings.DefaultCentralEndpoint;
-        var url = centralEndpoint.TrimEnd('/') + "/api/v1/auth/profile";
+        async Task<AccountProfile?> Read(string url)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Authorization = new("Bearer", accessToken);
+            using var response = await Http.SendAsync(request);
+            return response.IsSuccessStatusCode && response.Content.Headers.ContentType?.MediaType?.Contains("json", StringComparison.OrdinalIgnoreCase) == true
+                ? ParseProfile(await response.Content.ReadAsStringAsync(), accessToken) : null;
+        }
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
-            "Bearer",
-            accessToken);
-        using var response = await Http.SendAsync(request);
-        if (!response.IsSuccessStatusCode)
-            return null;
-        var text = await response.Content.ReadAsStringAsync();
+        var uri = issuer + "/api/userinfo";
+        if (!string.Equals(issuer, AppSettings.DefaultAccountEndpoint, StringComparison.OrdinalIgnoreCase))
+            return await Read(uri);
+        try
+        {
+            if (await Read(uri) is { } profile) return profile;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException) { }
+        return await Read(AppSettings.DefaultCentralEndpoint + "/api/v1/auth/profile");
+    }
 
+    private static AccountProfile? ParseProfile(string text, string accessToken)
+    {
         using var doc = JsonDocument.Parse(text);
         var root = doc.RootElement;
+        if (root.ValueKind != JsonValueKind.Object) return null;
 
         static string Get(JsonElement root, string key) =>
             root.TryGetProperty(key, out var value) && value.ValueKind == JsonValueKind.String
@@ -289,7 +320,7 @@ public static partial class AccountService
             AccessToken = accessToken,
         };
 
-        if (string.IsNullOrWhiteSpace(profile.Name))
+        if (string.IsNullOrWhiteSpace(profile.Id) || string.IsNullOrWhiteSpace(profile.Name))
             return null;
 
         return profile;

@@ -3,6 +3,10 @@ namespace ClassNex.Models;
 /// <summary>单设备集控状态；应用远端设置时须保留该设备原有的绑定信息。</summary>
 public sealed class CentralManagementSettings
 {
+    /// <summary>Transient short code visible only on the initiating device until claimed or expired.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string PairingCode { get; set; } = "";
+
     /// <summary>是否参与当前设备的集控同步。</summary>
     public bool IsEnabled { get; set; }
 

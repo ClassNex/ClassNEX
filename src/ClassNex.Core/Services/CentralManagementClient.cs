@@ -11,7 +11,39 @@ namespace ClassNex.Services;
 public sealed class CentralManagementClient : IDisposable
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(20) };
+    private readonly HttpClient _http;
+
+    /// <summary>Uses direct API responses; a redirect must not forward a classroom payload to another host.</summary>
+    public CentralManagementClient() : this(new HttpClientHandler { AllowAutoRedirect = false }) { }
+
+    /// <summary>Uses a caller-supplied transport, owned and disposed by this client.</summary>
+    public CentralManagementClient(HttpMessageHandler transport) => _http = new(transport) { Timeout = TimeSpan.FromSeconds(20) };
+
+    /// <summary>Request a short code from the built-in service without a desktop account.</summary>
+    public async Task<CentralPairingTicket> StartPairingAsync(string serverUrl, CentralPairingStart device, CancellationToken cancellationToken = default)
+    {
+        using var response = await SendAsync(serverUrl, "/api/v1/pairing/start", HttpMethod.Post, "", JsonSerializer.Serialize(device, JsonOptions), cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<CentralPairingTicket>(JsonOptions, cancellationToken) ?? throw new InvalidOperationException("未收到配对码");
+    }
+
+    /// <summary>Read this device's enrollment state without granting it any owner privileges.</summary>
+    public async Task<CentralPairingStatus> PairingStatusAsync(string serverUrl, CentralPairingTicket ticket, CancellationToken cancellationToken = default)
+    {
+        using var response = await SendAsync(serverUrl, "/api/v1/pairing/status?clientId=" + Uri.EscapeDataString(ticket.ClientId), HttpMethod.Get, AsDevice(ticket), null, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<CentralPairingStatus>(JsonOptions, cancellationToken) ?? throw new InvalidOperationException("未收到配对状态");
+    }
+
+    /// <summary>Revoke only the classroom grant held by this client, including an unclaimed code.</summary>
+    public async Task RevokePairingAsync(string serverUrl, CentralPairingTicket ticket, CancellationToken cancellationToken = default)
+    {
+        using var response = await SendAsync(serverUrl, "/api/v1/pairing/device?clientId=" + Uri.EscapeDataString(ticket.ClientId), HttpMethod.Delete, AsDevice(ticket), null, cancellationToken);
+        if (response.StatusCode != HttpStatusCode.Unauthorized) await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    /// <summary>Formats the non-OAuth credential used only for a paired device's own sync endpoints.</summary>
+    public static string AsDevice(CentralPairingTicket ticket) => "ClassNexDevice " + ticket.DeviceToken;
 
     /// <summary>使用当前账户令牌登记或刷新设备的身份资料。</summary>
     public async Task RegisterDeviceAsync(
@@ -101,7 +133,8 @@ public sealed class CentralManagementClient : IDisposable
         using var request = new HttpRequestMessage(
             method,
             new Uri(serverUrl.TrimEnd('/') + path, UriKind.Absolute));
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        if (!string.IsNullOrEmpty(accessToken)) request.Headers.Authorization = accessToken.StartsWith("ClassNexDevice ", StringComparison.Ordinal)
+            ? AuthenticationHeaderValue.Parse(accessToken) : new AuthenticationHeaderValue("Bearer", accessToken);
         if (json is not null)
         {
             request.Content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -125,7 +158,7 @@ public sealed class CentralManagementClient : IDisposable
         throw new HttpRequestException(
             string.IsNullOrWhiteSpace(body)
                 ? $"集控服务返回 {(int)response.StatusCode}"
-                : body);
+                : body, null, response.StatusCode);
     }
 
     /// <summary>释放此客户端持有的 HTTP 连接资源。</summary>

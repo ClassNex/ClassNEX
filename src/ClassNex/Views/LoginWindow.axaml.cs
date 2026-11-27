@@ -16,6 +16,7 @@ public partial class LoginWindow : AppWindow
     private string _loginUrl = "";
     private readonly Func<string, bool> _openBrowser;
     private int _attempt, _pollingAttempt = -1;
+    private long _startedAt;
 
     public LoginWindow() : this(OpenBrowser) { }
 
@@ -121,6 +122,7 @@ public partial class LoginWindow : AppWindow
         try
         {
             _loginUrl = AccountService.BuildLoginUrl();
+            _startedAt = Stopwatch.GetTimestamp();
             ShowFlow("已打开默认浏览器，请在浏览器中完成登录或注册。");
             if (!_openBrowser(_loginUrl))
                 FlowStatusText.Text = "无法自动打开浏览器，请点击「重新打开浏览器」再试。";
@@ -128,6 +130,9 @@ public partial class LoginWindow : AppWindow
         }
         catch (Exception ex)
         {
+            _pollTimer?.Stop();
+            AccountService.CancelLogin();
+            _loginUrl = "";
             ShowFlow("无法连接账户服务：" + ex.Message);
             ReopenBrowserButton.Content = "重试登录";
             CancelFlowButton.Content = "返回";
@@ -159,8 +164,15 @@ public partial class LoginWindow : AppWindow
     private async Task PollOnceAsync()
     {
         var attempt = _attempt;
-        if (_pollingAttempt == attempt || !AccountService.TryTakeCode(out var code) || code is null)
+        if (_pollingAttempt == attempt) return;
+        if (!AccountService.TryTakeCallback(out var code, out var error))
+        {
+            if (Stopwatch.GetElapsedTime(_startedAt) >= TimeSpan.FromMinutes(10))
+                EndFlowForRetry("本次授权已过期，请重新登录。");
             return;
+        }
+        if (error is not null) { EndFlowForRetry(error); return; }
+        if (code is null) return;
 
         _pollingAttempt = attempt;
         FlowStatusText.Text = "已收到浏览器授权，正在同步账户资料…";
@@ -175,13 +187,22 @@ public partial class LoginWindow : AppWindow
                 return;
             }
 
-            FlowStatusText.Text = "授权已完成，但账户资料同步失败：" + message;
-            ReopenBrowserButton.Content = "重新登录";
+            EndFlowForRetry("授权已完成，但账户资料同步失败：" + message);
         }
         finally
         {
             if (_pollingAttempt == attempt) _pollingAttempt = -1;
         }
+    }
+
+    private void EndFlowForRetry(string message)
+    {
+        _pollTimer?.Stop();
+        AccountService.CancelLogin();
+        _loginUrl = "";
+        FlowStatusText.Text = message;
+        ReopenBrowserButton.Content = "重新登录";
+        CancelFlowButton.Content = "返回";
     }
 
     private void ShowFlow(string status)

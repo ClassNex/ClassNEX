@@ -33,6 +33,7 @@ using var auth = new CentralAuthService(
     publicBaseUrl);
 
 var loginStates = new ConcurrentDictionary<string, PendingLogin>();
+app.MapPairing(store, GetBrowserUserAsync, publicBaseUrl);
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
@@ -261,14 +262,10 @@ app.MapPut("/api/v1/classes/{classId}/timetable", async (
 
     try
     {
-        var record = await store.GetClassAsync(classId, user.Subject);
-        if (record is null)
-            return Results.NotFound();
-
         var updated = await store.UpdateClassAsync(
             classId,
             user.Subject,
-            record.SettingsJson,
+            null,
             CsesCodec.SerializeWorkingProfile(profile),
             "由集控中心更新课程表");
         return updated is null ? Results.NotFound() : Results.Json(ToDetail(updated));
@@ -315,15 +312,12 @@ app.MapPut("/api/v1/classes/{classId}/settings", async (
 
     try
     {
-        var record = await store.GetClassAsync(classId, user.Subject);
-        if (record is null)
-            return Results.NotFound();
-
+        if (string.IsNullOrWhiteSpace(update.SettingsJson)) return Results.BadRequest(new { message = "缺少课堂设置" });
         var updated = await store.UpdateClassAsync(
             classId,
             user.Subject,
             update.SettingsJson,
-            record.TimetableYaml,
+            null,
             "由集控中心更新客户端设置");
         return updated is null ? Results.NotFound() : Results.Json(ToDetail(updated));
     }
@@ -349,11 +343,11 @@ app.MapGet("/api/v1/client/assignment", async (
     string clientId,
     HttpRequest request) =>
 {
-    var user = await GetCurrentUserAsync(request);
-    if (user is null)
+    var owner = await DeviceOwnerAsync(request, clientId);
+    if (owner is null)
         return Results.Unauthorized();
 
-    var assignment = await store.GetClientAssignmentAsync(clientId, user.Subject);
+    var assignment = await store.GetClientAssignmentAsync(clientId, owner);
     if (assignment is null)
         return Results.NoContent();
 
@@ -372,13 +366,13 @@ app.MapPost("/api/v1/client/report", async (
     CentralReportRequest report,
     HttpRequest request) =>
 {
-    var user = await GetCurrentUserAsync(request);
-    if (user is null)
+    var owner = await DeviceOwnerAsync(request, report.ClientId);
+    if (owner is null)
         return Results.Unauthorized();
 
     try
     {
-        return await store.ReportDeviceAsync(user.Subject, report)
+        return await store.ReportDeviceAsync(owner, report)
             ? Results.Ok()
             : Results.NotFound();
     }
@@ -392,13 +386,13 @@ app.MapPost("/api/v1/client/publish", async (
     CentralClientPublishRequest publish,
     HttpRequest request) =>
 {
-    var user = await GetCurrentUserAsync(request);
-    if (user is null)
+    var owner = await DeviceOwnerAsync(request, publish.ClientId);
+    if (owner is null)
         return Results.Unauthorized();
 
     try
     {
-        var revision = await store.PublishDeviceConfigAsync(user.Subject, publish);
+        var revision = await store.PublishDeviceConfigAsync(owner, publish);
         return revision is null
             ? Results.NotFound(new { message = "本设备尚未分配班级" })
             : Results.Json(revision);
@@ -415,6 +409,15 @@ Console.WriteLine($"Public URL: {publicBaseUrl}");
 Console.WriteLine($"State file: {Path.Combine(dataDirectory, "central-state.json")}");
 
 app.Run();
+
+Task<CentralUser?> GetBrowserUserAsync(HttpRequest request) => request.Cookies.TryGetValue(SessionCookie, out var id) ? sessionStore.GetAsync(id) : Task.FromResult<CentralUser?>(null);
+
+async Task<string?> DeviceOwnerAsync(HttpRequest request, string id)
+{
+    if (string.IsNullOrWhiteSpace(id) || id.Length > 128) return null;
+    if (CentralStore.IsPairingId(id)) return (await store.DeviceIdentityAsync(id, PairingRoutes.DeviceKey(request), DateTimeOffset.UtcNow)).Owner;
+    return (await GetCurrentUserAsync(request))?.Subject;
+}
 
 async Task<CentralUser?> GetCurrentUserAsync(HttpRequest request)
 {

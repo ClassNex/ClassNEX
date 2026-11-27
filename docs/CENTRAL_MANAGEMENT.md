@@ -1,16 +1,24 @@
 # ClassNEX 集控管理
 
-## 范围
+## 连接一台教室设备（26w48b 预览）
 
-集控中心使用 ClassNEX ID 登录。桌面客户端登录并连接后会登记为设备，管理端选择设备并指定班级。
-集控中心可以读取、编辑并发布完整设置与完整课程表。客户端每 2 秒检查设备分配和修订号，
-管理端保存后自动下发；客户端本地保存设置或课程表后也会自动发布新修订，网页随后自动接收。
+配对需要桌面和集控服务都支持新版协议。**只在管理网页登录 ClassNEX ID**；教室电脑不用登录账户、输入服务器地址、填写令牌或选择班级。
+
+1. 在教室端打开「应用设置 → 集控与自动化」，点击「获取配对码」。只把屏幕上的 `XXXX-XXXX` 交给获准管理这台设备的人；配对码五分钟内有效，只能使用一次。
+2. 在集控网页用自己的 ClassNEX ID 登录，打开「设备连接」，输入配对码。默认新建班级并沿用教室现有课表；也可以在配对前选一个已有班级，直接使用那个班的设置和课表。点击「配对设备」即可，之后仍可在网页更改分配。
+3. 在网页的「应用设置」或「档案设置」选择该班级后直接编辑。设置和课表自动分别保存，成功时显示修订号；失败会保留当前页的修改，可点击「重试同步」。已连接客户端约每两秒检查新修订，本机保存后也会自动上传，不需要再按同步按钮。
+
+新班级的空表单不会清掉教室原有课表。收到第一份有内容的课表后，主动清空并保存才会同步为空。更改部分设置不会重置客户端未指定的偏好。共享的是课堂设置和基础课表，不是整份用户目录：账户、设备凭据、NEX 密钥和系统提示词、本机路径及本地铃声文件不随班级同步。
+
+网页「断开班级」保留设备绑定，可稍后分配其他班级。「解除配对」或客户端的「解除绑定」会停止这台设备的同步，不会删除班级或本机课表，本机仍可继续编辑。如果教室电脑离线，本机解除只保证本地已断开；管理员可在网页撤销服务端绑定。
 
 ## 认证
 
 集控中心使用 Casdoor OAuth 授权码登录，并在服务端建立 HttpOnly 会话。
 会话保存在持久化数据目录的 `central-sessions.json`，有效期 7 天；服务或容器重启后仍保持登录。
-桌面客户端使用当前 ClassNEX ID 的访问令牌调用集控 API，不再使用管理员令牌、注册令牌或客户端密钥。
+已确认配对的桌面使用单独的设备凭据，只能查询本机绑定和同步分配给本机的配置，不能管理账户、列出其他设备或班级。客户端的 `data/central-device.bin` 由当前 Windows 用户保护，服务端只保存凭据的哈希。不要把该文件复制给其他用户或作为配置分发。
+
+未认领的配对码只存在于服务进程内：服务重启或码过期后请重新获取。保留数据目录重启服务时，已确认的绑定继续有效，已撤销的绑定不会恢复。浏览器会话独立于设备配对。旧客户端仍可使用原有账户 Bearer 登记、分班及同步；已通过账户连接的设备不会被静默改绑。要切换为配对模式，先在客户端断开旧连接。新客户端遇到尚未支持配对的服务会显示相应提示。
 
 集控服务需要配置以下环境变量：
 
@@ -39,15 +47,13 @@ https://classnex.tech/Control/auth/callback
 dotnet run --project src\ClassNex.Central\ClassNex.Central.csproj --urls http://0.0.0.0:7010
 ```
 
-运行数据保存在程序目录的 `data\central-state.json`。
+默认在程序目录的 `data/` 保存 `central-state.json`（班级和绑定）和 `central-sessions.json`（浏览器会话）；可用 `CENTRAL_DATA_DIRECTORY` 指定持久目录。容器更新时应保留同一数据卷。
 
 ## 管理端
 
-正式地址为 `https://classnex.tech/Control/`。源站已经配置 `/Control/` 子路径反向代理，
-同时保留 `http://206.187.201.60:7010/` 作为直接调试入口。公开访问应使用标准 443 端口；
-不要要求学校网络或移动网络放行 `7010`、`8000` 等非标准端口。点击“登录 ClassNEX ID”后，
-回调地址会根据当前访问域名、反向代理协议和 `/Control` 前缀动态生成。
-登录完成和退出登录后的跳转也使用同一个公开前缀。
+管理端地址为 `https://classnex.tech/Control/`。2026-11-27 已仅更新新服务器的 `classnex-central`：公网首页和样式 SHA-256 与预发布产物一致，未登录访问账户、设备状态及班级接口被拒绝，Casdoor 的 S256 授权请求回调为 `https://classnex.tech/Control/auth/callback`。没有用生产用户代登、认领真实设备，或改动 Casdoor、DNS、代理。桌面预览是独立交付，并未发布新的 Windows 安装包。
+
+公开访问使用标准 443，不要求学校网络放行非标准端口。登录回调、登录完成和退出都使用 `CENTRAL_PUBLIC_URL`；代理位于 `/Control/` 时，该值也必须包含 `/Control`。公网匿名检查可重复执行：`py tools/check_public_central.py <集控发布目录>`。
 客户端默认集控地址为 `https://classnex.tech/Control`。旧版保存的 `7010` 直接 IP
 地址会在启动时迁移到该地址，避免部分校园网或移动网络阻断美国源站 IP 与非标准端口。
 
@@ -65,21 +71,7 @@ Casdoor 的 OAuth 回调脚本必须优先返回已经声明的 `response_type`�
 不再用右侧窄栏挤压编辑区。客户端设置使用自适应分组卡片、开关、下拉框、滑动条和文本框编辑，
 不必直接编写 JSON；档案设置使用全宽“科目池 + 星期 × 节次”网格，支持每周、单周、双周、
 直接修改节次时间、增删节次和点击格子排课，七天课表无需手动加宽窗口。
-网页整体按 WinUIonWeb 页面过渡示例还原：324px 左侧导航、窗口居中搜索、Fluent 图标和主工作区。
-设备连接页会显示已登记客户端，选择设备后可连接班级或断开班级。
-保存配置后修订号自动增加，被分配该班级的设备会在下一次轮询时应用。
-
-## 客户端接入
-
-进入“应用设置 → 基本 → 集中管理”，完成以下操作：
-
-1. 登录 ClassNEX ID
-2. 填写集控服务地址
-3. 点击“连接集控”
-4. 等待状态显示“已连接，等待集控端分配班级”
-
-客户端不会显示班级选择。管理端在“设备连接”页选择该设备并指定班级后，客户端会自动接收配置。
-客户端会保留本机的集控连接参数，远端设置不能覆盖这些参数。
+网页按窗口宽度使用侧栏或紧凑导航，并适配深浅色。重开已登录的网页会回到管理总览，而不是跳到账户管理页。
 
 ## API
 
@@ -88,10 +80,15 @@ Casdoor 的 OAuth 回调脚本必须优先返回已经声明的 `response_type`�
 | GET | `/auth/login` | 无 | 跳转 ClassNEX ID 登录 |
 | GET | `/auth/callback` | 无 | 建立集控管理端会话 |
 | GET | `/api/v1/auth/me` | 会话或 Bearer | 当前 ClassNEX ID |
-| POST | `/api/v1/client/device` | 会话或 Bearer | 注册或更新客户端 |
-| GET | `/api/v1/client/assignment` | Bearer | 拉取管理端为本设备分配的班级配置 |
-| POST | `/api/v1/client/report` | Bearer | 上报客户端状态与数据 |
-| POST | `/api/v1/client/publish` | Bearer | 客户端保存后发布新的设置和课程表修订 |
+| POST | `/api/v1/pairing/start` | 无，限流 | 教室请求一次性配对码及私有设备凭据 |
+| POST | `/api/v1/pairing/claim` | 浏览器会话，限流 | 用码绑定至自己的班级；省略 `classId` 时新建班级 |
+| GET | `/api/v1/pairing/status?clientId=…` | 本机设备凭据 | 查询待认领或已绑定状态 |
+| DELETE | `/api/v1/pairing/device?clientId=…` | 本机设备凭据 | 取消待认领配对或撤销本机绑定 |
+| DELETE | `/api/v1/devices/{id}` | 所有者浏览器会话 | 从网页解除设备绑定，保留班级 |
+| POST | `/api/v1/client/device` | 会话或账户 Bearer | 注册或更新旧版客户端 |
+| GET | `/api/v1/client/assignment` | 设备凭据或旧版账户鉴权 | 拉取管理端为本设备分配的班级配置 |
+| POST | `/api/v1/client/report` | 设备凭据或旧版账户鉴权 | 上报客户端状态与课堂数据 |
+| POST | `/api/v1/client/publish` | 设备凭据或旧版账户鉴权 | 客户端保存后发布新的设置和课程表修订 |
 | GET | `/api/v1/classes` | 会话或 Bearer | 当前账户的班级列表 |
 | POST | `/api/v1/classes` | 会话或 Bearer | 创建班级 |
 | GET | `/api/v1/classes/{id}` | 会话或 Bearer | 读取班级完整数据 |
@@ -103,4 +100,18 @@ Casdoor 的 OAuth 回调脚本必须优先返回已经声明的 `response_type`�
 | GET | `/api/v1/devices` | 会话或 Bearer | 当前账户已登记设备 |
 | PUT | `/api/v1/devices/{id}` | 会话或 Bearer | 选择设备并指定或断开班级 |
 
-桌面客户端发送 `Authorization: Bearer <ClassNEX ID AccessToken>`。设备绑定由管理端创建，客户端不能再自行声明或选择班级。班级和设备都按 ClassNEX ID 的 `sub` 隔离。
+配对设备发送 `Authorization: ClassNexDevice <设备凭据>`，不是页面上显示的八位配对码。该设备的同步接口不接受账户 Bearer 代替设备凭据；旧设备标识继续沿用账户鉴权。班级和设备按账户主体隔离。
+
+## 本地验收
+
+从仓库根目录运行。OAuth 测试只在回环地址启动临时身份提供商和集控，使用临时数据目录。`--paired-desktop` 运行真正的 Windows 桌面同步服务，但不打开教室窗口；它使用前面生成的 Release 程序。
+
+```powershell
+dotnet test tests/ClassNex.Central.Tests
+dotnet test tests/ClassNex.Core.Tests --filter FullyQualifiedName~ManagementPayloadTests
+dotnet build src/ClassNex.Central -c Debug
+dotnet build tools/ClassNex.PairingReview -c Release
+py -3 tools/test_central_oauth.py --paired-desktop tools/ClassNex.PairingReview/ClassNex.PairingReview.csproj
+```
+
+验证包括：原账户登录与旧设备同步、不同所有者的数据隔离、一次性配对、设置与课表并发保存、首次空表保护、设备凭据的 Windows 用户保护、服务重启以及从任一端解除绑定后仍能本地编辑。浏览器控件另可用 `node tools/test_control_web.mjs` 在本机临时 Edge 配置中检查；该脚本使用模拟接口，不代替上述真实集控协议验收。
