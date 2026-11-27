@@ -114,10 +114,21 @@ internal static partial class Program
         using (var first = Start())
         {
             await first.RequestPairingAsync(); var cancelled = AppServices.Settings.CentralManagement.PairingCode;
+            Task? nextPair = null;
+            var clearedOnCancel = false;
+            first.StatusChanged += status =>
+            {
+                if (!status.StartsWith("已断开集控", StringComparison.Ordinal)) return;
+                var saved = SettingsService.Load().CentralManagement;
+                clearedOnCancel = !saved.IsEnabled && string.IsNullOrEmpty(saved.ClientId) &&
+                    string.IsNullOrEmpty(AppServices.Settings.CentralManagement.ClientId) && !File.Exists(secretPath);
+                nextPair = first.RequestPairingAsync();
+            };
             await first.DisconnectAsync();
             using var unused = await www.PostAsJsonAsync("api/v1/pairing/claim", new { code = cancelled });
-            Check(!File.Exists(secretPath) && unused.StatusCode == HttpStatusCode.NotFound, "Cancelling retained a device grant");
-            await first.RequestPairingAsync();
+            Check(clearedOnCancel && unused.StatusCode == HttpStatusCode.NotFound, "Manual disconnection was announced before the previous binding was cleared");
+            await (nextPair ?? throw new InvalidOperationException("Manual disconnection was never announced"));
+            Check(AppServices.Settings.CentralManagement.PairingCode != cancelled, "Immediate re-pairing reused the cancelled code");
         }
         var pair = AppServices.Settings.CentralManagement.PairingCode;
         Check(AccountService.Current == null && pair.Length == 9 && File.Exists(secretPath), "Anonymous client did not receive a code");
@@ -206,12 +217,32 @@ internal static partial class Program
         using var legacyAppearance = await www.PutAsJsonAsync(classroom + "/settings", new { settingsJson = "{\"themeMode\":\"system\"}" }); legacyAppearance.EnsureSuccessStatusCode();
         await Until(() => AppServices.Settings.ThemeMode == "system", "A pending timetable blocked incoming settings from older services");
         Check(AppServices.Schedule.Profile.Subjects.Any(s => s.Name == "Biology") && Directory.GetFiles(drafts, "*.pending.json").Length == 1 && writes.UnsafePublishes == 0, "Downstream legacy settings erased the pending timetable");
+        var revokedNotice = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var announcedWithCredential = 0;
+        var announcedWithClientId = 0;
+        resumed.StatusChanged += status =>
+        {
+            var current = AppServices.Settings.CentralManagement;
+            if (current.IsEnabled) return;
+            if (File.Exists(secretPath)) Interlocked.Increment(ref announcedWithCredential);
+            if (!string.IsNullOrEmpty(current.ClientId)) Interlocked.Increment(ref announcedWithClientId);
+            if (status.StartsWith("集控端已解除绑定", StringComparison.Ordinal)) revokedNotice.TrySetResult();
+        };
         using var removed = await www.DeleteAsync("api/v1/devices/" + (string)link["clientId"]!); removed.EnsureSuccessStatusCode();
-        await Until(() => !AppServices.Settings.CentralManagement.IsEnabled, "Owner revocation did not stop automatic sync");
+        await revokedNotice.Task.WaitAsync(TimeSpan.FromSeconds(12));
+        Check(!AppServices.Settings.CentralManagement.IsEnabled, "Owner revocation did not stop automatic sync");
+        Check(announcedWithCredential == 0 && announcedWithClientId == 0,
+            $"Disconnected status was published with stale binding data: credential={announcedWithCredential}, clientId={announcedWithClientId}");
         AppServices.Settings.ThemeMode = "light"; AppServices.SaveSettings();
         var revokedDraft = AppServices.Settings.CentralManagement.LastConflictDraft;
-        Check(!File.Exists(secretPath) && SettingsService.Load().ThemeMode == "light" && AccountService.Current == null && revokedDraft != null &&
-            File.ReadAllText(Path.Combine(drafts, revokedDraft)).Contains("Biology"), "Revocation did not preserve local editing and an accessible offline timetable");
+        var savedBinding = SettingsService.Load().CentralManagement;
+        Check(!File.Exists(secretPath) && !savedBinding.IsEnabled && string.IsNullOrEmpty(savedBinding.ClientId), "The revoked device binding remained on disk");
+        Check(SettingsService.Load().ThemeMode == "light" && AccountService.Current == null, "The local, signed-out settings change did not persist after revocation");
+        Check(revokedDraft != null && File.Exists(Path.Combine(drafts, revokedDraft)) && File.ReadAllText(Path.Combine(drafts, revokedDraft)).Contains("Biology"), "The revoked offline timetable was not archived");
+        var offline = AppServices.Schedule.Profile.Subjects.Single(s => s.Name == "Biology");
+        offline.Name = "Geography"; AppServices.Schedule.Save();
+        Check(File.ReadAllText(AppServices.TimetablePath).Contains("Geography") && !Directory.EnumerateFiles(drafts, "*.pending.json").Any() &&
+            File.ReadAllText(Path.Combine(drafts, revokedDraft!)).Contains("Biology"), "Editing the unbound timetable did not stay local and independent of its archive");
         Console.WriteLine("PASS: anonymous desktop pairing, automatic edits, independent concurrent changes, overlapping drafts, safe legacy negotiation, restart recovery, owner revoke and independent local settings");
     }
 }

@@ -158,7 +158,7 @@ public sealed partial class CentralManagementService
             }
         }
         catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
-        catch (UnauthorizedAccessException) when (Paired(management)) { ExpireBinding(generation); }
+        catch (UnauthorizedAccessException) when (Paired(management)) { await ExpireBindingAsync(generation); }
         catch (Exception ex)
         {
             if (IsCurrent()) SetStatus("本机更改已保留，将自动重试：" + ex.Message);

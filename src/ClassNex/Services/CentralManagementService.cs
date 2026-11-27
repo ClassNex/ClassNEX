@@ -178,7 +178,7 @@ public sealed partial class CentralManagementService : IDisposable
                     initial: hasSettings && hasTimetable ? null : config, observedVersion: localVersion);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
-        catch (UnauthorizedAccessException) when (Paired(AppServices.Settings.CentralManagement)) { ExpireBinding(generation); }
+        catch (UnauthorizedAccessException) when (Paired(AppServices.Settings.CentralManagement)) { await ExpireBindingAsync(generation); }
         catch (Exception ex)
         {
             if (generation != Volatile.Read(ref _connectionGeneration)) return;
@@ -202,16 +202,24 @@ public sealed partial class CentralManagementService : IDisposable
 
     public void Disconnect() => _ = DisconnectAsync();
 
-    private void ResetConnection()
+    private void ResetConnection(string status)
     {
         var management = AppServices.Settings.CentralManagement;
         foreach (var pending in _journal.Snapshot())
         {
-            try { KeepConflict(management, pending); }
+            try
+            {
+                if (_journal.Archive(pending) is { } name) management.LastConflictDraft = name;
+            }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException) { /* The original pending file stays in CentralDrafts. */ }
         }
-        management.IsEnabled = false;
-        UpdatePolling();
+        if (Paired(management))
+        {
+            CentralPairingCredential.Forget();
+            _ticket = null;
+            _approved = false;
+            management.ClientId = "";
+        }
         management.PairingCode = "";
         management.SelectedClassId = "";
         management.SelectedClassName = "";
@@ -219,11 +227,12 @@ public sealed partial class CentralManagementService : IDisposable
         management.LastSyncTime = null;
         _registeredForSession = false;
         _lastReportAt = DateTime.MinValue;
+        management.IsEnabled = false;
+        UpdatePolling();
         BindDrafts(management);
         Interlocked.Exchange(ref _draftErrors, 0);
         Interlocked.Exchange(ref _forcePull, 0);
-        SaveManagement();
-        SetStatus("已断开集控" + DraftNotice(management));
+        SetStatus(status + DraftNotice(management), persist: true);
     }
 
     private async Task TickAsync()
@@ -310,17 +319,14 @@ public sealed partial class CentralManagementService : IDisposable
         management.ServerUrl = value;
     }
 
-    private void SetStatus(string status)
+    private void SetStatus(string status, bool persist = false)
     {
-        if (string.Equals(
-                AppServices.Settings.CentralManagement.LastStatus,
-                status,
-                StringComparison.Ordinal))
-            return;
-
-        AppServices.Settings.CentralManagement.LastStatus = status;
+        var management = AppServices.Settings.CentralManagement;
+        var changed = !string.Equals(management.LastStatus, status, StringComparison.Ordinal);
+        if (!changed && !persist) return;
+        management.LastStatus = status;
         SaveManagement();
-        StatusChanged?.Invoke(status);
+        if (changed) StatusChanged?.Invoke(status);
     }
 
     private bool ShouldReport() =>

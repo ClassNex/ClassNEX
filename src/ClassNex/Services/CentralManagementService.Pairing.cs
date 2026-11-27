@@ -101,34 +101,33 @@ public sealed partial class CentralManagementService
         finally { _pairGate.Release(); }
     }
 
-    private void ExpireBinding(int generation)
+    private async Task ExpireBindingAsync(int generation)
     {
-        if (Interlocked.CompareExchange(ref _connectionGeneration, generation + 1, generation) != generation) return;
-        var expired = !_approved;
-        _approved = false; _ticket = null;
-        ResetConnection();
-        AppServices.Settings.CentralManagement.ClientId = "";
-        CentralPairingCredential.Forget();
-        SetStatus((expired ? "配对码已失效，请重新获取" : "集控端已解除绑定") + DraftNotice(AppServices.Settings.CentralManagement));
+        await _pairGate.WaitAsync();
+        try
+        {
+            if (Interlocked.CompareExchange(ref _connectionGeneration, generation + 1, generation) != generation) return;
+            ResetConnection(_approved ? "集控端已解除绑定" : "配对码已失效，请重新获取");
+        }
+        finally { _pairGate.Release(); }
     }
 
     public async Task DisconnectAsync()
     {
-        Interlocked.Increment(ref _connectionGeneration);
-        var wasPaired = Paired(AppServices.Settings.CentralManagement);
-        ResetConnection();
+        var generation = Interlocked.Increment(ref _connectionGeneration);
         await _pairGate.WaitAsync();
         try
         {
-            if (!wasPaired) return;
-            var old = _ticket ?? await CentralPairingCredential.LoadAsync();
-            _ticket = null; _approved = false;
-            AppServices.Settings.CentralManagement.ClientId = "";
-            CentralPairingCredential.Forget();
-            SaveManagement();
+            if (generation != Volatile.Read(ref _connectionGeneration)) return;
+            var old = Paired(AppServices.Settings.CentralManagement) ? _ticket ?? await CentralPairingCredential.LoadAsync() : null;
+            ResetConnection("已断开集控");
             if (old != null) await _client.RevokePairingAsync(AppSettings.DefaultCentralEndpoint, old, _lifetime.Token);
         }
-        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException) { SetStatus("本机已断开；服务暂不可用，也可在集控网页解除绑定"); }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+        {
+            if (generation == Volatile.Read(ref _connectionGeneration))
+                SetStatus("本机已断开；服务暂不可用，也可在集控网页解除绑定" + DraftNotice(AppServices.Settings.CentralManagement));
+        }
         finally { _pairGate.Release(); }
     }
 }
